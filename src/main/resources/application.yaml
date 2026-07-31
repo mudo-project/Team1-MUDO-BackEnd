@@ -1,3 +1,15 @@
 spring:
   application:
     name: mudo-groupware
+  profiles:
+    active: local
+  flyway:
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    encoding: UTF-8
+    out-of-order: true
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+    open-in-view: false
