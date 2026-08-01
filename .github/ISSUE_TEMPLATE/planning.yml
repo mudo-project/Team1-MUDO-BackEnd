@@ -1,0 +1,45 @@
+name: "📌 planning Template"
+description: "간단한 기획 정리 템플릿"
+title: "[PLAN] "
+labels: ["planning"]
+assignees: []
+
+body:
+  - type: textarea
+    id: part
+    attributes:
+      label: "📍 해야할 파트"
+      placeholder: |
+        예)
+        - 로그인 기능
+        - 강의 결제 흐름
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: "📝 설명"
+      placeholder: |
+        어떤 작업인지 간단하게 작성
+    validations:
+      required: true
+
+  - type: input
+    id: period
+    attributes:
+      label: "📅 기간"
+      placeholder: "예) 2026-04-10 ~ 2026-04-15"
+    validations:
+      required: true
+
+  - type: textarea
+    id: reference
+    attributes:
+      label: "🔗 참고 자료"
+      placeholder: |
+        - 링크
+        - 문서
+        - 디자인 시안
+    validations:
+      required: false

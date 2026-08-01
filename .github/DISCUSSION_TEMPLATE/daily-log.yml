@@ -1,0 +1,47 @@
+title: "[당일 업무 회의]"
+labels: ["Daily"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### 오늘
+        수행해야 할 업무 목록입니다.
+  - type: textarea
+    id: today_sm
+    attributes:
+      label: "주원"
+      description: "당일 업무 입력"
+      value: |
+        - [ ] task1
+    validations:
+      required: false
+
+  - type: textarea
+    id: today_sj
+    attributes:
+      label: "정수"
+      description: "당일 업무 입력"
+      value: |
+        - [ ] task1
+    validations:
+      required: false
+
+  - type: textarea
+    id: today_js
+    attributes:
+      label: "재원"
+      description: "당일 업무 입력"
+      value: |
+        - [ ] task1
+    validations:
+      required: false
+
+  - type: textarea
+    id: today_cl
+    attributes:
+      label: "현지"
+      description: "당일 업무 입력"
+      value: |
+        - [ ] task1
+    validations:
+      required: false

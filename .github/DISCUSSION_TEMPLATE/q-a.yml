@@ -1,0 +1,39 @@
+title: "[Q&A] "
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        질문해주셔서 감사합니다.
+        아래 내용을 작성해주시면 더 빠르게 답변할 수 있어요.
+
+  - type: input
+    id: summary
+    attributes:
+      label: 한 줄 요약
+      description: 질문 내용을 한 줄로 요약해주세요.
+      placeholder: 예) 로그인 후 /auth/me 요청이 401을 반환합니다.
+    validations:
+      required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: 질문 내용
+      description: 어떤 상황에서 어떤 문제가 발생했는지 자세히 적어주세요.
+      placeholder: |
+        예)
+        - 무엇을 하려고 했는지
+        - 실제로 어떤 문제가 발생했는지
+        - 기대한 결과는 무엇인지
+    validations:
+      required: true
+
+  - type: textarea
+    id: tried
+    attributes:
+      label: 시도해본 것
+      description: 이미 확인했거나 시도한 방법이 있다면 적어주세요.
+      placeholder: 예) 토큰 재발급, 헤더 확인, Postman 테스트
+    validations:
+      required: false

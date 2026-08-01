@@ -1,0 +1,41 @@
+title: "[General] "
+labels: ["discussion"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        개발 관련 주제를 자유롭게 논의하는 공간입니다.
+
+  - type: input
+    id: topic
+    attributes:
+      label: 토론 주제
+      description: 무엇에 대해 이야기하고 싶은지 한 줄로 적어주세요.
+      placeholder: 예) 우리 프로젝트에서 JWT와 세션 중 어떤 인증 방식이 더 적합할까요?
+    validations:
+      required: true
+
+  - type: textarea
+    id: background
+    attributes:
+      label: 배경
+      description: 왜 이 주제를 논의하려는지 설명해주세요.
+      placeholder: |
+        예)
+        - 현재 인증 구조를 결정해야 합니다.
+        - 운영 편의성과 보안을 함께 고민하고 있습니다.
+    validations:
+      required: true
+
+  - type: textarea
+    id: discussion_points
+    attributes:
+      label: 같이 이야기하고 싶은 포인트
+      description: 특히 의견을 듣고 싶은 부분을 적어주세요.
+      placeholder: |
+        예)
+        - 장단점 비교
+        - 실제 운영 시 주의점
+        - 다른 대안이 있는지
+    validations:
+      required: true

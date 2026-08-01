@@ -1,0 +1,68 @@
+name: "📅 Daily Scrum & Dev Log"
+description: "일일 업무, 학습 내역 및 트러블슈팅을 체계적으로 기록합니다."
+title: "[Daily] YYYY-MM-DD 업무 및 학습 기록"
+labels: ["daily"]
+assignees: []
+body:
+  - type: input
+    id: date
+    attributes:
+      label: "📅 Date (작성일)"
+      description: "오늘의 날짜를 입력해주세요."
+      placeholder: "예: 2026-03-18"
+    validations:
+      required: true
+
+  - type: textarea
+    id: done
+    attributes:
+      label: "✅ Done (완료된 작업 및 학습)"
+      description: "오늘 완료한 개발 업무나 학습, 테스트 작성 내역을 리스트 형태로 작성해주세요."
+      value: |
+        - [x] 
+        - [x]
+    validations:
+      required: true
+
+  - type: textarea
+    id: in-progress
+    attributes:
+      label: "🏃 In Progress & Blockers (진행 중 및 지연 사유)"
+      description: "현재 진행 중이거나 이슈로 인해 완료하지 못한 작업과 그 사유(Blocker)를 작성해주세요."
+      value: |
+        - [ ] 진행 중인 작업: 
+        - [ ] 지연 사유(Blocker):
+    validations:
+      required: false
+
+  - type: textarea
+    id: troubleshooting
+    attributes:
+      label: "🔥 Troubleshooting (트러블슈팅)"
+      description: "개발 과정에서 마주친 예외(Exception)나 기술적 문제, 그리고 해결 과정을 논리적으로 기록해주세요."
+      value: |
+        - **Problem (현상):**
+        - **Cause (원인):**
+        - **Solution (해결방안):**
+    validations:
+      required: false
+
+  - type: textarea
+    id: learning
+    attributes:
+      label: "💡 Learnings (인사이트 및 배운 점)"
+      description: "오늘 새롭게 알게 된 백엔드 기술 지식, 아키텍처 고민, 공식 문서에서 확인한 내용 등을 정리합니다."
+      placeholder: "예) DB 커넥션 풀 설정 최적화를 통해 응답 시간을 개선함. / 영속성 컨텍스트의 동작 원리 복습 등"
+    validations:
+      required: false
+
+  - type: textarea
+    id: next-plan
+    attributes:
+      label: "🚀 Next Plan (내일의 목표)"
+      description: "내일 이어서 진행할 업무나 새롭게 시작할 학습 목표를 우선순위대로 작성해주세요."
+      value: |
+        1. 
+        2.
+    validations:
+      required: true

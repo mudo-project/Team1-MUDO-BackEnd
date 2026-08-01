@@ -1,0 +1,37 @@
+title: "[Idea] "
+labels: ["idea", "enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        새로운 아이디어나 개선 제안을 자유롭게 남겨주세요.
+
+  - type: input
+    id: summary
+    attributes:
+      label: 제안 한 줄 요약
+      description: 아이디어를 한 줄로 적어주세요.
+      placeholder: 예) 채팅 목록 검색 기능을 추가하면 좋겠습니다.
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: 해결하고 싶은 문제
+      description: 어떤 불편함이나 한계가 있는지 설명해주세요.
+      placeholder: |
+        예)
+        - 이전 대화를 찾기 어렵습니다.
+        - 대화가 많아질수록 탐색 시간이 길어집니다.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 제안 내용
+      description: 어떤 방식으로 개선하면 좋을지 적어주세요.
+      placeholder: 예) 제목, 날짜, 키워드 기준으로 검색할 수 있게 하면 좋겠습니다.
+    validations:
+      required: true
