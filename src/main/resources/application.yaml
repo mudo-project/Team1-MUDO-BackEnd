@@ -13,3 +13,7 @@ spring:
       ddl-auto: none
     show-sql: true
     open-in-view: false
+
+security:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:8080}

@@ -5,10 +5,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.academy.mudogroupware.approval.application.command.DecideApprovalLineCommand;
 import com.academy.mudogroupware.approval.application.usecase.DecideApprovalLineUseCase;
-import com.academy.mudogroupware.approval.domain.model.ApprovalErrorCode;
-import com.academy.mudogroupware.approval.domain.model.ApprovalTemplate;
-import com.academy.mudogroupware.approval.domain.repository.ApprovalTemplateRepository;
-import com.academy.mudogroupware.global.error.BusinessException;
+import com.academy.mudogroupware.approval.domain.model.ApprovalDocument;
+import com.academy.mudogroupware.approval.domain.repository.ApprovalDocumentRepository;
+import com.academy.mudogroupware.global.domain.common.exception.NotFoundException;
 
 import lombok.RequiredArgsConstructor;
 
@@ -17,15 +16,15 @@ import lombok.RequiredArgsConstructor;
 @Transactional
 public class DecideApprovalLineService implements DecideApprovalLineUseCase {
 
-    private final ApprovalTemplateRepository approvalTemplateRepository;
+    private final ApprovalDocumentRepository approvalDocumentRepository;
 
     @Override
     public void decide(DecideApprovalLineCommand command) {
-        ApprovalTemplate approvalTemplate = approvalTemplateRepository.findById(command.templateId())
-                .orElseThrow(() -> new BusinessException(ApprovalErrorCode.TEMPLATE_NOT_FOUND));
+        ApprovalDocument approvalDocument = approvalDocumentRepository.findById(command.documentId())
+                .orElseThrow(() -> new NotFoundException("결재 문서를 찾을 수 없습니다."));
 
-        approvalTemplate.decide(command.approverId(), command.decision(), command.comment());
+        approvalDocument.decide(command.approverId(), command.decision(), command.comment());
 
-        approvalTemplateRepository.save(approvalTemplate);
+        approvalDocumentRepository.save(approvalDocument);
     }
 }

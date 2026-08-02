@@ -1,3 +1,25 @@
 package com.academy.mudogroupware.global.infrastructure.security.websocket;
-import jakarta.servlet.http.*; import org.springframework.http.server.*; import org.springframework.stereotype.Component; import org.springframework.web.socket.WebSocketHandler; import org.springframework.web.socket.server.HandshakeInterceptor; import java.util.Map;
-@Component public class JwtHandshakeInterceptor implements HandshakeInterceptor { public boolean beforeHandshake(ServerHttpRequest q,ServerHttpResponse s,WebSocketHandler h,Map<String,Object>a){if(q instanceof ServletServerHttpRequest r&&r.getServletRequest().getCookies()!=null)for(Cookie c:r.getServletRequest().getCookies())if("accessToken".equals(c.getName())){a.put("accessToken",c.getValue());break;}return true;} public void afterHandshake(ServerHttpRequest q,ServerHttpResponse s,WebSocketHandler h,Exception e){} }
+
+import jakarta.servlet.http.*;
+import java.util.Map;
+import org.springframework.http.server.*;
+import org.springframework.stereotype.Component;
+import org.springframework.web.socket.WebSocketHandler;
+import org.springframework.web.socket.server.HandshakeInterceptor;
+
+@Component
+public class JwtHandshakeInterceptor implements HandshakeInterceptor {
+  public boolean beforeHandshake(
+      ServerHttpRequest q, ServerHttpResponse s, WebSocketHandler h, Map<String, Object> a) {
+    if (q instanceof ServletServerHttpRequest r && r.getServletRequest().getCookies() != null)
+      for (Cookie c : r.getServletRequest().getCookies())
+        if ("accessToken".equals(c.getName())) {
+          a.put("accessToken", c.getValue());
+          break;
+        }
+    return true;
+  }
+
+  public void afterHandshake(
+      ServerHttpRequest q, ServerHttpResponse s, WebSocketHandler h, Exception e) {}
+}

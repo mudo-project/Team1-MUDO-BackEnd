@@ -9,6 +9,7 @@ import com.academy.mudogroupware.approval.domain.model.ApprovalStatus;
 
 public record ApprovalDetailResponse(
         Long id,
+        Long templateId,
         String title,
         ApprovalContentType contentType,
         String text,
@@ -25,7 +26,7 @@ public record ApprovalDetailResponse(
                 .toList();
 
         return new ApprovalDetailResponse(
-                view.id(), view.title(), view.contentType(), view.text(), view.fileUrl(),
+                view.id(), view.templateId(), view.title(), view.contentType(), view.text(), view.fileUrl(),
                 view.creatorId(), view.status(), view.createdAt(), lines);
     }
 }

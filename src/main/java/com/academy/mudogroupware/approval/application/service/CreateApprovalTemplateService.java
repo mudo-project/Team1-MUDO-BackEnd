@@ -5,7 +5,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.academy.mudogroupware.approval.application.command.CreateApprovalTemplateCommand;
 import com.academy.mudogroupware.approval.application.usecase.CreateApprovalTemplateUseCase;
-import com.academy.mudogroupware.approval.domain.model.ApprovalContent;
 import com.academy.mudogroupware.approval.domain.model.ApprovalTemplate;
 import com.academy.mudogroupware.approval.domain.repository.ApprovalTemplateRepository;
 
@@ -20,9 +19,8 @@ public class CreateApprovalTemplateService implements CreateApprovalTemplateUseC
 
     @Override
     public Long createTemplate(CreateApprovalTemplateCommand command) {
-        ApprovalContent content = ApprovalContent.create(command.contentType(), command.text(), command.fileUrl());
         ApprovalTemplate approvalTemplate = ApprovalTemplate.create(
-                command.title(), content, command.creatorId(), command.approverIds());
+                command.name(), command.creatorId(), command.approverIds());
 
         return approvalTemplateRepository.save(approvalTemplate).getId();
     }

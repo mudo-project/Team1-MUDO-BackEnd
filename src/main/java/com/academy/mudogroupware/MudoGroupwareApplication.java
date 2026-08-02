@@ -6,8 +6,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication
 public class MudoGroupwareApplication {
 
-    public static void main(String[] args) {
-        SpringApplication.run(MudoGroupwareApplication.class, args);
-    }
-
+  public static void main(String[] args) {
+    SpringApplication.run(MudoGroupwareApplication.class, args);
+  }
 }
