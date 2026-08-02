@@ -8,6 +8,7 @@ import com.academy.mudogroupware.approval.domain.model.ApprovalStatus;
 
 public record ApprovalDetailView(
         Long id,
+        Long templateId,
         String title,
         ApprovalContentType contentType,
         String text,

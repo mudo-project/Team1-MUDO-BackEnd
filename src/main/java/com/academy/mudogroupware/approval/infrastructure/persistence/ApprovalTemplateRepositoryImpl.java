@@ -5,9 +5,8 @@ import java.util.Optional;
 
 import org.springframework.stereotype.Repository;
 
-import com.academy.mudogroupware.approval.domain.model.ApprovalContent;
-import com.academy.mudogroupware.approval.domain.model.ApprovalLine;
 import com.academy.mudogroupware.approval.domain.model.ApprovalTemplate;
+import com.academy.mudogroupware.approval.domain.model.ApprovalTemplateLine;
 import com.academy.mudogroupware.approval.domain.repository.ApprovalTemplateRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -20,7 +19,10 @@ public class ApprovalTemplateRepositoryImpl implements ApprovalTemplateRepositor
 
     @Override
     public ApprovalTemplate save(ApprovalTemplate approvalTemplate) {
-        ApprovalTemplateEntity entity = toEntity(approvalTemplate);
+        ApprovalTemplateEntity entity = approvalTemplate.getId() != null
+                ? updateExisting(approvalTemplate)
+                : toNewEntity(approvalTemplate);
+
         return toDomain(approvalTemplateJpaRepository.save(entity));
     }
 
@@ -30,53 +32,47 @@ public class ApprovalTemplateRepositoryImpl implements ApprovalTemplateRepositor
     }
 
     @Override
-    public List<ApprovalTemplate> findAllByApproverId(Long approverId) {
-        return approvalTemplateJpaRepository.findAllByApproverId(approverId).stream()
+    public List<ApprovalTemplate> findAll() {
+        return approvalTemplateJpaRepository.findAll().stream()
                 .map(this::toDomain)
                 .toList();
     }
 
-    private ApprovalTemplateEntity toEntity(ApprovalTemplate domain) {
+    @Override
+    public void deleteById(Long id) {
+        approvalTemplateJpaRepository.deleteById(id);
+    }
+
+    private ApprovalTemplateEntity toNewEntity(ApprovalTemplate domain) {
         ApprovalTemplateEntity entity = ApprovalTemplateEntity.builder()
-                .id(domain.getId())
-                .title(domain.getTitle())
-                .contentType(domain.getContent().getType())
-                .text(domain.getContent().getText())
-                .fileUrl(domain.getContent().getFileUrl())
+                .name(domain.getName())
                 .creatorId(domain.getCreatorId())
-                .status(domain.getStatus())
                 .createdAt(domain.getCreatedAt())
                 .build();
-
-        domain.getApprovalLines().forEach(line -> entity.addLine(toLineEntity(line)));
+        domain.getLines().forEach(line -> entity.addLine(toLineEntity(line)));
         return entity;
     }
 
-    private ApprovalLineEntity toLineEntity(ApprovalLine line) {
-        return ApprovalLineEntity.builder()
-                .id(line.getId())
+    private ApprovalTemplateEntity updateExisting(ApprovalTemplate domain) {
+        ApprovalTemplateEntity entity = approvalTemplateJpaRepository.getReferenceById(domain.getId());
+        entity.setName(domain.getName());
+        entity.clearLines();
+        domain.getLines().forEach(line -> entity.addLine(toLineEntity(line)));
+        return entity;
+    }
+
+    private ApprovalTemplateLineEntity toLineEntity(ApprovalTemplateLine line) {
+        return ApprovalTemplateLineEntity.builder()
                 .stepOrder(line.getStepOrder())
                 .approverId(line.getApproverId())
-                .status(line.getStatus())
-                .comment(line.getComment())
-                .decidedAt(line.getDecidedAt())
                 .build();
     }
 
     private ApprovalTemplate toDomain(ApprovalTemplateEntity entity) {
-        List<ApprovalLine> lines = entity.getApprovalLines().stream()
-                .map(this::toLineDomain)
+        List<ApprovalTemplateLine> lines = entity.getLines().stream()
+                .map(line -> ApprovalTemplateLine.restore(line.getId(), line.getStepOrder(), line.getApproverId()))
                 .toList();
-        ApprovalContent content = ApprovalContent.restore(entity.getContentType(), entity.getText(), entity.getFileUrl());
 
-        return ApprovalTemplate.restore(
-                entity.getId(), entity.getTitle(), content, entity.getCreatorId(),
-                lines, entity.getStatus(), entity.getCreatedAt());
-    }
-
-    private ApprovalLine toLineDomain(ApprovalLineEntity entity) {
-        return ApprovalLine.restore(
-                entity.getId(), entity.getStepOrder(), entity.getApproverId(),
-                entity.getStatus(), entity.getComment(), entity.getDecidedAt());
+        return ApprovalTemplate.restore(entity.getId(), entity.getName(), entity.getCreatorId(), lines, entity.getCreatedAt());
     }
 }
