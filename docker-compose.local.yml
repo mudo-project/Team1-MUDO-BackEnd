@@ -1,0 +1,75 @@
+# 로컬 Docker 리소스 이름의 공통 접두사로 사용된다.
+name: mudo-groupware-local
+
+services:
+  mysql:
+    # 운영 RDS와 주 버전을 맞춘 로컬 개발용 MySQL이다.
+    image: mysql:8.0
+    environment:
+      # ${변수:?메시지} 문법은 필수 값이 없을 때 즉시 실행을 중단한다.
+      MYSQL_ROOT_PASSWORD: ${LOCAL_MYSQL_ROOT_PASSWORD:?Set LOCAL_MYSQL_ROOT_PASSWORD in .env.local}
+      MYSQL_DATABASE: mudo_groupware
+      MYSQL_USER: ${DB_USERNAME:?Set DB_USERNAME in .env.local}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env.local}
+      TZ: Asia/Seoul
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    ports:
+      # 호스트 3307을 컨테이너 3306에 연결하여 PC의 기존 MySQL 3306과 충돌하지 않게 한다.
+      - "${MYSQL_HOST_PORT:-3307}:3306"
+    volumes:
+      # 컨테이너를 삭제해도 DB 데이터를 유지하는 Docker named volume이다.
+      - mudo-mysql-data:/var/lib/mysql
+    healthcheck:
+      # $$는 Compose 치환을 피하고 컨테이너 안의 MYSQL_ROOT_PASSWORD를 사용하기 위한 표기다.
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - mudo-local-network
+
+  app:
+    # 현재 소스를 Dockerfile의 runtime 단계까지 빌드한다.
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    # 로컬에서 생성되는 백엔드 이미지 이름이다.
+    image: mudo-groupware-backend:local
+    # 개인 로컬 값은 Git에서 제외된 .env.local에서 컨테이너로 전달한다.
+    env_file:
+      - .env.local
+    environment:
+      # 기존 local 프로필을 사용하되 DB 접속값만 컨테이너 환경에 맞게 덮어쓴다.
+      SPRING_PROFILES_ACTIVE: local
+      # mysql은 Docker 네트워크 내부에서 사용하는 서비스 이름이다. 호스트의 3307을 사용하지 않는다.
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/mudo_groupware?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME:?Set DB_USERNAME in .env.local}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env.local}
+    ports:
+      # 브라우저와 프론트엔드는 기본적으로 http://localhost:8080으로 접근한다.
+      - "${APP_HOST_PORT:-8080}:8080"
+    volumes:
+      # 컨테이너가 남긴 파일 로그를 호스트의 logs 디렉터리에서 확인한다.
+      - ./logs:/app/logs
+    depends_on:
+      # 단순 시작 순서가 아니라 MySQL 헬스체크 통과 후 앱을 시작한다.
+      mysql:
+        condition: service_healthy
+    # 로컬에서는 실패 원인을 숨기지 않도록 앱을 무한 자동 재시작하지 않는다.
+    restart: "no"
+    networks:
+      - mudo-local-network
+
+volumes:
+  # `docker compose down`에는 유지되고 `down -v`에서만 삭제된다.
+  mudo-mysql-data:
+
+networks:
+  # 앱이 `mysql:3306`으로 DB를 찾을 수 있게 두 서비스를 같은 네트워크에 둔다.
+  mudo-local-network:
+    driver: bridge
