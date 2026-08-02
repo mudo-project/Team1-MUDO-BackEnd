@@ -2,9 +2,9 @@ package com.academy.mudogroupware.approval.application.command;
 
 import java.util.List;
 
-public record CreateApprovalTemplateCommand(
+public record UpdateApprovalTemplateCommand(
+        Long templateId,
         String name,
-        Long creatorId,
         List<Long> approverIds
 ) {
 }

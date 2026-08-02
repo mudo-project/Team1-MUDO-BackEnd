@@ -2,24 +2,34 @@ package com.academy.mudogroupware.approval.infrastructure.persistence;
 
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 
 import com.academy.mudogroupware.approval.application.port.ApproverDirectoryPort;
 import com.academy.mudogroupware.approval.application.port.ApproverInfo;
+import com.academy.mudogroupware.global.domain.common.exception.NotFoundException;
+
+import lombok.RequiredArgsConstructor;
 
 @Component
+@RequiredArgsConstructor
 public class ApproverDirectoryPortAdapter implements ApproverDirectoryPort {
+
+    private final UserNameJpaRepository userNameJpaRepository;
 
     @Override
     public ApproverInfo getApprover(Long userId) {
-        // User 모듈(도메인)이 아직 없어 연동 전까지 미구현 상태로 남겨둠
-        throw new UnsupportedOperationException("User module is not integrated yet");
+        UserNameEntity entity = userNameJpaRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("사용자를 찾을 수 없습니다."));
+        return new ApproverInfo(entity.getId(), entity.getName());
     }
 
     @Override
     public Map<Long, ApproverInfo> getApprovers(List<Long> userIds) {
-        // User 모듈(도메인)이 아직 없어 연동 전까지 미구현 상태로 남겨둠
-        throw new UnsupportedOperationException("User module is not integrated yet");
+        return userNameJpaRepository.findAllById(userIds).stream()
+                .map(entity -> new ApproverInfo(entity.getId(), entity.getName()))
+                .collect(Collectors.toMap(ApproverInfo::userId, Function.identity()));
     }
 }
