@@ -37,6 +37,4 @@ out/
 .vscode/
 
 ### Local Docker ###
-.env.local
-.env.backend
 logs/

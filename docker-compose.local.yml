@@ -40,7 +40,7 @@ services:
       target: runtime
     # 로컬에서 생성되는 백엔드 이미지 이름이다.
     image: mudo-groupware-backend:local
-    # 개인 로컬 값은 Git에서 제외된 .env.local에서 컨테이너로 전달한다.
+    # 팀 공용 로컬 값은 저장소의 .env.local에서 컨테이너로 전달한다.
     env_file:
       - .env.local
     environment:
