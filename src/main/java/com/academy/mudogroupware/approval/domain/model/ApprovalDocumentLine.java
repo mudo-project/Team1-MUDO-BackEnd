@@ -2,9 +2,9 @@ package com.academy.mudogroupware.approval.domain.model;
 
 import java.time.LocalDateTime;
 
-import com.academy.mudogroupware.global.error.BusinessException;
+import com.academy.mudogroupware.global.domain.common.exception.ConflictException;
 
-public final class ApprovalLine {
+public final class ApprovalDocumentLine {
 
     private final Long id;
     private final int stepOrder;
@@ -13,8 +13,8 @@ public final class ApprovalLine {
     private String comment;
     private LocalDateTime decidedAt;
 
-    private ApprovalLine(Long id, int stepOrder, Long approverId, ApprovalLineStatus status,
-                          String comment, LocalDateTime decidedAt) {
+    private ApprovalDocumentLine(Long id, int stepOrder, Long approverId, ApprovalLineStatus status,
+                                  String comment, LocalDateTime decidedAt) {
         if (approverId == null) {
             throw new IllegalArgumentException("approverId must not be null");
         }
@@ -29,14 +29,14 @@ public final class ApprovalLine {
         this.decidedAt = decidedAt;
     }
 
-    public static ApprovalLine create(int stepOrder, Long approverId) {
+    public static ApprovalDocumentLine create(int stepOrder, Long approverId) {
         ApprovalLineStatus initialStatus = stepOrder == 1 ? ApprovalLineStatus.PENDING : ApprovalLineStatus.WAITING;
-        return new ApprovalLine(null, stepOrder, approverId, initialStatus, null, null);
+        return new ApprovalDocumentLine(null, stepOrder, approverId, initialStatus, null, null);
     }
 
-    public static ApprovalLine restore(Long id, int stepOrder, Long approverId, ApprovalLineStatus status,
-                                        String comment, LocalDateTime decidedAt) {
-        return new ApprovalLine(id, stepOrder, approverId, status, comment, decidedAt);
+    public static ApprovalDocumentLine restore(Long id, int stepOrder, Long approverId, ApprovalLineStatus status,
+                                                String comment, LocalDateTime decidedAt) {
+        return new ApprovalDocumentLine(id, stepOrder, approverId, status, comment, decidedAt);
     }
 
     void activate() {
@@ -59,7 +59,7 @@ public final class ApprovalLine {
 
     private void ensurePending() {
         if (status != ApprovalLineStatus.PENDING) {
-            throw new BusinessException(ApprovalErrorCode.ALREADY_DECIDED);
+            throw new ConflictException("이미 처리가 완료된 결재선입니다.");
         }
     }
 

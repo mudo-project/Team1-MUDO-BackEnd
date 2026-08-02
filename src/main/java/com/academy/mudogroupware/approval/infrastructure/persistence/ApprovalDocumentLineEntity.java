@@ -21,18 +21,18 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "approval_lines")
+@Table(name = "approval_document_lines")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class ApprovalLineEntity {
+public class ApprovalDocumentLineEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "approval_template_id", nullable = false)
-    private ApprovalTemplateEntity approvalTemplate;
+    @JoinColumn(name = "approval_document_id", nullable = false)
+    private ApprovalDocumentEntity approvalDocument;
 
     @Column(name = "step_order", nullable = false)
     private int stepOrder;
@@ -51,8 +51,8 @@ public class ApprovalLineEntity {
     private LocalDateTime decidedAt;
 
     @Builder
-    private ApprovalLineEntity(Long id, int stepOrder, Long approverId, ApprovalLineStatus status,
-                                String comment, LocalDateTime decidedAt) {
+    private ApprovalDocumentLineEntity(Long id, int stepOrder, Long approverId, ApprovalLineStatus status,
+                                        String comment, LocalDateTime decidedAt) {
         this.id = id;
         this.stepOrder = stepOrder;
         this.approverId = approverId;
@@ -61,7 +61,7 @@ public class ApprovalLineEntity {
         this.decidedAt = decidedAt;
     }
 
-    void assignTemplate(ApprovalTemplateEntity approvalTemplate) {
-        this.approvalTemplate = approvalTemplate;
+    void assignDocument(ApprovalDocumentEntity approvalDocument) {
+        this.approvalDocument = approvalDocument;
     }
 }
