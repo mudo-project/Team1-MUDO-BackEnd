@@ -36,5 +36,8 @@ out/
 ### VS Code ###
 .vscode/
 
+### Local AI tools ###
+.claude/
+
 ### Local Docker ###
 logs/
