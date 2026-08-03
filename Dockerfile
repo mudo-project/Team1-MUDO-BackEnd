@@ -31,7 +31,7 @@ WORKDIR /app
 COPY --from=build --chown=app:app /workspace/build/libs/*.jar app.jar
 
 # 컨테이너 메모리의 최대 75%를 JVM 힙 등에 활용하고 문자 인코딩을 UTF-8로 고정한다.
-ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75.0 -Dfile.encoding=UTF-8"
+ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75.0 -Dfile.encoding=UTF-8 -Duser.timezone=UTC"
 
 USER app
 

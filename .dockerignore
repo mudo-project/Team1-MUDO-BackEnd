@@ -17,3 +17,6 @@ docs
 
 # Markdown 문서는 실행 이미지에 필요하지 않다.
 *.md
+
+# 도메인별 팀 문서는 Git으로 공유하고 Docker build context에서는 제외
+/src/main/java/**/docs/
