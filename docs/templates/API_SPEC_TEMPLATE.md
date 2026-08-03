@@ -10,7 +10,6 @@ Request Header
 
 | name | description |
 | --- | --- |
-| --- | --- |
 | `Authorization` | `Bearer {AccessToken}` 형식의 사용자 인증 토큰입니다. |
 
 Request Parameter

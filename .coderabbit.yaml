@@ -136,14 +136,7 @@ reviews:
         - 응답 DTO 에 password, token, 내부 ID, PII 등 민감 정보가 노출되지 않는지 확인한다.
         - Entity 를 API 응답으로 직접 반환하지 않는지 확인한다.
 
-    - path: "src/main/java/com/team23/common/security/**"
-      instructions: |
-        - 토큰 검증, 권한 체크, refresh flow, 민감정보 노출을 집중 리뷰한다.
-        - 로그에 credential, token, PII 가 남지 않는지 확인한다.
-        - SecurityConfig 의 requestMatchers 순서와 permitAll/hasRole 사용을 확인한다.
-        - JWT claim 추출 시 타입 변환 안전성, null 처리를 확인한다.
-
-    - path: "src/main/java/com/team23/common/**"
+    - path: "src/main/java/com/academy/mudogroupware/global/**"
       instructions: |
         - 공통 인프라 변경은 모든 도메인에 영향을 미치므로 영향 범위를 확인한다.
         - ErrorCode 추가 시 HTTP status, code prefix, message 일관성을 확인한다.
@@ -178,22 +171,17 @@ reviews:
         - .env 파일이 .gitignore 에 포함되어 있는지 반드시 확인한다.
         - 실제 credentials 가 커밋된 경우 즉시 지적한다.
 
-    - path: "src/main/java/com/ssambbong/gymjjak/**/{presentation,presectation}/api/**"
+    - path: "src/main/java/com/academy/mudogroupware/**/presentation/api/**"
       instructions: |
         - 기존 controller 리뷰 기준을 그대로 적용한다.
-        - 이 프로젝트의 Controller 계층은 presentation/api 또는 오타가 포함된 presectation/api 경로에 존재하므로 해당 경로도 함께 리뷰한다.
+        - 이 프로젝트의 Controller 계층은 presentation/api 경로에 존재한다.
+        - Presentation API는 요청 변환과 UseCase 호출에 집중해야 하며 비즈니스 로직을 포함하지 않아야 한다.
+        - @AuthenticationPrincipal 등 인증 사용자 식별과 Command 변환 과정이 null-safe 하고 필수 값 검증을 거치는지 확인한다.
         - 인증/인가 누락, @PreAuthorize 누락, SecurityConfig와 실제 API 권한 정책 불일치를 최우선으로 확인한다.
         - 응답이 GlobalApiResponse와 도메인별 ResponseCode 형식을 일관되게 사용하는지 확인한다.
         - MultipartFile 업로드 API는 파일 크기, 확장자, content-type, 빈 파일, S3 실패 처리까지 확인한다.
 
-    - path: "src/main/java/com/ssambbong/gymjjak/**/adapter/in/web/**"
-      instructions: |
-        - 기존 controller/dto 리뷰 기준을 그대로 적용한다.
-        - Web Adapter는 요청 변환과 UseCase 호출에 집중해야 하며 비즈니스 로직을 포함하지 않아야 한다.
-        - AuthUser, @AuthenticationPrincipal, JWT 기반 사용자 식별이 null-safe 한지 확인한다.
-        - 외부 입력을 Command 객체로 변환할 때 필수 값 검증과 권한 검증 흐름이 빠지지 않았는지 확인한다.
-
-    - path: "src/main/java/com/ssambbong/gymjjak/**/application/{service,usecase,command,query,port}/**"
+    - path: "src/main/java/com/academy/mudogroupware/**/application/{service,usecase,command,query,port}/**"
       instructions: |
         - 기존 application/service/query 리뷰 기준을 그대로 적용한다.
         - Application Service/UseCase가 도메인 흐름을 조율하고 트랜잭션 경계를 명확히 갖는지 확인한다.
@@ -201,7 +189,7 @@ reviews:
         - Controller, MultipartFile, JPA Entity, SpringData Repository 등 Web/Infrastructure 세부 구현 의존이 Application에 새지 않는지 확인한다.
         - 외부 시스템(S3 등) 호출과 DB 트랜잭션이 함께 있을 때 실패 보상/롤백 전략이 있는지 확인한다.
 
-    - path: "src/main/java/com/ssambbong/gymjjak/**/infrastructure/persistence/**"
+    - path: "src/main/java/com/academy/mudogroupware/**/infrastructure/persistence/**"
       instructions: |
         - 기존 repository/jpa/infrastructure 리뷰 기준을 그대로 적용한다.
         - Domain 모델과 JpaEntity 매핑 누락, ID/상태/deletedAt 변환 누락을 확인한다.
@@ -209,7 +197,7 @@ reviews:
         - @Query/nativeQuery 사용 시 파라미터 바인딩, SQL injection, index 활용 가능성, count query 비용을 확인한다.
         - soft delete(deletedAt)와 status 조건이 조회/수정/삭제 쿼리에 일관되게 반영되는지 확인한다.
 
-    - path: "src/main/java/com/ssambbong/gymjjak/global/security/**"
+    - path: "src/main/java/com/academy/mudogroupware/global/infrastructure/security/**"
       instructions: |
         - 기존 security 리뷰 기준을 그대로 적용한다.
         - SecurityConfig의 requestMatchers 순서, permitAll 범위, hasAuthority/hasAnyAuthority 정책을 집중 리뷰한다.
@@ -217,14 +205,14 @@ reviews:
         - JWT secret 길이, claim 타입 변환, 만료 처리, refresh token 검증/저장/폐기 흐름을 확인한다.
         - 로그에 token, password, credential, PII가 남지 않는지 확인한다.
 
-    - path: "src/main/java/com/ssambbong/gymjjak/file/**"
+    - path: "src/main/java/com/academy/mudogroupware/file/**"
       instructions: |
         - 기존 infrastructure/service/domain 리뷰 기준을 그대로 적용한다.
         - S3 업로드/삭제/교체 흐름에서 DB 저장 실패 시 보상 처리와 반대 케이스의 정합성을 확인한다.
         - 파일 타입 정책, 업로더 권한, presigned URL 만료, S3 key 노출 위험을 확인한다.
         - 파일 업로드 실패가 핵심 트랜잭션에 어떤 영향을 주는지 명확히 리뷰한다.
 
-    - path: "src/main/java/com/ssambbong/gymjjak/global/presentation/api/common/**"
+    - path: "src/main/java/com/academy/mudogroupware/global/presentation/api/common/**"
       instructions: |
         - 기존 common 리뷰 기준을 그대로 적용한다.
         - GlobalApiResponse, GlobalApiErrorResponse, GlobalExceptionHandler 변경이 기존 클라이언트 응답 스펙을 깨지 않는지 확인한다.
