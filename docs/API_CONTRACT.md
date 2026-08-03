@@ -54,11 +54,11 @@ Authorization: Bearer {accessToken}
 ### 날짜와 시간
 
 - 날짜: `yyyy-MM-dd`
-- 날짜·시간: ISO-8601 형식
+- API 날짜·시간은 `Asia/Seoul (UTC+09:00)` 기준의 ISO-8601 오프셋 형식을 사용한다.
 
 ```text
 2026-08-02
-2026-08-02T14:30:00
+2026-08-02T14:30:00+09:00
 ```
 
 ### 페이지네이션
@@ -109,7 +109,7 @@ Authorization: Bearer {accessToken}
 
 ```json
 {
-  "timestamp": "2026-08-02T14:30:00",
+  "timestamp": "2026-08-02T14:30:00+09:00",
   "status": 400,
   "code": "COMMON_400",
   "message": "유효하지 않은 요청입니다.",
