@@ -2,7 +2,7 @@ package com.academy.mudogroupware.approval.infrastructure.persistence;
 
 import java.time.LocalDateTime;
 
-import com.academy.mudogroupware.approval.domain.model.ApprovalLineStatus;
+import com.academy.mudogroupware.approval.domain.model.AttachmentSummaryStatus;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -13,6 +13,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
@@ -21,45 +22,41 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "approval_step")
+@Table(name = "approval_attachment")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class ApprovalDocumentLineEntity {
+public class ApprovalAttachmentEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "document_step_id")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "approval_document_id", nullable = false)
     private ApprovalDocumentEntity approvalDocument;
 
-    @Column(name = "step_order", nullable = false)
-    private int stepOrder;
+    @Column(name = "file_id", nullable = false)
+    private Long fileId;
 
-    @Column(name = "approver_user_id", nullable = false)
-    private Long approverId;
+    @Lob
+    @Column(name = "ai_summary")
+    private String aiSummary;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private ApprovalLineStatus status;
+    @Column(name = "summary_status", nullable = false, length = 20)
+    private AttachmentSummaryStatus summaryStatus;
 
-    @Column(length = 1000)
-    private String comment;
-
-    @Column(name = "decided_at")
-    private LocalDateTime decidedAt;
+    @Column(name = "summarized_at")
+    private LocalDateTime summarizedAt;
 
     @Builder
-    private ApprovalDocumentLineEntity(Long id, int stepOrder, Long approverId, ApprovalLineStatus status,
-                                        String comment, LocalDateTime decidedAt) {
+    private ApprovalAttachmentEntity(Long id, Long fileId, String aiSummary, AttachmentSummaryStatus summaryStatus,
+                                      LocalDateTime summarizedAt) {
         this.id = id;
-        this.stepOrder = stepOrder;
-        this.approverId = approverId;
-        this.status = status;
-        this.comment = comment;
-        this.decidedAt = decidedAt;
+        this.fileId = fileId;
+        this.aiSummary = aiSummary;
+        this.summaryStatus = summaryStatus;
+        this.summarizedAt = summarizedAt;
     }
 
     void assignDocument(ApprovalDocumentEntity approvalDocument) {

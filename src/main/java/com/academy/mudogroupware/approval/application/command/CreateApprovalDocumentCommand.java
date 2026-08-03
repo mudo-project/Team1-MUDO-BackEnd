@@ -9,7 +9,7 @@ public record CreateApprovalDocumentCommand(
         String title,
         ApprovalContentType contentType,
         String text,
-        String fileUrl,
+        List<Long> fileIds,
         Long creatorId,
         List<Long> approverIds
 ) {

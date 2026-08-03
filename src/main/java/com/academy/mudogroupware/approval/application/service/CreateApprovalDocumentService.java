@@ -6,12 +6,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.academy.mudogroupware.approval.application.command.CreateApprovalDocumentCommand;
+import com.academy.mudogroupware.approval.application.port.ApproverDirectoryPort;
+import com.academy.mudogroupware.approval.application.port.ApproverInfo;
 import com.academy.mudogroupware.approval.application.usecase.CreateApprovalDocumentUseCase;
 import com.academy.mudogroupware.approval.domain.model.ApprovalContent;
 import com.academy.mudogroupware.approval.domain.model.ApprovalDocument;
 import com.academy.mudogroupware.approval.domain.model.ApprovalTemplate;
 import com.academy.mudogroupware.approval.domain.repository.ApprovalDocumentRepository;
 import com.academy.mudogroupware.approval.domain.repository.ApprovalTemplateRepository;
+import com.academy.mudogroupware.global.domain.common.exception.ForbiddenException;
 import com.academy.mudogroupware.global.domain.common.exception.NotFoundException;
 
 import lombok.RequiredArgsConstructor;
@@ -23,19 +26,26 @@ public class CreateApprovalDocumentService implements CreateApprovalDocumentUseC
 
     private final ApprovalTemplateRepository approvalTemplateRepository;
     private final ApprovalDocumentRepository approvalDocumentRepository;
+    private final ApproverDirectoryPort approverDirectoryPort;
 
     @Override
     public Long createDocument(CreateApprovalDocumentCommand command) {
         ApprovalTemplate approvalTemplate = approvalTemplateRepository.findById(command.templateId())
                 .orElseThrow(() -> new NotFoundException("결재 템플릿을 찾을 수 없습니다."));
 
+        ApproverInfo creator = approverDirectoryPort.getApprover(command.creatorId());
+        if (!approvalTemplate.getAcademyId().equals(creator.academyId())) {
+            throw new ForbiddenException("다른 학원의 템플릿으로는 결재를 신청할 수 없습니다.");
+        }
+
         List<Long> approverIds = (command.approverIds() != null && !command.approverIds().isEmpty())
                 ? command.approverIds()
                 : approvalTemplate.approverIdsInOrder();
 
-        ApprovalContent content = ApprovalContent.create(command.contentType(), command.text(), command.fileUrl());
+        ApprovalContent content = ApprovalContent.create(command.contentType(), command.text());
         ApprovalDocument approvalDocument = ApprovalDocument.create(
-                approvalTemplate.getId(), command.title(), content, command.creatorId(), approverIds);
+                approvalTemplate.getAcademyId(), approvalTemplate.getId(), command.title(), content,
+                command.creatorId(), approverIds, command.fileIds());
 
         return approvalDocumentRepository.save(approvalDocument).getId();
     }

@@ -11,7 +11,7 @@ public interface ApprovalTemplateRepository {
 
     Optional<ApprovalTemplate> findById(Long id);
 
-    List<ApprovalTemplate> findAll();
+    List<ApprovalTemplate> findAll(Long academyId);
 
     void deleteById(Long id);
 }

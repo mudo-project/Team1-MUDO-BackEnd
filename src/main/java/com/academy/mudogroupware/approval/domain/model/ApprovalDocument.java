@@ -11,16 +11,23 @@ import com.academy.mudogroupware.global.domain.common.exception.ConflictExceptio
 public final class ApprovalDocument {
 
     private final Long id;
+    private final Long academyId;
     private final Long templateId;
     private final String title;
     private final ApprovalContent content;
     private final Long creatorId;
     private final List<ApprovalDocumentLine> lines;
+    private final List<ApprovalAttachment> attachments;
     private ApprovalStatus status;
     private final LocalDateTime createdAt;
+    private LocalDateTime resubmittedAt;
 
-    private ApprovalDocument(Long id, Long templateId, String title, ApprovalContent content, Long creatorId,
-                              List<ApprovalDocumentLine> lines, ApprovalStatus status, LocalDateTime createdAt) {
+    private ApprovalDocument(Long id, Long academyId, Long templateId, String title, ApprovalContent content,
+                              Long creatorId, List<ApprovalDocumentLine> lines, List<ApprovalAttachment> attachments,
+                              ApprovalStatus status, LocalDateTime createdAt, LocalDateTime resubmittedAt) {
+        if (academyId == null) {
+            throw new IllegalArgumentException("academyId must not be null");
+        }
         if (title == null || title.isBlank()) {
             throw new BadRequestException("결재 제목은 비어 있을 수 없습니다.");
         }
@@ -34,25 +41,43 @@ public final class ApprovalDocument {
             throw new BadRequestException("결재선은 최소 1명 이상 지정해야 합니다.");
         }
         this.id = id;
+        this.academyId = academyId;
         this.templateId = templateId;
         this.title = title;
         this.content = content;
         this.creatorId = creatorId;
         this.lines = new ArrayList<>(lines);
+        this.attachments = attachments != null ? new ArrayList<>(attachments) : new ArrayList<>();
         this.status = status;
         this.createdAt = createdAt;
+        this.resubmittedAt = resubmittedAt;
     }
 
-    public static ApprovalDocument create(Long templateId, String title, ApprovalContent content, Long creatorId,
-                                           List<Long> approverIds) {
-        return new ApprovalDocument(null, templateId, title, content, creatorId, buildLines(approverIds),
-                ApprovalStatus.IN_PROGRESS, LocalDateTime.now());
+    public static ApprovalDocument create(Long academyId, Long templateId, String title, ApprovalContent content,
+                                           Long creatorId, List<Long> approverIds, List<Long> fileIds) {
+        List<ApprovalAttachment> attachments = fileIds != null
+                ? fileIds.stream().map(ApprovalAttachment::create).toList()
+                : List.of();
+        return new ApprovalDocument(null, academyId, templateId, title, content, creatorId, buildLines(approverIds),
+                attachments, ApprovalStatus.IN_PROGRESS, LocalDateTime.now(), null);
     }
 
-    public static ApprovalDocument restore(Long id, Long templateId, String title, ApprovalContent content,
-                                            Long creatorId, List<ApprovalDocumentLine> lines, ApprovalStatus status,
-                                            LocalDateTime createdAt) {
-        return new ApprovalDocument(id, templateId, title, content, creatorId, lines, status, createdAt);
+    public static ApprovalDocument restore(Long id, Long academyId, Long templateId, String title,
+                                            ApprovalContent content, Long creatorId, List<ApprovalDocumentLine> lines,
+                                            List<ApprovalAttachment> attachments, ApprovalStatus status,
+                                            LocalDateTime createdAt, LocalDateTime resubmittedAt) {
+        return new ApprovalDocument(id, academyId, templateId, title, content, creatorId, lines, attachments,
+                status, createdAt, resubmittedAt);
+    }
+
+    public void markResubmitted() {
+        if (this.status != ApprovalStatus.REJECTED) {
+            throw new ConflictException("반려된 결재만 재상신할 수 있습니다.");
+        }
+        if (this.resubmittedAt != null) {
+            throw new ConflictException("이미 재상신된 결재입니다.");
+        }
+        this.resubmittedAt = LocalDateTime.now();
     }
 
     public void decide(Long approverId, ApprovalDecision decision, String comment) {
@@ -133,6 +158,10 @@ public final class ApprovalDocument {
         return id;
     }
 
+    public Long getAcademyId() {
+        return academyId;
+    }
+
     public Long getTemplateId() {
         return templateId;
     }
@@ -153,11 +182,19 @@ public final class ApprovalDocument {
         return Collections.unmodifiableList(lines);
     }
 
+    public List<ApprovalAttachment> getAttachments() {
+        return Collections.unmodifiableList(attachments);
+    }
+
     public ApprovalStatus getStatus() {
         return status;
     }
 
     public LocalDateTime getCreatedAt() {
         return createdAt;
+    }
+
+    public LocalDateTime getResubmittedAt() {
+        return resubmittedAt;
     }
 }

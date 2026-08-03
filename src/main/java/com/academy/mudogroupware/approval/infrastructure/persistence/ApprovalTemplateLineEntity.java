@@ -15,33 +15,38 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "approval_template_lines")
+@Table(name = "approval_line_step")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class ApprovalTemplateLineEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "route_step_id")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "approval_template_id", nullable = false)
-    private ApprovalTemplateEntity approvalTemplate;
+    @JoinColumn(name = "template_id", nullable = false)
+    private ApprovalTemplateEntity template;
 
     @Column(name = "step_order", nullable = false)
     private int stepOrder;
 
-    @Column(name = "approver_id", nullable = false)
+    @Column(name = "approver_id")
     private Long approverId;
 
+    @Column(name = "role_id")
+    private Long roleId;
+
     @Builder
-    private ApprovalTemplateLineEntity(Long id, int stepOrder, Long approverId) {
+    private ApprovalTemplateLineEntity(Long id, int stepOrder, Long approverId, Long roleId) {
         this.id = id;
         this.stepOrder = stepOrder;
         this.approverId = approverId;
+        this.roleId = roleId;
     }
 
-    void assignTemplate(ApprovalTemplateEntity approvalTemplate) {
-        this.approvalTemplate = approvalTemplate;
+    void assignTemplate(ApprovalTemplateEntity template) {
+        this.template = template;
     }
 }

@@ -33,7 +33,7 @@ import lombok.RequiredArgsConstructor;
 
 // TODO: 템플릿 생성/수정/삭제는 행정직원만 가능해야 함 - users.role 값 체계 확정되면 Application/Domain Policy에 권한 판단 반영
 @RestController
-@RequestMapping("/api/v1/approval-templates")
+@RequestMapping("/api/approval-templates")
 @RequiredArgsConstructor
 public class ApprovalTemplateController {
 
@@ -53,8 +53,9 @@ public class ApprovalTemplateController {
     }
 
     @GetMapping
-    public ResponseEntity<GlobalApiResponse<List<ApprovalTemplateSummaryResponse>>> getTemplates() {
-        List<ApprovalTemplateSummaryResponse> responses = approvalTemplateQueryUseCase.getTemplates().stream()
+    public ResponseEntity<GlobalApiResponse<List<ApprovalTemplateSummaryResponse>>> getTemplates(
+            @AuthenticationPrincipal AuthUser authUser) {
+        List<ApprovalTemplateSummaryResponse> responses = approvalTemplateQueryUseCase.getTemplates(authUser.userId()).stream()
                 .map(ApprovalTemplateSummaryResponse::from)
                 .toList();
         return ResponseEntity.ok(GlobalApiResponse.ok(ApprovalResponseCode.TEMPLATE_LIST_RETRIEVED, responses));
