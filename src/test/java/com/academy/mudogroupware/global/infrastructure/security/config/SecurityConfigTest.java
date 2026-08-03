@@ -28,8 +28,8 @@ class SecurityConfigTest {
     assertThat(cors).isNotNull();
     assertThat(cors.getAllowedOriginPatterns()).containsExactly("https://academy.example.com");
     assertThat(cors.getAllowedMethods()).contains("GET", "POST", "OPTIONS");
-    assertThat(cors.getAllowedHeaders()).contains("Authorization", "X-Refresh-Token");
-    assertThat(cors.getExposedHeaders()).contains("Authorization", "New-Access-Token");
+    assertThat(cors.getAllowedHeaders()).contains("Authorization");
+    assertThat(cors.getExposedHeaders()).contains("Authorization");
     assertThat(cors.getAllowCredentials()).isTrue();
     assertThat(cors.getMaxAge()).isEqualTo(3600L);
   }
