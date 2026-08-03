@@ -53,8 +53,9 @@ public class ApprovalTemplateController {
     }
 
     @GetMapping
-    public ResponseEntity<GlobalApiResponse<List<ApprovalTemplateSummaryResponse>>> getTemplates() {
-        List<ApprovalTemplateSummaryResponse> responses = approvalTemplateQueryUseCase.getTemplates().stream()
+    public ResponseEntity<GlobalApiResponse<List<ApprovalTemplateSummaryResponse>>> getTemplates(
+            @AuthenticationPrincipal AuthUser authUser) {
+        List<ApprovalTemplateSummaryResponse> responses = approvalTemplateQueryUseCase.getTemplates(authUser.userId()).stream()
                 .map(ApprovalTemplateSummaryResponse::from)
                 .toList();
         return ResponseEntity.ok(GlobalApiResponse.ok(ApprovalResponseCode.TEMPLATE_LIST_RETRIEVED, responses));

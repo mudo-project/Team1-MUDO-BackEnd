@@ -28,8 +28,9 @@ public class ApprovalTemplateQueryService implements ApprovalTemplateQueryUseCas
     private final ApproverDirectoryPort approverDirectoryPort;
 
     @Override
-    public List<ApprovalTemplateSummaryView> getTemplates() {
-        return approvalTemplateRepository.findAll().stream()
+    public List<ApprovalTemplateSummaryView> getTemplates(Long requesterId) {
+        ApproverInfo requester = approverDirectoryPort.getApprover(requesterId);
+        return approvalTemplateRepository.findAll(requester.academyId()).stream()
                 .map(this::toSummaryView)
                 .toList();
     }

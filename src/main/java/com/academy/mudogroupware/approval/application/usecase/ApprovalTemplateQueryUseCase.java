@@ -7,7 +7,7 @@ import com.academy.mudogroupware.approval.application.query.ApprovalTemplateSumm
 
 public interface ApprovalTemplateQueryUseCase {
 
-    List<ApprovalTemplateSummaryView> getTemplates();
+    List<ApprovalTemplateSummaryView> getTemplates(Long requesterId);
 
     ApprovalTemplateDetailView getTemplateDetail(Long templateId);
 }

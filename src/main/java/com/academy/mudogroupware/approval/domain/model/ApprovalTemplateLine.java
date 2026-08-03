@@ -8,8 +8,8 @@ public final class ApprovalTemplateLine {
     private final Long roleId;
 
     private ApprovalTemplateLine(Long id, int stepOrder, Long approverId, Long roleId) {
-        if (approverId == null && roleId == null) {
-            throw new IllegalArgumentException("approverId or roleId must be provided");
+        if ((approverId == null) == (roleId == null)) {
+            throw new IllegalArgumentException("exactly one of approverId or roleId must be provided");
         }
         if (stepOrder < 1) {
             throw new IllegalArgumentException("stepOrder must be positive");

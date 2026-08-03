@@ -8,9 +8,10 @@ CREATE TABLE `approval_document` (
     `text`                 TEXT         NULL,
     `status`               VARCHAR(20)  NOT NULL,
     `created_at`           DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    `resubmitted_at`       DATETIME(6)  NULL,
     PRIMARY KEY (`approval_document_id`),
-    CONSTRAINT `fk_approval_document_template` FOREIGN KEY (`template_id`)
-        REFERENCES `template` (`template_id`)
+    CONSTRAINT `fk_approval_document_template` FOREIGN KEY (`template_id`, `academy_id`)
+        REFERENCES `template` (`template_id`, `academy_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `approval_step` (

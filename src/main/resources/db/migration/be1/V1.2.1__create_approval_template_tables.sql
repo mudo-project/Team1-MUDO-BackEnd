@@ -7,7 +7,8 @@ CREATE TABLE `template` (
     `created_by`  BIGINT       NOT NULL,
     `created_at`  DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     `updated_at`  DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-    PRIMARY KEY (`template_id`)
+    PRIMARY KEY (`template_id`),
+    UNIQUE KEY `uk_template_id_academy` (`template_id`, `academy_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `approval_line_step` (
@@ -18,6 +19,8 @@ CREATE TABLE `approval_line_step` (
     `approver_id`   BIGINT NULL,
     PRIMARY KEY (`route_step_id`),
     UNIQUE KEY `uk_approval_line_step_template_step` (`template_id`, `step_order`),
+    CONSTRAINT `chk_approval_line_step_assignee`
+        CHECK ((`role_id` IS NULL) <> (`approver_id` IS NULL)),
     CONSTRAINT `fk_approval_line_step_template` FOREIGN KEY (`template_id`)
         REFERENCES `template` (`template_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

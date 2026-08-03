@@ -61,6 +61,9 @@ public class ApprovalDocumentEntity {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "resubmitted_at")
+    private LocalDateTime resubmittedAt;
+
     @OneToMany(mappedBy = "approvalDocument", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("stepOrder asc")
     private List<ApprovalDocumentLineEntity> lines = new ArrayList<>();
@@ -71,7 +74,7 @@ public class ApprovalDocumentEntity {
     @Builder
     private ApprovalDocumentEntity(Long id, Long academyId, Long templateId, String title,
                                     ApprovalContentType contentType, String text, Long creatorId,
-                                    ApprovalStatus status, LocalDateTime createdAt) {
+                                    ApprovalStatus status, LocalDateTime createdAt, LocalDateTime resubmittedAt) {
         this.id = id;
         this.academyId = academyId;
         this.templateId = templateId;
@@ -81,6 +84,7 @@ public class ApprovalDocumentEntity {
         this.creatorId = creatorId;
         this.status = status;
         this.createdAt = createdAt;
+        this.resubmittedAt = resubmittedAt;
     }
 
     public void addLine(ApprovalDocumentLineEntity line) {

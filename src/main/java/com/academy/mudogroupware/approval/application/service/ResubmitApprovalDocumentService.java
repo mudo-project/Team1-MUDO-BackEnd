@@ -10,9 +10,7 @@ import com.academy.mudogroupware.approval.application.usecase.ResubmitApprovalDo
 import com.academy.mudogroupware.approval.domain.model.ApprovalAttachment;
 import com.academy.mudogroupware.approval.domain.model.ApprovalDocument;
 import com.academy.mudogroupware.approval.domain.model.ApprovalDocumentLine;
-import com.academy.mudogroupware.approval.domain.model.ApprovalStatus;
 import com.academy.mudogroupware.approval.domain.repository.ApprovalDocumentRepository;
-import com.academy.mudogroupware.global.domain.common.exception.ConflictException;
 import com.academy.mudogroupware.global.domain.common.exception.ForbiddenException;
 import com.academy.mudogroupware.global.domain.common.exception.NotFoundException;
 
@@ -33,9 +31,7 @@ public class ResubmitApprovalDocumentService implements ResubmitApprovalDocument
         if (!original.getCreatorId().equals(command.requesterId())) {
             throw new ForbiddenException("본인이 신청한 결재만 재상신할 수 있습니다.");
         }
-        if (original.getStatus() != ApprovalStatus.REJECTED) {
-            throw new ConflictException("반려된 결재만 재상신할 수 있습니다.");
-        }
+        original.markResubmitted();
 
         List<Long> approverIds = original.getLines().stream()
                 .map(ApprovalDocumentLine::getApproverId)
@@ -48,6 +44,8 @@ public class ResubmitApprovalDocumentService implements ResubmitApprovalDocument
                 original.getAcademyId(), original.getTemplateId(), original.getTitle(), original.getContent(),
                 original.getCreatorId(), approverIds, fileIds);
 
-        return approvalDocumentRepository.save(resubmitted).getId();
+        Long newDocumentId = approvalDocumentRepository.save(resubmitted).getId();
+        approvalDocumentRepository.save(original);
+        return newDocumentId;
     }
 }

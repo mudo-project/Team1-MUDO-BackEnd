@@ -20,10 +20,11 @@ public final class ApprovalDocument {
     private final List<ApprovalAttachment> attachments;
     private ApprovalStatus status;
     private final LocalDateTime createdAt;
+    private LocalDateTime resubmittedAt;
 
     private ApprovalDocument(Long id, Long academyId, Long templateId, String title, ApprovalContent content,
                               Long creatorId, List<ApprovalDocumentLine> lines, List<ApprovalAttachment> attachments,
-                              ApprovalStatus status, LocalDateTime createdAt) {
+                              ApprovalStatus status, LocalDateTime createdAt, LocalDateTime resubmittedAt) {
         if (academyId == null) {
             throw new IllegalArgumentException("academyId must not be null");
         }
@@ -49,6 +50,7 @@ public final class ApprovalDocument {
         this.attachments = attachments != null ? new ArrayList<>(attachments) : new ArrayList<>();
         this.status = status;
         this.createdAt = createdAt;
+        this.resubmittedAt = resubmittedAt;
     }
 
     public static ApprovalDocument create(Long academyId, Long templateId, String title, ApprovalContent content,
@@ -57,15 +59,25 @@ public final class ApprovalDocument {
                 ? fileIds.stream().map(ApprovalAttachment::create).toList()
                 : List.of();
         return new ApprovalDocument(null, academyId, templateId, title, content, creatorId, buildLines(approverIds),
-                attachments, ApprovalStatus.IN_PROGRESS, LocalDateTime.now());
+                attachments, ApprovalStatus.IN_PROGRESS, LocalDateTime.now(), null);
     }
 
     public static ApprovalDocument restore(Long id, Long academyId, Long templateId, String title,
                                             ApprovalContent content, Long creatorId, List<ApprovalDocumentLine> lines,
                                             List<ApprovalAttachment> attachments, ApprovalStatus status,
-                                            LocalDateTime createdAt) {
+                                            LocalDateTime createdAt, LocalDateTime resubmittedAt) {
         return new ApprovalDocument(id, academyId, templateId, title, content, creatorId, lines, attachments,
-                status, createdAt);
+                status, createdAt, resubmittedAt);
+    }
+
+    public void markResubmitted() {
+        if (this.status != ApprovalStatus.REJECTED) {
+            throw new ConflictException("반려된 결재만 재상신할 수 있습니다.");
+        }
+        if (this.resubmittedAt != null) {
+            throw new ConflictException("이미 재상신된 결재입니다.");
+        }
+        this.resubmittedAt = LocalDateTime.now();
     }
 
     public void decide(Long approverId, ApprovalDecision decision, String comment) {
@@ -180,5 +192,9 @@ public final class ApprovalDocument {
 
     public LocalDateTime getCreatedAt() {
         return createdAt;
+    }
+
+    public LocalDateTime getResubmittedAt() {
+        return resubmittedAt;
     }
 }

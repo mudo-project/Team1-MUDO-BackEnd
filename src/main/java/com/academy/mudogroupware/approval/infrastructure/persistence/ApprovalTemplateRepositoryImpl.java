@@ -32,8 +32,8 @@ public class ApprovalTemplateRepositoryImpl implements ApprovalTemplateRepositor
     }
 
     @Override
-    public List<ApprovalTemplate> findAll() {
-        return approvalTemplateJpaRepository.findAllByType(ApprovalTemplateEntity.TYPE).stream()
+    public List<ApprovalTemplate> findAll(Long academyId) {
+        return approvalTemplateJpaRepository.findAllByTypeAndAcademyId(ApprovalTemplateEntity.TYPE, academyId).stream()
                 .map(this::toDomain)
                 .toList();
     }
