@@ -12,5 +12,7 @@ public interface ApprovalQueryUseCase {
 
     List<ApprovalSubmittedSummaryView> getMySubmittedApprovals(Long userId);
 
+    long getMyPendingCount(Long userId);
+
     ApprovalDetailView getApprovalDetail(Long documentId, Long requesterId);
 }

@@ -23,13 +23,13 @@ public class ApproverDirectoryPortAdapter implements ApproverDirectoryPort {
     public ApproverInfo getApprover(Long userId) {
         UserNameEntity entity = userNameJpaRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("사용자를 찾을 수 없습니다."));
-        return new ApproverInfo(entity.getId(), entity.getName());
+        return new ApproverInfo(entity.getId(), entity.getName(), entity.getAcademyId());
     }
 
     @Override
     public Map<Long, ApproverInfo> getApprovers(List<Long> userIds) {
         return userNameJpaRepository.findAllById(userIds).stream()
-                .map(entity -> new ApproverInfo(entity.getId(), entity.getName()))
+                .map(entity -> new ApproverInfo(entity.getId(), entity.getName(), entity.getAcademyId()))
                 .collect(Collectors.toMap(ApproverInfo::userId, Function.identity()));
     }
 }

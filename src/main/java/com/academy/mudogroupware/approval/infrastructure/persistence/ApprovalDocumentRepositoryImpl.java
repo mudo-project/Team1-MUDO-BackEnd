@@ -5,6 +5,7 @@ import java.util.Optional;
 
 import org.springframework.stereotype.Repository;
 
+import com.academy.mudogroupware.approval.domain.model.ApprovalAttachment;
 import com.academy.mudogroupware.approval.domain.model.ApprovalContent;
 import com.academy.mudogroupware.approval.domain.model.ApprovalDocument;
 import com.academy.mudogroupware.approval.domain.model.ApprovalDocumentLine;
@@ -46,17 +47,18 @@ public class ApprovalDocumentRepositoryImpl implements ApprovalDocumentRepositor
     private ApprovalDocumentEntity toEntity(ApprovalDocument domain) {
         ApprovalDocumentEntity entity = ApprovalDocumentEntity.builder()
                 .id(domain.getId())
+                .academyId(domain.getAcademyId())
                 .templateId(domain.getTemplateId())
                 .title(domain.getTitle())
                 .contentType(domain.getContent().getType())
                 .text(domain.getContent().getText())
-                .fileUrl(domain.getContent().getFileUrl())
                 .creatorId(domain.getCreatorId())
                 .status(domain.getStatus())
                 .createdAt(domain.getCreatedAt())
                 .build();
 
         domain.getLines().forEach(line -> entity.addLine(toLineEntity(line)));
+        domain.getAttachments().forEach(attachment -> entity.addAttachment(toAttachmentEntity(attachment)));
         return entity;
     }
 
@@ -71,20 +73,39 @@ public class ApprovalDocumentRepositoryImpl implements ApprovalDocumentRepositor
                 .build();
     }
 
+    private ApprovalAttachmentEntity toAttachmentEntity(ApprovalAttachment attachment) {
+        return ApprovalAttachmentEntity.builder()
+                .id(attachment.getId())
+                .fileId(attachment.getFileId())
+                .aiSummary(attachment.getAiSummary())
+                .summaryStatus(attachment.getSummaryStatus())
+                .summarizedAt(attachment.getSummarizedAt())
+                .build();
+    }
+
     private ApprovalDocument toDomain(ApprovalDocumentEntity entity) {
         List<ApprovalDocumentLine> lines = entity.getLines().stream()
                 .map(this::toLineDomain)
                 .toList();
-        ApprovalContent content = ApprovalContent.restore(entity.getContentType(), entity.getText(), entity.getFileUrl());
+        List<ApprovalAttachment> attachments = entity.getAttachments().stream()
+                .map(this::toAttachmentDomain)
+                .toList();
+        ApprovalContent content = ApprovalContent.restore(entity.getContentType(), entity.getText());
 
         return ApprovalDocument.restore(
-                entity.getId(), entity.getTemplateId(), entity.getTitle(), content, entity.getCreatorId(),
-                lines, entity.getStatus(), entity.getCreatedAt());
+                entity.getId(), entity.getAcademyId(), entity.getTemplateId(), entity.getTitle(), content,
+                entity.getCreatorId(), lines, attachments, entity.getStatus(), entity.getCreatedAt());
     }
 
     private ApprovalDocumentLine toLineDomain(ApprovalDocumentLineEntity entity) {
         return ApprovalDocumentLine.restore(
                 entity.getId(), entity.getStepOrder(), entity.getApproverId(),
                 entity.getStatus(), entity.getComment(), entity.getDecidedAt());
+    }
+
+    private ApprovalAttachment toAttachmentDomain(ApprovalAttachmentEntity entity) {
+        return ApprovalAttachment.restore(
+                entity.getId(), entity.getFileId(), entity.getAiSummary(),
+                entity.getSummaryStatus(), entity.getSummarizedAt());
     }
 }

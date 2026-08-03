@@ -13,11 +13,11 @@ public record CreateApprovalDocumentRequest(
         @NotBlank String title,
         @NotNull ApprovalContentType contentType,
         String text,
-        String fileUrl,
+        List<Long> fileIds,
         List<Long> approverIds
 ) {
 
     public CreateApprovalDocumentCommand toCommand(Long creatorId) {
-        return new CreateApprovalDocumentCommand(templateId, title, contentType, text, fileUrl, creatorId, approverIds);
+        return new CreateApprovalDocumentCommand(templateId, title, contentType, text, fileIds, creatorId, approverIds);
     }
 }

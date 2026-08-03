@@ -33,9 +33,10 @@ public class CreateApprovalDocumentService implements CreateApprovalDocumentUseC
                 ? command.approverIds()
                 : approvalTemplate.approverIdsInOrder();
 
-        ApprovalContent content = ApprovalContent.create(command.contentType(), command.text(), command.fileUrl());
+        ApprovalContent content = ApprovalContent.create(command.contentType(), command.text());
         ApprovalDocument approvalDocument = ApprovalDocument.create(
-                approvalTemplate.getId(), command.title(), content, command.creatorId(), approverIds);
+                approvalTemplate.getAcademyId(), approvalTemplate.getId(), command.title(), content,
+                command.creatorId(), approverIds, command.fileIds());
 
         return approvalDocumentRepository.save(approvalDocument).getId();
     }

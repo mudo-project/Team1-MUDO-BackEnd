@@ -33,7 +33,7 @@ public class ApprovalTemplateRepositoryImpl implements ApprovalTemplateRepositor
 
     @Override
     public List<ApprovalTemplate> findAll() {
-        return approvalTemplateJpaRepository.findAll().stream()
+        return approvalTemplateJpaRepository.findAllByType(ApprovalTemplateEntity.TYPE).stream()
                 .map(this::toDomain)
                 .toList();
     }
@@ -45,9 +45,11 @@ public class ApprovalTemplateRepositoryImpl implements ApprovalTemplateRepositor
 
     private ApprovalTemplateEntity toNewEntity(ApprovalTemplate domain) {
         ApprovalTemplateEntity entity = ApprovalTemplateEntity.builder()
+                .academyId(domain.getAcademyId())
                 .name(domain.getName())
                 .creatorId(domain.getCreatorId())
                 .createdAt(domain.getCreatedAt())
+                .updatedAt(domain.getUpdatedAt())
                 .build();
         domain.getLines().forEach(line -> entity.addLine(toLineEntity(line)));
         return entity;
@@ -56,6 +58,7 @@ public class ApprovalTemplateRepositoryImpl implements ApprovalTemplateRepositor
     private ApprovalTemplateEntity updateExisting(ApprovalTemplate domain) {
         ApprovalTemplateEntity entity = approvalTemplateJpaRepository.getReferenceById(domain.getId());
         entity.setName(domain.getName());
+        entity.setUpdatedAt(domain.getUpdatedAt());
         entity.clearLines();
         domain.getLines().forEach(line -> entity.addLine(toLineEntity(line)));
         return entity;
@@ -65,14 +68,17 @@ public class ApprovalTemplateRepositoryImpl implements ApprovalTemplateRepositor
         return ApprovalTemplateLineEntity.builder()
                 .stepOrder(line.getStepOrder())
                 .approverId(line.getApproverId())
+                .roleId(line.getRoleId())
                 .build();
     }
 
     private ApprovalTemplate toDomain(ApprovalTemplateEntity entity) {
         List<ApprovalTemplateLine> lines = entity.getLines().stream()
-                .map(line -> ApprovalTemplateLine.restore(line.getId(), line.getStepOrder(), line.getApproverId()))
+                .map(line -> ApprovalTemplateLine.restore(line.getId(), line.getStepOrder(), line.getApproverId(),
+                        line.getRoleId()))
                 .toList();
 
-        return ApprovalTemplate.restore(entity.getId(), entity.getName(), entity.getCreatorId(), lines, entity.getCreatedAt());
+        return ApprovalTemplate.restore(entity.getId(), entity.getAcademyId(), entity.getName(),
+                entity.getCreatorId(), lines, entity.getCreatedAt(), entity.getUpdatedAt());
     }
 }
