@@ -7,7 +7,7 @@
 
 ## 모듈 정의
 
-- 모듈: 하나의 비즈니스 책임을 소유하는 최상위 도메인 패키지
+- 도메인 모듈: 하나의 비즈니스 책임을 소유하는 최상위 도메인 패키지
 - 모듈 소유 범위:
     - 기능과 비즈니스 규칙
     - Aggregate와 데이터 모델
@@ -16,11 +16,13 @@
 
 ```text
 <base-package>/
-├─ users/
-├─ global/
-├─ workspace/
-└─ approval/
+├─ global/     # 공유 플랫폼 영역
+├─ users/      # 도메인 모듈
+├─ workspace/  # 도메인 모듈
+└─ approval/   # 도메인 모듈
 ```
+
+- `global/`은 도메인 모듈이 아닌 공유 플랫폼 영역이다. 세부 책임과 의존 규칙은 [ARCHITECTURE.md](ARCHITECTURE.md)를 따른다.
 
 ## 모듈 문서
 

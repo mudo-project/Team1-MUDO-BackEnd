@@ -83,11 +83,14 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 | 전체 구조, 패키지 위치, 의존 방향 | `docs/ARCHITECTURE.md` | 하프 헥사고날 구조, 레이어 간 의존 방향, 외부 시스템 경계 |
 | 도메인 기능 추가·수정, 도메인 간 협업 | `docs/MODULES.md` | 도메인 소유권, 담당 범위, 공개 UseCase 또는 Facade |
 | Controller API 추가·수정 | `docs/API_CONTRACT.md` | URI, HTTP Method, 요청·응답 DTO, 인증·인가, 버전 규칙 |
+| API 명세서 작성 | `docs/templates/API_SPEC_TEMPLATE.md`, `docs/API_CONTRACT.md` | Notion 복사용 양식, 실제 Controller·DTO·Security·예외 코드 기준의 요청·응답·실패 코드 |
 | FastAPI 등 외부 서버 연동 | `docs/INTEGRATION.md` | 호출 책임, 인증 전달, 타임아웃, 재시도, 오류 변환 |
 | Entity, Repository, 테이블, 트랜잭션 변경 | `docs/DATABASE.md` | 데이터 소유 도메인, Entity 직접 참조 금지, 트랜잭션 경계 |
 | 예외·오류 응답 변경 | `docs/ERROR_HANDLING.md` | `ErrorCode`, 예외 계층, HTTP 응답 형식 |
 
 문서가 없거나 현재 코드와 불일치하면, 추측으로 구현하지 않는다. 불일치 사항과 영향을 받는 도메인을 먼저 알리고 방향을 확인한다.
+
+API 명세서 작성 요청을 받으면 `docs/templates/API_SPEC_TEMPLATE.md`를 먼저 읽고, 기능 구현과 관련 테스트가 모두 통과한 뒤 실제 코드 기준으로 명세서를 작성한다.
 
 ## 7. 답변 언어
 
