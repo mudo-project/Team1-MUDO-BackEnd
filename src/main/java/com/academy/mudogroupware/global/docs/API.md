@@ -1,6 +1,6 @@
 # 🧩 global 공통 컴포넌트
 
-> 업데이트: 2026-08-03 · 시간 정책(`Clock`)과 공통 타임스탬프 Base Entity 3종을 추가했습니다.
+> 업데이트: 2026-08-04 · `SoftDeleteTimeEntity.markDeleted()`의 null/중복 삭제 방어 로직과 소프트 삭제 조회 필터 정책을 추가했습니다.
 
 `global`은 도메인 모듈이 아니므로 REST 엔드포인트를 공개하지 않습니다. 대신 도메인 모듈이 의존해서 쓰는 공통 Bean/추상 클래스를 "공개 계약"으로 취급합니다. 아래 표는 API.md 표준 형식(엔드포인트/Method/권한)을 이 모듈 성격에 맞게 컴포넌트/종류/사용 방법으로 대체한 것입니다.
 
@@ -33,10 +33,14 @@
 - 세 클래스 모두 `@Getter`만 열어두고 필드에 직접 값을 대입하는 setter는 두지 않았습니다. `createdAt`/`updatedAt`은 Auditing이 채우고, `deletedAt`만 `markDeleted()`로 명시적으로 채웁니다.
 - `nullable = false` 컬럼(`created_at`, `updated_at`)을 상속하는 도메인 엔티티는 대응하는 DB 컬럼도 `NOT NULL`로 마이그레이션해야 합니다.
 - 도메인 엔티티에서 `LocalDateTime.now()`를 직접 호출하지 않습니다. 필요하면 이 문서의 `Clock` 빈을 주입받아 사용해주세요.
+- `markDeleted(null)`을 호출하면 예외(`NullPointerException`)가 발생합니다. 이미 삭제된 엔티티에 다시 `markDeleted()`를 호출하면 `IllegalStateException`이 발생하며, 기존 `deletedAt`은 덮어써지지 않습니다. 삭제를 되돌려야 하면 `markDeleted()`를 재사용하지 말고 별도의 `restore()` 메서드를 도메인 엔티티에 명시적으로 추가해주세요.
+- **소프트 삭제 조회 필터 정책**: `SoftDeleteTimeEntity`는 조회 쿼리를 자동으로 걸러주지 않습니다(`@Where`, `@SQLRestriction` 등을 적용하지 않음). `SoftDeleteTimeEntity`를 상속하는 도메인 엔티티의 Repository/QueryDSL 조회 조건에는 `deleted_at IS NULL`(또는 이에 대응하는 조건)을 **직접 추가**해야 합니다. 누락하면 삭제된 데이터가 목록/상세 조회에 그대로 노출됩니다.
 
 ## 📝 문서 정보
 
-- 업데이트일: `2026-08-03`
+- 업데이트일: `2026-08-04`
 - 변경 사항(요약):
   - `Clock` 빈과 JPA Auditing `DateTimeProvider`를 추가했습니다. ⏰
   - `CreatedAtEntity` / `BaseTimeEntity` / `SoftDeleteTimeEntity` 3종 Base Entity를 추가했습니다. 🧱
+  - `markDeleted()`의 null 방어 및 중복 삭제 방지 로직을 추가했습니다. 🛡️
+  - 소프트 삭제 조회 필터 정책(Repository/QueryDSL에서 `deleted_at IS NULL` 직접 처리)을 문서화했습니다. 🗄️

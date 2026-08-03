@@ -1,0 +1,2 @@
+ALTER TABLE refresh_tokens
+    ADD COLUMN updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) AFTER created_at;
