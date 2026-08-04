@@ -5,6 +5,27 @@
 
 학원 그룹웨어에 공지사항 기능을 추가한다. 팀 노션 기능명세서와 실제 화면 시안(Figma)을 기준으로 데이터 모델을 확정하고, approval 모듈 개발 중 발견된 실수(학원 데이터 격리 누락 등)를 처음부터 반영한다.
 
+---
+
+## ✅ 2026-08-04 · users 테이블 정합화(`resign_date` → `status`) 대응
+
+### 배경
+
+`users` 모듈 PR(#19)이 머지되면서 `V4.1.1__align_users_table_with_erd.sql` 마이그레이션이 `users.resign_date`/`hire_date` 컬럼을 삭제하고 `status`(`ACTIVE`/`RESIGNED`/`INACTIVE`)로 대체했다. notice의 임시 shim(`UserInfoEntity`)이 `resign_date`를 직접 매핑하고 있어, 이 마이그레이션이 반영된 순간 `countActiveUsers` 쿼리가 깨지는 상태였다.
+
+### 확정된 정책
+
+- `UserInfoEntity.resignDate`(LocalDate)를 제거하고 `status`(String) 컬럼 매핑으로 교체했다.
+- `UserInfoJpaRepository.countByAcademyIdAndResignDateIsNull` → `countByAcademyIdAndStatus(academyId, "ACTIVE")`로 변경했다.
+- "전체 대상 인원 수(읽음 분모)"의 의미를 "퇴사일이 없는 사용자"에서 "`status = ACTIVE`인 사용자"로 그대로 치환했다 — 마이그레이션이 기존 데이터의 `resign_date IS NOT NULL`을 `status = 'RESIGNED'`로, 나머지를 `ACTIVE` 기본값으로 채웠기 때문에 기존 의미와 동일하다.
+
+### 완료 기준
+
+- [x] `./gradlew compileJava` / `./gradlew test` 통과.
+- [x] `resignDate`/`resign_date`에 대한 코드 참조가 남아있지 않다 (마이그레이션 파일 자체는 이력이라 그대로 둔다).
+
+---
+
 ## ✅ 확정된 정책
 
 - 공지 작성 시 작성자·작성일시는 자동 기록되고, 사진뿐 아니라 PDF 등 일반 파일도 여러 개 첨부할 수 있다.
