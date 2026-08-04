@@ -29,13 +29,13 @@ public class RegisterWifiIpService implements RegisterWifiIpUseCase {
                 .orElseThrow(() -> new AttendanceException(
                         AttendanceErrorCode.WIFI_IP_REGISTRATION_FORBIDDEN));
 
-        if (academyWifiIpRepository.existsByAcademyIdAndIpAddress(
-                academy.id(), command.ipAddress())) {
-            throw new AttendanceException(AttendanceErrorCode.WIFI_IP_ALREADY_REGISTERED);
-        }
-
         AcademyWifiIp wifiIp = AcademyWifiIp.create(
                 academy.id(), command.ipAddress(), command.note());
+
+        if (academyWifiIpRepository.existsByAcademyIdAndIpAddress(
+                academy.id(), wifiIp.getIpAddress())) {
+            throw new AttendanceException(AttendanceErrorCode.WIFI_IP_ALREADY_REGISTERED);
+        }
 
         return RegisterWifiIpResult.from(academyWifiIpRepository.save(wifiIp));
     }

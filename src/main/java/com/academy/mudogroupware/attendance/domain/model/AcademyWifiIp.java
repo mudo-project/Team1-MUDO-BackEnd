@@ -4,8 +4,7 @@ import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.time.LocalDateTime;
-
-import org.springframework.util.StringUtils;
+import java.util.Arrays;
 
 import com.academy.mudogroupware.attendance.domain.exception.AttendanceErrorCode;
 import com.academy.mudogroupware.attendance.domain.exception.AttendanceException;
@@ -21,16 +20,17 @@ public final class AcademyWifiIp {
 
     private AcademyWifiIp(Long id, Long academyId, String ipAddress, String note,
                           LocalDateTime createdAt, LocalDateTime updatedAt) {
-        if (academyId == null || !isValidIp(ipAddress)) {
+        if (academyId == null) {
             throw new AttendanceException(AttendanceErrorCode.INVALID_WIFI_IP);
         }
+        String normalizedIpAddress = normalizeIpAddress(ipAddress);
         String normalizedNote = normalizeNote(note);
         if (normalizedNote != null && normalizedNote.length() > 100) {
             throw new AttendanceException(AttendanceErrorCode.INVALID_WIFI_IP_NOTE);
         }
         this.id = id;
         this.academyId = academyId;
-        this.ipAddress = ipAddress;
+        this.ipAddress = normalizedIpAddress;
         this.note = normalizedNote;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
@@ -46,8 +46,22 @@ public final class AcademyWifiIp {
         return new AcademyWifiIp(id, academyId, ipAddress, note, createdAt, updatedAt);
     }
 
-    private static boolean isValidIp(String ipAddress) {
-        return isValidIpv4(ipAddress) || isValidIpv6(ipAddress);
+    private static String normalizeIpAddress(String ipAddress) {
+        if (isValidIpv4(ipAddress)) {
+            return Arrays.stream(ipAddress.split("\\."))
+                    .mapToInt(Integer::parseInt)
+                    .mapToObj(Integer::toString)
+                    .reduce((left, right) -> left + "." + right)
+                    .orElseThrow(() -> new AttendanceException(AttendanceErrorCode.INVALID_WIFI_IP));
+        }
+        if (isValidIpv6(ipAddress)) {
+            try {
+                return InetAddress.getByName(ipAddress).getHostAddress();
+            } catch (UnknownHostException e) {
+                throw new AttendanceException(AttendanceErrorCode.INVALID_WIFI_IP);
+            }
+        }
+        throw new AttendanceException(AttendanceErrorCode.INVALID_WIFI_IP);
     }
 
     private static boolean isValidIpv4(String ipAddress) {
@@ -83,7 +97,11 @@ public final class AcademyWifiIp {
     }
 
     private static String normalizeNote(String note) {
-        return StringUtils.hasText(note) ? note.trim() : null;
+        if (note == null) {
+            return null;
+        }
+        String trimmed = note.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     public Long getId() { return id; }

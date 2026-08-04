@@ -1,7 +1,12 @@
 package com.academy.mudogroupware.attendance.infrastructure.persistence;
 
+import java.util.Locale;
+
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Repository;
 
+import com.academy.mudogroupware.attendance.domain.exception.AttendanceErrorCode;
+import com.academy.mudogroupware.attendance.domain.exception.AttendanceException;
 import com.academy.mudogroupware.attendance.domain.model.AcademyWifiIp;
 import com.academy.mudogroupware.attendance.domain.repository.AcademyWifiIpRepository;
 
@@ -10,6 +15,8 @@ import lombok.RequiredArgsConstructor;
 @Repository
 @RequiredArgsConstructor
 public class AcademyWifiIpRepositoryImpl implements AcademyWifiIpRepository {
+
+    private static final String UNIQUE_CONSTRAINT_NAME = "uk_academy_wifi_ip";
 
     private final AcademyWifiIpJpaRepository academyWifiIpJpaRepository;
 
@@ -28,7 +35,15 @@ public class AcademyWifiIpRepositoryImpl implements AcademyWifiIpRepository {
                 .updatedAt(wifiIp.getUpdatedAt())
                 .build();
 
-        AcademyWifiIpJpaEntity saved = academyWifiIpJpaRepository.save(entity);
+        AcademyWifiIpJpaEntity saved;
+        try {
+            saved = academyWifiIpJpaRepository.saveAndFlush(entity);
+        } catch (DataIntegrityViolationException e) {
+            if (isWifiIpUniqueConstraintViolation(e)) {
+                throw new AttendanceException(AttendanceErrorCode.WIFI_IP_ALREADY_REGISTERED);
+            }
+            throw e;
+        }
         return AcademyWifiIp.restore(
                 saved.getId(),
                 saved.getAcademyId(),
@@ -36,5 +51,18 @@ public class AcademyWifiIpRepositoryImpl implements AcademyWifiIpRepository {
                 saved.getNote(),
                 saved.getCreatedAt(),
                 saved.getUpdatedAt());
+    }
+
+    private boolean isWifiIpUniqueConstraintViolation(Throwable throwable) {
+        Throwable current = throwable;
+        while (current != null) {
+            String message = current.getMessage();
+            if (message != null
+                    && message.toLowerCase(Locale.ROOT).contains(UNIQUE_CONSTRAINT_NAME)) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 }
