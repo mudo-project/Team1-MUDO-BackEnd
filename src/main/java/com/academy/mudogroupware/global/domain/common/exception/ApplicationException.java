@@ -29,6 +29,13 @@ public abstract class ApplicationException extends RuntimeException {
     if (c != null) context.putAll(c);
   }
 
+  protected ApplicationException(
+      ErrorCode e, String m, Throwable cause, Map<String, Object> c) {
+    super(m, cause);
+    errorCode = e;
+    if (c != null) context.putAll(c);
+  }
+
   protected void addContext(String k, Object v) {
     context.put(k, v);
   }

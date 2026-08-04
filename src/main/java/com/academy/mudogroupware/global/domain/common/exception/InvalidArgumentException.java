@@ -5,7 +5,8 @@ public class InvalidArgumentException extends BusinessException {
     super(CommonErrorCode.INVALID_ARGUMENT);
   }
 
-  public InvalidArgumentException(String m) {
-    super(CommonErrorCode.INVALID_ARGUMENT, m);
+  public InvalidArgumentException(String reason) {
+    super(CommonErrorCode.INVALID_ARGUMENT);
+    addContext("reason", reason);
   }
 }
