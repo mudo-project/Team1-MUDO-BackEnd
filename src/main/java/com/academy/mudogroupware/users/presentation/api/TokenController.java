@@ -19,13 +19,11 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class TokenController {
 
-    private static final String REFRESH_TOKEN_COOKIE = "refreshToken";
-
     private final RefreshUseCase refreshUseCase;
 
     @PostMapping("/reissue")
     public ResponseEntity<GlobalApiResponse<RefreshResponse>> reissue(
-            @CookieValue(name = REFRESH_TOKEN_COOKIE, required = false) String refreshToken) {
+            @CookieValue(name = RefreshTokenCookieFactory.REFRESH_TOKEN_COOKIE, required = false) String refreshToken) {
         String accessToken = refreshUseCase.refresh(new RefreshCommand(refreshToken));
         return ResponseEntity.ok(
                 GlobalApiResponse.ok(TokenResponseCode.ACCESS_TOKEN_REISSUED, new RefreshResponse(accessToken)));

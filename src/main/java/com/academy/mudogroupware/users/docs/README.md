@@ -2,7 +2,7 @@
 
 ## 책임과 범위
 
-계정·권한(로그인, 회원, 역할)을 담당한다. 현재는 로그인만 구현돼 있다.
+계정·권한(로그인, 회원, 역할)을 담당한다. 현재는 로그인과 액세스 토큰 재발급이 구현돼 있다.
 
 - **User(사용자)**: 학원 소속 직원(원장/행정/강사/조교) 계정. `academy_id`로 소속 학원을 가진다.
 
@@ -19,12 +19,14 @@ be4 (계정·권한)
 
 ## 외부에 공개하는 Application API
 
-인증 (`/api/auth`):
-- `LoginUseCase` — 로그인. 아이디·비밀번호 검증 후 `auth` 모듈의 `TokenIssuerUseCase`를 통해 토큰을 발급한다.
+인증 (`/api/auth`, `/api/token`):
+- `LoginUseCase` — 로그인. 아이디·비밀번호 검증 후 `auth` 모듈의 `TokenIssuerUseCase`를 통해 토큰을 발급한다. accessToken은 응답 바디, refreshToken은 `RefreshTokenCookieFactory`가 만드는 HttpOnly 쿠키로 내려간다.
+- `RefreshUseCase` — `POST /api/token/reissue`. 요청의 `refreshToken` HttpOnly 쿠키를 `auth` 모듈의 `RefreshTokenValidatorUseCase`로 검증하고, 검증된 사용자 정보로 `TokenIssuerUseCase.issueAccessToken()`을 호출해 accessToken만 재발급한다. **refreshToken은 로테이션하지 않는다** — 재발급 응답에도 새 refreshToken 쿠키를 내려주지 않고, 기존 쿠키가 만료 전까지 그대로 유지된다.
 
 ## 다른 모듈 또는 외부 시스템에 요청하는 의존성
 
 - **토큰 발급**: `auth.application.usecase.TokenIssuerUseCase`(auth 모듈이 공개한 계약, 구현체는 `TokenService`)를 호출한다.
+- **리프레시 토큰 검증**: `auth.application.usecase.RefreshTokenValidatorUseCase`(구현체는 `TokenService`)를 호출한다. JWT 자체 위조/DB 미존재/DB 불일치를 각각 다른 `AuthErrorCode`로 구분해서 던진다.
 - **비밀번호 검증**: Spring Security `PasswordEncoder`(BCrypt, `global.infrastructure.security.config.SecurityConfig`에 Bean으로 등록됨)를 사용한다.
 
 ## 발행·소비하는 Event
