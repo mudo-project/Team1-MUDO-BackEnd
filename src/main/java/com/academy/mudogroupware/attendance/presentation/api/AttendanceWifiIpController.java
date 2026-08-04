@@ -3,6 +3,7 @@ package com.academy.mudogroupware.attendance.presentation.api;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -13,6 +14,7 @@ import com.academy.mudogroupware.attendance.application.usecase.RegisterWifiIpUs
 import com.academy.mudogroupware.attendance.presentation.api.common.AttendanceResponseCode;
 import com.academy.mudogroupware.attendance.presentation.api.request.RegisterWifiIpRequest;
 import com.academy.mudogroupware.attendance.presentation.api.response.AcademyWifiIpResponse;
+import com.academy.mudogroupware.attendance.presentation.api.response.CurrentClientIpResponse;
 import com.academy.mudogroupware.global.infrastructure.web.ClientIpResolver;
 import com.academy.mudogroupware.global.presentation.api.common.GlobalApiResponse;
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
@@ -28,6 +30,16 @@ public class AttendanceWifiIpController {
 
     private final RegisterWifiIpUseCase registerWifiIpUseCase;
     private final ClientIpResolver clientIpResolver;
+
+    @GetMapping("/current")
+    public GlobalApiResponse<CurrentClientIpResponse> getCurrentClientIp(
+            HttpServletRequest servletRequest) {
+        String clientIp = clientIpResolver.resolve(servletRequest);
+
+        return GlobalApiResponse.ok(
+                AttendanceResponseCode.CURRENT_CLIENT_IP_RETRIEVED,
+                new CurrentClientIpResponse(clientIp));
+    }
 
     @PostMapping
     public ResponseEntity<GlobalApiResponse<AcademyWifiIpResponse>> register(

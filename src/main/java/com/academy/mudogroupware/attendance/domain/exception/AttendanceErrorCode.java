@@ -19,6 +19,10 @@ public enum AttendanceErrorCode implements ErrorCode {
             HttpStatus.CONFLICT,
             "ACADEMY_409_1",
             "이미 등록된 IP입니다."),
+    WIFI_IP_CHANGED(
+            HttpStatus.CONFLICT,
+            "ACADEMY_409_2",
+            "접속 IP가 변경되었습니다. 다시 확인해주세요."),
     INVALID_WIFI_IP(
             HttpStatus.BAD_REQUEST,
             "ACADEMY_400_1",
@@ -26,7 +30,23 @@ public enum AttendanceErrorCode implements ErrorCode {
     INVALID_WIFI_IP_NOTE(
             HttpStatus.BAD_REQUEST,
             "ACADEMY_400_2",
-            "와이파이 IP 메모는 100자 이하여야 합니다.");
+            "와이파이 IP 메모는 100자 이하여야 합니다."),
+    ATTENDANCE_POLICY_SAVE_FORBIDDEN(
+            HttpStatus.FORBIDDEN,
+            "ATTENDANCE_403_1",
+            "근무시간 정책을 저장할 권한이 없습니다."),
+    INVALID_ATTENDANCE_POLICY(
+            HttpStatus.BAD_REQUEST,
+            "ATTENDANCE_400_1",
+            "유효하지 않은 근무시간 정책입니다."),
+    INVALID_ATTENDANCE_POLICY_WEEKDAY(
+            HttpStatus.BAD_REQUEST,
+            "ATTENDANCE_400_2",
+            "유효하지 않은 요일별 근무 설정입니다."),
+    DUPLICATE_ATTENDANCE_POLICY_WEEKDAY(
+            HttpStatus.BAD_REQUEST,
+            "ATTENDANCE_400_3",
+            "같은 요일을 중복해서 설정할 수 없습니다.");
 
     private final HttpStatus httpStatus;
     private final String code;

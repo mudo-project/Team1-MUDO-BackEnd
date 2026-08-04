@@ -3,6 +3,7 @@ package com.academy.mudogroupware.attendance.application.service;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.Optional;
@@ -15,7 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.academy.mudogroupware.attendance.application.command.RegisterWifiIpCommand;
 import com.academy.mudogroupware.attendance.domain.exception.AttendanceErrorCode;
 import com.academy.mudogroupware.attendance.domain.exception.AttendanceException;
-import com.academy.mudogroupware.attendance.domain.model.Academy;
+import com.academy.mudogroupware.attendance.domain.model.OwnedAcademy;
 import com.academy.mudogroupware.attendance.domain.repository.AcademyRepository;
 import com.academy.mudogroupware.attendance.domain.repository.AcademyWifiIpRepository;
 
@@ -33,7 +34,7 @@ class RegisterWifiIpServiceTest {
         RegisterWifiIpService service = new RegisterWifiIpService(
                 academyRepository, academyWifiIpRepository);
         when(academyRepository.findByOwnerUserId(10L))
-                .thenReturn(Optional.of(new Academy(1L, 10L)));
+                .thenReturn(Optional.of(new OwnedAcademy(1L, 10L)));
         when(academyWifiIpRepository.existsByAcademyIdAndIpAddress(
                 1L, "2001:db8:0:0:0:0:0:1"))
                 .thenReturn(true);
@@ -41,10 +42,28 @@ class RegisterWifiIpServiceTest {
         AttendanceException exception = assertThrows(
                 AttendanceException.class,
                 () -> service.register(new RegisterWifiIpCommand(
-                        10L, "2001:0db8:0000:0000:0000:0000:0000:0001", null)));
+                        10L,
+                        "2001:0db8:0000:0000:0000:0000:0000:0001",
+                        "2001:db8::1")));
 
         assertSame(AttendanceErrorCode.WIFI_IP_ALREADY_REGISTERED, exception.getErrorCode());
         verify(academyWifiIpRepository).existsByAcademyIdAndIpAddress(
                 1L, "2001:db8:0:0:0:0:0:1");
+    }
+
+    @Test
+    void rejectsRegistrationWhenDetectedIpDiffersFromConfirmedIp() {
+        RegisterWifiIpService service = new RegisterWifiIpService(
+                academyRepository, academyWifiIpRepository);
+        when(academyRepository.findByOwnerUserId(10L))
+                .thenReturn(Optional.of(new OwnedAcademy(1L, 10L)));
+
+        AttendanceException exception = assertThrows(
+                AttendanceException.class,
+                () -> service.register(new RegisterWifiIpCommand(
+                        10L, "203.0.113.10", "203.0.113.11")));
+
+        assertSame(AttendanceErrorCode.WIFI_IP_CHANGED, exception.getErrorCode());
+        verifyNoInteractions(academyWifiIpRepository);
     }
 }
