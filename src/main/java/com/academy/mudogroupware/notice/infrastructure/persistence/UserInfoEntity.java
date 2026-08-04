@@ -1,7 +1,5 @@
 package com.academy.mudogroupware.notice.infrastructure.persistence;
 
-import java.time.LocalDate;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -32,6 +30,6 @@ public class UserInfoEntity {
     @Column(name = "academy_id", nullable = false)
     private Long academyId;
 
-    @Column(name = "resign_date")
-    private LocalDate resignDate;
+    @Column(nullable = false, length = 20)
+    private String status;
 }

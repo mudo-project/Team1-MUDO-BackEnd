@@ -1,6 +1,8 @@
 package com.academy.mudogroupware.auth.application.service;
 
 import com.academy.mudogroupware.auth.application.result.TokenPair;
+import com.academy.mudogroupware.auth.application.usecase.RefreshTokenValidatorUseCase;
+import com.academy.mudogroupware.auth.application.usecase.TokenIssuerUseCase;
 import com.academy.mudogroupware.auth.infrastructure.persistence.*;
 import com.academy.mudogroupware.global.domain.auth.*;
 import com.academy.mudogroupware.global.infrastructure.security.jwt.JwtTokenProvider;
@@ -10,10 +12,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-public class TokenService {
+public class TokenService implements TokenIssuerUseCase, RefreshTokenValidatorUseCase {
   private final JwtTokenProvider provider;
   private final RefreshTokenRepository repository;
 
+  @Override
   @Transactional
   public TokenPair issue(Long id, String username, String role) {
     String a = provider.createAccessToken(id, username, role),
@@ -25,15 +28,21 @@ public class TokenService {
     return new TokenPair(a, r);
   }
 
+  @Override
+  public String issueAccessToken(Long id, String username, String role) {
+    return provider.createAccessToken(id, username, role);
+  }
+
+  @Override
   @Transactional(readOnly = true)
   public RefreshTokenClaims validateStored(String token) {
     RefreshTokenClaims c = provider.parseRefreshToken(token);
     RefreshTokenJpaEntity saved =
         repository
             .findByUserId(c.userId())
-            .orElseThrow(() -> new AuthException(AuthErrorCode.INVALID_TOKEN));
+            .orElseThrow(() -> new AuthException(AuthErrorCode.REFRESH_TOKEN_NOT_FOUND));
     if (!saved.getRefreshToken().equals(token))
-      throw new AuthException(AuthErrorCode.INVALID_TOKEN);
+      throw new AuthException(AuthErrorCode.REFRESH_TOKEN_MISMATCH);
     return c;
   }
 

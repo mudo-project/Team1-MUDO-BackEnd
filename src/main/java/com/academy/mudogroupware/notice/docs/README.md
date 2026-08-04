@@ -25,7 +25,7 @@
 ## 다른 모듈 또는 외부 시스템에 요청하는 의존성
 
 - **작성자/조회자 정보(이름·역할·소속 학원) 조회**: `NoticeAuthorDirectoryPort`로 추상화. User 도메인 모듈이 아직 없어 `users` 테이블을 직접 읽는 임시 shim(`UserInfoEntity`)으로 구현되어 있다. approval 모듈에도 동일한 성격의 임시 shim이 각자 따로 있다 — User 모듈이 생기면 두 모듈 모두 정식 구현으로 교체해야 한다.
-- **전체 대상 인원 수(총 읽음 분모)**: 같은 포트의 `countActiveUsers(academyId)`로 조회 (퇴사일이 없는 사용자 수). 특정 role 대상으로만 공지를 보내는 기능이 추가되면 이 계산 로직도 같이 바뀌어야 한다.
+- **전체 대상 인원 수(총 읽음 분모)**: 같은 포트의 `countActiveUsers(academyId)`로 조회 (`users.status = 'ACTIVE'`인 사용자 수. `users` 모듈이 2026-08-04 `V4.1.1` 마이그레이션으로 `resign_date`를 없애고 `status` 컬럼으로 전환하면서 `UserInfoEntity`/`UserInfoJpaRepository`도 함께 맞춰 바꿨다). 특정 role 대상으로만 공지를 보내는 기능이 추가되면 이 계산 로직도 같이 바뀌어야 한다.
 
 ## 발행·소비하는 Event
 

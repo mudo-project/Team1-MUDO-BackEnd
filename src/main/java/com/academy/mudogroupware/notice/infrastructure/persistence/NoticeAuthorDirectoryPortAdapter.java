@@ -17,6 +17,8 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class NoticeAuthorDirectoryPortAdapter implements NoticeAuthorDirectoryPort {
 
+    private static final String ACTIVE_STATUS = "ACTIVE";
+
     private final UserInfoJpaRepository userInfoJpaRepository;
 
     @Override
@@ -35,7 +37,7 @@ public class NoticeAuthorDirectoryPortAdapter implements NoticeAuthorDirectoryPo
 
     @Override
     public long countActiveUsers(Long academyId) {
-        return userInfoJpaRepository.countByAcademyIdAndResignDateIsNull(academyId);
+        return userInfoJpaRepository.countByAcademyIdAndStatus(academyId, ACTIVE_STATUS);
     }
 
     private AuthorInfo toAuthorInfo(UserInfoEntity entity) {
