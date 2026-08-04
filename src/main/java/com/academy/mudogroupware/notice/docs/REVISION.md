@@ -7,6 +7,23 @@
 
 ---
 
+## ✅ 2026-08-04 · 코드 리뷰 반영 (고정 해제 학원 스코프, 읽음 기록 동시성)
+
+### 배경
+
+코드 리뷰에서 P1 1건, P2 1건이 발견됐다.
+
+### 확정된 정책
+
+- `PinNoticeService.unpin()`이 요청자 검증을 전혀 하지 않아, 다른 학원 소속 사용자도 아무 공지나 고정 해제할 수 있는 상태였다. "권한자 정책"은 아직 미정이지만, 최소한 같은 학원 소속인지는 검증하도록 고쳤다(`NoticeErrorCode.CROSS_ACADEMY_NOTICE` 추가).
+- `NoticeReadRepositoryImpl.markRead()`가 exists-then-save 순서라, 같은 사용자가 동시에 같은 공지를 처음 열면 `notice_read`의 유니크 제약(`notice_id`+`user_id`) 위반으로 한쪽 요청이 예외로 실패할 수 있었다. `DataIntegrityViolationException`을 잡아 무시하도록 고쳤다(어차피 읽음 처리 자체는 이미 된 상태이므로).
+
+### 완료 기준
+
+- [x] `./gradlew test` 통과 (신규 유닛 테스트 포함).
+
+---
+
 ## ✅ 2026-08-04 · 저장 시각을 한국 시간(KST)으로 고정 (approval 뒤늦은 반영)
 
 ### 배경

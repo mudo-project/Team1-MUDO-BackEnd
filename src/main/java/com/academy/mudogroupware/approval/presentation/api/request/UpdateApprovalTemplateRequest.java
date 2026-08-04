@@ -12,7 +12,7 @@ public record UpdateApprovalTemplateRequest(
         @NotEmpty List<Long> approverIds
 ) {
 
-    public UpdateApprovalTemplateCommand toCommand(Long templateId) {
-        return new UpdateApprovalTemplateCommand(templateId, name, approverIds);
+    public UpdateApprovalTemplateCommand toCommand(Long templateId, Long requesterId) {
+        return new UpdateApprovalTemplateCommand(templateId, name, approverIds, requesterId);
     }
 }

@@ -5,6 +5,7 @@ import java.util.List;
 public record UpdateApprovalTemplateCommand(
         Long templateId,
         String name,
-        List<Long> approverIds
+        List<Long> approverIds,
+        Long requesterId
 ) {
 }
