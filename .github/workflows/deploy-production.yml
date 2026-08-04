@@ -1,0 +1,126 @@
+name: Deploy production to Amazon ECS
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: "검증 후 실제 운영 배포 실행"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: mudo-production-deploy
+  # 운영 배포 도중 새 실행이 와도 진행 중인 Migration/배포를 강제로 끊지 않는다.
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Validate deployment manifests
+        run: |
+          python -m pip install --disable-pip-version-check -r infra/requirements.txt
+          python infra/scripts/test_deploy_production.py
+          python infra/scripts/deploy_production.py --validate-only
+
+  deploy:
+    needs: validate
+    if: >-
+      ${{
+        vars.PRODUCTION_DEPLOY_ENABLED == 'true' &&
+        (github.event_name == 'push' || inputs.deploy == true)
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: production
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Build and test application
+        run: |
+          chmod +x gradlew
+          ./gradlew clean test bootJar --no-daemon
+          python -m pip install --disable-pip-version-check -r infra/requirements.txt
+          python infra/scripts/deploy_production.py --validate-only
+
+      - name: Configure AWS credentials with GitHub OIDC
+        id: aws
+        uses: aws-actions/configure-aws-credentials@v6.1.2
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: mudo-main-${{ github.run_id }}
+
+      - name: Sign in to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build and push application image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          tags: ${{ steps.ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY }}:${{ github.sha }}
+          cache-from: type=gha,scope=production-app
+          cache-to: type=gha,mode=max,scope=production-app
+
+      - name: Build and push migration image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: Dockerfile.migration
+          push: true
+          tags: ${{ steps.ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY }}:migration-${{ github.sha }}
+          cache-from: type=gha,scope=production-migration
+          cache-to: type=gha,mode=max,scope=production-migration
+
+      - name: Run migrations and deploy tenants sequentially
+        run: |
+          python infra/scripts/deploy_production.py \
+            --region "${{ vars.AWS_REGION }}" \
+            --account-id "${{ steps.aws.outputs.aws-account-id }}" \
+            --app-image "${{ steps.ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY }}:${{ github.sha }}" \
+            --migration-image "${{ steps.ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY }}:migration-${{ github.sha }}" \
+            --deployment-sha "${{ github.sha }}"
