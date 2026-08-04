@@ -103,6 +103,23 @@ Authorization: Bearer {accessToken}
 
 - `204 No Content` 응답에는 응답 본문을 포함하지 않는다.
 
+### Controller 응답 조립
+
+- 모든 응답 본문은 `global.presentation.api.common.GlobalApiResponse`를 사용한다. 도메인별 공통 응답 Wrapper를 중복 생성하지 않는다.
+- 성공 코드는 각 도메인의 `presentation.api.common.<Domain>ResponseCode` enum이 `ResponseCode`를 구현해 소유한다.
+- `200 OK` 응답은 `ResponseEntity.ok(GlobalApiResponse.ok(...))`를 사용한다. `ResponseEntity.status(200)`은 사용하지 않는다.
+- `201 Created` 응답은 `ResponseEntity.status(HttpStatus.CREATED).body(GlobalApiResponse.created(...))`를 사용한다.
+- `204 No Content` 응답은 `ResponseEntity.noContent().build()`를 사용한다.
+
+```java
+return ResponseEntity.ok(
+        GlobalApiResponse.ok(
+                WorkspaceResponseCode.WORKSPACE_FOUND,
+                WorkspaceDetailResponse.from(result)
+        )
+);
+```
+
 ## 오류 응답 형식
 
 일반 예외와 검증 오류는 아래 형식을 사용한다.
@@ -196,6 +213,9 @@ PAYMENT_400_1
 - Controller를 새로 작성하거나 기존 Controller의 엔드포인트를 추가·수정할 때는 springdoc-openapi 어노테이션을 함께 작성한다. 코드 작성과 별도 작업으로 미루지 않는다.
 - Controller 클래스에는 `@Tag(name = "도메인 이름", description = "...")`를 붙인다.
 - 각 핸들러 메서드에는 `@Operation(summary = "...", description = "...")`을 붙인다. `summary`는 [세부 문서 API.md](#문서화-기준)의 해당 엔드포인트 설명과 일치시킨다.
+- 각 핸들러 메서드에는 실제 구현한 HTTP 응답만 `@ApiResponses`로 명시한다. 구현하지 않은 오류 응답을 미리 문서화하지 않는다.
+- Request DTO의 각 필드에는 `@Schema(description = "...", example = "...")`를 붙이고, 입력 제약은 Bean Validation으로 함께 표현한다.
+- Response DTO와 응답 필드에는 `@Schema(description = "...", example = "...")`를 붙인다.
 - 인증이 필요한 엔드포인트는 전역 `bearerAuth` 시큐리티 스킴(`OpenApiConfig`)이 기본 적용되므로 별도 어노테이션이 필요 없다. 인증이 필요 없는 엔드포인트(로그인 등)는 `@SecurityRequirements`(빈 값)로 명시적으로 뺀다.
 - `/swagger-ui/index.html`에서 실제로 렌더링되는지 확인한 뒤 커밋한다.
 

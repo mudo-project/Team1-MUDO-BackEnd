@@ -50,40 +50,27 @@ dependencies {
     implementation 'org.mapstruct:mapstruct:1.6.3'
     annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
     testAnnotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
-
     // Lombok Builder + MapStruct
     annotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0'
     testAnnotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0'
     // HATEOAS 응답 링크가 필요할 때
     implementation 'org.springframework.boot:spring-boot-starter-hateoas'
-
     // Swagger / OpenAPI 문서가 필요할 때
-    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.16'
-
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3'
     // S3 대용량·병렬 전송이 필요할 때
     implementation 'software.amazon.awssdk:s3-transfer-manager'
-
     // .env 파일 직접 로딩이 필요할 때
     implementation 'me.paulschwarz:spring-dotenv:4.0.0'
-
-    // TSID 기반 ID 생성이 필요할 때
-    implementation 'com.github.f4b6a3:tsid-creator:5.2.6'
-
     // Prometheus 메트릭 수집이 필요할 때
     runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
-
     // 재시도 기능이 필요할 때
-    implementation 'org.springframework.retry:spring-retry'
-
+//    implementation 'org.springframework.retry:spring-retry'
     // PortOne 결제 연동이 필요할 때
 //    implementation 'io.portone:server-sdk:0.24.0'
-
     // 이메일 발송이 필요할 때
 //    implementation 'org.springframework.boot:spring-boot-starter-mail'
-
     // OAuth2 소셜 로그인 필요 시
 //    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
-
     // 캐시 필요 시
     implementation 'org.springframework.boot:spring-boot-starter-cache'
     implementation 'com.github.ben-manes.caffeine:caffeine'
