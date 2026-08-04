@@ -28,7 +28,7 @@ public class UserRepositoryImpl implements UserRepository {
     private User toDomain(UserEntity entity) {
         return User.restore(
                 entity.getId(), entity.getAcademyId(), entity.getUsername(), entity.getPassword(), entity.getName(),
-                entity.getPhone(), entity.getEmail(), entity.getRole(), entity.getStatus(), entity.isMustChangePw(),
+                entity.getPhone(), entity.getEmail(), entity.getRoleId(), entity.getStatus(), entity.isMustChangePw(),
                 entity.isPlatformAdmin(), entity.getJoinedAt(), entity.getCreatedAt(), entity.getUpdatedAt());
     }
 }
