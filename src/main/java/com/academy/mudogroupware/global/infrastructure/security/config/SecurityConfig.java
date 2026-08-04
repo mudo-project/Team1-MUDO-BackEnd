@@ -46,6 +46,10 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers("/error", "/actuator/health", "/ws/**")
                     .permitAll()
+                    .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
+                    .permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/token/reissue")
+                    .permitAll()
                     .anyRequest()
                     .authenticated())
         .addFilterBefore(jwt, UsernamePasswordAuthenticationFilter.class)
@@ -71,9 +75,8 @@ public class SecurityConfig {
             "Origin",
             "X-Requested-With",
             "Access-Control-Request-Method",
-            "Access-Control-Request-Headers",
-            "X-Refresh-Token"));
-    configuration.setExposedHeaders(List.of("Authorization", "New-Access-Token"));
+            "Access-Control-Request-Headers"));
+    configuration.setExposedHeaders(List.of("Authorization"));
     configuration.setAllowCredentials(true);
     configuration.setMaxAge(3600L);
 

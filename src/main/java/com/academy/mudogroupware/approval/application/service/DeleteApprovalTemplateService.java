@@ -5,7 +5,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.academy.mudogroupware.approval.application.usecase.DeleteApprovalTemplateUseCase;
 import com.academy.mudogroupware.approval.domain.repository.ApprovalTemplateRepository;
-import com.academy.mudogroupware.global.domain.common.exception.NotFoundException;
+import com.academy.mudogroupware.approval.domain.exception.ApprovalErrorCode;
+import com.academy.mudogroupware.approval.domain.exception.ApprovalException;
 
 import lombok.RequiredArgsConstructor;
 
@@ -19,7 +20,7 @@ public class DeleteApprovalTemplateService implements DeleteApprovalTemplateUseC
     @Override
     public void deleteTemplate(Long templateId) {
         approvalTemplateRepository.findById(templateId)
-                .orElseThrow(() -> new NotFoundException("결재 템플릿을 찾을 수 없습니다."));
+                .orElseThrow(() -> new ApprovalException(ApprovalErrorCode.TEMPLATE_NOT_FOUND));
 
         approvalTemplateRepository.deleteById(templateId);
     }

@@ -4,5 +4,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface UserInfoJpaRepository extends JpaRepository<UserInfoEntity, Long> {
 
-    long countByAcademyIdAndResignDateIsNull(Long academyId);
+    long countByAcademyIdAndStatus(Long academyId, String status);
 }

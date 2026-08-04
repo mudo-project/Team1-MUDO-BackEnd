@@ -7,9 +7,10 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 
-import com.academy.mudogroupware.global.domain.common.exception.NotFoundException;
 import com.academy.mudogroupware.notice.application.port.AuthorInfo;
 import com.academy.mudogroupware.notice.application.port.NoticeAuthorDirectoryPort;
+import com.academy.mudogroupware.notice.domain.exception.NoticeErrorCode;
+import com.academy.mudogroupware.notice.domain.exception.NoticeException;
 
 import lombok.RequiredArgsConstructor;
 
@@ -17,12 +18,14 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class NoticeAuthorDirectoryPortAdapter implements NoticeAuthorDirectoryPort {
 
+    private static final String ACTIVE_STATUS = "ACTIVE";
+
     private final UserInfoJpaRepository userInfoJpaRepository;
 
     @Override
     public AuthorInfo getAuthor(Long userId) {
         UserInfoEntity entity = userInfoJpaRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException("사용자를 찾을 수 없습니다."));
+                .orElseThrow(() -> new NoticeException(NoticeErrorCode.AUTHOR_NOT_FOUND));
         return toAuthorInfo(entity);
     }
 
@@ -35,7 +38,7 @@ public class NoticeAuthorDirectoryPortAdapter implements NoticeAuthorDirectoryPo
 
     @Override
     public long countActiveUsers(Long academyId) {
-        return userInfoJpaRepository.countByAcademyIdAndResignDateIsNull(academyId);
+        return userInfoJpaRepository.countByAcademyIdAndStatus(academyId, ACTIVE_STATUS);
     }
 
     private AuthorInfo toAuthorInfo(UserInfoEntity entity) {

@@ -3,8 +3,11 @@ package com.academy.mudogroupware.notice.infrastructure.persistence;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Repository;
 
+import com.academy.mudogroupware.global.domain.common.page.PageResult;
 import com.academy.mudogroupware.notice.domain.model.Notice;
 import com.academy.mudogroupware.notice.domain.model.NoticeAttachment;
 import com.academy.mudogroupware.notice.domain.repository.NoticeRepository;
@@ -32,10 +35,11 @@ public class NoticeRepositoryImpl implements NoticeRepository {
     }
 
     @Override
-    public List<Notice> findAll(Long academyId, String titleKeyword) {
-        return noticeJpaRepository.findAllByAcademyIdAndTitleKeyword(academyId, titleKeyword).stream()
-                .map(this::toDomain)
-                .toList();
+    public PageResult<Notice> findAll(Long academyId, String titleKeyword, int page, int size) {
+        Slice<NoticeEntity> slice = noticeJpaRepository.findAllByAcademyIdAndTitleKeyword(
+                academyId, titleKeyword, PageRequest.of(page, size));
+        List<Notice> content = slice.getContent().stream().map(this::toDomain).toList();
+        return PageResult.of(content, slice.getNumber(), slice.getSize(), slice.hasNext());
     }
 
     @Override

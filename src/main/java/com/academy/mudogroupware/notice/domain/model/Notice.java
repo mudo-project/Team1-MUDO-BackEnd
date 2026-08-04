@@ -5,7 +5,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import com.academy.mudogroupware.global.domain.common.exception.BadRequestException;
+import com.academy.mudogroupware.notice.domain.exception.NoticeErrorCode;
+import com.academy.mudogroupware.notice.domain.exception.NoticeException;
 
 public final class Notice {
 
@@ -30,10 +31,16 @@ public final class Notice {
             throw new IllegalArgumentException("authorUserId must not be null");
         }
         if (title == null || title.isBlank()) {
-            throw new BadRequestException("공지 제목은 비어 있을 수 없습니다.");
+            throw new NoticeException(NoticeErrorCode.TITLE_REQUIRED);
         }
         if (content == null || content.isBlank()) {
-            throw new BadRequestException("공지 내용은 비어 있을 수 없습니다.");
+            throw new NoticeException(NoticeErrorCode.CONTENT_REQUIRED);
+        }
+        if (createdAt == null) {
+            throw new IllegalArgumentException("createdAt must not be null");
+        }
+        if (updatedAt == null) {
+            throw new IllegalArgumentException("updatedAt must not be null");
         }
         this.id = id;
         this.academyId = academyId;
@@ -48,8 +55,7 @@ public final class Notice {
     }
 
     public static Notice create(Long academyId, Long authorUserId, String title, String content,
-                                 boolean pinned, List<NoticeAttachment> attachments) {
-        LocalDateTime now = LocalDateTime.now();
+                                 boolean pinned, List<NoticeAttachment> attachments, LocalDateTime now) {
         return new Notice(null, academyId, authorUserId, title, content, pinned, 0L, attachments, now, now);
     }
 
@@ -64,16 +70,19 @@ public final class Notice {
         this.viewCount++;
     }
 
-    public void update(String title, String content) {
+    public void update(String title, String content, LocalDateTime now) {
+        if (now == null) {
+            throw new IllegalArgumentException("now must not be null");
+        }
         if (title == null || title.isBlank()) {
-            throw new BadRequestException("공지 제목은 비어 있을 수 없습니다.");
+            throw new NoticeException(NoticeErrorCode.TITLE_REQUIRED);
         }
         if (content == null || content.isBlank()) {
-            throw new BadRequestException("공지 내용은 비어 있을 수 없습니다.");
+            throw new NoticeException(NoticeErrorCode.CONTENT_REQUIRED);
         }
         this.title = title;
         this.content = content;
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = now;
     }
 
     public void pin() {

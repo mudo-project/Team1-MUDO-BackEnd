@@ -1,8 +1,9 @@
 package com.academy.mudogroupware.approval.infrastructure.persistence;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+
+import com.academy.mudogroupware.global.infrastructure.persistence.BaseTimeEntity;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -27,7 +28,7 @@ import lombok.Setter;
 @Table(name = "template")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class ApprovalTemplateEntity {
+public class ApprovalTemplateEntity extends BaseTimeEntity {
 
     public static final String TYPE = "APPROVAL";
 
@@ -52,28 +53,18 @@ public class ApprovalTemplateEntity {
     @Column(name = "created_by", nullable = false)
     private Long creatorId;
 
-    @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
-
-    @Setter
-    @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
-
     @OneToMany(mappedBy = "template", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("stepOrder asc")
     private List<ApprovalTemplateLineEntity> lines = new ArrayList<>();
 
     @Builder
-    private ApprovalTemplateEntity(Long id, Long academyId, String name, Long creatorId,
-                                    LocalDateTime createdAt, LocalDateTime updatedAt) {
+    private ApprovalTemplateEntity(Long id, Long academyId, String name, Long creatorId) {
         this.id = id;
         this.academyId = academyId;
         this.fileId = null;
         this.type = TYPE;
         this.name = name;
         this.creatorId = creatorId;
-        this.createdAt = createdAt;
-        this.updatedAt = updatedAt;
     }
 
     public void addLine(ApprovalTemplateLineEntity line) {

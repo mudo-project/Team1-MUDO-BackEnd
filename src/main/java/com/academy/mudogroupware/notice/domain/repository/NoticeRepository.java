@@ -1,8 +1,8 @@
 package com.academy.mudogroupware.notice.domain.repository;
 
-import java.util.List;
 import java.util.Optional;
 
+import com.academy.mudogroupware.global.domain.common.page.PageResult;
 import com.academy.mudogroupware.notice.domain.model.Notice;
 
 public interface NoticeRepository {
@@ -11,7 +11,7 @@ public interface NoticeRepository {
 
     Optional<Notice> findById(Long id);
 
-    List<Notice> findAll(Long academyId, String titleKeyword);
+    PageResult<Notice> findAll(Long academyId, String titleKeyword, int page, int size);
 
     void deleteById(Long id);
 }
