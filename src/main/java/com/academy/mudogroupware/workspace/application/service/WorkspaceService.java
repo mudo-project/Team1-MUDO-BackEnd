@@ -23,20 +23,27 @@ public class WorkspaceService implements CreateWorkspaceUseCase {
   @Override
   @Transactional
   public Long createWorkspace(CreateWorkspaceCommand command) {
+    // ws 이름 저장
     String name = command.name().trim();
+    // Domain 모델 생성
+    // TODO : 이건 도메인에서 create() 메서드 만들어서 그걸 호출하는게 좋지 않아?
     Workspace workspace = Workspace.builder()
         .academyId(command.academyId())
         .name(name)
         .createdBy(command.creatorId())
         .memberIds(requestedAdditionalMemberIds(command))
         .build();
-    Set<Long> activeUserIds =
-        workspaceMemberDirectoryPort.findActiveUserIds(command.academyId(), workspace.getMemberIds());
 
+    // 참여자 검증
+    Set<Long> activeUserIds =
+        workspaceMemberDirectoryPort.findActiveUserIds(
+                command.academyId(), workspace.getMemberIds());
+
+    // 추가 참여자 + 생성자도 학원 포함 검증
     if (!activeUserIds.containsAll(workspace.getMemberIds())) {
       throw new InvalidWorkspaceMemberException();
     }
-
+    // 중복 이름 예외 처리
     if (workspaceRepository.existsByAcademyIdAndName(command.academyId(), name)) {
       throw new WorkspaceNameConflictException();
     }
@@ -44,7 +51,9 @@ public class WorkspaceService implements CreateWorkspaceUseCase {
     return workspaceRepository.save(workspace).getId();
   }
 
+  // 참여자 처리
   private Set<Long> requestedAdditionalMemberIds(CreateWorkspaceCommand command) {
+    // 중복 제거, 순서 유지, null 허용
     Set<Long> memberIds = new LinkedHashSet<>();
     if (command.memberIds() != null) {
       memberIds.addAll(command.memberIds());
