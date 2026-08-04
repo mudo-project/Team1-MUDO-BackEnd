@@ -7,22 +7,20 @@
 
 ---
 
-## ✅ 2026-08-04 · users.role 컬럼 삭제(조립식 권한 도입) 대응
+## ✅ 2026-08-04 · 코드 리뷰 반영 (고정 해제 학원 스코프, 읽음 기록 동시성)
 
 ### 배경
 
-`users` 모듈이 role/permission 조립식 인증·인가 구조(`V4.1.2__create_role_permission_tables.sql`)를 도입하면서 `users.role`(문자열) 컬럼을 삭제하고 `role_id`(FK)로 대체했다. 마이그레이션 파일 자체에 "notice 담당자가 별도로 자기 shim을 고쳐야 함"이라는 주석이 있었고, notice의 `UserInfoEntity`가 실제로 존재하지 않는 `role` 컬럼을 계속 참조하고 있어서 공지 작성자/읽은 사람 조회가 깨지는 상태였다.
+코드 리뷰에서 P1 1건, P2 1건이 발견됐다.
 
 ### 확정된 정책
 
-- `UserInfoEntity.role`(String) 매핑을 제거하고 `roleId`(Long, `role_id` 컬럼)로 교체했다.
-- `NoticeAuthorDirectoryPortAdapter`가 `global.domain.auth.RolePermissionLookupPort`(users 모듈이 구현한 전역 포트)를 주입받아 `roleId → roleName`을 조회하도록 했다. `AuthorInfo.role()`에 노출되는 값(예: "강사", "대표")은 그대로 유지된다.
-- `getAuthors`(배치 조회)는 응답에 포함된 고유 `roleId`별로 한 번씩만 `lookup()`을 호출해 N+1을 피했다 (포트 자체가 배치 조회를 제공하지 않아서).
+- `PinNoticeService.unpin()`이 요청자 검증을 전혀 하지 않아, 다른 학원 소속 사용자도 아무 공지나 고정 해제할 수 있는 상태였다. "권한자 정책"은 아직 미정이지만, 최소한 같은 학원 소속인지는 검증하도록 고쳤다(`NoticeErrorCode.CROSS_ACADEMY_NOTICE` 추가).
+- `NoticeReadRepositoryImpl.markRead()`가 exists-then-save 순서라, 같은 사용자가 동시에 같은 공지를 처음 열면 `notice_read`의 유니크 제약(`notice_id`+`user_id`) 위반으로 한쪽 요청이 예외로 실패할 수 있었다. `DataIntegrityViolationException`을 잡아 무시하도록 고쳤다(어차피 읽음 처리 자체는 이미 된 상태이므로).
 
 ### 완료 기준
 
-- [x] notice 코드에 존재하지 않는 `users.role` 컬럼 참조가 남아있지 않다.
-- [x] `./gradlew compileJava` / `./gradlew test` 통과 (전체 Spring 컨텍스트 로딩 포함 — `RolePermissionLookupPort` 빈 배선 확인).
+- [x] `./gradlew test` 통과 (신규 유닛 테스트 포함).
 
 ---
 

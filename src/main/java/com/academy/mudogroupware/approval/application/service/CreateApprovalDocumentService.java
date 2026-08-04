@@ -29,6 +29,7 @@ public class CreateApprovalDocumentService implements CreateApprovalDocumentUseC
     private final ApprovalTemplateRepository approvalTemplateRepository;
     private final ApprovalDocumentRepository approvalDocumentRepository;
     private final ApproverDirectoryPort approverDirectoryPort;
+    private final ApproverValidator approverValidator;
     private final Clock clock;
 
     @Override
@@ -44,6 +45,7 @@ public class CreateApprovalDocumentService implements CreateApprovalDocumentUseC
         List<Long> approverIds = (command.approverIds() != null && !command.approverIds().isEmpty())
                 ? command.approverIds()
                 : approvalTemplate.approverIdsInOrder();
+        approverValidator.validate(approverIds, approvalTemplate.getAcademyId());
 
         ApprovalContent content = ApprovalContent.create(command.contentType(), command.text());
         ApprovalDocument approvalDocument = ApprovalDocument.create(

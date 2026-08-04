@@ -18,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 public class UpdateApprovalDocumentLinesService implements UpdateApprovalDocumentLinesUseCase {
 
     private final ApprovalDocumentRepository approvalDocumentRepository;
+    private final ApproverValidator approverValidator;
 
     @Override
     public void updateLines(UpdateApprovalDocumentLinesCommand command) {
@@ -27,6 +28,8 @@ public class UpdateApprovalDocumentLinesService implements UpdateApprovalDocumen
         if (!approvalDocument.getCreatorId().equals(command.requesterId())) {
             throw new ApprovalException(ApprovalErrorCode.NOT_DOCUMENT_OWNER_LINES);
         }
+
+        approverValidator.validate(command.approverIds(), approvalDocument.getAcademyId());
 
         approvalDocument.updateLines(command.approverIds());
 
