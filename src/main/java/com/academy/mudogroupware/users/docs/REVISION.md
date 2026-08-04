@@ -142,6 +142,34 @@ Redis 도입이 확정되면서(WebSocket Pub/Sub 용도로 시작해 액세스 
 
 ---
 
+## ✅ 2026-08-04 · 로그아웃 API 추가, `users.academy_id` FK 연결 (이슈 #41, #42)
+
+### 배경
+
+역할/권한 인증 기반(PR #38) 완료 후, 후속 대형 작업(역할 관리·계정 발급 API) 전에 독립적으로 처리 가능한 작은 항목 두 개를 먼저 정리했다. 둘 다 큰 작업의 선행 조건은 아니지만, 방치할 이유도 없어 먼저 처리했다.
+
+### 확정된 정책 — 로그아웃 API
+
+- `TokenService.revoke(Long id)`는 이미 존재했으나 호출하는 컨트롤러가 없었다. `auth` 모듈에 `TokenRevokerUseCase` 계약을 새로 만들어 `TokenIssuerUseCase`/`RefreshTokenValidatorUseCase`와 동일한 Port 패턴으로 노출했다.
+- `users` 쪽엔 `LogoutUseCase`/`LogoutService`를 신설해 `AuthController.logout`(`POST /api/auth/logout`, 인증 필요)에서 호출한다. `userId`는 `@AuthenticationPrincipal AuthUser`에서 꺼낸다 — 이미 인증 필터를 통과한 값이라 재검증하지 않는다.
+- accessToken 블랙리스트는 만들지 않았다 — accessToken 수명이 짧고, 서버에 저장된 refreshToken만 지우면 재발급(`/api/token/reissue`)이 막히므로 실질적인 로그아웃 효과는 충분하다고 판단했다.
+- 응답에서 refreshToken 쿠키를 `Max-Age=0`으로 즉시 만료시킨다(`RefreshTokenCookieFactory.clear()`).
+
+### 확정된 정책 — `users.academy_id` FK
+
+- `users.academy_id`는 `academy` 테이블(V2.1.2, 다른 팀원이 자기 도메인 작업 진행을 위해 먼저 만들어둔 테이블)보다 먼저 생긴 컬럼이라 FK가 없는 상태였다. `academy → users`(소유자 참조, `fk_academy_user`)는 이미 걸려있는데 반대 방향만 비어있어 정합성 공백이었다.
+- `V4.1.3`으로 `fk_users_academy` FK를 추가했다. `ON DELETE`는 기본(RESTRICT)으로 뒀다 — 소속 직원이 남아있는 학원을 실수로 삭제하지 못하게 막는 게 맞다고 판단했다(반대 방향의 `ON DELETE SET NULL`과는 의도가 다르다: 원장 계정이 사라져도 학원 자체는 남아야 하지만, 학원이 사라지는데 소속 직원 레코드가 고아로 남는 건 막아야 한다).
+- JPA `@ManyToOne` 관계는 추가하지 않았다 — `users` 도메인이 `academy` 도메인 엔티티를 직접 참조하게 되면 `ARCHITECTURE.md`의 도메인 간 직접 참조 금지 원칙을 깬다. DB 레벨 FK만 걸고 `UserEntity.academyId`는 계속 `Long`으로 유지한다.
+- 적용 전 로컬 DB에서 `users.academy_id` 중 `academy.academy_id`에 없는 값이 있는지 확인 후 진행했다(orphan 없음 확인).
+
+### 완료 기준
+
+- [x] `./gradlew compileJava` 통과
+- [x] 로컬 DB에 FK 수동 적용 후 정상 동작 확인, Flyway 히스토리와 어긋나지 않도록 원복
+- [ ] 실제 앱 재시작으로 Flyway가 `V4.1.3`을 정식 적용하는지 확인 — PR 리뷰/머지 전 확인 필요
+
+---
+
 ## 🧩 영향 범위
 
 | 계층 | 변경 내용 |
@@ -151,7 +179,9 @@ Redis 도입이 확정되면서(WebSocket Pub/Sub 용도로 시작해 액세스 
 | Domain | `User`(불변 객체, `ensureLoginAllowed()`), `UserStatus`, `UserErrorCode`/`UserException` 신규 |
 | Persistence | `UserEntity`(role→role_id), `UserJpaRepository`, `UserRepositoryImpl` 신규. `RoleEntity`/`PermissionEntity`/`RoleJpaRepository` 신규 |
 | Infrastructure | `RolePermissionLookupAdapter`(`global.RolePermissionLookupPort` 구현) 신규 |
-| Migration | `V4.1.1`(users 테이블 ERD 정합화), `V4.1.2`(role/permission/role_permission 신설, users.role→role_id) |
+| Migration | `V4.1.1`(users 테이블 ERD 정합화), `V4.1.2`(role/permission/role_permission 신설, users.role→role_id), `V4.1.3`(users.academy_id → academy FK 연결) |
+| Presentation(추가) | `AuthController.logout` 신규 |
+| Application(추가) | `LogoutUseCase`/`LogoutService` 신규. `auth` 모듈에 `TokenRevokerUseCase` 신규 |
 | 공통(`global`) | `AuthErrorCode`에 리프레시 토큰 실패 코드 2종 추가·`ROLE_CLAIM_MISSING` 제거, `SecurityConfig` CORS 설정 정리, `JwtClaims`/`JwtTokenProvider`/`AuthUser`/`JwtAuthenticationConverter`를 `roleId`/`academyId`/`RolePermissionLookupPort` 기반으로 재작업 |
 
 ## 🧪 완료 기준 (전체)
@@ -162,9 +192,9 @@ Redis 도입이 확정되면서(WebSocket Pub/Sub 용도로 시작해 액세스 
 - [x] CodeRabbit 리뷰 4건 반영
 - [x] role/permission 테이블 신설, `users.role_id` 전환, 매 요청 권한 조회(`hasAuthority`) 기반 구축
 - [ ] 계정 발급(회원가입, 원장이 하위 직원 계정 생성) API — 미착수
-- [ ] 로그아웃 API — `TokenService.revoke()`는 있으나 호출하는 컨트롤러 없음, 미착수
+- [x] 로그아웃 API — `POST /api/auth/logout` 추가, `TokenRevokerUseCase`로 refreshToken 삭제
 - [ ] 역할 생성·수정·삭제, 권한 조립 API — 미착수 (`ROLE:MANAGE` permission만 시드됨)
-- [x] `academy` 테이블 생성됨(다른 팀원, `V2.1.2`~`V2.1.4`) — `role.academy_id`는 FK 연결 완료. `users.academy_id → academy.academy_id` FK는 아직 미연결
+- [x] `academy` 테이블 생성됨(다른 팀원, `V2.1.2`~`V2.1.4`) — `role.academy_id`, `users.academy_id` 모두 FK 연결 완료(`V4.1.3`)
 
 ## 📌 후속 문서
 

@@ -78,6 +78,22 @@
 - roleId→permission 조회는 **매 요청마다** 실행됩니다. JWT에 permission을 통째로 넣지 않은 이유는, 원장이 역할의 권한 구성을 바꾸면 재로그인 없이 다음 요청부터 바로 반영되게 하기 위함입니다.
 - `roleId`가 없는 계정(플랫폼 관리자 등)은 DB 조회 없이 빈 권한으로 처리됩니다.
 
+## 4. 로그아웃 흐름
+
+```text
+인증된 요청 (SecurityConfig: POST /api/auth/logout 은 permitAll 목록에 없음 → authenticated() 필요)
+→ AuthController.logout
+→ @AuthenticationPrincipal AuthUser 에서 userId 추출 (JWT 재검증 없이 이미 인증 단계에서 채워진 값 재사용)
+→ LogoutUseCase.logout (LogoutService)
+→ TokenRevokerUseCase.revoke(userId)  ※ auth 모듈의 TokenService
+   → RefreshTokenRepository.deleteByUserId
+→ RefreshTokenCookieFactory.clear() → Max-Age=0 Set-Cookie 헤더
+→ GlobalApiResponse<Void>
+```
+
+- 로그아웃은 서버에 저장된 refreshToken만 삭제합니다. 이미 발급된 accessToken 자체를 무효화하는 블랙리스트는 없습니다 — accessToken 수명이 짧아 별도 저장소 없이도 허용 가능한 범위로 판단했습니다.
+- `revoke`는 `TokenIssuerUseCase`/`RefreshTokenValidatorUseCase`와 동일하게 `auth` 모듈이 공개한 `TokenRevokerUseCase` 계약을 통해 호출합니다.
+
 ---
 
 ## 📝 문서 정보
@@ -87,3 +103,4 @@
   - 로그인 흐름을 처음 작성했습니다.
   - 액세스 토큰 재발급 흐름을 추가했습니다 (리프레시 토큰 검증 3단계 분기 포함).
   - JWT를 `roleId`/`academyId` 기반으로 재작업하고, 매 요청 권한 조회 흐름(3번)을 추가했습니다.
+  - 로그아웃 흐름(4번)을 추가했습니다.
