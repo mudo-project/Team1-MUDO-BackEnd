@@ -235,6 +235,9 @@ monitoring/loki/data/
 monitoring/promtail/promtail-positions.yml
 data/
 monitoring/grafana/dashboards
+infra/monitoring/.env.monitoring
+infra/monitoring/alertmanager/alertmanager.yml
+infra/monitoring/runtime/
 
 # 더미 데이터
 
