@@ -1,7 +1,5 @@
 package com.academy.mudogroupware.approval.presentation.api;
 
-import java.util.List;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -11,6 +9,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.academy.mudogroupware.approval.application.command.ResubmitApprovalDocumentCommand;
@@ -30,6 +29,7 @@ import com.academy.mudogroupware.approval.presentation.api.response.ApprovalPend
 import com.academy.mudogroupware.approval.presentation.api.response.ApprovalSubmittedSummaryResponse;
 import com.academy.mudogroupware.approval.presentation.api.response.ApprovalSummaryResponse;
 import com.academy.mudogroupware.global.presentation.api.common.GlobalApiResponse;
+import com.academy.mudogroupware.global.presentation.api.common.SliceResponse;
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
 
 import jakarta.validation.Valid;
@@ -57,21 +57,24 @@ public class ApprovalController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<GlobalApiResponse<List<ApprovalSummaryResponse>>> getMyApprovals(
-            @AuthenticationPrincipal AuthUser authUser) {
-        List<ApprovalSummaryResponse> responses = approvalQueryUseCase.getMyApprovals(authUser.userId()).stream()
-                .map(ApprovalSummaryResponse::from)
-                .toList();
-        return ResponseEntity.ok(GlobalApiResponse.ok(ApprovalResponseCode.MY_APPROVALS_RETRIEVED, responses));
+    public ResponseEntity<GlobalApiResponse<SliceResponse<ApprovalSummaryResponse>>> getMyApprovals(
+            @AuthenticationPrincipal AuthUser authUser,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        SliceResponse<ApprovalSummaryResponse> data = SliceResponse.from(
+                approvalQueryUseCase.getMyApprovals(authUser.userId(), page, size), ApprovalSummaryResponse::from);
+        return ResponseEntity.ok(GlobalApiResponse.ok(ApprovalResponseCode.MY_APPROVALS_RETRIEVED, data));
     }
 
     @GetMapping("/me/submitted")
-    public ResponseEntity<GlobalApiResponse<List<ApprovalSubmittedSummaryResponse>>> getMySubmittedApprovals(
-            @AuthenticationPrincipal AuthUser authUser) {
-        List<ApprovalSubmittedSummaryResponse> responses = approvalQueryUseCase.getMySubmittedApprovals(authUser.userId()).stream()
-                .map(ApprovalSubmittedSummaryResponse::from)
-                .toList();
-        return ResponseEntity.ok(GlobalApiResponse.ok(ApprovalResponseCode.MY_SUBMITTED_APPROVALS_RETRIEVED, responses));
+    public ResponseEntity<GlobalApiResponse<SliceResponse<ApprovalSubmittedSummaryResponse>>> getMySubmittedApprovals(
+            @AuthenticationPrincipal AuthUser authUser,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        SliceResponse<ApprovalSubmittedSummaryResponse> data = SliceResponse.from(
+                approvalQueryUseCase.getMySubmittedApprovals(authUser.userId(), page, size),
+                ApprovalSubmittedSummaryResponse::from);
+        return ResponseEntity.ok(GlobalApiResponse.ok(ApprovalResponseCode.MY_SUBMITTED_APPROVALS_RETRIEVED, data));
     }
 
     @GetMapping("/me/pending-count")

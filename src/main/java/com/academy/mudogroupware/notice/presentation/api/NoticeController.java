@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.academy.mudogroupware.global.presentation.api.common.GlobalApiResponse;
+import com.academy.mudogroupware.global.presentation.api.common.SliceResponse;
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
 import com.academy.mudogroupware.notice.application.query.NoticeDetailView;
 import com.academy.mudogroupware.notice.application.usecase.CreateNoticeUseCase;
@@ -56,13 +57,14 @@ public class NoticeController {
     }
 
     @GetMapping
-    public ResponseEntity<GlobalApiResponse<List<NoticeSummaryResponse>>> getNotices(
+    public ResponseEntity<GlobalApiResponse<SliceResponse<NoticeSummaryResponse>>> getNotices(
             @AuthenticationPrincipal AuthUser authUser,
-            @RequestParam(required = false) String keyword) {
-        List<NoticeSummaryResponse> responses = noticeQueryUseCase.getNotices(authUser.userId(), keyword).stream()
-                .map(NoticeSummaryResponse::from)
-                .toList();
-        return ResponseEntity.ok(GlobalApiResponse.ok(NoticeResponseCode.NOTICE_LIST_RETRIEVED, responses));
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        SliceResponse<NoticeSummaryResponse> data = SliceResponse.from(
+                noticeQueryUseCase.getNotices(authUser.userId(), keyword, page, size), NoticeSummaryResponse::from);
+        return ResponseEntity.ok(GlobalApiResponse.ok(NoticeResponseCode.NOTICE_LIST_RETRIEVED, data));
     }
 
     @GetMapping("/{noticeId}")

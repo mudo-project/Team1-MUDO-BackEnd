@@ -1,9 +1,9 @@
 package com.academy.mudogroupware.approval.domain.repository;
 
-import java.util.List;
 import java.util.Optional;
 
 import com.academy.mudogroupware.approval.domain.model.ApprovalTemplate;
+import com.academy.mudogroupware.global.domain.common.page.PageResult;
 
 public interface ApprovalTemplateRepository {
 
@@ -11,7 +11,7 @@ public interface ApprovalTemplateRepository {
 
     Optional<ApprovalTemplate> findById(Long id);
 
-    List<ApprovalTemplate> findAll(Long academyId);
+    PageResult<ApprovalTemplate> findAll(Long academyId, int page, int size);
 
     void deleteById(Long id);
 }

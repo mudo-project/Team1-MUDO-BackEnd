@@ -10,7 +10,8 @@ import com.academy.mudogroupware.approval.application.command.DecideApprovalLine
 import com.academy.mudogroupware.approval.application.usecase.DecideApprovalLineUseCase;
 import com.academy.mudogroupware.approval.domain.model.ApprovalDocument;
 import com.academy.mudogroupware.approval.domain.repository.ApprovalDocumentRepository;
-import com.academy.mudogroupware.global.domain.common.exception.NotFoundException;
+import com.academy.mudogroupware.approval.domain.exception.ApprovalErrorCode;
+import com.academy.mudogroupware.approval.domain.exception.ApprovalException;
 
 import lombok.RequiredArgsConstructor;
 
@@ -25,7 +26,7 @@ public class DecideApprovalLineService implements DecideApprovalLineUseCase {
     @Override
     public void decide(DecideApprovalLineCommand command) {
         ApprovalDocument approvalDocument = approvalDocumentRepository.findById(command.documentId())
-                .orElseThrow(() -> new NotFoundException("결재 문서를 찾을 수 없습니다."));
+                .orElseThrow(() -> new ApprovalException(ApprovalErrorCode.DOCUMENT_NOT_FOUND));
 
         approvalDocument.decide(command.approverId(), command.decision(), command.comment(), LocalDateTime.now(clock));
 

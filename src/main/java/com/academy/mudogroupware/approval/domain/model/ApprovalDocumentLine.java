@@ -2,7 +2,8 @@ package com.academy.mudogroupware.approval.domain.model;
 
 import java.time.LocalDateTime;
 
-import com.academy.mudogroupware.global.domain.common.exception.ConflictException;
+import com.academy.mudogroupware.approval.domain.exception.ApprovalErrorCode;
+import com.academy.mudogroupware.approval.domain.exception.ApprovalException;
 
 public final class ApprovalDocumentLine {
 
@@ -65,7 +66,7 @@ public final class ApprovalDocumentLine {
 
     private void ensurePending() {
         if (status != ApprovalLineStatus.PENDING) {
-            throw new ConflictException("이미 처리가 완료된 결재선입니다.");
+            throw new ApprovalException(ApprovalErrorCode.LINE_ALREADY_DECIDED);
         }
     }
 

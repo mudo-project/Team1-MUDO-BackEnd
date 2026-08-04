@@ -7,6 +7,24 @@
 
 ---
 
+## ✅ 2026-08-04 · 전용 ErrorCode 도입 및 목록 API 페이지네이션
+
+### 배경
+
+`users`/`auth`, approval 모듈이 먼저 도입한 도메인 전용 `ErrorCode`/`Exception` 패턴과, `docs/API_CONTRACT.md`에 정의돼 있던 페이지네이션 규칙을 notice에도 동일하게 반영했다.
+
+### 확정된 정책
+
+- `NoticeErrorCode`(enum) + `NoticeException`(`BusinessException` 상속)을 추가하고, 기존 `BadRequestException`/`NotFoundException`/`ForbiddenException` 직접 사용을 전부 교체했다. 코드 체계는 `NOTICE_{HTTP상태}_{순번}`.
+- 공지 목록 조회(`getNotices`)에 `page`/`size` 쿼리 파라미터와 Spring Data `Slice`(전체 개수 미계산) 기반 페이지네이션을 적용했다. 응답은 `global`의 공용 `SliceResponse<T>`로 감싼다. 상세 조회의 "읽은 사람 목록"(`getReaders`)은 한 공지당 인원 규모가 제한적이라 이번 범위에서는 페이지네이션하지 않았다.
+
+### 완료 기준
+
+- [x] notice 코드에 `global.domain.common.exception`의 범용 예외 직접 사용이 남아있지 않다.
+- [x] `./gradlew compileJava` / `./gradlew test` 통과.
+
+---
+
 ## ✅ 2026-08-04 · users 테이블 정합화(`resign_date` → `status`) 대응
 
 ### 배경

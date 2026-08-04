@@ -5,10 +5,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.academy.mudogroupware.notice.application.command.UpdateNoticeCommand;
 import com.academy.mudogroupware.notice.application.usecase.UpdateNoticeUseCase;
+import com.academy.mudogroupware.notice.domain.exception.NoticeErrorCode;
+import com.academy.mudogroupware.notice.domain.exception.NoticeException;
 import com.academy.mudogroupware.notice.domain.model.Notice;
 import com.academy.mudogroupware.notice.domain.repository.NoticeRepository;
-import com.academy.mudogroupware.global.domain.common.exception.ForbiddenException;
-import com.academy.mudogroupware.global.domain.common.exception.NotFoundException;
 
 import lombok.RequiredArgsConstructor;
 
@@ -22,10 +22,10 @@ public class UpdateNoticeService implements UpdateNoticeUseCase {
     @Override
     public void updateNotice(UpdateNoticeCommand command) {
         Notice notice = noticeRepository.findById(command.noticeId())
-                .orElseThrow(() -> new NotFoundException("공지사항을 찾을 수 없습니다."));
+                .orElseThrow(() -> new NoticeException(NoticeErrorCode.NOTICE_NOT_FOUND));
 
         if (!notice.isAuthor(command.requesterId())) {
-            throw new ForbiddenException("작성자 본인만 공지사항을 수정할 수 있습니다.");
+            throw new NoticeException(NoticeErrorCode.NOT_AUTHOR_UPDATE);
         }
 
         notice.update(command.title(), command.content());

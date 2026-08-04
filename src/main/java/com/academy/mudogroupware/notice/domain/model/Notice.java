@@ -5,7 +5,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import com.academy.mudogroupware.global.domain.common.exception.BadRequestException;
+import com.academy.mudogroupware.notice.domain.exception.NoticeErrorCode;
+import com.academy.mudogroupware.notice.domain.exception.NoticeException;
 
 public final class Notice {
 
@@ -30,10 +31,10 @@ public final class Notice {
             throw new IllegalArgumentException("authorUserId must not be null");
         }
         if (title == null || title.isBlank()) {
-            throw new BadRequestException("공지 제목은 비어 있을 수 없습니다.");
+            throw new NoticeException(NoticeErrorCode.TITLE_REQUIRED);
         }
         if (content == null || content.isBlank()) {
-            throw new BadRequestException("공지 내용은 비어 있을 수 없습니다.");
+            throw new NoticeException(NoticeErrorCode.CONTENT_REQUIRED);
         }
         this.id = id;
         this.academyId = academyId;
@@ -66,10 +67,10 @@ public final class Notice {
 
     public void update(String title, String content) {
         if (title == null || title.isBlank()) {
-            throw new BadRequestException("공지 제목은 비어 있을 수 없습니다.");
+            throw new NoticeException(NoticeErrorCode.TITLE_REQUIRED);
         }
         if (content == null || content.isBlank()) {
-            throw new BadRequestException("공지 내용은 비어 있을 수 없습니다.");
+            throw new NoticeException(NoticeErrorCode.CONTENT_REQUIRED);
         }
         this.title = title;
         this.content = content;

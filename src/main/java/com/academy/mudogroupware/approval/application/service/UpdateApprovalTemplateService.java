@@ -10,7 +10,8 @@ import com.academy.mudogroupware.approval.application.command.UpdateApprovalTemp
 import com.academy.mudogroupware.approval.application.usecase.UpdateApprovalTemplateUseCase;
 import com.academy.mudogroupware.approval.domain.model.ApprovalTemplate;
 import com.academy.mudogroupware.approval.domain.repository.ApprovalTemplateRepository;
-import com.academy.mudogroupware.global.domain.common.exception.NotFoundException;
+import com.academy.mudogroupware.approval.domain.exception.ApprovalErrorCode;
+import com.academy.mudogroupware.approval.domain.exception.ApprovalException;
 
 import lombok.RequiredArgsConstructor;
 
@@ -25,7 +26,7 @@ public class UpdateApprovalTemplateService implements UpdateApprovalTemplateUseC
     @Override
     public void updateTemplate(UpdateApprovalTemplateCommand command) {
         ApprovalTemplate approvalTemplate = approvalTemplateRepository.findById(command.templateId())
-                .orElseThrow(() -> new NotFoundException("결재 템플릿을 찾을 수 없습니다."));
+                .orElseThrow(() -> new ApprovalException(ApprovalErrorCode.TEMPLATE_NOT_FOUND));
 
         approvalTemplate.update(command.name(), command.approverIds(), LocalDateTime.now(clock));
 

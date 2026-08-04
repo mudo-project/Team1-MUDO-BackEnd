@@ -10,7 +10,7 @@
 
 ## 소유하는 주요 데이터와 상태
 
-- `Notice` — DB 테이블 `notice` (아직 flyway 마이그레이션 작성 중)
+- `Notice` — DB 테이블 `notice` (`V1.3.1__create_notice_tables.sql`)
 - `NoticeAttachment` — DB 테이블 `notice_attachment` (다중 첨부, 파일 URL/이름/타입을 직접 저장 — approval 모듈처럼 공유 file 테이블의 `file_id`를 참조하는 방식이 아니라, 팀 ERD에 이미 이 구조로 그려져 있어 그대로 따름)
 - 읽음 기록 — DB 테이블 `notice_read` (notice_id + user_id 유니크, 조회수/읽은 인원 계산에 사용)
 
@@ -35,8 +35,9 @@
 
 - **카테고리(인사/시설/업무) 기능은 이번 범위에서 제외했다.** 기능명세서 텍스트에는 있었지만 실제 화면 시안에는 카테고리 필터/태그가 보이지 않아 화면 기준으로 뺐다. 필요하면 `notice`에 `category` 컬럼(또는 별도 분류 테이블) 추가 필요.
 - 성공 응답은 `GlobalApiResponse<T>`로 감싸서 반환한다 (`204 No Content`는 본문 없이 그대로).
-- 도메인 규칙 위반은 `global.domain.common.exception`의 `BadRequestException`/`NotFoundException`/`ForbiddenException`을 사용한다.
+- 도메인 규칙 위반은 `notice.domain.exception.NoticeErrorCode`(→ `NoticeException`, `BusinessException` 상속)로 던진다. `users`/`auth`, approval 모듈의 선례를 따랐다 (`NOTICE_{status}_{n}` 코드 체계, [API.md](API.md) 참고).
 - 목록/상세조회 모두 요청자의 `academyId`로 스코프를 검증한다 (다른 학원 공지가 섞이거나 조회되지 않도록 — approval 모듈에서 겪었던 테넌시 격리 버그를 처음부터 반영).
+- 목록 조회(`getNotices`)는 `page`/`size` 쿼리 파라미터 기반 Slice 페이지네이션을 지원한다 (`API_CONTRACT.md` 규칙 반영).
 - 작성 권한(원장/대표, 상황에 따라 직원도 가능)과 삭제·고정해제의 "권한을 가진 사람들" 조건은 `users.role` 값 체계가 확정되기 전까지 미반영 상태다.
 
 ## 세부 문서

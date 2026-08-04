@@ -16,8 +16,8 @@ import com.academy.mudogroupware.approval.domain.model.ApprovalDocument;
 import com.academy.mudogroupware.approval.domain.model.ApprovalTemplate;
 import com.academy.mudogroupware.approval.domain.repository.ApprovalDocumentRepository;
 import com.academy.mudogroupware.approval.domain.repository.ApprovalTemplateRepository;
-import com.academy.mudogroupware.global.domain.common.exception.ForbiddenException;
-import com.academy.mudogroupware.global.domain.common.exception.NotFoundException;
+import com.academy.mudogroupware.approval.domain.exception.ApprovalErrorCode;
+import com.academy.mudogroupware.approval.domain.exception.ApprovalException;
 
 import lombok.RequiredArgsConstructor;
 
@@ -34,11 +34,11 @@ public class CreateApprovalDocumentService implements CreateApprovalDocumentUseC
     @Override
     public Long createDocument(CreateApprovalDocumentCommand command) {
         ApprovalTemplate approvalTemplate = approvalTemplateRepository.findById(command.templateId())
-                .orElseThrow(() -> new NotFoundException("결재 템플릿을 찾을 수 없습니다."));
+                .orElseThrow(() -> new ApprovalException(ApprovalErrorCode.TEMPLATE_NOT_FOUND));
 
         ApproverInfo creator = approverDirectoryPort.getApprover(command.creatorId());
         if (!approvalTemplate.getAcademyId().equals(creator.academyId())) {
-            throw new ForbiddenException("다른 학원의 템플릿으로는 결재를 신청할 수 없습니다.");
+            throw new ApprovalException(ApprovalErrorCode.CROSS_ACADEMY_TEMPLATE);
         }
 
         List<Long> approverIds = (command.approverIds() != null && !command.approverIds().isEmpty())

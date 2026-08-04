@@ -50,9 +50,9 @@
 ## 변경 시 주의 사항
 
 - 성공 응답은 `GlobalApiResponse<T>`로 감싸서 반환한다 (`204 No Content` 응답은 본문 없이 그대로 둔다).
-- 도메인 규칙 위반은 `global.domain.common.exception`의 `BadRequestException`/`NotFoundException`/`ForbiddenException`/`ConflictException`을 사용한다. approval 전용 `ErrorCode` enum은 아직 만들지 않았다 (팀 논의 후 도입 예정).
+- 도메인 규칙 위반은 `approval.domain.exception.ApprovalErrorCode`(→ `ApprovalException`, `BusinessException` 상속)로 던진다. `users`/`auth` 모듈의 `UserErrorCode`/`UserException` 선례를 따랐다 (`APPROVAL_{status}_{n}` 코드 체계, [API.md](API.md) 오류 코드 표 참고). 프로그래머 계약 위반(파라미터 null 등)은 여전히 `IllegalArgumentException`을 사용한다.
 - API 경로에 버전 프리픽스(`/api/v1`)를 붙이지 않는다 — 한때 붙였다가 실배포 전이라는 이유로 되돌린 이력이 있다 ([REVISION.md](REVISION.md) 참고).
-- 목록 API(내 결재함, 내가 신청한 결재, 템플릿 목록)는 페이지네이션 없이 전체 목록을 반환한다. `API_CONTRACT.md`의 페이지네이션 규칙을 아직 반영하지 않았다.
+- 목록 API(내 결재함, 내가 신청한 결재, 템플릿 목록)는 `page`/`size` 쿼리 파라미터 기반 Slice 페이지네이션을 지원한다 (`API_CONTRACT.md` 규칙 반영, 전체 개수 없이 `hasNext`만 제공).
 - 템플릿 생성/수정/삭제 권한(행정직원 제한)과 결재 신청 권한(직원+강사) 인가 로직은 아직 반영되지 않았다. `users.role` 값 체계가 확정되면 Application 또는 Domain Policy에 추가한다 (Controller에 두지 않는다).
 - `role_id`(결재선의 역할 기반 지정) 컬럼은 스키마만 있고 해석 로직이 없다. role 테이블이 생기면 구현한다.
 - AI 요약(`approval_attachment.ai_summary` 등)은 컬럼만 있고 실제 요약 로직은 없다.

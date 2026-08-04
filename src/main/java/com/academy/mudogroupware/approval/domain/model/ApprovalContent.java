@@ -1,6 +1,7 @@
 package com.academy.mudogroupware.approval.domain.model;
 
-import com.academy.mudogroupware.global.domain.common.exception.BadRequestException;
+import com.academy.mudogroupware.approval.domain.exception.ApprovalErrorCode;
+import com.academy.mudogroupware.approval.domain.exception.ApprovalException;
 
 public final class ApprovalContent {
 
@@ -12,7 +13,7 @@ public final class ApprovalContent {
             throw new IllegalArgumentException("type must not be null");
         }
         if (type == ApprovalContentType.TEXT && (text == null || text.isBlank())) {
-            throw new BadRequestException("결재 내용(텍스트)이 올바르지 않습니다.");
+            throw new ApprovalException(ApprovalErrorCode.INVALID_CONTENT);
         }
         this.type = type;
         this.text = text;
