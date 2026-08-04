@@ -7,6 +7,37 @@
 
 ---
 
+## ✅ 2026-08-04 · Web Push 백엔드 준비 (이벤트 발행 + 구독 저장)
+
+### 배경
+
+결재 차례가 돌아왔을 때 Web Push로 알려주는 기능은 초기 설계 때부터 필요성이 언급됐지만 계속 미착수 상태였다. 이번에 실제 푸시 발송(VAPID, 프론트 서비스워커)은 아직 준비되지 않았다는 전제 하에, 백엔드에서 먼저 만들 수 있는 두 조각만 구현했다.
+
+### 확정된 정책
+
+- `ApprovalDocument`에 `currentPendingApproverId()`를 공개 메서드로 추가했다.
+- `DecideApprovalLineService`가 승인 처리로 다음 결재자 라인이 활성화되면(문서가 여전히 `IN_PROGRESS`) `ApprovalLineActivatedEvent`(documentId, documentTitle, approverId, activatedAt)를 Spring `ApplicationEventPublisher`로 발행한다. 이 이벤트를 소비하는 리스너는 아직 만들지 않았다 — 만들면 안 되는 게 아니라, 실제로 보낼 방법(VAPID/web-push 라이브러리)이 없어서 만들 수 없었다.
+- 브라우저 푸시 구독 정보(`endpoint`/`p256dh`/`auth`)를 저장하는 `PushSubscription` 도메인과 `/api/approvals/push-subscriptions` 등록/해지 API를 추가했다. 같은 사용자·`endpoint`로 재등록하면 새 행을 만들지 않고 키만 갱신한다 (브라우저가 구독을 주기적으로 재발급하는 경우 대비).
+- **임시 배치 결정**: Web Push 구독은 approval 전용 개념이 아니라 여러 기능이 함께 쓸 수 있는 범용 기능이지만, 지금은 이 기능을 필요로 하는 곳이 approval뿐이라 별도 `notification` 모듈을 새로 만들지 않고 approval 패키지 안에 두었다. 다른 기능(예: 공지사항 알림)이 Web Push를 쓰게 되면, 그때 별도 모듈로 분리하는 걸 검토한다.
+
+### 영향 범위
+
+| 계층 | 변경 내용 |
+| --- | --- |
+| Domain | `PushSubscription`, `ApprovalLineActivatedEvent`, `ApprovalDocument.currentPendingApproverId()` 추가 |
+| Application | `RegisterPushSubscriptionUseCase`/`UnregisterPushSubscriptionUseCase` 및 서비스 추가, `DecideApprovalLineService`에 이벤트 발행 로직 추가 |
+| Infrastructure | `PushSubscriptionEntity`/`PushSubscriptionJpaRepository`/`PushSubscriptionRepositoryImpl` 추가 |
+| Presentation | `PushSubscriptionController`(`/api/approvals/push-subscriptions`) 추가 |
+| Migration | `V1.2.4__create_push_subscription_table.sql` 추가 |
+
+### 완료 기준
+
+- [x] 결재 승인 시 다음 결재자가 있으면 이벤트가 발행된다 (리스너는 없음, 발행만 확인).
+- [x] 같은 사용자·endpoint로 두 번 등록해도 행이 중복 생성되지 않는다.
+- [x] `./gradlew compileJava` / `./gradlew test` 통과.
+
+---
+
 ## ✅ 2026-08-04 · 전용 ErrorCode 도입 및 목록 API 페이지네이션
 
 ### 배경

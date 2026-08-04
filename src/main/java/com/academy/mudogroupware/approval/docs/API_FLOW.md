@@ -67,16 +67,34 @@ AuthUser (현재 차례의 결재자)
 → DecideApprovalLineService.decide
 → ApprovalDocumentRepository.findById(documentId)
 → ApprovalDocument.decide(approverId, decision, comment, now)
-   → 상태가 IN_PROGRESS 아니면 ConflictException
-   → 현재 PENDING 라인의 approverId != 요청자 이면 ConflictException("본인 차례 아님")
+   → 상태가 IN_PROGRESS 아니면 ApprovalException(DOCUMENT_ALREADY_DECIDED)
+   → 현재 PENDING 라인의 approverId != 요청자 이면 ApprovalException(NOT_YOUR_TURN)
    → APPROVE: 현재 라인 approve() → 다음 라인 activate() → 전원 승인이면 문서 상태 APPROVED
    → REJECT: 현재 라인 reject() → 문서 상태 REJECTED
 → ApprovalDocumentRepository.save
+→ APPROVE로 다음 라인이 활성화되었으면(문서 상태 여전히 IN_PROGRESS) ApplicationEventPublisher.publishEvent(ApprovalLineActivatedEvent)
+   → 아직 이 이벤트를 소비하는 리스너는 없음 (Web Push 발송 로직 준비 전)
 → 204 No Content
 ```
 
 - 순차 결재만 지원합니다 (병렬 결재 미지원, 의도된 설계 — 난이도를 낮추기 위한 결정).
 - 반려 시 `comment`가 사실상 필수로 쓰이도록 프론트에서 강제해야 합니다 (백엔드는 선택값으로 열어둠).
+
+## 7. 푸시 구독 등록 흐름
+
+```text
+AuthUser
+→ PushSubscriptionController.register
+→ RegisterPushSubscriptionRequest → RegisterPushSubscriptionCommand
+→ RegisterPushSubscriptionService.register
+→ PushSubscription.create(userId, endpoint, p256dh, auth, now)
+→ PushSubscriptionRepository.save
+   → PushSubscriptionJpaRepository.findByUserIdAndEndpoint 로 기존 구독 존재 여부 확인
+   → 있으면 p256dh/auth만 갱신, 없으면 새로 insert
+→ GlobalApiResponse<PushSubscriptionCreateResponse>
+```
+
+- 실제 푸시 발송은 이 API 범위에 없습니다. `ApprovalLineActivatedEvent` 리스너가 추가되면, 그 리스너가 이 구독 정보를 조회해 발송합니다.
 
 ## 5. 결재 재상신 흐름
 

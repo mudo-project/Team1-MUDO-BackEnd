@@ -362,6 +362,49 @@
 
 ---
 
+## 🔔 Web Push 구독 API
+
+> ⚠️ 이 API는 구독 정보 저장까지만 합니다. 실제 푸시 발송(VAPID, `web-push` 라이브러리 연동)은 아직 구현되지 않았습니다. 결재 승인으로 다음 결재자 차례가 되면 서버 내부적으로 `ApprovalLineActivatedEvent`가 발행되지만, 이를 소비해 실제로 알림을 보내는 리스너는 없습니다.
+
+### 14. 푸시 구독 등록
+
+`POST /api/approvals/push-subscriptions`
+권한: 인증 사용자 전체
+
+#### Request
+
+```json
+{
+  "endpoint": "https://fcm.googleapis.com/fcm/send/xxxxx",
+  "p256dh": "BN4Gv...",
+  "auth": "k8Jv..."
+}
+```
+
+#### Response · `201 Created`
+
+```json
+{
+  "status": 201,
+  "code": "APPROVAL_201_4",
+  "message": "푸시 구독 등록에 성공했습니다.",
+  "data": { "subscriptionId": 1 }
+}
+```
+
+- 같은 사용자·`endpoint` 조합으로 다시 등록하면 새로 만들지 않고 `p256dh`/`auth` 키만 갱신합니다 (브라우저가 주기적으로 구독을 재발급하는 경우 대비).
+
+---
+
+### 15. 푸시 구독 해지
+
+`DELETE /api/approvals/push-subscriptions?endpoint={endpoint}`
+권한: 인증 사용자 전체 (본인 구독만 삭제)
+
+#### Response · `204 No Content`
+
+---
+
 ## ⚠️ 오류 코드 (`ApprovalErrorCode`)
 
 approval 도메인 규칙 위반은 `ApprovalErrorCode`(→ `ApprovalException`)로 던집니다. 응답의 `code` 필드에 아래 값이 그대로 노출됩니다.

@@ -15,6 +15,7 @@
 
 - `ApprovalTemplate`, `ApprovalTemplateLine` — DB 테이블 `template`(공유, `type='APPROVAL'`), `approval_line_step`
 - `ApprovalDocument`, `ApprovalDocumentLine`, `ApprovalAttachment` — DB 테이블 `approval_document`, `approval_step`, `approval_attachment`
+- `PushSubscription`(Web Push 구독 정보) — DB 테이블 `push_subscription` (`user_id`+`endpoint` 유니크, 실제 알림 발송 로직은 아직 없음)
 - `ApprovalDocument` 상태: `IN_PROGRESS` → `APPROVED` 또는 `REJECTED`, 재상신 여부는 `resubmittedAt`으로 별도 추적
 - `ApprovalDocumentLine` 상태: `WAITING` → `PENDING` → `APPROVED` 또는 `REJECTED`
 - 모든 테이블에 `academy_id`(멀티테넌시) 컬럼이 있으며, 조회/생성 시 요청자 학원으로 스코프를 검증한다.
@@ -31,8 +32,12 @@
 - `CreateApprovalDocumentUseCase` — 결재 신청 (다중 파일 첨부, 학원 교차 신청 차단)
 - `ApprovalQueryUseCase` — 내게 온 결재 / 내가 신청한 결재 / 대기 건수 / 상세 조회
 - `UpdateApprovalDocumentLinesUseCase` — 결재선 수정 (이미 처리된 앞 단계는 유지, 이후 단계만 교체 가능)
-- `DecideApprovalLineUseCase` — 결재 승인/반려
+- `DecideApprovalLineUseCase` — 결재 승인/반려 (승인으로 다음 결재자 라인이 활성화되면 `ApprovalLineActivatedEvent` 발행)
 - `ResubmitApprovalDocumentUseCase` — 반려된 결재 재상신 (1회 제한)
+
+Web Push 구독 (`/api/approvals/push-subscriptions`):
+- `RegisterPushSubscriptionUseCase` — 브라우저 푸시 구독 정보(endpoint/p256dh/auth) 등록 (같은 사용자·endpoint면 키 갱신)
+- `UnregisterPushSubscriptionUseCase` — 구독 해지
 
 세부 요청/응답 형식은 [docs/API.md](API.md), 계층별 호출 흐름은 [docs/API_FLOW.md](API_FLOW.md) 참고.
 
@@ -44,8 +49,8 @@
 
 ## 발행·소비하는 Event
 
-- 현재 없음.
-- "결재 차례 도래 시 Web Push 알림 발송" 기능 추가 시, `ApprovalDocument.decide()`에서 다음 결재자 라인이 활성화되는 시점에 이벤트(예: `ApprovalLineActivatedEvent`) 발행이 필요할 것으로 예상됨 (미착수).
+- `ApprovalLineActivatedEvent`(documentId, documentTitle, approverId, activatedAt) — `DecideApprovalLineService`가 승인 처리로 다음 결재자 라인이 `PENDING`이 될 때 Spring `ApplicationEventPublisher`로 발행한다.
+- **아직 이 이벤트를 소비하는 리스너는 없다.** 실제 Web Push 발송(구독 대상 조회 → `web-push` 라이브러리로 전송)은 VAPID 키 발급과 프론트 서비스워커가 준비된 뒤 별도 작업으로 리스너를 추가해 연동한다. 지금은 `PushSubscription`(구독 정보: endpoint/p256dh/auth) 저장 API까지만 준비되어 있다.
 
 ## 변경 시 주의 사항
 
