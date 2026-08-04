@@ -18,12 +18,13 @@ public class JwtTokenProvider {
     this.key = Keys.hmacShaKeyFor(p.getSecret().getBytes(StandardCharsets.UTF_8));
   }
 
-  public String createAccessToken(Long id, String username, String role) {
+  public String createAccessToken(Long id, String username, Long roleId, Long academyId) {
     Date n = new Date();
     return Jwts.builder()
         .subject(String.valueOf(id))
         .claim("username", username)
-        .claim("role", role)
+        .claim("roleId", roleId)
+        .claim("academyId", academyId)
         .issuedAt(n)
         .expiration(new Date(n.getTime() + p.getAccessTokenExpiration()))
         .signWith(key, Jwts.SIG.HS256)
@@ -52,10 +53,11 @@ public class JwtTokenProvider {
 
   public JwtClaims parseAccessToken(String token) {
     Claims c = claims(token);
-    String u = c.get("username", String.class), r = c.get("role", String.class);
+    String u = c.get("username", String.class);
     if (u == null || u.isBlank()) throw new AuthException(AuthErrorCode.USERNAME_CLAIM_MISSING);
-    if (r == null || r.isBlank()) throw new AuthException(AuthErrorCode.ROLE_CLAIM_MISSING);
-    return new JwtClaims(id(c), u, r);
+    Long roleId = c.get("roleId", Long.class);
+    Long academyId = c.get("academyId", Long.class);
+    return new JwtClaims(id(c), u, roleId, academyId);
   }
 
   public RefreshTokenClaims parseRefreshToken(String token) {

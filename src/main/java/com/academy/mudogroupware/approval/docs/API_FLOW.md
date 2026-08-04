@@ -67,11 +67,13 @@ AuthUser (현재 차례의 결재자)
 → DecideApprovalLineService.decide
 → ApprovalDocumentRepository.findById(documentId)
 → ApprovalDocument.decide(approverId, decision, comment, now)
-   → 상태가 IN_PROGRESS 아니면 ConflictException
-   → 현재 PENDING 라인의 approverId != 요청자 이면 ConflictException("본인 차례 아님")
+   → 상태가 IN_PROGRESS 아니면 ApprovalException(DOCUMENT_ALREADY_DECIDED)
+   → 현재 PENDING 라인의 approverId != 요청자 이면 ApprovalException(NOT_YOUR_TURN)
    → APPROVE: 현재 라인 approve() → 다음 라인 activate() → 전원 승인이면 문서 상태 APPROVED
    → REJECT: 현재 라인 reject() → 문서 상태 REJECTED
 → ApprovalDocumentRepository.save
+→ APPROVE로 다음 라인이 활성화되었으면(문서 상태 여전히 IN_PROGRESS) ApplicationEventPublisher.publishEvent(ApprovalLineActivatedEvent)
+   → 아직 이 이벤트를 소비하는 리스너는 없음 (Web Push 발송 로직 준비 전)
 → 204 No Content
 ```
 
@@ -85,10 +87,10 @@ AuthUser (원본 신청자 본인)
 → ApprovalController.resubmit
 → ResubmitApprovalDocumentService.resubmit
 → ApprovalDocumentRepository.findById(documentId)
-→ 신청자 본인 아니면 ForbiddenException
+→ 신청자 본인 아니면 ApprovalException(NOT_DOCUMENT_OWNER_RESUBMIT)
 → ApprovalDocument.markResubmitted(now)
-   → 상태가 REJECTED가 아니면 ConflictException
-   → 이미 resubmittedAt이 있으면 ConflictException (중복 재상신 차단)
+   → 상태가 REJECTED가 아니면 ApprovalException(RESUBMIT_NOT_REJECTED)
+   → 이미 resubmittedAt이 있으면 ApprovalException(ALREADY_RESUBMITTED) (중복 재상신 차단)
 → 원본의 title/content/lines/attachments를 복사해 새 ApprovalDocument.create(..., now)
 → 새 문서 저장 → 원본 문서(resubmittedAt 채워짐) 저장
 → GlobalApiResponse<ApprovalCreateResponse>(새 documentId)
@@ -109,12 +111,52 @@ AuthUser
 
 - 목록 API를 재사용하지 않고 카운트만 계산합니다. 사이드바 뱃지처럼 자주 호출되는 지점이라 별도 경량 엔드포인트로 분리했습니다.
 
+## 7. 푸시 구독 등록 흐름
+
+```text
+AuthUser
+→ PushSubscriptionController.register
+→ RegisterPushSubscriptionRequest → RegisterPushSubscriptionCommand
+→ RegisterPushSubscriptionService.register
+→ PushSubscription.create(userId, endpoint, p256dh, auth, now)
+→ PushSubscriptionRepository.save
+   → PushSubscriptionJpaRepository.findByUserIdAndEndpoint 로 기존 구독 존재 여부 확인
+   → 있으면 p256dh/auth만 갱신, 없으면 새로 insert
+→ GlobalApiResponse<PushSubscriptionCreateResponse>
+```
+
+- 실제 푸시 발송은 이 API 범위에 없습니다. `ApprovalLineActivatedEvent` 리스너가 추가되면, 그 리스너가 이 구독 정보를 조회해 발송합니다.
+
+## 8. 첨부파일 AI 요약 생성 흐름
+
+```text
+AuthUser (신청자 본인 또는 결재선 포함자)
+→ ApprovalController.summarizeAttachment
+→ SummarizeApprovalAttachmentCommand(documentId, fileId, requesterId)
+→ SummarizeApprovalAttachmentService.summarize
+→ ApprovalDocumentRepository.findById(documentId)
+→ 신청자·결재자 아니면 ApprovalException(DOCUMENT_ACCESS_DENIED)
+→ ApprovalDocument.findAttachmentByFileId(fileId) → 없으면 ApprovalException(ATTACHMENT_NOT_FOUND)
+→ placeholder 텍스트 생성 ("첨부파일(fileId=...)의 내용을 요약해줘" — 실제 파일 내용 조회 방법이 없어서 임시)
+→ AttachmentSummarizerPort.summarize(placeholder)
+   → GeminiSummarizerAdapter → RestClient POST https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent
+   → 실패(RestClientException/빈 응답) 시 AttachmentSummarizationException
+→ 성공: ApprovalAttachment.applySummary(summary, now) → summaryStatus=COMPLETED
+→ 실패: ApprovalAttachment.markSummaryFailed(now) → summaryStatus=FAILED, ApprovalException(SUMMARY_GENERATION_FAILED) 던짐(502)
+→ ApprovalDocumentRepository.save
+→ GlobalApiResponse<ApprovalAttachmentSummaryResponse>
+```
+
+- 업로드 시 자동 트리거가 아니라 클라이언트가 명시적으로 호출하는 동기 API입니다.
+- 실제 첨부파일 내용이 아니라 placeholder 텍스트를 Gemini에 보냅니다 — `file` 모듈이 `fileId → 실제 파일 내용` 조회를 제공하면 교체해야 합니다.
+
 ---
 
 ## 📝 문서 정보
 
-- 업데이트일: `2026-08-03`
+- 업데이트일: `2026-08-04`
 - 변경 사항(요약):
   - 결재 템플릿/문서 도메인 분리 이후의 전체 흐름을 정리했습니다.
   - 학원(academy) 스코프 검증 지점(템플릿 목록 조회, 결재 신청)을 흐름에 표시했습니다.
   - 재상신 중복 방지 로직(`resubmittedAt`)을 반영했습니다.
+  - 페이지네이션, 전용 ErrorCode, Web Push 구독, AI 요약(Gemini) 흐름을 추가하고 흐름 번호를 정리했습니다.

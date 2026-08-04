@@ -1,5 +1,8 @@
 package com.academy.mudogroupware.notice.application.service;
 
+import java.time.Clock;
+import java.time.LocalDateTime;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +21,7 @@ import lombok.RequiredArgsConstructor;
 public class UpdateNoticeService implements UpdateNoticeUseCase {
 
     private final NoticeRepository noticeRepository;
+    private final Clock clock;
 
     @Override
     public void updateNotice(UpdateNoticeCommand command) {
@@ -28,7 +32,7 @@ public class UpdateNoticeService implements UpdateNoticeUseCase {
             throw new NoticeException(NoticeErrorCode.NOT_AUTHOR_UPDATE);
         }
 
-        notice.update(command.title(), command.content());
+        notice.update(command.title(), command.content(), LocalDateTime.now(clock));
         noticeRepository.save(notice);
     }
 }

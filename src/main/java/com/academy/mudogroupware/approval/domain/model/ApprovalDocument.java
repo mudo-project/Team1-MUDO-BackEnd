@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import com.academy.mudogroupware.approval.domain.exception.ApprovalErrorCode;
 import com.academy.mudogroupware.approval.domain.exception.ApprovalException;
@@ -130,6 +131,14 @@ public final class ApprovalDocument {
 
     public boolean isApprover(Long userId) {
         return lines.stream().anyMatch(line -> line.getApproverId().equals(userId));
+    }
+
+    public Optional<Long> currentPendingApproverId() {
+        return Optional.ofNullable(currentPendingLine()).map(ApprovalDocumentLine::getApproverId);
+    }
+
+    public Optional<ApprovalAttachment> findAttachmentByFileId(Long fileId) {
+        return attachments.stream().filter(attachment -> attachment.getFileId().equals(fileId)).findFirst();
     }
 
     private static List<ApprovalDocumentLine> buildLines(List<Long> approverIds) {

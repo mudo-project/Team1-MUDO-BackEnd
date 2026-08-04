@@ -7,6 +7,68 @@
 
 ---
 
+## ✅ 2026-08-04 · 첨부파일 AI 요약(Gemini) 실제 연동
+
+### 배경
+
+`approval_attachment.ai_summary`/`summary_status`/`summarized_at` 컬럼은 스키마 설계 때부터 있었지만 실제 요약 로직은 없었다. 이번에 Google Gemini API를 실제로 붙였다. 단, `file` 모듈이 아직 `fileId → 실제 파일 내용(objectKey 등)` 조회를 제공하지 않아(파일 메타데이터 테이블 자체가 없음), 실제 파일 내용을 읽어 요약하는 것은 불가능한 상태다.
+
+### 확정된 정책
+
+- 요약 트리거는 업로드 시 자동이 아니라, 클라이언트가 명시적으로 호출하는 동기 API(`POST .../attachments/{fileId}/summarize`)로 한다. 비동기 큐를 두지 않았다 (Gemini 호출이 수 초 내 끝나는 것을 전제로 한 단순화 — 트래픽이 커지면 재검토 필요).
+- **실제 파일 내용이 아니라 placeholder 텍스트를 Gemini에 보낸다.** `file` 모듈이 조회 기능을 제공하기 전까지 진짜 요약이 아니라는 점을 README/API.md에 경고 문구로 명시했다.
+- Gemini 연동은 `application.port.AttachmentSummarizerPort`(추상화) + `infrastructure/external/gemini`의 `GeminiSummarizerAdapter`(구현)로 분리했다. 나중에 다른 제공자(OpenAI 등)로 바꾸거나 file 모듈 연동이 준비되면, 인터페이스는 그대로 두고 어댑터/서비스 내부 프롬프트 생성부만 바꾸면 된다.
+- API 키는 `GEMINI_API_KEY` 환경변수로만 받는다(코드/설정 파일에 값이 들어가지 않도록). `GEMINI_MODEL`(기본값 `gemini-2.0-flash`)도 환경변수로 바꿀 수 있게 했다. `file` 모듈의 `S3Properties`와 동일한 `@Value` 기반 패턴을 따랐다.
+- 요약 실패 시 `summaryStatus`를 `FAILED`로 남기고 `502`(`APPROVAL_502_1`)를 반환한다.
+
+### 영향 범위
+
+| 계층 | 변경 내용 |
+| --- | --- |
+| Domain | `ApprovalAttachment.applySummary/markSummaryFailed`, `ApprovalDocument.findAttachmentByFileId` 추가, `ApprovalErrorCode`에 `ATTACHMENT_NOT_FOUND`/`SUMMARY_GENERATION_FAILED` 추가 |
+| Application | `AttachmentSummarizerPort`(+ `AttachmentSummarizationException`), `SummarizeApprovalAttachmentUseCase`/`Command`/`View`/`Service` 추가 |
+| Infrastructure | `infrastructure/external/gemini` 패키지 신설: `GeminiProperties`, `GeminiConfig`(RestClient 빈), `GeminiSummarizerAdapter`, Gemini 요청/응답 DTO |
+| Presentation | `ApprovalController`에 `POST /{documentId}/attachments/{fileId}/summarize` 추가 |
+
+### 완료 기준
+
+- [x] `GEMINI_API_KEY`가 설정되면 Gemini API를 호출해 요약을 받아 `aiSummary`/`summaryStatus`/`summarizedAt`에 반영한다.
+- [x] Gemini 호출 실패 시 `summaryStatus`가 `FAILED`로 저장되고 `502`를 반환한다.
+- [x] `./gradlew compileJava` / `./gradlew test`(전체 Spring 컨텍스트 로딩 포함) 통과 — Gemini 관련 빈 배선에 문제가 없음을 확인.
+
+---
+
+## ✅ 2026-08-04 · Web Push 백엔드 준비 (이벤트 발행 + 구독 저장)
+
+### 배경
+
+결재 차례가 돌아왔을 때 Web Push로 알려주는 기능은 초기 설계 때부터 필요성이 언급됐지만 계속 미착수 상태였다. 이번에 실제 푸시 발송(VAPID, 프론트 서비스워커)은 아직 준비되지 않았다는 전제 하에, 백엔드에서 먼저 만들 수 있는 두 조각만 구현했다.
+
+### 확정된 정책
+
+- `ApprovalDocument`에 `currentPendingApproverId()`를 공개 메서드로 추가했다.
+- `DecideApprovalLineService`가 승인 처리로 다음 결재자 라인이 활성화되면(문서가 여전히 `IN_PROGRESS`) `ApprovalLineActivatedEvent`(documentId, documentTitle, approverId, activatedAt)를 Spring `ApplicationEventPublisher`로 발행한다. 이 이벤트를 소비하는 리스너는 아직 만들지 않았다 — 만들면 안 되는 게 아니라, 실제로 보낼 방법(VAPID/web-push 라이브러리)이 없어서 만들 수 없었다.
+- 브라우저 푸시 구독 정보(`endpoint`/`p256dh`/`auth`)를 저장하는 `PushSubscription` 도메인과 `/api/approvals/push-subscriptions` 등록/해지 API를 추가했다. 같은 사용자·`endpoint`로 재등록하면 새 행을 만들지 않고 키만 갱신한다 (브라우저가 구독을 주기적으로 재발급하는 경우 대비).
+- **임시 배치 결정**: Web Push 구독은 approval 전용 개념이 아니라 여러 기능이 함께 쓸 수 있는 범용 기능이지만, 지금은 이 기능을 필요로 하는 곳이 approval뿐이라 별도 `notification` 모듈을 새로 만들지 않고 approval 패키지 안에 두었다. 다른 기능(예: 공지사항 알림)이 Web Push를 쓰게 되면, 그때 별도 모듈로 분리하는 걸 검토한다.
+
+### 영향 범위
+
+| 계층 | 변경 내용 |
+| --- | --- |
+| Domain | `PushSubscription`, `ApprovalLineActivatedEvent`, `ApprovalDocument.currentPendingApproverId()` 추가 |
+| Application | `RegisterPushSubscriptionUseCase`/`UnregisterPushSubscriptionUseCase` 및 서비스 추가, `DecideApprovalLineService`에 이벤트 발행 로직 추가 |
+| Infrastructure | `PushSubscriptionEntity`/`PushSubscriptionJpaRepository`/`PushSubscriptionRepositoryImpl` 추가 |
+| Presentation | `PushSubscriptionController`(`/api/approvals/push-subscriptions`) 추가 |
+| Migration | `V1.2.4__create_push_subscription_table.sql` 추가 |
+
+### 완료 기준
+
+- [x] 결재 승인 시 다음 결재자가 있으면 이벤트가 발행된다 (리스너는 없음, 발행만 확인).
+- [x] 같은 사용자·endpoint로 두 번 등록해도 행이 중복 생성되지 않는다.
+- [x] `./gradlew compileJava` / `./gradlew test` 통과.
+
+---
+
 ## ✅ 2026-08-04 · 전용 ErrorCode 도입 및 목록 API 페이지네이션
 
 ### 배경

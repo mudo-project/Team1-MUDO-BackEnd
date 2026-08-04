@@ -10,7 +10,7 @@ AuthUser (JWT)
 → CreateNoticeRequest → CreateNoticeCommand(attachments 포함)
 → CreateNoticeService.createNotice
 → NoticeAuthorDirectoryPort.getAuthor(authorUserId) → academyId 조회
-→ Notice.create(academyId, authorUserId, title, content, pinned, attachments)
+→ Notice.create(academyId, authorUserId, title, content, pinned, attachments, now)
 → NoticeRepository.save
 → NoticeRepositoryImpl → notice 테이블 + notice_attachment 다건 저장
 → GlobalApiResponse<NoticeCreateResponse>
