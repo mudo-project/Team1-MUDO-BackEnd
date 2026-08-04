@@ -19,10 +19,11 @@ import com.academy.mudogroupware.approval.domain.model.ApprovalDocument;
 import com.academy.mudogroupware.approval.domain.model.ApprovalDocumentLine;
 import com.academy.mudogroupware.approval.domain.model.ApprovalLineStatus;
 import com.academy.mudogroupware.approval.domain.model.ApprovalStatus;
+import com.academy.mudogroupware.approval.domain.exception.ApprovalErrorCode;
+import com.academy.mudogroupware.approval.domain.exception.ApprovalException;
 import com.academy.mudogroupware.approval.domain.repository.ApprovalDocumentRepository;
 import com.academy.mudogroupware.approval.domain.repository.ApprovalTemplateRepository;
-import com.academy.mudogroupware.global.domain.common.exception.ForbiddenException;
-import com.academy.mudogroupware.global.domain.common.exception.NotFoundException;
+import com.academy.mudogroupware.global.domain.common.page.PageResult;
 
 import lombok.RequiredArgsConstructor;
 
@@ -36,17 +37,15 @@ public class ApprovalQueryService implements ApprovalQueryUseCase {
     private final ApproverDirectoryPort approverDirectoryPort;
 
     @Override
-    public List<ApprovalSummaryView> getMyApprovals(Long userId) {
-        return approvalDocumentRepository.findAllByApproverId(userId).stream()
-                .map(document -> toSummaryView(document, userId))
-                .toList();
+    public PageResult<ApprovalSummaryView> getMyApprovals(Long userId, int page, int size) {
+        return approvalDocumentRepository.findAllByApproverId(userId, page, size)
+                .map(document -> toSummaryView(document, userId));
     }
 
     @Override
-    public List<ApprovalSubmittedSummaryView> getMySubmittedApprovals(Long userId) {
-        return approvalDocumentRepository.findAllByCreatorId(userId).stream()
-                .map(this::toSubmittedSummaryView)
-                .toList();
+    public PageResult<ApprovalSubmittedSummaryView> getMySubmittedApprovals(Long userId, int page, int size) {
+        return approvalDocumentRepository.findAllByCreatorId(userId, page, size)
+                .map(this::toSubmittedSummaryView);
     }
 
     @Override
@@ -62,10 +61,10 @@ public class ApprovalQueryService implements ApprovalQueryUseCase {
     @Override
     public ApprovalDetailView getApprovalDetail(Long documentId, Long requesterId) {
         ApprovalDocument approvalDocument = approvalDocumentRepository.findById(documentId)
-                .orElseThrow(() -> new NotFoundException("결재 문서를 찾을 수 없습니다."));
+                .orElseThrow(() -> new ApprovalException(ApprovalErrorCode.DOCUMENT_NOT_FOUND));
 
         if (!approvalDocument.isApprover(requesterId) && !approvalDocument.getCreatorId().equals(requesterId)) {
-            throw new ForbiddenException("해당 결재를 조회할 권한이 없습니다.");
+            throw new ApprovalException(ApprovalErrorCode.DOCUMENT_ACCESS_DENIED);
         }
 
         List<Long> approverIds = approvalDocument.getLines().stream()
@@ -100,7 +99,7 @@ public class ApprovalQueryService implements ApprovalQueryUseCase {
         ApprovalDocumentLine myLine = approvalDocument.getLines().stream()
                 .filter(line -> line.getApproverId().equals(userId))
                 .findFirst()
-                .orElseThrow(() -> new ForbiddenException("해당 결재를 조회할 권한이 없습니다."));
+                .orElseThrow(() -> new ApprovalException(ApprovalErrorCode.DOCUMENT_ACCESS_DENIED));
 
         ApprovalDocumentLine currentLine = findCurrentPendingLine(approvalDocument);
 

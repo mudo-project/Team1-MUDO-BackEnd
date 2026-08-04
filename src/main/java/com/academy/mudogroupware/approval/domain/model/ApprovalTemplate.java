@@ -5,7 +5,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import com.academy.mudogroupware.global.domain.common.exception.BadRequestException;
+import com.academy.mudogroupware.approval.domain.exception.ApprovalErrorCode;
+import com.academy.mudogroupware.approval.domain.exception.ApprovalException;
 
 public final class ApprovalTemplate {
 
@@ -23,13 +24,13 @@ public final class ApprovalTemplate {
             throw new IllegalArgumentException("academyId must not be null");
         }
         if (name == null || name.isBlank()) {
-            throw new BadRequestException("템플릿 이름은 비어 있을 수 없습니다.");
+            throw new ApprovalException(ApprovalErrorCode.TEMPLATE_NAME_REQUIRED);
         }
         if (creatorId == null) {
             throw new IllegalArgumentException("creatorId must not be null");
         }
         if (lines == null || lines.isEmpty()) {
-            throw new BadRequestException("결재선은 최소 1명 이상 지정해야 합니다.");
+            throw new ApprovalException(ApprovalErrorCode.LINES_REQUIRED);
         }
         if (createdAt == null) {
             throw new IllegalArgumentException("createdAt must not be null");
@@ -62,11 +63,11 @@ public final class ApprovalTemplate {
             throw new IllegalArgumentException("now must not be null");
         }
         if (name == null || name.isBlank()) {
-            throw new BadRequestException("템플릿 이름은 비어 있을 수 없습니다.");
+            throw new ApprovalException(ApprovalErrorCode.TEMPLATE_NAME_REQUIRED);
         }
         List<ApprovalTemplateLine> newLines = buildLines(approverIds);
         if (newLines.isEmpty()) {
-            throw new BadRequestException("결재선은 최소 1명 이상 지정해야 합니다.");
+            throw new ApprovalException(ApprovalErrorCode.LINES_REQUIRED);
         }
         this.name = name;
         this.lines.clear();

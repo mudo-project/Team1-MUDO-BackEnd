@@ -7,6 +7,34 @@
 
 ---
 
+## ✅ 2026-08-04 · 전용 ErrorCode 도입 및 목록 API 페이지네이션
+
+### 배경
+
+`users`/`auth` 모듈이 머지되며 `UserErrorCode`/`UserException` 형태의 도메인 전용 에러코드 선례가 생겼다. approval도 그동안 미룬 전용 `ErrorCode`를 이 선례에 맞춰 도입했다. 동시에, `docs/API_CONTRACT.md`에 정의돼 있었지만 미반영 상태였던 페이지네이션 규칙을 목록 API 3개에 적용했다.
+
+### 확정된 정책
+
+- `ApprovalErrorCode`(enum, `ErrorCode` 구현) + `ApprovalException`(`BusinessException` 상속)을 추가하고, 기존 `BadRequestException`/`NotFoundException`/`ForbiddenException`/`ConflictException` 직접 사용을 전부 교체했다. 코드 체계는 `APPROVAL_{HTTP상태}_{순번}` (예: `APPROVAL_404_1`).
+- `page`(0부터)/`size` 쿼리 파라미터와 Spring Data `Slice`(전체 개수 미계산)를 사용해, `내 결재함`/`내가 신청한 결재`/`템플릿 목록` 3개 API에 페이지네이션을 적용했다. 응답은 `global`의 공용 `SliceResponse<T>`(`content`/`page`/`size`/`hasNext`)로 감싼다.
+- `ApprovalQueryService.getMyPendingCount`가 쓰는 `findAllByApproverId(Long)`(전체 스캔, 카운트용)는 그대로 두고, 목록 조회용 페이지네이션 오버로드를 별도로 추가했다 — 두 용도가 다르기 때문이다.
+
+### 영향 범위
+
+| 계층 | 변경 내용 |
+| --- | --- |
+| Domain | `ApprovalErrorCode`, `ApprovalException` 추가; 리포지토리 인터페이스에 페이지네이션 오버로드 추가 |
+| Application | `ApprovalQueryUseCase`/`ApprovalTemplateQueryUseCase`가 `PageResult<T>`(`global.domain.common.page`) 반환하도록 변경 |
+| Infrastructure | JPA 리포지토리가 `Slice<Entity>` + `Pageable` 기반으로 변경 |
+| Presentation | 컨트롤러가 `page`/`size` 쿼리 파라미터를 받고 `SliceResponse<T>`로 응답 |
+
+### 완료 기준
+
+- [x] approval 코드에 `global.domain.common.exception`의 범용 예외 직접 사용이 남아있지 않다.
+- [x] `./gradlew compileJava` / `./gradlew test` 통과.
+
+---
+
 ## ✅ 2026-08-04 · 시각 생성 책임을 호출부로 이전 (KST 고정)
 
 ### 배경

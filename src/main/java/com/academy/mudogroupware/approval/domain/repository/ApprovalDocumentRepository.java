@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 
 import com.academy.mudogroupware.approval.domain.model.ApprovalDocument;
+import com.academy.mudogroupware.global.domain.common.page.PageResult;
 
 public interface ApprovalDocumentRepository {
 
@@ -13,5 +14,7 @@ public interface ApprovalDocumentRepository {
 
     List<ApprovalDocument> findAllByApproverId(Long approverId);
 
-    List<ApprovalDocument> findAllByCreatorId(Long creatorId);
+    PageResult<ApprovalDocument> findAllByApproverId(Long approverId, int page, int size);
+
+    PageResult<ApprovalDocument> findAllByCreatorId(Long creatorId, int page, int size);
 }

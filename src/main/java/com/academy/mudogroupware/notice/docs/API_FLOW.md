@@ -22,15 +22,15 @@ AuthUser (JWT)
 
 ```text
 AuthUser
-→ NoticeController.getNotices(keyword)
-→ NoticeQueryService.getNotices(requesterId, keyword)
+→ NoticeController.getNotices(keyword, page, size)
+→ NoticeQueryService.getNotices(requesterId, keyword, page, size)
 → NoticeAuthorDirectoryPort.getAuthor(requesterId) → academyId 조회
-→ NoticeRepository.findAll(academyId, keyword)
-→ NoticeJpaRepository.findAllByAcademyIdAndTitleKeyword
+→ NoticeRepository.findAll(academyId, keyword, page, size)
+→ NoticeJpaRepository.findAllByAcademyIdAndTitleKeyword(..., Pageable) → Slice<Entity>
    → JPQL: academy_id 일치 + (keyword null 이거나 title LIKE %keyword%)
    → ORDER BY is_pinned DESC, created_at DESC
 → 공지별로 작성자 정보 조회 + 읽음 여부(NoticeReadRepository.hasRead) 조회
-→ GlobalApiResponse<List<NoticeSummaryResponse>>
+→ GlobalApiResponse<SliceResponse<NoticeSummaryResponse>>
 ```
 
 - 고정(pinned) 공지가 항상 최상단에 오도록 DB 정렬 단계에서부터 처리합니다 (애플리케이션 레벨 재정렬 없음).

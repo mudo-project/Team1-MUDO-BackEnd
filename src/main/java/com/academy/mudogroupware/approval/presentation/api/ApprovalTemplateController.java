@@ -1,7 +1,5 @@
 package com.academy.mudogroupware.approval.presentation.api;
 
-import java.util.List;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -12,6 +10,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.academy.mudogroupware.approval.application.query.ApprovalTemplateDetailView;
@@ -26,6 +25,7 @@ import com.academy.mudogroupware.approval.presentation.api.response.ApprovalTemp
 import com.academy.mudogroupware.approval.presentation.api.response.ApprovalTemplateDetailResponse;
 import com.academy.mudogroupware.approval.presentation.api.response.ApprovalTemplateSummaryResponse;
 import com.academy.mudogroupware.global.presentation.api.common.GlobalApiResponse;
+import com.academy.mudogroupware.global.presentation.api.common.SliceResponse;
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
 
 import jakarta.validation.Valid;
@@ -53,12 +53,14 @@ public class ApprovalTemplateController {
     }
 
     @GetMapping
-    public ResponseEntity<GlobalApiResponse<List<ApprovalTemplateSummaryResponse>>> getTemplates(
-            @AuthenticationPrincipal AuthUser authUser) {
-        List<ApprovalTemplateSummaryResponse> responses = approvalTemplateQueryUseCase.getTemplates(authUser.userId()).stream()
-                .map(ApprovalTemplateSummaryResponse::from)
-                .toList();
-        return ResponseEntity.ok(GlobalApiResponse.ok(ApprovalResponseCode.TEMPLATE_LIST_RETRIEVED, responses));
+    public ResponseEntity<GlobalApiResponse<SliceResponse<ApprovalTemplateSummaryResponse>>> getTemplates(
+            @AuthenticationPrincipal AuthUser authUser,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        SliceResponse<ApprovalTemplateSummaryResponse> data = SliceResponse.from(
+                approvalTemplateQueryUseCase.getTemplates(authUser.userId(), page, size),
+                ApprovalTemplateSummaryResponse::from);
+        return ResponseEntity.ok(GlobalApiResponse.ok(ApprovalResponseCode.TEMPLATE_LIST_RETRIEVED, data));
     }
 
     @GetMapping("/{templateId}")

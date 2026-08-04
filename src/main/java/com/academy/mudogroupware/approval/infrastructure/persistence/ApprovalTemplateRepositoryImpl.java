@@ -3,11 +3,14 @@ package com.academy.mudogroupware.approval.infrastructure.persistence;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Repository;
 
 import com.academy.mudogroupware.approval.domain.model.ApprovalTemplate;
 import com.academy.mudogroupware.approval.domain.model.ApprovalTemplateLine;
 import com.academy.mudogroupware.approval.domain.repository.ApprovalTemplateRepository;
+import com.academy.mudogroupware.global.domain.common.page.PageResult;
 
 import lombok.RequiredArgsConstructor;
 
@@ -32,10 +35,11 @@ public class ApprovalTemplateRepositoryImpl implements ApprovalTemplateRepositor
     }
 
     @Override
-    public List<ApprovalTemplate> findAll(Long academyId) {
-        return approvalTemplateJpaRepository.findAllByTypeAndAcademyId(ApprovalTemplateEntity.TYPE, academyId).stream()
-                .map(this::toDomain)
-                .toList();
+    public PageResult<ApprovalTemplate> findAll(Long academyId, int page, int size) {
+        Slice<ApprovalTemplateEntity> slice = approvalTemplateJpaRepository.findAllByTypeAndAcademyId(
+                ApprovalTemplateEntity.TYPE, academyId, PageRequest.of(page, size));
+        List<ApprovalTemplate> content = slice.getContent().stream().map(this::toDomain).toList();
+        return PageResult.of(content, slice.getNumber(), slice.getSize(), slice.hasNext());
     }
 
     @Override

@@ -1,16 +1,15 @@
 package com.academy.mudogroupware.approval.application.usecase;
 
-import java.util.List;
-
 import com.academy.mudogroupware.approval.application.query.ApprovalDetailView;
 import com.academy.mudogroupware.approval.application.query.ApprovalSubmittedSummaryView;
 import com.academy.mudogroupware.approval.application.query.ApprovalSummaryView;
+import com.academy.mudogroupware.global.domain.common.page.PageResult;
 
 public interface ApprovalQueryUseCase {
 
-    List<ApprovalSummaryView> getMyApprovals(Long userId);
+    PageResult<ApprovalSummaryView> getMyApprovals(Long userId, int page, int size);
 
-    List<ApprovalSubmittedSummaryView> getMySubmittedApprovals(Long userId);
+    PageResult<ApprovalSubmittedSummaryView> getMySubmittedApprovals(Long userId, int page, int size);
 
     long getMyPendingCount(Long userId);
 

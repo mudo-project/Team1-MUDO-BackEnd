@@ -5,8 +5,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import com.academy.mudogroupware.global.domain.common.exception.BadRequestException;
-import com.academy.mudogroupware.global.domain.common.exception.ConflictException;
+import com.academy.mudogroupware.approval.domain.exception.ApprovalErrorCode;
+import com.academy.mudogroupware.approval.domain.exception.ApprovalException;
 
 public final class ApprovalDocument {
 
@@ -29,7 +29,7 @@ public final class ApprovalDocument {
             throw new IllegalArgumentException("academyId must not be null");
         }
         if (title == null || title.isBlank()) {
-            throw new BadRequestException("결재 제목은 비어 있을 수 없습니다.");
+            throw new ApprovalException(ApprovalErrorCode.TITLE_REQUIRED);
         }
         if (content == null) {
             throw new IllegalArgumentException("content must not be null");
@@ -38,7 +38,7 @@ public final class ApprovalDocument {
             throw new IllegalArgumentException("creatorId must not be null");
         }
         if (lines == null || lines.isEmpty()) {
-            throw new BadRequestException("결재선은 최소 1명 이상 지정해야 합니다.");
+            throw new ApprovalException(ApprovalErrorCode.LINES_REQUIRED);
         }
         if (createdAt == null) {
             throw new IllegalArgumentException("createdAt must not be null");
@@ -79,24 +79,24 @@ public final class ApprovalDocument {
             throw new IllegalArgumentException("now must not be null");
         }
         if (this.status != ApprovalStatus.REJECTED) {
-            throw new ConflictException("반려된 결재만 재상신할 수 있습니다.");
+            throw new ApprovalException(ApprovalErrorCode.RESUBMIT_NOT_REJECTED);
         }
         if (this.resubmittedAt != null) {
-            throw new ConflictException("이미 재상신된 결재입니다.");
+            throw new ApprovalException(ApprovalErrorCode.ALREADY_RESUBMITTED);
         }
         this.resubmittedAt = now;
     }
 
     public void decide(Long approverId, ApprovalDecision decision, String comment, LocalDateTime now) {
         if (this.status != ApprovalStatus.IN_PROGRESS) {
-            throw new ConflictException("이미 처리가 완료된 결재입니다.");
+            throw new ApprovalException(ApprovalErrorCode.DOCUMENT_ALREADY_DECIDED);
         }
         ApprovalDocumentLine currentLine = currentPendingLine();
         if (currentLine == null) {
-            throw new ConflictException("이미 처리가 완료된 결재입니다.");
+            throw new ApprovalException(ApprovalErrorCode.DOCUMENT_ALREADY_DECIDED);
         }
         if (!currentLine.getApproverId().equals(approverId)) {
-            throw new ConflictException("본인 차례의 결재가 아닙니다.");
+            throw new ApprovalException(ApprovalErrorCode.NOT_YOUR_TURN);
         }
 
         if (decision == ApprovalDecision.APPROVE) {
@@ -113,16 +113,16 @@ public final class ApprovalDocument {
 
     public void updateLines(List<Long> approverIds) {
         if (this.status != ApprovalStatus.IN_PROGRESS) {
-            throw new ConflictException("이미 결재가 진행된 건은 결재선을 수정할 수 없습니다.");
+            throw new ApprovalException(ApprovalErrorCode.LINES_ALREADY_IN_PROGRESS);
         }
         boolean anyDecided = lines.stream().anyMatch(line -> line.getStatus() == ApprovalLineStatus.APPROVED
                 || line.getStatus() == ApprovalLineStatus.REJECTED);
         if (anyDecided) {
-            throw new ConflictException("이미 결재가 진행된 건은 결재선을 수정할 수 없습니다.");
+            throw new ApprovalException(ApprovalErrorCode.LINES_ALREADY_IN_PROGRESS);
         }
         List<ApprovalDocumentLine> newLines = buildLines(approverIds);
         if (newLines.isEmpty()) {
-            throw new BadRequestException("결재선은 최소 1명 이상 지정해야 합니다.");
+            throw new ApprovalException(ApprovalErrorCode.LINES_REQUIRED);
         }
         this.lines.clear();
         this.lines.addAll(newLines);

@@ -23,15 +23,15 @@ AuthUser (JWT)
 
 ```text
 AuthUser
-→ ApprovalTemplateController.getTemplates
-→ ApprovalTemplateQueryService.getTemplates(requesterId)
+→ ApprovalTemplateController.getTemplates(page, size)
+→ ApprovalTemplateQueryService.getTemplates(requesterId, page, size)
 → ApproverDirectoryPort.getApprover(requesterId) → academyId 조회
-→ ApprovalTemplateRepository.findAll(academyId)
-→ ApprovalTemplateJpaRepository.findAllByTypeAndAcademyId(TYPE, academyId)
+→ ApprovalTemplateRepository.findAll(academyId, page, size)
+→ ApprovalTemplateJpaRepository.findAllByTypeAndAcademyId(TYPE, academyId, Pageable) → Slice<Entity>
 → 템플릿별 결재선 approverId 목록 수집
 → ApproverDirectoryPort.getApprovers(approverIds) 배치 조회
-→ ApprovalTemplateSummaryView(+ lines) 리스트
-→ GlobalApiResponse<List<ApprovalTemplateSummaryResponse>>
+→ PageResult<ApprovalTemplateSummaryView>(+ lines)
+→ GlobalApiResponse<SliceResponse<ApprovalTemplateSummaryResponse>>
 ```
 
 - 학원 스코프 필터링이 없으면 다른 학원 템플릿이 섞여 보이는 버그였습니다 (CodeRabbit 리뷰로 발견, 2026-08-03 수정).
