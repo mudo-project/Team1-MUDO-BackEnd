@@ -19,6 +19,10 @@ public enum AttendanceErrorCode implements ErrorCode {
             HttpStatus.CONFLICT,
             "ACADEMY_409_1",
             "이미 등록된 IP입니다."),
+    WIFI_IP_CHANGED(
+            HttpStatus.CONFLICT,
+            "ACADEMY_409_2",
+            "접속 IP가 변경되었습니다. 다시 확인해주세요."),
     INVALID_WIFI_IP(
             HttpStatus.BAD_REQUEST,
             "ACADEMY_400_1",
