@@ -1,0 +1,13 @@
+CREATE TABLE academy (
+    academy_id BIGINT NOT NULL AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL,
+    business_no VARCHAR(20) NOT NULL,
+    user_id BIGINT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT pk_academy PRIMARY KEY (academy_id),
+    CONSTRAINT uk_academy_business_no UNIQUE (business_no),
+    CONSTRAINT fk_academy_user
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
