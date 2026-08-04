@@ -55,8 +55,6 @@ dependencies {
     testAnnotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0'
     // HATEOAS 응답 링크가 필요할 때
     implementation 'org.springframework.boot:spring-boot-starter-hateoas'
-    // Swagger / OpenAPI 문서가 필요할 때
-    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3'
     // S3 대용량·병렬 전송이 필요할 때
     implementation 'software.amazon.awssdk:s3-transfer-manager'
     // .env 파일 직접 로딩이 필요할 때
