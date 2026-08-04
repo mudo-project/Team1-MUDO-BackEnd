@@ -81,10 +81,10 @@ class WorkspaceListQueryAdapterDataJpaTest {
 
   @Test
   void findAllOrdersOnlyRequestersRecentAccessAndIgnoresAnotherUsersAccess() {
-    insertWorkspace(1L, ACADEMY_ID, "requester-older-access", at(1));
-    insertWorkspace(2L, ACADEMY_ID, "requester-newer-access", at(2));
-    insertWorkspace(3L, ACADEMY_ID, "another-user-access", at(4));
-    insertWorkspace(4L, ACADEMY_ID, "unvisited", at(3));
+    insertWorkspace(1L, ACADEMY_ID, "requester-older-access", at(4));
+    insertWorkspace(2L, ACADEMY_ID, "requester-newer-access", at(3));
+    insertWorkspace(3L, ACADEMY_ID, "another-user-access", at(2));
+    insertWorkspace(4L, ACADEMY_ID, "unvisited", at(1));
     insertRecentAccess(REQUESTER_ID, 1L, at(5));
     insertRecentAccess(REQUESTER_ID, 2L, at(6));
     insertRecentAccess(99L, 3L, at(7));
