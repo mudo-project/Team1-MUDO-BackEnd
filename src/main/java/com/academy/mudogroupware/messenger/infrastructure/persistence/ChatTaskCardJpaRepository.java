@@ -10,7 +10,7 @@ import org.springframework.data.repository.query.Param;
 
 public interface ChatTaskCardJpaRepository extends JpaRepository<ChatTaskCardEntity, Long> {
 
-    List<ChatTaskCardEntity> findAllByChatRoomId(Long chatRoomId);
+    List<ChatTaskCardEntity> findAllByChatRoomIdOrderByCreatedAtDescIdDesc(Long chatRoomId);
 
     @Modifying
     @Query(value = "update chat_task_assignee set completed_at = :completedAt "

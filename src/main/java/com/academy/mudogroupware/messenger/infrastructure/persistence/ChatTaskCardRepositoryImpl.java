@@ -31,7 +31,7 @@ public class ChatTaskCardRepositoryImpl implements ChatTaskCardRepository {
 
     @Override
     public List<ChatTaskCard> findAllByChatRoomId(Long chatRoomId) {
-        return chatTaskCardJpaRepository.findAllByChatRoomId(chatRoomId).stream()
+        return chatTaskCardJpaRepository.findAllByChatRoomIdOrderByCreatedAtDescIdDesc(chatRoomId).stream()
                 .map(this::toDomain)
                 .toList();
     }

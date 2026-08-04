@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.messenger.infrastructure.persistence;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -33,6 +34,11 @@ public class ChatRoomRepositoryImpl implements ChatRoomRepository {
         return chatRoomJpaRepository.findAllByMember(academyId, userId).stream()
                 .map(this::toDomain)
                 .toList();
+    }
+
+    @Override
+    public void markRead(Long chatRoomId, Long userId, LocalDateTime readAt) {
+        chatRoomJpaRepository.markRead(chatRoomId, userId, readAt);
     }
 
     private ChatRoomEntity toEntity(ChatRoom chatRoom) {

@@ -60,10 +60,14 @@ public class ChatMessageQueryService implements ChatMessageQueryUseCase {
         if (isFirstPage && !pageMessages.isEmpty()) {
             LocalDateTime readAt = pageMessages.get(0).getCreatedAt();
             chatRoom.markRead(requesterId, readAt);
-            chatRoomRepository.save(chatRoom);
+            chatRoomRepository.markRead(chatRoomId, requesterId, readAt);
         }
 
-        return new ChatMessagePageView(messageViews, hasNext);
+        ChatMessage lastInPage = pageMessages.isEmpty() ? null : pageMessages.get(pageMessages.size() - 1);
+        LocalDateTime nextCursorCreatedAt = hasNext ? lastInPage.getCreatedAt() : null;
+        Long nextCursorMessageId = hasNext ? lastInPage.getId() : null;
+
+        return new ChatMessagePageView(messageViews, hasNext, nextCursorCreatedAt, nextCursorMessageId);
     }
 
     private ChatMessageView toMessageView(ChatMessage message, Map<Long, ChatMemberInfo> senders) {
