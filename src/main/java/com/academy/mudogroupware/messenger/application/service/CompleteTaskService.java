@@ -31,7 +31,8 @@ public class CompleteTaskService implements CompleteTaskUseCase {
             throw new MessengerException(MessengerErrorCode.TASK_CARD_NOT_FOUND);
         }
 
-        chatTaskCard.complete(command.userId(), LocalDateTime.now(clock));
-        chatTaskCardRepository.save(chatTaskCard);
+        LocalDateTime completedAt = LocalDateTime.now(clock);
+        chatTaskCard.complete(command.userId(), completedAt);
+        chatTaskCardRepository.markAssigneeCompleted(command.cardId(), command.userId(), completedAt);
     }
 }

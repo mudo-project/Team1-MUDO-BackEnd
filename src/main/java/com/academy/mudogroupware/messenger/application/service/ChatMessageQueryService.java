@@ -1,6 +1,5 @@
 package com.academy.mudogroupware.messenger.application.service;
 
-import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -30,11 +29,16 @@ public class ChatMessageQueryService implements ChatMessageQueryUseCase {
     private final ChatRoomRepository chatRoomRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final ChatMemberDirectoryPort chatMemberDirectoryPort;
-    private final Clock clock;
 
     @Override
     public ChatMessagePageView getMessages(Long chatRoomId, Long requesterId, LocalDateTime cursorCreatedAt,
                                             Long cursorMessageId, int size) {
+        boolean cursorProvided = cursorCreatedAt != null || cursorMessageId != null;
+        boolean cursorComplete = cursorCreatedAt != null && cursorMessageId != null;
+        if (cursorProvided && !cursorComplete) {
+            throw new MessengerException(MessengerErrorCode.INVALID_CURSOR);
+        }
+
         ChatRoom chatRoom = chatRoomRepository.findById(chatRoomId)
                 .orElseThrow(() -> new MessengerException(MessengerErrorCode.CHAT_ROOM_NOT_FOUND));
         if (!chatRoom.isMember(requesterId)) {
@@ -52,9 +56,10 @@ public class ChatMessageQueryService implements ChatMessageQueryUseCase {
                 .map(message -> toMessageView(message, senders))
                 .toList();
 
-        boolean isFirstPage = cursorCreatedAt == null && cursorMessageId == null;
-        if (isFirstPage) {
-            chatRoom.markRead(requesterId, LocalDateTime.now(clock));
+        boolean isFirstPage = !cursorProvided;
+        if (isFirstPage && !pageMessages.isEmpty()) {
+            LocalDateTime readAt = pageMessages.get(0).getCreatedAt();
+            chatRoom.markRead(requesterId, readAt);
             chatRoomRepository.save(chatRoom);
         }
 

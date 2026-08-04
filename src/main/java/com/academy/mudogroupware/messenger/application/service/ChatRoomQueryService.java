@@ -41,24 +41,27 @@ public class ChatRoomQueryService implements ChatRoomQueryUseCase {
                 .toList();
         Map<Long, ChatMemberInfo> otherMembers = chatMemberDirectoryPort.getMembers(otherMemberIds);
 
-        Map<Long, ChatMessage> latestMessages = chatMessageRepository.findLatestByChatRoomIds(
-                chatRooms.stream().map(ChatRoom::getId).toList());
+        List<Long> chatRoomIds = chatRooms.stream().map(ChatRoom::getId).toList();
+        Map<Long, ChatMessage> latestMessages = chatMessageRepository.findLatestByChatRoomIds(chatRoomIds);
+        Map<Long, Long> unreadCounts = chatMessageRepository.countUnreadByRequester(requesterId, chatRoomIds);
 
         return chatRooms.stream()
-                .map(chatRoom -> toSummaryView(chatRoom, requesterId, otherMembers, latestMessages))
-                .sorted(Comparator.comparing(ChatRoomQueryService::sortKey).reversed())
+                .map(chatRoom -> toSummaryView(chatRoom, requesterId, otherMembers, latestMessages, unreadCounts))
+                .sorted(Comparator.comparing(ChatRoomQueryService::sortKey)
+                        .thenComparing(ChatRoomSummaryView::id)
+                        .reversed())
                 .toList();
     }
 
     private ChatRoomSummaryView toSummaryView(ChatRoom chatRoom, Long requesterId,
                                                Map<Long, ChatMemberInfo> otherMembers,
-                                               Map<Long, ChatMessage> latestMessages) {
+                                               Map<Long, ChatMessage> latestMessages,
+                                               Map<Long, Long> unreadCounts) {
         String name = chatRoom.getType() == ChatRoomType.DM
                 ? findMemberName(otherMembers, findOtherMemberId(chatRoom, requesterId))
                 : chatRoom.getName();
 
-        ChatRoomMember member = chatRoom.findMember(requesterId).orElseThrow();
-        long unreadCount = chatMessageRepository.countUnread(chatRoom.getId(), member.getLastReadAt());
+        long unreadCount = unreadCounts.getOrDefault(chatRoom.getId(), 0L);
 
         ChatMessage latestMessage = latestMessages.get(chatRoom.getId());
         String preview = latestMessage != null ? toPreviewText(latestMessage) : null;

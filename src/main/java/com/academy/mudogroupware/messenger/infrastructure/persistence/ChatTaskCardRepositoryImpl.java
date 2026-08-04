@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.messenger.infrastructure.persistence;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -33,6 +34,11 @@ public class ChatTaskCardRepositoryImpl implements ChatTaskCardRepository {
         return chatTaskCardJpaRepository.findAllByChatRoomId(chatRoomId).stream()
                 .map(this::toDomain)
                 .toList();
+    }
+
+    @Override
+    public void markAssigneeCompleted(Long cardId, Long userId, LocalDateTime completedAt) {
+        chatTaskCardJpaRepository.markCompleted(cardId, userId, completedAt);
     }
 
     private ChatTaskCardEntity toEntity(ChatTaskCard chatTaskCard) {

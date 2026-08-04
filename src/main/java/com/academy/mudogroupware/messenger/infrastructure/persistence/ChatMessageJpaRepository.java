@@ -20,9 +20,14 @@ public interface ChatMessageJpaRepository extends JpaRepository<ChatMessageEntit
                                       @Param("cursorMessageId") Long cursorMessageId,
                                       Pageable pageable);
 
-    @Query("select count(m) from ChatMessageEntity m where m.chatRoomId = :chatRoomId "
-            + "and (:after is null or m.createdAt > :after)")
-    long countUnread(@Param("chatRoomId") Long chatRoomId, @Param("after") LocalDateTime after);
+    @Query(value = "select crm.chat_room_id as chatRoomId, count(cm.message_id) as unreadCount "
+            + "from chat_room_member crm "
+            + "left join chat_message cm on cm.chat_room_id = crm.chat_room_id "
+            + "and (crm.last_read_at is null or cm.created_at > crm.last_read_at) "
+            + "where crm.user_id = :userId and crm.chat_room_id in :chatRoomIds "
+            + "group by crm.chat_room_id", nativeQuery = true)
+    List<ChatRoomUnreadCountProjection> countUnreadByRequester(@Param("userId") Long userId,
+                                                                @Param("chatRoomIds") List<Long> chatRoomIds);
 
     @Query("select m from ChatMessageEntity m where m.chatRoomId in :chatRoomIds "
             + "and m.createdAt = (select max(m2.createdAt) from ChatMessageEntity m2 "

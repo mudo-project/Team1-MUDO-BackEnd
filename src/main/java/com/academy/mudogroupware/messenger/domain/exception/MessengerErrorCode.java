@@ -18,6 +18,8 @@ public enum MessengerErrorCode implements ErrorCode {
     FILE_URL_REQUIRED(HttpStatus.BAD_REQUEST, "MESSENGER_400_6", "파일 URL은 비어 있을 수 없습니다."),
     INVALID_PARTICIPANT(HttpStatus.BAD_REQUEST, "MESSENGER_400_7", "존재하지 않는 참여자가 포함되어 있습니다."),
     CROSS_ACADEMY_INVITE(HttpStatus.BAD_REQUEST, "MESSENGER_400_8", "다른 학원 소속 사용자는 초대할 수 없습니다."),
+    INVALID_CURSOR(HttpStatus.BAD_REQUEST, "MESSENGER_400_11",
+            "cursorCreatedAt과 cursorMessageId는 함께 전달하거나 함께 생략해야 합니다."),
 
     TASK_CONTENT_REQUIRED(HttpStatus.BAD_REQUEST, "MESSENGER_400_9", "업무지시 내용은 비어 있을 수 없습니다."),
     ASSIGNEE_REQUIRED(HttpStatus.BAD_REQUEST, "MESSENGER_400_10", "담당자를 최소 1명 이상 지정해야 합니다."),

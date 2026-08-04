@@ -6,6 +6,7 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -41,12 +42,14 @@ import com.academy.mudogroupware.messenger.presentation.api.response.TaskCardRes
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 
 @Tag(name = "메신저", description = "채팅방 생성/목록조회/참여자조회, 메시지 전송/목록조회, 업무지시 카드 API")
 @RestController
 @RequestMapping("/api/messenger/rooms")
 @RequiredArgsConstructor
+@Validated
 public class MessengerController {
 
     private final CreateChatRoomUseCase createChatRoomUseCase;
@@ -110,7 +113,7 @@ public class MessengerController {
             @PathVariable Long roomId,
             @RequestParam(required = false) LocalDateTime cursorCreatedAt,
             @RequestParam(required = false) Long cursorMessageId,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") @Min(1) int size) {
         ChatMessagePageResponse response = ChatMessagePageResponse.from(chatMessageQueryUseCase.getMessages(
                 roomId, authUser.userId(), cursorCreatedAt, cursorMessageId, size));
         return ResponseEntity.ok(GlobalApiResponse.ok(MessengerResponseCode.MESSAGE_LIST_RETRIEVED, response));

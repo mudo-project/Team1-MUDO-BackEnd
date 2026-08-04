@@ -1,6 +1,13 @@
 package com.academy.mudogroupware.messenger.infrastructure.persistence;
 
-import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.List;
+import java.util.Optional;
 
-public interface ChatMemberInfoJpaRepository extends JpaRepository<ChatMemberInfoEntity, Long> {
+import org.springframework.data.repository.Repository;
+
+public interface ChatMemberInfoJpaRepository extends Repository<ChatMemberInfoEntity, Long> {
+
+    Optional<ChatMemberInfoEntity> findById(Long id);
+
+    List<ChatMemberInfoEntity> findAllById(Iterable<Long> ids);
 }

@@ -37,8 +37,13 @@ public class ChatMessageRepositoryImpl implements ChatMessageRepository {
     }
 
     @Override
-    public long countUnread(Long chatRoomId, LocalDateTime after) {
-        return chatMessageJpaRepository.countUnread(chatRoomId, after);
+    public Map<Long, Long> countUnreadByRequester(Long userId, List<Long> chatRoomIds) {
+        if (chatRoomIds.isEmpty()) {
+            return Map.of();
+        }
+        return chatMessageJpaRepository.countUnreadByRequester(userId, chatRoomIds).stream()
+                .collect(Collectors.toMap(ChatRoomUnreadCountProjection::getChatRoomId,
+                        ChatRoomUnreadCountProjection::getUnreadCount));
     }
 
     @Override

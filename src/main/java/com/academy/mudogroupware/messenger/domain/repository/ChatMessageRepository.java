@@ -21,6 +21,6 @@ public interface ChatMessageRepository {
     List<ChatMessage> findByChatRoomId(Long chatRoomId, LocalDateTime cursorCreatedAt, Long cursorMessageId,
                                         int size);
 
-    // after가 null이면 한 번도 읽지 않은 상태이므로 전체 메시지 수를 반환한다.
-    long countUnread(Long chatRoomId, LocalDateTime after);
+    // 요청자가 참여 중인 채팅방들의 안읽은 메시지 수를 한 번에 집계한다(방 개수만큼 쿼리하는 N+1 방지).
+    Map<Long, Long> countUnreadByRequester(Long userId, List<Long> chatRoomIds);
 }
