@@ -5,7 +5,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import com.academy.mudogroupware.global.domain.common.exception.BadRequestException;
+import com.academy.mudogroupware.approval.domain.exception.ApprovalErrorCode;
+import com.academy.mudogroupware.approval.domain.exception.ApprovalException;
 
 public final class ApprovalTemplate {
 
@@ -23,13 +24,19 @@ public final class ApprovalTemplate {
             throw new IllegalArgumentException("academyId must not be null");
         }
         if (name == null || name.isBlank()) {
-            throw new BadRequestException("템플릿 이름은 비어 있을 수 없습니다.");
+            throw new ApprovalException(ApprovalErrorCode.TEMPLATE_NAME_REQUIRED);
         }
         if (creatorId == null) {
             throw new IllegalArgumentException("creatorId must not be null");
         }
         if (lines == null || lines.isEmpty()) {
-            throw new BadRequestException("결재선은 최소 1명 이상 지정해야 합니다.");
+            throw new ApprovalException(ApprovalErrorCode.LINES_REQUIRED);
+        }
+        if (createdAt == null) {
+            throw new IllegalArgumentException("createdAt must not be null");
+        }
+        if (updatedAt == null) {
+            throw new IllegalArgumentException("updatedAt must not be null");
         }
         this.id = id;
         this.academyId = academyId;
@@ -40,8 +47,8 @@ public final class ApprovalTemplate {
         this.updatedAt = updatedAt;
     }
 
-    public static ApprovalTemplate create(Long academyId, String name, Long creatorId, List<Long> approverIds) {
-        LocalDateTime now = LocalDateTime.now();
+    public static ApprovalTemplate create(Long academyId, String name, Long creatorId, List<Long> approverIds,
+                                           LocalDateTime now) {
         return new ApprovalTemplate(null, academyId, name, creatorId, buildLines(approverIds), now, now);
     }
 
@@ -51,18 +58,21 @@ public final class ApprovalTemplate {
         return new ApprovalTemplate(id, academyId, name, creatorId, lines, createdAt, updatedAt);
     }
 
-    public void update(String name, List<Long> approverIds) {
+    public void update(String name, List<Long> approverIds, LocalDateTime now) {
+        if (now == null) {
+            throw new IllegalArgumentException("now must not be null");
+        }
         if (name == null || name.isBlank()) {
-            throw new BadRequestException("템플릿 이름은 비어 있을 수 없습니다.");
+            throw new ApprovalException(ApprovalErrorCode.TEMPLATE_NAME_REQUIRED);
         }
         List<ApprovalTemplateLine> newLines = buildLines(approverIds);
         if (newLines.isEmpty()) {
-            throw new BadRequestException("결재선은 최소 1명 이상 지정해야 합니다.");
+            throw new ApprovalException(ApprovalErrorCode.LINES_REQUIRED);
         }
         this.name = name;
         this.lines.clear();
         this.lines.addAll(newLines);
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = now;
     }
 
     private static List<ApprovalTemplateLine> buildLines(List<Long> approverIds) {

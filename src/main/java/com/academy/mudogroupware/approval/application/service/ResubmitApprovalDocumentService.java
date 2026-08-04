@@ -1,5 +1,7 @@
 package com.academy.mudogroupware.approval.application.service;
 
+import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -11,8 +13,8 @@ import com.academy.mudogroupware.approval.domain.model.ApprovalAttachment;
 import com.academy.mudogroupware.approval.domain.model.ApprovalDocument;
 import com.academy.mudogroupware.approval.domain.model.ApprovalDocumentLine;
 import com.academy.mudogroupware.approval.domain.repository.ApprovalDocumentRepository;
-import com.academy.mudogroupware.global.domain.common.exception.ForbiddenException;
-import com.academy.mudogroupware.global.domain.common.exception.NotFoundException;
+import com.academy.mudogroupware.approval.domain.exception.ApprovalErrorCode;
+import com.academy.mudogroupware.approval.domain.exception.ApprovalException;
 
 import lombok.RequiredArgsConstructor;
 
@@ -22,16 +24,18 @@ import lombok.RequiredArgsConstructor;
 public class ResubmitApprovalDocumentService implements ResubmitApprovalDocumentUseCase {
 
     private final ApprovalDocumentRepository approvalDocumentRepository;
+    private final Clock clock;
 
     @Override
     public Long resubmit(ResubmitApprovalDocumentCommand command) {
         ApprovalDocument original = approvalDocumentRepository.findById(command.documentId())
-                .orElseThrow(() -> new NotFoundException("결재 문서를 찾을 수 없습니다."));
+                .orElseThrow(() -> new ApprovalException(ApprovalErrorCode.DOCUMENT_NOT_FOUND));
 
         if (!original.getCreatorId().equals(command.requesterId())) {
-            throw new ForbiddenException("본인이 신청한 결재만 재상신할 수 있습니다.");
+            throw new ApprovalException(ApprovalErrorCode.NOT_DOCUMENT_OWNER_RESUBMIT);
         }
-        original.markResubmitted();
+        LocalDateTime now = LocalDateTime.now(clock);
+        original.markResubmitted(now);
 
         List<Long> approverIds = original.getLines().stream()
                 .map(ApprovalDocumentLine::getApproverId)
@@ -42,7 +46,7 @@ public class ResubmitApprovalDocumentService implements ResubmitApprovalDocument
 
         ApprovalDocument resubmitted = ApprovalDocument.create(
                 original.getAcademyId(), original.getTemplateId(), original.getTitle(), original.getContent(),
-                original.getCreatorId(), approverIds, fileIds);
+                original.getCreatorId(), approverIds, fileIds, now);
 
         Long newDocumentId = approvalDocumentRepository.save(resubmitted).getId();
         approvalDocumentRepository.save(original);

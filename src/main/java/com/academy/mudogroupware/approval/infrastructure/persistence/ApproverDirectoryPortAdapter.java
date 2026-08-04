@@ -9,7 +9,8 @@ import org.springframework.stereotype.Component;
 
 import com.academy.mudogroupware.approval.application.port.ApproverDirectoryPort;
 import com.academy.mudogroupware.approval.application.port.ApproverInfo;
-import com.academy.mudogroupware.global.domain.common.exception.NotFoundException;
+import com.academy.mudogroupware.approval.domain.exception.ApprovalErrorCode;
+import com.academy.mudogroupware.approval.domain.exception.ApprovalException;
 
 import lombok.RequiredArgsConstructor;
 
@@ -22,7 +23,7 @@ public class ApproverDirectoryPortAdapter implements ApproverDirectoryPort {
     @Override
     public ApproverInfo getApprover(Long userId) {
         UserNameEntity entity = userNameJpaRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException("사용자를 찾을 수 없습니다."));
+                .orElseThrow(() -> new ApprovalException(ApprovalErrorCode.APPROVER_NOT_FOUND));
         return new ApproverInfo(entity.getId(), entity.getName(), entity.getAcademyId());
     }
 

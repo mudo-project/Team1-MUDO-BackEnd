@@ -1,6 +1,6 @@
 # 🌐 global 모듈
 
-> 업데이트: 2026-08-03 · 시간 정책(`Clock`, JPA Auditing)과 공통 타임스탬프 Base Entity 3종을 추가했습니다.
+> 업데이트: 2026-08-04 · 공용 페이지네이션 컴포넌트(`PageResult`, `SliceResponse`)를 추가했습니다.
 
 ## 📦 책임과 범위
 
@@ -19,6 +19,7 @@
 
 - ⏰ **시간 정책**: `TimeConfig` — `Clock` 빈(`Asia/Seoul` 고정), JPA Auditing용 `DateTimeProvider`
 - 🧱 **공통 타임스탬프 Base Entity**: `CreatedAtEntity`, `BaseTimeEntity`, `SoftDeleteTimeEntity`
+- 📄 **공용 페이지네이션**: `PageResult<T>`(domain 계층), `SliceResponse<T>`(presentation 계층) — `docs/API_CONTRACT.md`의 `page`/`size`/`content`/`hasNext` 규칙을 구현한 프레임워크-비의존 래퍼
 - 🔐 그 외 보안(JWT/CORS), WebSocket, 공통 예외 응답, AOP 성능 로깅, TraceId 필터
 
 세부 목록과 사용 방법은 [API.md](API.md)를 참고해주세요.

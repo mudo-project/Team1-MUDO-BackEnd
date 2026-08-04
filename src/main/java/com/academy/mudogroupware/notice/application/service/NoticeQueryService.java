@@ -7,8 +7,6 @@ import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.academy.mudogroupware.global.domain.common.exception.ForbiddenException;
-import com.academy.mudogroupware.global.domain.common.exception.NotFoundException;
 import com.academy.mudogroupware.notice.application.port.AuthorInfo;
 import com.academy.mudogroupware.notice.application.port.NoticeAuthorDirectoryPort;
 import com.academy.mudogroupware.notice.application.query.NoticeAttachmentView;
@@ -16,10 +14,13 @@ import com.academy.mudogroupware.notice.application.query.NoticeDetailView;
 import com.academy.mudogroupware.notice.application.query.NoticeReaderView;
 import com.academy.mudogroupware.notice.application.query.NoticeSummaryView;
 import com.academy.mudogroupware.notice.application.usecase.NoticeQueryUseCase;
+import com.academy.mudogroupware.notice.domain.exception.NoticeErrorCode;
+import com.academy.mudogroupware.notice.domain.exception.NoticeException;
 import com.academy.mudogroupware.notice.domain.model.Notice;
 import com.academy.mudogroupware.notice.domain.model.NoticeAttachment;
 import com.academy.mudogroupware.notice.domain.repository.NoticeReadRepository;
 import com.academy.mudogroupware.notice.domain.repository.NoticeRepository;
+import com.academy.mudogroupware.global.domain.common.page.PageResult;
 
 import lombok.RequiredArgsConstructor;
 
@@ -33,23 +34,22 @@ public class NoticeQueryService implements NoticeQueryUseCase {
     private final NoticeAuthorDirectoryPort noticeAuthorDirectoryPort;
 
     @Override
-    public List<NoticeSummaryView> getNotices(Long requesterId, String keyword) {
+    public PageResult<NoticeSummaryView> getNotices(Long requesterId, String keyword, int page, int size) {
         AuthorInfo requester = noticeAuthorDirectoryPort.getAuthor(requesterId);
 
-        return noticeRepository.findAll(requester.academyId(), keyword).stream()
-                .map(notice -> toSummaryView(notice, requesterId))
-                .toList();
+        return noticeRepository.findAll(requester.academyId(), keyword, page, size)
+                .map(notice -> toSummaryView(notice, requesterId));
     }
 
     @Override
     @Transactional
     public NoticeDetailView getNoticeDetail(Long noticeId, Long requesterId) {
         Notice notice = noticeRepository.findById(noticeId)
-                .orElseThrow(() -> new NotFoundException("공지사항을 찾을 수 없습니다."));
+                .orElseThrow(() -> new NoticeException(NoticeErrorCode.NOTICE_NOT_FOUND));
 
         AuthorInfo requester = noticeAuthorDirectoryPort.getAuthor(requesterId);
         if (!notice.getAcademyId().equals(requester.academyId())) {
-            throw new ForbiddenException("해당 공지사항을 조회할 권한이 없습니다.");
+            throw new NoticeException(NoticeErrorCode.NOTICE_ACCESS_DENIED);
         }
 
         notice.recordView();
@@ -83,11 +83,11 @@ public class NoticeQueryService implements NoticeQueryUseCase {
     @Override
     public List<NoticeReaderView> getReaders(Long noticeId, Long requesterId) {
         Notice notice = noticeRepository.findById(noticeId)
-                .orElseThrow(() -> new NotFoundException("공지사항을 찾을 수 없습니다."));
+                .orElseThrow(() -> new NoticeException(NoticeErrorCode.NOTICE_NOT_FOUND));
 
         AuthorInfo requester = noticeAuthorDirectoryPort.getAuthor(requesterId);
         if (!notice.getAcademyId().equals(requester.academyId())) {
-            throw new ForbiddenException("해당 공지사항을 조회할 권한이 없습니다.");
+            throw new NoticeException(NoticeErrorCode.NOTICE_ACCESS_DENIED);
         }
 
         Map<Long, LocalDateTime> readTimestamps = noticeReadRepository.findReadTimestamps(noticeId);

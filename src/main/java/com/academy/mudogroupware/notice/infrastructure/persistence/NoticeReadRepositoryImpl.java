@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.notice.infrastructure.persistence;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -15,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 public class NoticeReadRepositoryImpl implements NoticeReadRepository {
 
     private final NoticeReadJpaRepository noticeReadJpaRepository;
+    private final Clock clock;
 
     @Override
     public void markRead(Long noticeId, Long userId) {
@@ -24,7 +26,7 @@ public class NoticeReadRepositoryImpl implements NoticeReadRepository {
         noticeReadJpaRepository.save(NoticeReadEntity.builder()
                 .noticeId(noticeId)
                 .userId(userId)
-                .readAt(LocalDateTime.now())
+                .readAt(LocalDateTime.now(clock))
                 .build());
     }
 

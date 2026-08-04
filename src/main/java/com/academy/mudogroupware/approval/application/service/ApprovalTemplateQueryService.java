@@ -15,7 +15,9 @@ import com.academy.mudogroupware.approval.application.usecase.ApprovalTemplateQu
 import com.academy.mudogroupware.approval.domain.model.ApprovalTemplate;
 import com.academy.mudogroupware.approval.domain.model.ApprovalTemplateLine;
 import com.academy.mudogroupware.approval.domain.repository.ApprovalTemplateRepository;
-import com.academy.mudogroupware.global.domain.common.exception.NotFoundException;
+import com.academy.mudogroupware.approval.domain.exception.ApprovalErrorCode;
+import com.academy.mudogroupware.approval.domain.exception.ApprovalException;
+import com.academy.mudogroupware.global.domain.common.page.PageResult;
 
 import lombok.RequiredArgsConstructor;
 
@@ -28,11 +30,10 @@ public class ApprovalTemplateQueryService implements ApprovalTemplateQueryUseCas
     private final ApproverDirectoryPort approverDirectoryPort;
 
     @Override
-    public List<ApprovalTemplateSummaryView> getTemplates(Long requesterId) {
+    public PageResult<ApprovalTemplateSummaryView> getTemplates(Long requesterId, int page, int size) {
         ApproverInfo requester = approverDirectoryPort.getApprover(requesterId);
-        return approvalTemplateRepository.findAll(requester.academyId()).stream()
-                .map(this::toSummaryView)
-                .toList();
+        return approvalTemplateRepository.findAll(requester.academyId(), page, size)
+                .map(this::toSummaryView);
     }
 
     private ApprovalTemplateSummaryView toSummaryView(ApprovalTemplate template) {
@@ -51,7 +52,7 @@ public class ApprovalTemplateQueryService implements ApprovalTemplateQueryUseCas
     @Override
     public ApprovalTemplateDetailView getTemplateDetail(Long templateId) {
         ApprovalTemplate approvalTemplate = approvalTemplateRepository.findById(templateId)
-                .orElseThrow(() -> new NotFoundException("결재 템플릿을 찾을 수 없습니다."));
+                .orElseThrow(() -> new ApprovalException(ApprovalErrorCode.TEMPLATE_NOT_FOUND));
 
         List<Long> approverIds = approvalTemplate.getLines().stream()
                 .map(ApprovalTemplateLine::getApproverId)

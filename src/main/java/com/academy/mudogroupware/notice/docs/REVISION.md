@@ -5,6 +5,64 @@
 
 학원 그룹웨어에 공지사항 기능을 추가한다. 팀 노션 기능명세서와 실제 화면 시안(Figma)을 기준으로 데이터 모델을 확정하고, approval 모듈 개발 중 발견된 실수(학원 데이터 격리 누락 등)를 처음부터 반영한다.
 
+---
+
+## ✅ 2026-08-04 · 저장 시각을 한국 시간(KST)으로 고정 (approval 뒤늦은 반영)
+
+### 배경
+
+approval 모듈에서 서버 시간대(UTC)와 무관하게 KST로 저장하도록 `Clock` 기반으로 고친 적이 있는데, notice는 그 작업 범위에서 빠져 있었다. `Notice.create()`/`update()`와 `NoticeReadRepositoryImpl.markRead()`가 여전히 `LocalDateTime.now()`를 직접 호출하고 있었던 걸 뒤늦게 발견해서 동일하게 고쳤다.
+
+### 확정된 정책
+
+- `Notice.create(..., LocalDateTime now)`/`update(..., LocalDateTime now)`가 시각을 파라미터로 받는다. `CreateNoticeService`/`UpdateNoticeService`가 `Clock`을 주입받아 `LocalDateTime.now(clock)`을 넘긴다.
+- `NoticeReadRepositoryImpl`은 도메인 계층을 거치지 않는 순수 인프라 기록(읽음 시각)이라, 서비스 계층 경유 없이 `Clock`을 직접 주입받아 처리한다.
+- 새로 추가한 도메인 클래스(`Notice`)와 인프라 클래스(`NoticeReadRepositoryImpl`)에 유닛 테스트를 함께 추가했다 (notice 모듈에 유닛 테스트가 전무했던 상태였다).
+
+### 완료 기준
+
+- [x] notice 코드에 `LocalDateTime.now()` 직접 호출이 남아있지 않다.
+- [x] `./gradlew test` 통과 (신규 유닛 테스트 10케이스 포함).
+
+---
+
+## ✅ 2026-08-04 · 전용 ErrorCode 도입 및 목록 API 페이지네이션
+
+### 배경
+
+`users`/`auth`, approval 모듈이 먼저 도입한 도메인 전용 `ErrorCode`/`Exception` 패턴과, `docs/API_CONTRACT.md`에 정의돼 있던 페이지네이션 규칙을 notice에도 동일하게 반영했다.
+
+### 확정된 정책
+
+- `NoticeErrorCode`(enum) + `NoticeException`(`BusinessException` 상속)을 추가하고, 기존 `BadRequestException`/`NotFoundException`/`ForbiddenException` 직접 사용을 전부 교체했다. 코드 체계는 `NOTICE_{HTTP상태}_{순번}`.
+- 공지 목록 조회(`getNotices`)에 `page`/`size` 쿼리 파라미터와 Spring Data `Slice`(전체 개수 미계산) 기반 페이지네이션을 적용했다. 응답은 `global`의 공용 `SliceResponse<T>`로 감싼다. 상세 조회의 "읽은 사람 목록"(`getReaders`)은 한 공지당 인원 규모가 제한적이라 이번 범위에서는 페이지네이션하지 않았다.
+
+### 완료 기준
+
+- [x] notice 코드에 `global.domain.common.exception`의 범용 예외 직접 사용이 남아있지 않다.
+- [x] `./gradlew compileJava` / `./gradlew test` 통과.
+
+---
+
+## ✅ 2026-08-04 · users 테이블 정합화(`resign_date` → `status`) 대응
+
+### 배경
+
+`users` 모듈 PR(#19)이 머지되면서 `V4.1.1__align_users_table_with_erd.sql` 마이그레이션이 `users.resign_date`/`hire_date` 컬럼을 삭제하고 `status`(`ACTIVE`/`RESIGNED`/`INACTIVE`)로 대체했다. notice의 임시 shim(`UserInfoEntity`)이 `resign_date`를 직접 매핑하고 있어, 이 마이그레이션이 반영된 순간 `countActiveUsers` 쿼리가 깨지는 상태였다.
+
+### 확정된 정책
+
+- `UserInfoEntity.resignDate`(LocalDate)를 제거하고 `status`(String) 컬럼 매핑으로 교체했다.
+- `UserInfoJpaRepository.countByAcademyIdAndResignDateIsNull` → `countByAcademyIdAndStatus(academyId, "ACTIVE")`로 변경했다.
+- "전체 대상 인원 수(읽음 분모)"의 의미를 "퇴사일이 없는 사용자"에서 "`status = ACTIVE`인 사용자"로 그대로 치환했다 — 마이그레이션이 기존 데이터의 `resign_date IS NOT NULL`을 `status = 'RESIGNED'`로, 나머지를 `ACTIVE` 기본값으로 채웠기 때문에 기존 의미와 동일하다.
+
+### 완료 기준
+
+- [x] `./gradlew compileJava` / `./gradlew test` 통과.
+- [x] `resignDate`/`resign_date`에 대한 코드 참조가 남아있지 않다 (마이그레이션 파일 자체는 이력이라 그대로 둔다).
+
+---
+
 ## ✅ 확정된 정책
 
 - 공지 작성 시 작성자·작성일시는 자동 기록되고, 사진뿐 아니라 PDF 등 일반 파일도 여러 개 첨부할 수 있다.

@@ -16,6 +16,17 @@
 
 ---
 
+## 📄 공용 페이지네이션
+
+| 컴포넌트 | 종류 | 사용 방법 | 기능 요약 |
+| --- | --- | --- | --- |
+| `PageResult<T>` | record (`global.domain.common.page`) | 도메인 Repository 인터페이스가 반환, Application 계층에서 `.map()`으로 View 타입 변환 | `content`/`page`/`size`/`hasNext`만 담는 프레임워크-비의존 페이지 결과. Spring Data `Pageable`/`Slice`를 domain 계층에 노출하지 않기 위한 래퍼 |
+| `SliceResponse<T>` | record (`global.presentation.api.common`) | Controller에서 `SliceResponse.from(pageResult, ResponseDto::from)`로 생성, `GlobalApiResponse<SliceResponse<T>>`로 감싸 반환 | `docs/API_CONTRACT.md` 페이지네이션 규칙(`content`/`page`/`size`/`hasNext`)을 만족하는 응답 포맷 |
+
+세부 명세: [PageResult.java](../domain/common/page/PageResult.java) · [SliceResponse.java](../presentation/api/common/SliceResponse.java)
+
+---
+
 ## 🧱 공통 타임스탬프 Base Entity
 
 | 컴포넌트 | 종류 | 사용 방법 | 기능 요약 |
@@ -35,6 +46,7 @@
 - 도메인 엔티티에서 `LocalDateTime.now()`를 직접 호출하지 않습니다. 필요하면 이 문서의 `Clock` 빈을 주입받아 사용해주세요.
 - `markDeleted(null)`을 호출하면 예외(`NullPointerException`)가 발생합니다. 이미 삭제된 엔티티에 다시 `markDeleted()`를 호출하면 `IllegalStateException`이 발생하며, 기존 `deletedAt`은 덮어써지지 않습니다. 삭제를 되돌려야 하면 `markDeleted()`를 재사용하지 말고 별도의 `restore()` 메서드를 도메인 엔티티에 명시적으로 추가해주세요.
 - **소프트 삭제 조회 필터 정책**: `SoftDeleteTimeEntity`는 조회 쿼리를 자동으로 걸러주지 않습니다(`@Where`, `@SQLRestriction` 등을 적용하지 않음). `SoftDeleteTimeEntity`를 상속하는 도메인 엔티티의 Repository/QueryDSL 조회 조건에는 `deleted_at IS NULL`(또는 이에 대응하는 조건)을 **직접 추가**해야 합니다. 누락하면 삭제된 데이터가 목록/상세 조회에 그대로 노출됩니다.
+- **페이지네이션**: 목록 API는 전체 개수(`totalElements`/`totalPages`)가 필요 없다면 `Page` 대신 `Slice`를 우선 고려하세요(추가 COUNT 쿼리를 생략). 도메인 Repository 인터페이스는 Spring Data의 `Pageable`/`Slice`를 직접 노출하지 말고, Infrastructure 계층에서 `PageResult`로 변환해 반환하세요.
 
 ## 📝 문서 정보
 
@@ -44,3 +56,4 @@
   - `CreatedAtEntity` / `BaseTimeEntity` / `SoftDeleteTimeEntity` 3종 Base Entity를 추가했습니다. 🧱
   - `markDeleted()`의 null 방어 및 중복 삭제 방지 로직을 추가했습니다. 🛡️
   - 소프트 삭제 조회 필터 정책(Repository/QueryDSL에서 `deleted_at IS NULL` 직접 처리)을 문서화했습니다. 🗄️
+  - `PageResult<T>`/`SliceResponse<T>` 공용 페이지네이션 컴포넌트를 추가했습니다. 📄

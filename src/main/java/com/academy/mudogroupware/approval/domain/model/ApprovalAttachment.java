@@ -31,6 +31,26 @@ public final class ApprovalAttachment {
         return new ApprovalAttachment(id, fileId, aiSummary, summaryStatus, summarizedAt);
     }
 
+    public void applySummary(String aiSummary, LocalDateTime summarizedAt) {
+        if (aiSummary == null || aiSummary.isBlank()) {
+            throw new IllegalArgumentException("aiSummary must not be blank");
+        }
+        if (summarizedAt == null) {
+            throw new IllegalArgumentException("summarizedAt must not be null");
+        }
+        this.aiSummary = aiSummary;
+        this.summaryStatus = AttachmentSummaryStatus.COMPLETED;
+        this.summarizedAt = summarizedAt;
+    }
+
+    public void markSummaryFailed(LocalDateTime summarizedAt) {
+        if (summarizedAt == null) {
+            throw new IllegalArgumentException("summarizedAt must not be null");
+        }
+        this.summaryStatus = AttachmentSummaryStatus.FAILED;
+        this.summarizedAt = summarizedAt;
+    }
+
     public Long getId() {
         return id;
     }

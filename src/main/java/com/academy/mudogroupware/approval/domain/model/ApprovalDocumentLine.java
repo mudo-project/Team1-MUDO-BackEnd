@@ -2,7 +2,8 @@ package com.academy.mudogroupware.approval.domain.model;
 
 import java.time.LocalDateTime;
 
-import com.academy.mudogroupware.global.domain.common.exception.ConflictException;
+import com.academy.mudogroupware.approval.domain.exception.ApprovalErrorCode;
+import com.academy.mudogroupware.approval.domain.exception.ApprovalException;
 
 public final class ApprovalDocumentLine {
 
@@ -43,23 +44,29 @@ public final class ApprovalDocumentLine {
         this.status = ApprovalLineStatus.PENDING;
     }
 
-    void approve(String comment) {
+    void approve(String comment, LocalDateTime now) {
+        if (now == null) {
+            throw new IllegalArgumentException("now must not be null");
+        }
         ensurePending();
         this.status = ApprovalLineStatus.APPROVED;
         this.comment = comment;
-        this.decidedAt = LocalDateTime.now();
+        this.decidedAt = now;
     }
 
-    void reject(String comment) {
+    void reject(String comment, LocalDateTime now) {
+        if (now == null) {
+            throw new IllegalArgumentException("now must not be null");
+        }
         ensurePending();
         this.status = ApprovalLineStatus.REJECTED;
         this.comment = comment;
-        this.decidedAt = LocalDateTime.now();
+        this.decidedAt = now;
     }
 
     private void ensurePending() {
         if (status != ApprovalLineStatus.PENDING) {
-            throw new ConflictException("이미 처리가 완료된 결재선입니다.");
+            throw new ApprovalException(ApprovalErrorCode.LINE_ALREADY_DECIDED);
         }
     }
 

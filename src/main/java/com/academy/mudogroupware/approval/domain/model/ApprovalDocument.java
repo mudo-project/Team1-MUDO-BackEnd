@@ -4,9 +4,10 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
-import com.academy.mudogroupware.global.domain.common.exception.BadRequestException;
-import com.academy.mudogroupware.global.domain.common.exception.ConflictException;
+import com.academy.mudogroupware.approval.domain.exception.ApprovalErrorCode;
+import com.academy.mudogroupware.approval.domain.exception.ApprovalException;
 
 public final class ApprovalDocument {
 
@@ -29,7 +30,7 @@ public final class ApprovalDocument {
             throw new IllegalArgumentException("academyId must not be null");
         }
         if (title == null || title.isBlank()) {
-            throw new BadRequestException("결재 제목은 비어 있을 수 없습니다.");
+            throw new ApprovalException(ApprovalErrorCode.TITLE_REQUIRED);
         }
         if (content == null) {
             throw new IllegalArgumentException("content must not be null");
@@ -38,7 +39,10 @@ public final class ApprovalDocument {
             throw new IllegalArgumentException("creatorId must not be null");
         }
         if (lines == null || lines.isEmpty()) {
-            throw new BadRequestException("결재선은 최소 1명 이상 지정해야 합니다.");
+            throw new ApprovalException(ApprovalErrorCode.LINES_REQUIRED);
+        }
+        if (createdAt == null) {
+            throw new IllegalArgumentException("createdAt must not be null");
         }
         this.id = id;
         this.academyId = academyId;
@@ -54,12 +58,13 @@ public final class ApprovalDocument {
     }
 
     public static ApprovalDocument create(Long academyId, Long templateId, String title, ApprovalContent content,
-                                           Long creatorId, List<Long> approverIds, List<Long> fileIds) {
+                                           Long creatorId, List<Long> approverIds, List<Long> fileIds,
+                                           LocalDateTime now) {
         List<ApprovalAttachment> attachments = fileIds != null
                 ? fileIds.stream().map(ApprovalAttachment::create).toList()
                 : List.of();
         return new ApprovalDocument(null, academyId, templateId, title, content, creatorId, buildLines(approverIds),
-                attachments, ApprovalStatus.IN_PROGRESS, LocalDateTime.now(), null);
+                attachments, ApprovalStatus.IN_PROGRESS, now, null);
     }
 
     public static ApprovalDocument restore(Long id, Long academyId, Long templateId, String title,
@@ -70,52 +75,55 @@ public final class ApprovalDocument {
                 status, createdAt, resubmittedAt);
     }
 
-    public void markResubmitted() {
+    public void markResubmitted(LocalDateTime now) {
+        if (now == null) {
+            throw new IllegalArgumentException("now must not be null");
+        }
         if (this.status != ApprovalStatus.REJECTED) {
-            throw new ConflictException("반려된 결재만 재상신할 수 있습니다.");
+            throw new ApprovalException(ApprovalErrorCode.RESUBMIT_NOT_REJECTED);
         }
         if (this.resubmittedAt != null) {
-            throw new ConflictException("이미 재상신된 결재입니다.");
+            throw new ApprovalException(ApprovalErrorCode.ALREADY_RESUBMITTED);
         }
-        this.resubmittedAt = LocalDateTime.now();
+        this.resubmittedAt = now;
     }
 
-    public void decide(Long approverId, ApprovalDecision decision, String comment) {
+    public void decide(Long approverId, ApprovalDecision decision, String comment, LocalDateTime now) {
         if (this.status != ApprovalStatus.IN_PROGRESS) {
-            throw new ConflictException("이미 처리가 완료된 결재입니다.");
+            throw new ApprovalException(ApprovalErrorCode.DOCUMENT_ALREADY_DECIDED);
         }
         ApprovalDocumentLine currentLine = currentPendingLine();
         if (currentLine == null) {
-            throw new ConflictException("이미 처리가 완료된 결재입니다.");
+            throw new ApprovalException(ApprovalErrorCode.DOCUMENT_ALREADY_DECIDED);
         }
         if (!currentLine.getApproverId().equals(approverId)) {
-            throw new ConflictException("본인 차례의 결재가 아닙니다.");
+            throw new ApprovalException(ApprovalErrorCode.NOT_YOUR_TURN);
         }
 
         if (decision == ApprovalDecision.APPROVE) {
-            currentLine.approve(comment);
+            currentLine.approve(comment, now);
             activateNextLine(currentLine.getStepOrder());
             if (isAllApproved()) {
                 this.status = ApprovalStatus.APPROVED;
             }
         } else {
-            currentLine.reject(comment);
+            currentLine.reject(comment, now);
             this.status = ApprovalStatus.REJECTED;
         }
     }
 
     public void updateLines(List<Long> approverIds) {
         if (this.status != ApprovalStatus.IN_PROGRESS) {
-            throw new ConflictException("이미 결재가 진행된 건은 결재선을 수정할 수 없습니다.");
+            throw new ApprovalException(ApprovalErrorCode.LINES_ALREADY_IN_PROGRESS);
         }
         boolean anyDecided = lines.stream().anyMatch(line -> line.getStatus() == ApprovalLineStatus.APPROVED
                 || line.getStatus() == ApprovalLineStatus.REJECTED);
         if (anyDecided) {
-            throw new ConflictException("이미 결재가 진행된 건은 결재선을 수정할 수 없습니다.");
+            throw new ApprovalException(ApprovalErrorCode.LINES_ALREADY_IN_PROGRESS);
         }
         List<ApprovalDocumentLine> newLines = buildLines(approverIds);
         if (newLines.isEmpty()) {
-            throw new BadRequestException("결재선은 최소 1명 이상 지정해야 합니다.");
+            throw new ApprovalException(ApprovalErrorCode.LINES_REQUIRED);
         }
         this.lines.clear();
         this.lines.addAll(newLines);
@@ -123,6 +131,14 @@ public final class ApprovalDocument {
 
     public boolean isApprover(Long userId) {
         return lines.stream().anyMatch(line -> line.getApproverId().equals(userId));
+    }
+
+    public Optional<Long> currentPendingApproverId() {
+        return Optional.ofNullable(currentPendingLine()).map(ApprovalDocumentLine::getApproverId);
+    }
+
+    public Optional<ApprovalAttachment> findAttachmentByFileId(Long fileId) {
+        return attachments.stream().filter(attachment -> attachment.getFileId().equals(fileId)).findFirst();
     }
 
     private static List<ApprovalDocumentLine> buildLines(List<Long> approverIds) {

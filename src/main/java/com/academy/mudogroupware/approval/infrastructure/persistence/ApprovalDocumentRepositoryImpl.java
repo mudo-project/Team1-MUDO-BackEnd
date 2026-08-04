@@ -3,6 +3,8 @@ package com.academy.mudogroupware.approval.infrastructure.persistence;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Repository;
 
 import com.academy.mudogroupware.approval.domain.model.ApprovalAttachment;
@@ -10,6 +12,7 @@ import com.academy.mudogroupware.approval.domain.model.ApprovalContent;
 import com.academy.mudogroupware.approval.domain.model.ApprovalDocument;
 import com.academy.mudogroupware.approval.domain.model.ApprovalDocumentLine;
 import com.academy.mudogroupware.approval.domain.repository.ApprovalDocumentRepository;
+import com.academy.mudogroupware.global.domain.common.page.PageResult;
 
 import lombok.RequiredArgsConstructor;
 
@@ -38,10 +41,22 @@ public class ApprovalDocumentRepositoryImpl implements ApprovalDocumentRepositor
     }
 
     @Override
-    public List<ApprovalDocument> findAllByCreatorId(Long creatorId) {
-        return approvalDocumentJpaRepository.findAllByCreatorId(creatorId).stream()
-                .map(this::toDomain)
-                .toList();
+    public PageResult<ApprovalDocument> findAllByApproverId(Long approverId, int page, int size) {
+        Slice<ApprovalDocumentEntity> slice = approvalDocumentJpaRepository.findAllByApproverId(
+                approverId, PageRequest.of(page, size));
+        return toPageResult(slice);
+    }
+
+    @Override
+    public PageResult<ApprovalDocument> findAllByCreatorId(Long creatorId, int page, int size) {
+        Slice<ApprovalDocumentEntity> slice = approvalDocumentJpaRepository.findAllByCreatorId(
+                creatorId, PageRequest.of(page, size));
+        return toPageResult(slice);
+    }
+
+    private PageResult<ApprovalDocument> toPageResult(Slice<ApprovalDocumentEntity> slice) {
+        List<ApprovalDocument> content = slice.getContent().stream().map(this::toDomain).toList();
+        return PageResult.of(content, slice.getNumber(), slice.getSize(), slice.hasNext());
     }
 
     private ApprovalDocumentEntity toEntity(ApprovalDocument domain) {
