@@ -32,3 +32,5 @@ CREATE TABLE `chat_message` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE INDEX `idx_chat_message_room_created` ON `chat_message` (`chat_room_id`, `created_at`);
+
+CREATE INDEX `idx_chat_room_member_user` ON `chat_room_member` (`user_id`);

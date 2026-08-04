@@ -38,8 +38,8 @@
 ## 변경 시 주의 사항
 
 - 채팅방 목록 조회는 approval/notice와 동일하게 페이지네이션 없이 전체 List를 반환한다.
-- **메시지 목록 조회만 예외적으로 페이지네이션을 적용한다.** 채팅 기록은 시간이 지날수록 무한히 쌓이는 특성이라, 관리자가 만드는 유한한 콘텐츠(공지·결재)와 다르다고 판단해 사용자와 합의 후 결정했다. `ChatMessageRepository.findByChatRoomId`가 `size + 1`건을 가져와 호출측(application)이 `hasNext`를 판단하는 방식을 쓴다.
-- 메시지 목록 조회 시 `page == 0`(최신 페이지)일 때만 읽음 처리(`lastReadAt` 갱신)를 하도록 설계했다 — 과거 히스토리 스크롤은 읽음으로 치지 않는다. **스펙에 명시된 규칙이 아니라 구현 중 판단한 가정이므로 팀 확인이 필요하다.**
+- **메시지 목록 조회만 예외적으로 페이지네이션을 적용한다.** 채팅 기록은 시간이 지날수록 무한히 쌓이는 특성이라, 관리자가 만드는 유한한 콘텐츠(공지·결재)와 다르다고 판단해 사용자와 합의 후 결정했다. offset 기반 `page`가 아니라 `(createdAt, messageId)` 기반 cursor를 쓴다 — offset은 조회 중 새 메시지가 쌓이면 페이지 간 중복·누락이 생기기 때문이다. `ChatMessageRepository.findByChatRoomId`가 `size + 1`건을 가져와 호출측(application)이 `hasNext`를 판단하는 방식을 쓴다.
+- 메시지 목록 조회 시 **cursor가 없는 첫 페이지 조회일 때만** 읽음 처리(`lastReadAt` 갱신)를 하도록 설계했다 — 과거 히스토리 스크롤은 읽음으로 치지 않는다. **스펙에 명시된 규칙이 아니라 구현 중 판단한 가정이므로 팀 확인이 필요하다.**
 - 도메인 규칙 위반은 `global.domain.common.exception`의 `BadRequestException`/`NotFoundException`/`ForbiddenException`을 사용한다.
 - 나가기·숨김 기능이 없어 채팅방·메시지 Repository에 삭제 메서드가 없다.
 

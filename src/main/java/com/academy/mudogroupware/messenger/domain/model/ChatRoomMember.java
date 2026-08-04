@@ -23,8 +23,13 @@ public final class ChatRoomMember {
         return new ChatRoomMember(userId, lastReadAt);
     }
 
-    public void markRead(LocalDateTime readAt) {
-        this.lastReadAt = readAt;
+    void markRead(LocalDateTime readAt) {
+        if (readAt == null) {
+            throw new IllegalArgumentException("readAt must not be null");
+        }
+        if (lastReadAt == null || readAt.isAfter(lastReadAt)) {
+            this.lastReadAt = readAt;
+        }
     }
 
     public Long getUserId() {
