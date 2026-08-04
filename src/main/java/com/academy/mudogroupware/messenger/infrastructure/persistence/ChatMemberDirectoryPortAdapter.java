@@ -17,22 +17,22 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class ChatMemberDirectoryPortAdapter implements ChatMemberDirectoryPort {
 
-    private final UserInfoJpaRepository userInfoJpaRepository;
+    private final ChatMemberInfoJpaRepository chatMemberInfoJpaRepository;
 
     @Override
     public ChatMemberInfo getMember(Long userId) {
-        UserInfoEntity entity = userInfoJpaRepository.findById(userId)
+        ChatMemberInfoEntity entity = chatMemberInfoJpaRepository.findById(userId)
                 .orElseThrow(() -> new MessengerException(MessengerErrorCode.MEMBER_NOT_FOUND));
         return toMemberInfo(entity);
     }
 
     @Override
     public Map<Long, ChatMemberInfo> getMembers(List<Long> userIds) {
-        return userInfoJpaRepository.findAllById(userIds).stream()
-                .collect(Collectors.toMap(UserInfoEntity::getId, this::toMemberInfo));
+        return chatMemberInfoJpaRepository.findAllById(userIds).stream()
+                .collect(Collectors.toMap(ChatMemberInfoEntity::getId, this::toMemberInfo));
     }
 
-    private ChatMemberInfo toMemberInfo(UserInfoEntity entity) {
+    private ChatMemberInfo toMemberInfo(ChatMemberInfoEntity entity) {
         return new ChatMemberInfo(entity.getId(), entity.getName(), entity.getAcademyId());
     }
 }
