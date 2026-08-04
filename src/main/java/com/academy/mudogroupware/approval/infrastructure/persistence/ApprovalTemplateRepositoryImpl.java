@@ -48,8 +48,6 @@ public class ApprovalTemplateRepositoryImpl implements ApprovalTemplateRepositor
                 .academyId(domain.getAcademyId())
                 .name(domain.getName())
                 .creatorId(domain.getCreatorId())
-                .createdAt(domain.getCreatedAt())
-                .updatedAt(domain.getUpdatedAt())
                 .build();
         domain.getLines().forEach(line -> entity.addLine(toLineEntity(line)));
         return entity;
@@ -58,7 +56,6 @@ public class ApprovalTemplateRepositoryImpl implements ApprovalTemplateRepositor
     private ApprovalTemplateEntity updateExisting(ApprovalTemplate domain) {
         ApprovalTemplateEntity entity = approvalTemplateJpaRepository.getReferenceById(domain.getId());
         entity.setName(domain.getName());
-        entity.setUpdatedAt(domain.getUpdatedAt());
         entity.clearLines();
         domain.getLines().forEach(line -> entity.addLine(toLineEntity(line)));
         return entity;
