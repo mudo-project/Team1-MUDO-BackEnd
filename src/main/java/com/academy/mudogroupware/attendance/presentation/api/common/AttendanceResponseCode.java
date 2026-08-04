@@ -1,0 +1,16 @@
+package com.academy.mudogroupware.attendance.presentation.api.common;
+
+import com.academy.mudogroupware.global.presentation.api.common.ResponseCode;
+
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+
+@Getter
+@RequiredArgsConstructor
+public enum AttendanceResponseCode implements ResponseCode {
+
+    WIFI_IP_REGISTERED("ACADEMY_201_1", "와이파이 IP가 등록되었습니다.");
+
+    private final String code;
+    private final String message;
+}
