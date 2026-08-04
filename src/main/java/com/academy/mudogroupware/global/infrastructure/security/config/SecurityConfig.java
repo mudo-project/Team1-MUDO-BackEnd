@@ -44,7 +44,8 @@ public class SecurityConfig {
             a ->
                 a.requestMatchers(HttpMethod.OPTIONS, "/**")
                     .permitAll()
-                    .requestMatchers("/error", "/actuator/health", "/ws/**")
+                    .requestMatchers(
+                        "/error", "/actuator/health", "/actuator/prometheus", "/ws/**")
                     .permitAll()
                     .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
                     .permitAll()
