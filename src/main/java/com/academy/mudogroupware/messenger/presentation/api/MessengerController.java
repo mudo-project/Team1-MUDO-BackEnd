@@ -38,9 +38,12 @@ import com.academy.mudogroupware.messenger.presentation.api.response.MessageSend
 import com.academy.mudogroupware.messenger.presentation.api.response.TaskCardCreateResponse;
 import com.academy.mudogroupware.messenger.presentation.api.response.TaskCardResponse;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+@Tag(name = "메신저", description = "채팅방 생성/목록조회/참여자조회, 메시지 전송/목록조회, 업무지시 카드 API")
 @RestController
 @RequestMapping("/api/messenger/rooms")
 @RequiredArgsConstructor
@@ -55,6 +58,7 @@ public class MessengerController {
     private final TaskCardQueryUseCase taskCardQueryUseCase;
     private final CompleteTaskUseCase completeTaskUseCase;
 
+    @Operation(summary = "채팅방 생성", description = "참여자 1명이면 1:1(DM), 2명 이상이면 그룹 생성. 그룹일 때만 name 필수.")
     @PostMapping
     public ResponseEntity<GlobalApiResponse<ChatRoomCreateResponse>> createRoom(
             @AuthenticationPrincipal AuthUser authUser,
@@ -65,6 +69,7 @@ public class MessengerController {
                         ChatRoomCreateResponse.from(chatRoomId)));
     }
 
+    @Operation(summary = "채팅방 목록조회", description = "내가 참여 중인 채팅방을 최근 활동순으로 조회. 안읽은 메시지 수·최근 메시지 미리보기 포함.")
     @GetMapping
     public ResponseEntity<GlobalApiResponse<List<ChatRoomSummaryResponse>>> getRooms(
             @AuthenticationPrincipal AuthUser authUser) {
@@ -74,6 +79,7 @@ public class MessengerController {
         return ResponseEntity.ok(GlobalApiResponse.ok(MessengerResponseCode.CHAT_ROOM_LIST_RETRIEVED, responses));
     }
 
+    @Operation(summary = "채팅방 참여자 목록조회", description = "요청자가 참여 중인 방에 한해 참여자 목록을 조회.")
     @GetMapping("/{roomId}/members")
     public ResponseEntity<GlobalApiResponse<List<ChatRoomMemberResponse>>> getMembers(
             @AuthenticationPrincipal AuthUser authUser,
@@ -85,6 +91,7 @@ public class MessengerController {
         return ResponseEntity.ok(GlobalApiResponse.ok(MessengerResponseCode.CHAT_ROOM_MEMBERS_RETRIEVED, responses));
     }
 
+    @Operation(summary = "메시지 전송", description = "TEXT/IMAGE/FILE 메시지 전송. 이미지·파일은 messageType+fileUrl/fileName으로 전달(별도 업로드 API 없음).")
     @PostMapping("/{roomId}/messages")
     public ResponseEntity<GlobalApiResponse<MessageSendResponse>> sendMessage(
             @AuthenticationPrincipal AuthUser authUser,
@@ -96,6 +103,7 @@ public class MessengerController {
                         MessageSendResponse.from(messageId)));
     }
 
+    @Operation(summary = "메시지 목록조회", description = "cursor(createdAt+messageId) 기반 페이지네이션. cursor가 없는 첫 조회일 때만 읽음 처리.")
     @GetMapping("/{roomId}/messages")
     public ResponseEntity<GlobalApiResponse<ChatMessagePageResponse>> getMessages(
             @AuthenticationPrincipal AuthUser authUser,
@@ -108,6 +116,7 @@ public class MessengerController {
         return ResponseEntity.ok(GlobalApiResponse.ok(MessengerResponseCode.MESSAGE_LIST_RETRIEVED, response));
     }
 
+    @Operation(summary = "업무지시 카드 등록", description = "담당자는 반드시 해당 채팅방 멤버여야 한다.")
     @PostMapping("/{roomId}/task-cards")
     public ResponseEntity<GlobalApiResponse<TaskCardCreateResponse>> createTaskCard(
             @AuthenticationPrincipal AuthUser authUser,
@@ -119,6 +128,7 @@ public class MessengerController {
                         TaskCardCreateResponse.from(cardId)));
     }
 
+    @Operation(summary = "업무지시 카드 목록조회", description = "완료 인원/전체 담당자 수, 전원완료 여부를 포함해 조회.")
     @GetMapping("/{roomId}/task-cards")
     public ResponseEntity<GlobalApiResponse<List<TaskCardResponse>>> getTaskCards(
             @AuthenticationPrincipal AuthUser authUser,
@@ -129,6 +139,7 @@ public class MessengerController {
         return ResponseEntity.ok(GlobalApiResponse.ok(MessengerResponseCode.TASK_CARD_LIST_RETRIEVED, responses));
     }
 
+    @Operation(summary = "업무지시 완료 처리", description = "담당자 본인만 가능. 이미 완료한 담당자가 다시 호출해도 시각은 덮어쓰지 않는다.")
     @PatchMapping("/{roomId}/task-cards/{cardId}/complete")
     public ResponseEntity<Void> completeTaskCard(@AuthenticationPrincipal AuthUser authUser,
                                                   @PathVariable Long roomId,
