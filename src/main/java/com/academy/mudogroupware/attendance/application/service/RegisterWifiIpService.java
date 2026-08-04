@@ -8,8 +8,8 @@ import com.academy.mudogroupware.attendance.application.result.RegisterWifiIpRes
 import com.academy.mudogroupware.attendance.application.usecase.RegisterWifiIpUseCase;
 import com.academy.mudogroupware.attendance.domain.exception.AttendanceErrorCode;
 import com.academy.mudogroupware.attendance.domain.exception.AttendanceException;
-import com.academy.mudogroupware.attendance.domain.model.Academy;
 import com.academy.mudogroupware.attendance.domain.model.AcademyWifiIp;
+import com.academy.mudogroupware.attendance.domain.model.OwnedAcademy;
 import com.academy.mudogroupware.attendance.domain.repository.AcademyRepository;
 import com.academy.mudogroupware.attendance.domain.repository.AcademyWifiIpRepository;
 
@@ -25,18 +25,24 @@ public class RegisterWifiIpService implements RegisterWifiIpUseCase {
 
     @Override
     public RegisterWifiIpResult register(RegisterWifiIpCommand command) {
-        Academy academy = academyRepository.findByOwnerUserId(command.requesterId())
+        OwnedAcademy academy = academyRepository.findByOwnerUserId(command.requesterId())
                 .orElseThrow(() -> new AttendanceException(
                         AttendanceErrorCode.WIFI_IP_REGISTRATION_FORBIDDEN));
 
-        AcademyWifiIp wifiIp = AcademyWifiIp.create(
-                academy.id(), command.ipAddress(), command.note());
+        AcademyWifiIp confirmedWifiIp = AcademyWifiIp.create(
+                academy.id(), command.confirmedIpAddress(), null);
+        AcademyWifiIp detectedWifiIp = AcademyWifiIp.create(
+                academy.id(), command.detectedIpAddress(), null);
+
+        if (!confirmedWifiIp.getIpAddress().equals(detectedWifiIp.getIpAddress())) {
+            throw new AttendanceException(AttendanceErrorCode.WIFI_IP_CHANGED);
+        }
 
         if (academyWifiIpRepository.existsByAcademyIdAndIpAddress(
-                academy.id(), wifiIp.getIpAddress())) {
+                academy.id(), detectedWifiIp.getIpAddress())) {
             throw new AttendanceException(AttendanceErrorCode.WIFI_IP_ALREADY_REGISTERED);
         }
 
-        return RegisterWifiIpResult.from(academyWifiIpRepository.save(wifiIp));
+        return RegisterWifiIpResult.from(academyWifiIpRepository.save(detectedWifiIp));
     }
 }

@@ -9,6 +9,8 @@ public record ChatRoomSummaryView(
         String name,
         ChatRoomType type,
         long unreadCount,
+        String lastMessagePreview,
+        LocalDateTime lastMessageAt,
         LocalDateTime createdAt
 ) {
 }

@@ -8,4 +8,12 @@ public class UnauthorizedException extends BusinessException {
   public UnauthorizedException(String m) {
     super(CommonErrorCode.UNAUTHORIZED, m);
   }
+
+  protected UnauthorizedException(ErrorCode errorCode, String message) {
+    super(errorCode, message);
+  }
+
+  protected UnauthorizedException(ErrorCode errorCode, String message, Throwable cause) {
+    super(errorCode, message, cause);
+  }
 }
