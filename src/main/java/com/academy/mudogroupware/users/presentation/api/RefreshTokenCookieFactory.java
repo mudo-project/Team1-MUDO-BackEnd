@@ -26,4 +26,14 @@ public class RefreshTokenCookieFactory {
                 .maxAge(Duration.ofMillis(jwtProperties.getRefreshTokenExpiration()))
                 .build();
     }
+
+    public ResponseCookie clear() {
+        return ResponseCookie.from(REFRESH_TOKEN_COOKIE, "")
+                .httpOnly(true)
+                .secure(true)
+                .sameSite("Lax")
+                .path("/")
+                .maxAge(Duration.ZERO)
+                .build();
+    }
 }

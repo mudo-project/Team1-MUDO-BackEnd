@@ -71,6 +71,35 @@
 
 ---
 
+## 3. 로그아웃
+
+`POST /api/auth/logout`
+권한: 로그인 필요 (액세스 토큰)
+
+#### Request
+
+별도 요청 바디 없음. `Authorization: Bearer {accessToken}` 헤더 필요.
+
+#### Response · `200 OK`
+
+```json
+{
+  "status": 200,
+  "code": "USER_200_2",
+  "message": "로그아웃되었습니다.",
+  "data": null
+}
+```
+
+응답 헤더로 `Set-Cookie: refreshToken=; Path=/; Max-Age=0; ...`가 내려가 브라우저의 refreshToken 쿠키를 즉시 만료시킵니다.
+
+#### 검증 및 정책
+
+- 서버에 저장된 refreshToken을 삭제합니다. 이후 해당 refreshToken으로는 `/api/token/reissue`를 호출할 수 없습니다(`AUTH_401_6`).
+- 이미 발급된 accessToken은 로그아웃 이후에도 자체 만료 시간까지는 유효합니다(별도 블랙리스트 없음) — accessToken은 단명이므로 허용된 범위로 판단했습니다.
+
+---
+
 ## ⚠️ 주요 오류
 
 | HTTP | 코드 | 상황 |

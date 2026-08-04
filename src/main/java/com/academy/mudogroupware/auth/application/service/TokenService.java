@@ -3,6 +3,7 @@ package com.academy.mudogroupware.auth.application.service;
 import com.academy.mudogroupware.auth.application.result.TokenPair;
 import com.academy.mudogroupware.auth.application.usecase.RefreshTokenValidatorUseCase;
 import com.academy.mudogroupware.auth.application.usecase.TokenIssuerUseCase;
+import com.academy.mudogroupware.auth.application.usecase.TokenRevokerUseCase;
 import com.academy.mudogroupware.auth.infrastructure.persistence.*;
 import com.academy.mudogroupware.global.domain.auth.*;
 import com.academy.mudogroupware.global.infrastructure.security.jwt.JwtTokenProvider;
@@ -12,7 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-public class TokenService implements TokenIssuerUseCase, RefreshTokenValidatorUseCase {
+public class TokenService
+    implements TokenIssuerUseCase, RefreshTokenValidatorUseCase, TokenRevokerUseCase {
   private final JwtTokenProvider provider;
   private final RefreshTokenRepository repository;
 
@@ -46,6 +48,7 @@ public class TokenService implements TokenIssuerUseCase, RefreshTokenValidatorUs
     return c;
   }
 
+  @Override
   @Transactional
   public void revoke(Long id) {
     repository.deleteByUserId(id);
