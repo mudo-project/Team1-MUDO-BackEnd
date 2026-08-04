@@ -18,8 +18,8 @@ public class TokenService implements TokenIssuerUseCase, RefreshTokenValidatorUs
 
   @Override
   @Transactional
-  public TokenPair issue(Long id, String username, String role) {
-    String a = provider.createAccessToken(id, username, role),
+  public TokenPair issue(Long id, String username, Long roleId, Long academyId) {
+    String a = provider.createAccessToken(id, username, roleId, academyId),
         r = provider.createRefreshToken(id, username);
     repository
         .findByUserId(id)
@@ -29,8 +29,8 @@ public class TokenService implements TokenIssuerUseCase, RefreshTokenValidatorUs
   }
 
   @Override
-  public String issueAccessToken(Long id, String username, String role) {
-    return provider.createAccessToken(id, username, role);
+  public String issueAccessToken(Long id, String username, Long roleId, Long academyId) {
+    return provider.createAccessToken(id, username, roleId, academyId);
   }
 
   @Override

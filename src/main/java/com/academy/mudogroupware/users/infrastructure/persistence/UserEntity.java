@@ -39,8 +39,8 @@ public class UserEntity {
     @Column(nullable = false, length = 50)
     private String name;
 
-    @Column(nullable = false, length = 20)
-    private String role;
+    @Column(name = "role_id")
+    private Long roleId;
 
     @Column(name = "phone_number", nullable = false, length = 20)
     private String phone;
@@ -68,7 +68,7 @@ public class UserEntity {
     private LocalDateTime updatedAt;
 
     @Builder
-    private UserEntity(Long id, Long academyId, String username, String password, String name, String role,
+    private UserEntity(Long id, Long academyId, String username, String password, String name, Long roleId,
                         String phone, String email, UserStatus status, boolean mustChangePw, boolean platformAdmin,
                         LocalDateTime joinedAt, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
@@ -76,7 +76,7 @@ public class UserEntity {
         this.username = username;
         this.password = password;
         this.name = name;
-        this.role = role;
+        this.roleId = roleId;
         this.phone = phone;
         this.email = email;
         this.status = status;

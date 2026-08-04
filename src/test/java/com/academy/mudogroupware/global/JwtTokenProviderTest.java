@@ -18,8 +18,8 @@ class JwtTokenProviderTest {
 
   @Test
   void accessTokenRoundTrip() {
-    String t = provider.createAccessToken(1L, "academy-user", "ADMIN");
-    assertThat(provider.parseAccessToken(t)).isEqualTo(new JwtClaims(1L, "academy-user", "ADMIN"));
+    String t = provider.createAccessToken(1L, "academy-user", 10L, 20L);
+    assertThat(provider.parseAccessToken(t)).isEqualTo(new JwtClaims(1L, "academy-user", 10L, 20L));
   }
 
   @Test

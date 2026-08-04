@@ -18,7 +18,7 @@ class TokenServiceTest {
     RefreshTokenRepository r = mock(RefreshTokenRepository.class);
     RefreshTokenJpaEntity saved = new RefreshTokenJpaEntity(1L, "old");
     when(r.findByUserId(1L)).thenReturn(Optional.of(saved));
-    TokenPair pair = new TokenService(new JwtTokenProvider(p), r).issue(1L, "user", "ADMIN");
+    TokenPair pair = new TokenService(new JwtTokenProvider(p), r).issue(1L, "user", 2L, 3L);
     assertThat(saved.getRefreshToken()).isEqualTo(pair.refreshToken());
     verify(r, never()).save(any());
   }

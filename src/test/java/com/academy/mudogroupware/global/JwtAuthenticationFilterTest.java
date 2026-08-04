@@ -2,6 +2,7 @@ package com.academy.mudogroupware.global;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.academy.mudogroupware.global.domain.auth.RolePermissionInfo;
 import com.academy.mudogroupware.global.infrastructure.security.jwt.*;
 import com.academy.mudogroupware.global.presentation.security.*;
 import jakarta.servlet.*;
@@ -21,10 +22,11 @@ class JwtAuthenticationFilterTest {
     p.setSecret("test-secret-key-that-is-at-least-32-bytes-long");
     JwtTokenProvider provider = new JwtTokenProvider(p);
     JwtAuthenticationFilter filter =
-        new JwtAuthenticationFilter(provider, new JwtAuthenticationConverter());
+        new JwtAuthenticationFilter(
+            provider, new JwtAuthenticationConverter(roleId -> RolePermissionInfo.empty()));
     MockHttpServletRequest request = new MockHttpServletRequest();
     request.addHeader(
-        "Authorization", "Bearer " + provider.createAccessToken(7L, "teacher", "ADMIN"));
+        "Authorization", "Bearer " + provider.createAccessToken(7L, "teacher", 1L, 1L));
     filter.doFilter(request, new MockHttpServletResponse(), (q, s) -> {});
     assertThat(SecurityContextHolder.getContext().getAuthentication().getName())
         .isEqualTo("teacher");
