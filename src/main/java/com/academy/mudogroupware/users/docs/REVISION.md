@@ -1,5 +1,5 @@
 > 작성일: 2026-08-04
-> 상태: 🚧 로그인·토큰 재발급 완료 · 계정 발급(회원가입)·조립식 권한 미착수
+> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료 · 계정 발급(회원가입)·역할 관리 API 미착수
 
 ## 🎯 변경 목적
 
@@ -114,6 +114,34 @@ Redis 도입이 확정되면서(WebSocket Pub/Sub 용도로 시작해 액세스 
 
 ---
 
+## ✅ 2026-08-04 · 조립식 권한(Role/Permission) 인증·인가 기반 (PR #38)
+
+### 배경
+
+팀원들이 `notice`/`approval` 등 각자 도메인에 권한 체크를 붙이지 못하고 "`users.role` 값 체계 확정 전까지 미반영"으로 막혀 있었다. 계정 발급·역할 관리 API까지 한 번에 설계하려 했으나, 계정 생성은 "어떤 role을 줄지" 자체가 role/permission 구조에 의존해서 분리가 안 됐다. 팀원 요청이 급한 건 "권한 체크가 가능한 기반"이었으므로, 계정 발급·역할 관리 API는 후속으로 미루고 **인증·인가 기반만 먼저 구현**했다(PR #19 이후 두 번째로 겪은 동일한 패턴: 큰 설계를 한 번에 하지 말고 필요한 만큼만 먼저 쪼개서 내보낸다).
+
+### 확정된 정책
+
+- **`user_role` 중간테이블(M:N) 대신 `users.role_id` 단일 FK** — 설계 초반엔 "역할은 IAM식으로 여러 개 조립 가능"으로 갔으나, "겸직" 같은 다중 역할 요구사항이 실제로 확인된 적이 없어 `AGENTS.md`의 "안 물어본 유연성 만들지 않는다" 원칙에 따라 단순화했다. 나중에 필요해지면 그때 M:N으로 마이그레이션한다.
+- **`permission`은 학원별 커스텀이 아니라 시스템 전체 고정 카탈로그** — `role`(학원마다 자유)과 다르게, `permission.code`는 실제 존재하는 기능(API 엔드포인트)에 대응해야 하므로 개발자가 기능을 만들 때마다 추가한다. 이번엔 계정·권한 자신의 기능(`ROLE:MANAGE`, `ACCOUNT:CREATE`)만 시드했다 — `notice`/`approval`은 아직 자기 권한 코드를 안 정했으므로 임의로 만들어주지 않았다.
+- **와일드카드(`RESOURCE:*`) 확장은 이번엔 안 함** — 세부 액션 목록이 정해진 리소스가 하나도 없고, `@PreAuthorize`를 실제로 쓰는 곳도 아직 없어서 시기상조로 판단. 실제 필요한 도메인이 나오면 그때 설계.
+- **JWT엔 `roleId`/`academyId`만, `roleName`과 permission 목록은 매 요청 조회** — `academyId`는 계정 소속이 구조적으로 불변(`user.academy_id` 단일소속 확정)이라 JWT에 바로 넣어도 안전하다. `roleId`는 재배정 가능해서 재로그인 전까지 예전 값을 유지하는 걸 감수했지만, `roleName`·permission까지 같이 굳히면 "역할 이름만 바꿔도 재로그인 전까진 화면에 예전 이름"이라는 불필요한 staleness가 하나 더 생긴다. 그래서 `roleId`로 매 요청 DB를 조회해 `roleName`+permission을 그때그때 새로 구성한다.
+- **`global.domain.auth.RolePermissionLookupPort`로 계층 분리** — `JwtAuthenticationConverter`(global)가 role/permission 테이블을 직접 조회하면 `ARCHITECTURE.md`가 금지하는 "global이 도메인 데이터를 아는 것"이 된다. Port는 global에, 구현(`RolePermissionLookupAdapter`)은 users에 두어 `approval`/`notice`가 겪었던 임시 shim 패턴과 반대 방향(도메인이 global에 정식으로 제공)으로 처음부터 올바르게 만들었다.
+- **`hasAuthority` 방식 채택, `hasRole` 아님** — `permission.code`가 `RESOURCE:ACTION` 형태라 Spring Security가 자동으로 붙이는 `ROLE_` 접두어(`hasRole`)와 안 맞는다.
+
+### ⚠️ Breaking Change
+
+- `users.role`(문자열) 컬럼을 제거하고 `role_id`로 대체했다(`V4.1.2`). `notice`의 `UserInfoEntity`가 이 컬럼을 직접 매핑하고 있어 병합 후 `Unknown column 'role'` 오류가 난다 — notice 담당자가 `resign_date` 삭제 때와 같은 방식으로 자기 shim을 고쳐야 한다(PR #38 리뷰 코멘트로 안내).
+
+### 완료 기준
+
+- [x] 로컬 DB에 role/permission 직접 시드 후 로그인 → JWT payload에 `roleId`/`academyId` 정상 포함 확인
+- [x] `roleId` → permission 조회가 예외 없이 동작하고, 인증만 필요한 엔드포인트(`/api/approvals/me/pending-count`)가 `200 OK` 응답하는 것으로 authorities 구성 전 과정 검증
+- [x] `./gradlew test` 통과 (JWT 관련 테스트 전부 `roleId`/`academyId` 기준으로 갱신)
+- [ ] 역할 생성·수정·삭제, 권한 조립, 직원 계정 발급 API — 후속 PR
+
+---
+
 ## 🧩 영향 범위
 
 | 계층 | 변경 내용 |
@@ -121,9 +149,10 @@ Redis 도입이 확정되면서(WebSocket Pub/Sub 용도로 시작해 액세스 
 | Presentation | `AuthController`(로그인), `TokenController`(재발급), `RefreshTokenCookieFactory` 신규 |
 | Application | `LoginUseCase`/`LoginService`, `RefreshUseCase`/`RefreshService` 신규. `auth` 모듈에 `TokenIssuerUseCase`(발급) 확장, `RefreshTokenValidatorUseCase`(검증) 신규 |
 | Domain | `User`(불변 객체, `ensureLoginAllowed()`), `UserStatus`, `UserErrorCode`/`UserException` 신규 |
-| Persistence | `UserEntity`, `UserJpaRepository`, `UserRepositoryImpl` 신규 (`users` 테이블 재사용) |
-| Migration | `V4.1.1`(users 테이블 ERD 정합화) |
-| 공통(`global`) | `AuthErrorCode`에 리프레시 토큰 실패 코드 2종 추가, `SecurityConfig` CORS 설정 정리 |
+| Persistence | `UserEntity`(role→role_id), `UserJpaRepository`, `UserRepositoryImpl` 신규. `RoleEntity`/`PermissionEntity`/`RoleJpaRepository` 신규 |
+| Infrastructure | `RolePermissionLookupAdapter`(`global.RolePermissionLookupPort` 구현) 신규 |
+| Migration | `V4.1.1`(users 테이블 ERD 정합화), `V4.1.2`(role/permission/role_permission 신설, users.role→role_id) |
+| 공통(`global`) | `AuthErrorCode`에 리프레시 토큰 실패 코드 2종 추가·`ROLE_CLAIM_MISSING` 제거, `SecurityConfig` CORS 설정 정리, `JwtClaims`/`JwtTokenProvider`/`AuthUser`/`JwtAuthenticationConverter`를 `roleId`/`academyId`/`RolePermissionLookupPort` 기반으로 재작업 |
 
 ## 🧪 완료 기준 (전체)
 
@@ -131,10 +160,11 @@ Redis 도입이 확정되면서(WebSocket Pub/Sub 용도로 시작해 액세스 
 - [x] 액세스 토큰 재발급 성공/실패(4가지 실패 유형) 각 코드별 응답 확인
 - [x] `./gradlew test` 통과
 - [x] CodeRabbit 리뷰 4건 반영
+- [x] role/permission 테이블 신설, `users.role_id` 전환, 매 요청 권한 조회(`hasAuthority`) 기반 구축
 - [ ] 계정 발급(회원가입, 원장이 하위 직원 계정 생성) API — 미착수
 - [ ] 로그아웃 API — `TokenService.revoke()`는 있으나 호출하는 컨트롤러 없음, 미착수
-- [ ] 조립식 권한(`role`/`permission`/`role_permission`/`user_role`) 전환 — 미착수
-- [ ] `academy` 테이블 생성 후 `users.academy_id`에 FK 제약 추가 필요 (다른 팀원 작업 진행 중)
+- [ ] 역할 생성·수정·삭제, 권한 조립 API — 미착수 (`ROLE:MANAGE` permission만 시드됨)
+- [x] `academy` 테이블 생성됨(다른 팀원, `V2.1.2`~`V2.1.4`) — `role.academy_id`는 FK 연결 완료. `users.academy_id → academy.academy_id` FK는 아직 미연결
 
 ## 📌 후속 문서
 
