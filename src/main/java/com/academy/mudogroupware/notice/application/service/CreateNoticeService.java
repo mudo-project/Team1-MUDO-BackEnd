@@ -1,5 +1,7 @@
 package com.academy.mudogroupware.notice.application.service;
 
+import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -23,6 +25,7 @@ public class CreateNoticeService implements CreateNoticeUseCase {
 
     private final NoticeRepository noticeRepository;
     private final NoticeAuthorDirectoryPort noticeAuthorDirectoryPort;
+    private final Clock clock;
 
     @Override
     public Long createNotice(CreateNoticeCommand command) {
@@ -33,7 +36,7 @@ public class CreateNoticeService implements CreateNoticeUseCase {
                 : command.attachments().stream().map(this::toAttachment).toList();
 
         Notice notice = Notice.create(author.academyId(), command.authorUserId(), command.title(),
-                command.content(), command.pinned(), attachments);
+                command.content(), command.pinned(), attachments, LocalDateTime.now(clock));
 
         return noticeRepository.save(notice).getId();
     }

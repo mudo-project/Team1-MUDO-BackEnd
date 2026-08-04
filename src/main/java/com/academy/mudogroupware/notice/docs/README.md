@@ -39,6 +39,7 @@
 - 목록/상세조회 모두 요청자의 `academyId`로 스코프를 검증한다 (다른 학원 공지가 섞이거나 조회되지 않도록 — approval 모듈에서 겪었던 테넌시 격리 버그를 처음부터 반영).
 - 목록 조회(`getNotices`)는 `page`/`size` 쿼리 파라미터 기반 Slice 페이지네이션을 지원한다 (`API_CONTRACT.md` 규칙 반영).
 - 작성 권한(원장/대표, 상황에 따라 직원도 가능)과 삭제·고정해제의 "권한을 가진 사람들" 조건은 `users.role` 값 체계가 확정되기 전까지 미반영 상태다.
+- `Notice.create()`/`update()`, `NoticeReadRepositoryImpl.markRead()`는 `LocalDateTime.now()`를 직접 호출하지 않고 `Clock`(`Asia/Seoul` 고정) 기반 시각을 파라미터로 받는다 — approval 모듈에서 먼저 고친 서버 시간대(UTC) 버그를 notice에도 동일하게 반영했다 ([REVISION.md](REVISION.md) 참고).
 
 ## 세부 문서
 
