@@ -191,6 +191,14 @@ PAYMENT_400_1
 - Request 필수값 추가는 호환성을 깨는 변경으로 본다.
 - API 변경 시 대상 도메인의 세부 문서와 요청·응답 예시를 함께 수정한다.
 
+## Swagger(OpenAPI) 문서화
+
+- Controller를 새로 작성하거나 기존 Controller의 엔드포인트를 추가·수정할 때는 springdoc-openapi 어노테이션을 함께 작성한다. 코드 작성과 별도 작업으로 미루지 않는다.
+- Controller 클래스에는 `@Tag(name = "도메인 이름", description = "...")`를 붙인다.
+- 각 핸들러 메서드에는 `@Operation(summary = "...", description = "...")`을 붙인다. `summary`는 [세부 문서 API.md](#문서화-기준)의 해당 엔드포인트 설명과 일치시킨다.
+- 인증이 필요한 엔드포인트는 전역 `bearerAuth` 시큐리티 스킴(`OpenApiConfig`)이 기본 적용되므로 별도 어노테이션이 필요 없다. 인증이 필요 없는 엔드포인트(로그인 등)는 `@SecurityRequirements`(빈 값)로 명시적으로 뺀다.
+- `/swagger-ui/index.html`에서 실제로 렌더링되는지 확인한 뒤 커밋한다.
+
 ## 문서화 기준
 
 각 API 문서는 아래 내용을 포함한다.
