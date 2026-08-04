@@ -41,4 +41,7 @@ be4 (계정·권한)
 
 ## 세부 문서
 
-- 아직 없음. 필요 시 이 디렉터리에 추가한다.
+- [API.md](API.md) — 엔드포인트별 요청/응답 예시, 검증 규칙, 오류 코드
+- [API_FLOW.md](API_FLOW.md) — 계층별 호출 흐름
+- [REVISION.md](REVISION.md) — 설계 변경 이력과 배경
+- [CHANGELOG.md](CHANGELOG.md) — 사용자 관점 변경 요약
