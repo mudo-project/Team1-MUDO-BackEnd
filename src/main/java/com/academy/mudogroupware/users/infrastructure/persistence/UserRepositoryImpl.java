@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.users.infrastructure.persistence;
 
+import java.util.Set;
 import java.util.Optional;
 
 import org.springframework.stereotype.Repository;
@@ -23,6 +24,14 @@ public class UserRepositoryImpl implements UserRepository {
     @Override
     public Optional<User> findById(Long id) {
         return userJpaRepository.findById(id).map(this::toDomain);
+    }
+
+    @Override
+    public Set<Long> findActiveUserIds(Long academyId, Set<Long> userIds) {
+        if (userIds.isEmpty()) {
+            return Set.of();
+        }
+        return userJpaRepository.findActiveIdsByAcademyIdAndIdIn(academyId, userIds);
     }
 
     private User toDomain(UserEntity entity) {

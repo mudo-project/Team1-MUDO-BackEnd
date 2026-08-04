@@ -8,4 +8,12 @@ public class ConflictException extends BusinessException {
   public ConflictException(String m) {
     super(CommonErrorCode.CONFLICT, m);
   }
+
+  protected ConflictException(ErrorCode errorCode) {
+    super(errorCode);
+  }
+
+  protected ConflictException(ErrorCode errorCode, String message) {
+    super(errorCode, message);
+  }
 }
