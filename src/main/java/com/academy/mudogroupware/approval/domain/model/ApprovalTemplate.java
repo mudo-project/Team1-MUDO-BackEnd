@@ -31,6 +31,12 @@ public final class ApprovalTemplate {
         if (lines == null || lines.isEmpty()) {
             throw new BadRequestException("결재선은 최소 1명 이상 지정해야 합니다.");
         }
+        if (createdAt == null) {
+            throw new IllegalArgumentException("createdAt must not be null");
+        }
+        if (updatedAt == null) {
+            throw new IllegalArgumentException("updatedAt must not be null");
+        }
         this.id = id;
         this.academyId = academyId;
         this.name = name;
@@ -52,6 +58,9 @@ public final class ApprovalTemplate {
     }
 
     public void update(String name, List<Long> approverIds, LocalDateTime now) {
+        if (now == null) {
+            throw new IllegalArgumentException("now must not be null");
+        }
         if (name == null || name.isBlank()) {
             throw new BadRequestException("템플릿 이름은 비어 있을 수 없습니다.");
         }

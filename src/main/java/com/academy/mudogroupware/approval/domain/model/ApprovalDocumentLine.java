@@ -44,6 +44,9 @@ public final class ApprovalDocumentLine {
     }
 
     void approve(String comment, LocalDateTime now) {
+        if (now == null) {
+            throw new IllegalArgumentException("now must not be null");
+        }
         ensurePending();
         this.status = ApprovalLineStatus.APPROVED;
         this.comment = comment;
@@ -51,6 +54,9 @@ public final class ApprovalDocumentLine {
     }
 
     void reject(String comment, LocalDateTime now) {
+        if (now == null) {
+            throw new IllegalArgumentException("now must not be null");
+        }
         ensurePending();
         this.status = ApprovalLineStatus.REJECTED;
         this.comment = comment;

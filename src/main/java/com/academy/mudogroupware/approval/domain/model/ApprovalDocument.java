@@ -40,6 +40,9 @@ public final class ApprovalDocument {
         if (lines == null || lines.isEmpty()) {
             throw new BadRequestException("결재선은 최소 1명 이상 지정해야 합니다.");
         }
+        if (createdAt == null) {
+            throw new IllegalArgumentException("createdAt must not be null");
+        }
         this.id = id;
         this.academyId = academyId;
         this.templateId = templateId;
@@ -72,6 +75,9 @@ public final class ApprovalDocument {
     }
 
     public void markResubmitted(LocalDateTime now) {
+        if (now == null) {
+            throw new IllegalArgumentException("now must not be null");
+        }
         if (this.status != ApprovalStatus.REJECTED) {
             throw new ConflictException("반려된 결재만 재상신할 수 있습니다.");
         }
