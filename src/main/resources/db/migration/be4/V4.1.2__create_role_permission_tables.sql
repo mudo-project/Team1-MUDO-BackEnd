@@ -31,6 +31,14 @@ ALTER TABLE users
     ADD COLUMN role_id BIGINT NULL AFTER role,
     ADD CONSTRAINT fk_users_role FOREIGN KEY (role_id) REFERENCES role (role_id);
 
+-- 기존 users.role 문자열 값을 academy별 role 행으로 이관해 데이터 보존
+INSERT INTO role (academy_id, name)
+SELECT DISTINCT academy_id, role FROM users WHERE role IS NOT NULL;
+
+UPDATE users u
+JOIN role r ON r.academy_id = u.academy_id AND r.name = u.role
+SET u.role_id = r.role_id;
+
 -- 기존 role 문자열 컬럼 제거 (role_id 조립식 권한으로 대체). notice 도메인의 UserInfoEntity가
 -- 이 컬럼을 참조 중이라 notice 담당자가 별도로 자기 shim을 고쳐야 함 (팀 공지 완료).
 ALTER TABLE users DROP COLUMN role;

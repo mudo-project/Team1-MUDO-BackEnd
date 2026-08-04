@@ -30,7 +30,7 @@
 }
 ```
 
-응답 헤더에 `Set-Cookie: refreshToken=...; HttpOnly; Secure; SameSite=Lax`가 함께 내려갑니다. refreshToken은 응답 바디에 포함되지 않습니다.
+응답 헤더에 `Set-Cookie: refreshToken=...; Path=/; HttpOnly; Secure; SameSite=Lax`가 함께 내려갑니다. `Path=/`가 없으면 브라우저가 쿠키 경로를 요청 경로(`/api/auth`) 기준으로 좁혀서, 이후 `/api/token/reissue` 요청엔 쿠키가 실리지 않습니다. refreshToken은 응답 바디에 포함되지 않습니다.
 
 #### 검증 및 정책
 

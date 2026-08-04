@@ -6,8 +6,11 @@ import com.academy.mudogroupware.global.domain.auth.RolePermissionInfo;
 import com.academy.mudogroupware.global.infrastructure.security.jwt.*;
 import com.academy.mudogroupware.global.presentation.security.*;
 import jakarta.servlet.*;
+import java.util.Set;
 import org.junit.jupiter.api.*;
 import org.springframework.mock.web.*;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 class JwtAuthenticationFilterTest {
@@ -23,12 +26,20 @@ class JwtAuthenticationFilterTest {
     JwtTokenProvider provider = new JwtTokenProvider(p);
     JwtAuthenticationFilter filter =
         new JwtAuthenticationFilter(
-            provider, new JwtAuthenticationConverter(roleId -> RolePermissionInfo.empty()));
+            provider,
+            new JwtAuthenticationConverter(
+                roleId -> new RolePermissionInfo("TEACHER", Set.of("WORKSPACE:READ"))));
     MockHttpServletRequest request = new MockHttpServletRequest();
     request.addHeader(
         "Authorization", "Bearer " + provider.createAccessToken(7L, "teacher", 1L, 1L));
     filter.doFilter(request, new MockHttpServletResponse(), (q, s) -> {});
-    assertThat(SecurityContextHolder.getContext().getAuthentication().getName())
-        .isEqualTo("teacher");
+
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    assertThat(authentication.getName()).isEqualTo("teacher");
+    assertThat(authentication.getAuthorities())
+        .extracting(GrantedAuthority::getAuthority)
+        .containsExactly("WORKSPACE:READ");
+    AuthUser principal = (AuthUser) authentication.getPrincipal();
+    assertThat(principal.roleName()).isEqualTo("TEACHER");
   }
 }
