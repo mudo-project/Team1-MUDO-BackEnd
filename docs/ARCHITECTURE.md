@@ -57,6 +57,16 @@ infrastructure → application 또는 domain
 | domain | 도메인 모델, Aggregate, 상태 변경, 비즈니스 규칙, 도메인 예외 | Spring, JPA, HTTP, 외부 API 의존 |
 | infrastructure / adapter-out | JPA, DB, 외부 API, 메시징, 파일 저장소, Port 구현 | Presentation 책임, 도메인 규칙 판단 |
 
+## Command, Query와 API DTO
+
+- 상태를 변경하는 Application Service는 `<Domain>Service`로 두고 Command를 입력으로 사용한다.
+- 조회 전용 Application Service는 `application.query` 하위의 `<Domain>QueryService`로 분리한다. Query Service는 상태를 변경하지 않는다.
+- Request와 Response는 HTTP API 계약이므로 `presentation.api.request`, `presentation.api.response`에 둔다.
+- Controller는 Request를 Command로 변환해 상태 변경 Service를 호출한다.
+- Query Service는 Domain Model을 반환하고, Controller가 `Response.from(domain)`으로 HTTP 응답 DTO를 생성한다.
+- Application과 Domain은 Presentation의 Request, Response, Swagger 어노테이션, `GlobalApiResponse`를 직접 참조하지 않는다.
+- 조회 반환 타입에 `Result`, `View` 접미사를 사용하지 않는다. HTTP 응답은 Presentation의 `Response`로 표현한다.
+
 ## 인증과 인가
 
 - 인증 정보 추출과 Security Context 처리는 Presentation 또는 Global 영역에서 담당한다.
@@ -112,6 +122,17 @@ Application Service
 - JPA Entity는 DB 저장 구조를 표현한다.
 - 두 모델의 변환은 Persistence Adapter 내부에서 수행한다.
 - Domain은 JPA 어노테이션과 영속성 기술을 알지 못한다.
+- 생성일·수정일·삭제일이 필요한 JPA Entity는 직접 필드를 선언하지 않고, `global.infrastructure.persistence`의 `CreatedAtEntity`(생성일) / `BaseTimeEntity`(생성일+수정일) / `SoftDeleteTimeEntity`(생성일+수정일+삭제일)를 상속한다. 시간대 정책은 [DATABASE.md](DATABASE.md)를 따른다.
+
+### Mapper 규칙
+
+- Domain Model과 JPA Entity 간 변환은 MapStruct를 사용한다.
+- Mapper는 `infrastructure.persistence` 하위에 둔다.
+- 모든 Mapper는 `global.infrastructure.config.MapStructConfig`를 사용한다.
+- `MapStructConfig`는 `componentModel = "spring"`, `unmappedTargetPolicy = ReportingPolicy.ERROR`로 설정한다.
+- Domain Model은 private 생성자와 public Builder를 사용한다.
+- JPA Entity는 Builder를 제공한다.
+- Application과 Domain 계층은 JPA Entity를 직접 참조하지 않는다.
 
 ## Policy 사용 기준
 
