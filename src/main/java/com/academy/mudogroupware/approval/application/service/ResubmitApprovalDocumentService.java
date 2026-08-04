@@ -1,5 +1,7 @@
 package com.academy.mudogroupware.approval.application.service;
 
+import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -22,6 +24,7 @@ import lombok.RequiredArgsConstructor;
 public class ResubmitApprovalDocumentService implements ResubmitApprovalDocumentUseCase {
 
     private final ApprovalDocumentRepository approvalDocumentRepository;
+    private final Clock clock;
 
     @Override
     public Long resubmit(ResubmitApprovalDocumentCommand command) {
@@ -31,7 +34,8 @@ public class ResubmitApprovalDocumentService implements ResubmitApprovalDocument
         if (!original.getCreatorId().equals(command.requesterId())) {
             throw new ForbiddenException("본인이 신청한 결재만 재상신할 수 있습니다.");
         }
-        original.markResubmitted();
+        LocalDateTime now = LocalDateTime.now(clock);
+        original.markResubmitted(now);
 
         List<Long> approverIds = original.getLines().stream()
                 .map(ApprovalDocumentLine::getApproverId)
@@ -42,7 +46,7 @@ public class ResubmitApprovalDocumentService implements ResubmitApprovalDocument
 
         ApprovalDocument resubmitted = ApprovalDocument.create(
                 original.getAcademyId(), original.getTemplateId(), original.getTitle(), original.getContent(),
-                original.getCreatorId(), approverIds, fileIds);
+                original.getCreatorId(), approverIds, fileIds, now);
 
         Long newDocumentId = approvalDocumentRepository.save(resubmitted).getId();
         approvalDocumentRepository.save(original);

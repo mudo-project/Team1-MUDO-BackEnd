@@ -1,5 +1,8 @@
 package com.academy.mudogroupware.approval.application.service;
 
+import java.time.Clock;
+import java.time.LocalDateTime;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,13 +20,14 @@ import lombok.RequiredArgsConstructor;
 public class DecideApprovalLineService implements DecideApprovalLineUseCase {
 
     private final ApprovalDocumentRepository approvalDocumentRepository;
+    private final Clock clock;
 
     @Override
     public void decide(DecideApprovalLineCommand command) {
         ApprovalDocument approvalDocument = approvalDocumentRepository.findById(command.documentId())
                 .orElseThrow(() -> new NotFoundException("결재 문서를 찾을 수 없습니다."));
 
-        approvalDocument.decide(command.approverId(), command.decision(), command.comment());
+        approvalDocument.decide(command.approverId(), command.decision(), command.comment(), LocalDateTime.now(clock));
 
         approvalDocumentRepository.save(approvalDocument);
     }

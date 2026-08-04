@@ -10,7 +10,7 @@ AuthUser (JWT)
 → CreateApprovalTemplateRequest → CreateApprovalTemplateCommand
 → CreateApprovalTemplateService.createTemplate
 → ApproverDirectoryPort.getApprover(creatorId) → academyId 조회
-→ ApprovalTemplate.create(academyId, name, creatorId, approverIds)
+→ ApprovalTemplate.create(academyId, name, creatorId, approverIds, now)
 → ApprovalTemplateRepository.save
 → ApprovalTemplateRepositoryImpl → template 테이블(type='APPROVAL') + approval_line_step 저장
 → GlobalApiResponse<ApprovalTemplateCreateResponse>
@@ -48,7 +48,7 @@ AuthUser
 → 신청자 academyId != 템플릿 academyId 이면 ForbiddenException
 → approverIds 미지정 시 template.approverIdsInOrder() 사용
 → ApprovalContent.create(contentType, text)
-→ ApprovalDocument.create(academyId, templateId, title, content, creatorId, approverIds, fileIds)
+→ ApprovalDocument.create(academyId, templateId, title, content, creatorId, approverIds, fileIds, now)
    → buildLines: 1차만 PENDING, 나머지는 WAITING
    → fileIds → ApprovalAttachment.create 목록
 → ApprovalDocumentRepository.save
@@ -66,7 +66,7 @@ AuthUser (현재 차례의 결재자)
 → DecideApprovalLineRequest → DecideApprovalLineCommand
 → DecideApprovalLineService.decide
 → ApprovalDocumentRepository.findById(documentId)
-→ ApprovalDocument.decide(approverId, decision, comment)
+→ ApprovalDocument.decide(approverId, decision, comment, now)
    → 상태가 IN_PROGRESS 아니면 ConflictException
    → 현재 PENDING 라인의 approverId != 요청자 이면 ConflictException("본인 차례 아님")
    → APPROVE: 현재 라인 approve() → 다음 라인 activate() → 전원 승인이면 문서 상태 APPROVED
@@ -86,10 +86,10 @@ AuthUser (원본 신청자 본인)
 → ResubmitApprovalDocumentService.resubmit
 → ApprovalDocumentRepository.findById(documentId)
 → 신청자 본인 아니면 ForbiddenException
-→ ApprovalDocument.markResubmitted()
+→ ApprovalDocument.markResubmitted(now)
    → 상태가 REJECTED가 아니면 ConflictException
    → 이미 resubmittedAt이 있으면 ConflictException (중복 재상신 차단)
-→ 원본의 title/content/lines/attachments를 복사해 새 ApprovalDocument.create(...)
+→ 원본의 title/content/lines/attachments를 복사해 새 ApprovalDocument.create(..., now)
 → 새 문서 저장 → 원본 문서(resubmittedAt 채워짐) 저장
 → GlobalApiResponse<ApprovalCreateResponse>(새 documentId)
 ```

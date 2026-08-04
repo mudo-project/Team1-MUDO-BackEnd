@@ -43,18 +43,18 @@ public final class ApprovalDocumentLine {
         this.status = ApprovalLineStatus.PENDING;
     }
 
-    void approve(String comment) {
+    void approve(String comment, LocalDateTime now) {
         ensurePending();
         this.status = ApprovalLineStatus.APPROVED;
         this.comment = comment;
-        this.decidedAt = LocalDateTime.now();
+        this.decidedAt = now;
     }
 
-    void reject(String comment) {
+    void reject(String comment, LocalDateTime now) {
         ensurePending();
         this.status = ApprovalLineStatus.REJECTED;
         this.comment = comment;
-        this.decidedAt = LocalDateTime.now();
+        this.decidedAt = now;
     }
 
     private void ensurePending() {

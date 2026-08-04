@@ -54,12 +54,13 @@ public final class ApprovalDocument {
     }
 
     public static ApprovalDocument create(Long academyId, Long templateId, String title, ApprovalContent content,
-                                           Long creatorId, List<Long> approverIds, List<Long> fileIds) {
+                                           Long creatorId, List<Long> approverIds, List<Long> fileIds,
+                                           LocalDateTime now) {
         List<ApprovalAttachment> attachments = fileIds != null
                 ? fileIds.stream().map(ApprovalAttachment::create).toList()
                 : List.of();
         return new ApprovalDocument(null, academyId, templateId, title, content, creatorId, buildLines(approverIds),
-                attachments, ApprovalStatus.IN_PROGRESS, LocalDateTime.now(), null);
+                attachments, ApprovalStatus.IN_PROGRESS, now, null);
     }
 
     public static ApprovalDocument restore(Long id, Long academyId, Long templateId, String title,
@@ -70,17 +71,17 @@ public final class ApprovalDocument {
                 status, createdAt, resubmittedAt);
     }
 
-    public void markResubmitted() {
+    public void markResubmitted(LocalDateTime now) {
         if (this.status != ApprovalStatus.REJECTED) {
             throw new ConflictException("반려된 결재만 재상신할 수 있습니다.");
         }
         if (this.resubmittedAt != null) {
             throw new ConflictException("이미 재상신된 결재입니다.");
         }
-        this.resubmittedAt = LocalDateTime.now();
+        this.resubmittedAt = now;
     }
 
-    public void decide(Long approverId, ApprovalDecision decision, String comment) {
+    public void decide(Long approverId, ApprovalDecision decision, String comment, LocalDateTime now) {
         if (this.status != ApprovalStatus.IN_PROGRESS) {
             throw new ConflictException("이미 처리가 완료된 결재입니다.");
         }
@@ -93,13 +94,13 @@ public final class ApprovalDocument {
         }
 
         if (decision == ApprovalDecision.APPROVE) {
-            currentLine.approve(comment);
+            currentLine.approve(comment, now);
             activateNextLine(currentLine.getStepOrder());
             if (isAllApproved()) {
                 this.status = ApprovalStatus.APPROVED;
             }
         } else {
-            currentLine.reject(comment);
+            currentLine.reject(comment, now);
             this.status = ApprovalStatus.REJECTED;
         }
     }

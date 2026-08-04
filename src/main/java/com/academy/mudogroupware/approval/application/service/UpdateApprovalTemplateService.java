@@ -1,5 +1,8 @@
 package com.academy.mudogroupware.approval.application.service;
 
+import java.time.Clock;
+import java.time.LocalDateTime;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,13 +20,14 @@ import lombok.RequiredArgsConstructor;
 public class UpdateApprovalTemplateService implements UpdateApprovalTemplateUseCase {
 
     private final ApprovalTemplateRepository approvalTemplateRepository;
+    private final Clock clock;
 
     @Override
     public void updateTemplate(UpdateApprovalTemplateCommand command) {
         ApprovalTemplate approvalTemplate = approvalTemplateRepository.findById(command.templateId())
                 .orElseThrow(() -> new NotFoundException("결재 템플릿을 찾을 수 없습니다."));
 
-        approvalTemplate.update(command.name(), command.approverIds());
+        approvalTemplate.update(command.name(), command.approverIds(), LocalDateTime.now(clock));
 
         approvalTemplateRepository.save(approvalTemplate);
     }

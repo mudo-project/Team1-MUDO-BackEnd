@@ -40,8 +40,8 @@ public final class ApprovalTemplate {
         this.updatedAt = updatedAt;
     }
 
-    public static ApprovalTemplate create(Long academyId, String name, Long creatorId, List<Long> approverIds) {
-        LocalDateTime now = LocalDateTime.now();
+    public static ApprovalTemplate create(Long academyId, String name, Long creatorId, List<Long> approverIds,
+                                           LocalDateTime now) {
         return new ApprovalTemplate(null, academyId, name, creatorId, buildLines(approverIds), now, now);
     }
 
@@ -51,7 +51,7 @@ public final class ApprovalTemplate {
         return new ApprovalTemplate(id, academyId, name, creatorId, lines, createdAt, updatedAt);
     }
 
-    public void update(String name, List<Long> approverIds) {
+    public void update(String name, List<Long> approverIds, LocalDateTime now) {
         if (name == null || name.isBlank()) {
             throw new BadRequestException("템플릿 이름은 비어 있을 수 없습니다.");
         }
@@ -62,7 +62,7 @@ public final class ApprovalTemplate {
         this.name = name;
         this.lines.clear();
         this.lines.addAll(newLines);
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = now;
     }
 
     private static List<ApprovalTemplateLine> buildLines(List<Long> approverIds) {

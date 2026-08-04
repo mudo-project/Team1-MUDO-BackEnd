@@ -7,6 +7,36 @@
 
 ---
 
+## ✅ 2026-08-04 · 시각 생성 책임을 호출부로 이전 (KST 고정)
+
+### 배경
+
+서버 JVM 기본 시간대가 UTC로 설정되어 있어, 도메인 코드가 직접 `LocalDateTime.now()`를 호출하면 실행 환경에 따라 저장 시각이 9시간 어긋날 수 있는 구조적 위험이 있었다. `global` 모듈에 `Asia/Seoul` 고정 `Clock` 빈이 추가되면서, approval 도메인에 남아있던 마지막 6곳을 정리했다.
+
+### 확정된 정책
+
+- 도메인 모델(`ApprovalTemplate`, `ApprovalDocument`, `ApprovalDocumentLine`)은 더 이상 스스로 `LocalDateTime.now()`를 호출하지 않는다. 대신 시각을 파라미터로 전달받아 그대로 저장한다.
+  - `ApprovalTemplate.create(...)` / `update(...)`
+  - `ApprovalDocument.create(...)` / `markResubmitted(...)` / `decide(...)`(내부적으로 `ApprovalDocumentLine.approve/reject`에 그대로 전달)
+- 호출부(서비스 5곳)는 `Clock`을 주입받아 `LocalDateTime.now(clock)`으로 시각을 만들어 넘긴다.
+- `ApprovalTemplateEntity`(공유 `template` 테이블 매핑)는 `global`의 `BaseTimeEntity`를 상속하도록 변경해, `created_at`/`updated_at`을 JPA Auditing(`Asia/Seoul` 고정 `Clock` 기반)이 자동으로 채우게 했다.
+- `ApprovalDocumentEntity`의 `created_at`은 `CreatedAtEntity`로 전환하지 않고 기존처럼 도메인이 넘겨준 값을 그대로 저장한다. Repository 구현이 저장할 때마다 엔티티를 새로 생성해 `save()`(merge)하는 구조라, Auditing으로 전환하면 병합 시 `createdAt`이 유실될 위험이 있어 이번 범위에서는 제외했다(추후 별도 리팩터링에서 fetch-후-mutate 패턴으로 정리되면 전환 검토).
+
+### 영향 범위
+
+| 계층 | 변경 내용 |
+| --- | --- |
+| Domain | `ApprovalTemplate.create/update`, `ApprovalDocument.create/markResubmitted/decide`, `ApprovalDocumentLine.approve/reject`에 `LocalDateTime now` 파라미터 추가 |
+| Application | `CreateApprovalTemplateService`, `UpdateApprovalTemplateService`, `CreateApprovalDocumentService`, `ResubmitApprovalDocumentService`, `DecideApprovalLineService`에 `Clock` 주입 및 호출부 수정 |
+| Infrastructure | `ApprovalTemplateEntity`가 `BaseTimeEntity`를 상속하도록 변경, `ApprovalTemplateRepositoryImpl`에서 수동 `createdAt`/`updatedAt` 대입 제거 |
+
+### 완료 기준
+
+- [x] approval 도메인 코드에 `LocalDateTime.now()` 직접 호출이 남아있지 않다.
+- [x] `./gradlew compileJava` / `./gradlew test` 통과.
+
+---
+
 ## ✅ 2026-08-03 · CodeRabbit 리뷰 반영 (데이터 격리 강화)
 
 ### 확정된 정책

@@ -1,5 +1,8 @@
 package com.academy.mudogroupware.approval.application.service;
 
+import java.time.Clock;
+import java.time.LocalDateTime;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,12 +22,14 @@ public class CreateApprovalTemplateService implements CreateApprovalTemplateUseC
 
     private final ApprovalTemplateRepository approvalTemplateRepository;
     private final ApproverDirectoryPort approverDirectoryPort;
+    private final Clock clock;
 
     @Override
     public Long createTemplate(CreateApprovalTemplateCommand command) {
         ApproverInfo creator = approverDirectoryPort.getApprover(command.creatorId());
         ApprovalTemplate approvalTemplate = ApprovalTemplate.create(
-                creator.academyId(), command.name(), command.creatorId(), command.approverIds());
+                creator.academyId(), command.name(), command.creatorId(), command.approverIds(),
+                LocalDateTime.now(clock));
 
         return approvalTemplateRepository.save(approvalTemplate).getId();
     }

@@ -1,5 +1,7 @@
 package com.academy.mudogroupware.approval.application.service;
 
+import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -27,6 +29,7 @@ public class CreateApprovalDocumentService implements CreateApprovalDocumentUseC
     private final ApprovalTemplateRepository approvalTemplateRepository;
     private final ApprovalDocumentRepository approvalDocumentRepository;
     private final ApproverDirectoryPort approverDirectoryPort;
+    private final Clock clock;
 
     @Override
     public Long createDocument(CreateApprovalDocumentCommand command) {
@@ -45,7 +48,7 @@ public class CreateApprovalDocumentService implements CreateApprovalDocumentUseC
         ApprovalContent content = ApprovalContent.create(command.contentType(), command.text());
         ApprovalDocument approvalDocument = ApprovalDocument.create(
                 approvalTemplate.getAcademyId(), approvalTemplate.getId(), command.title(), content,
-                command.creatorId(), approverIds, command.fileIds());
+                command.creatorId(), approverIds, command.fileIds(), LocalDateTime.now(clock));
 
         return approvalDocumentRepository.save(approvalDocument).getId();
     }
