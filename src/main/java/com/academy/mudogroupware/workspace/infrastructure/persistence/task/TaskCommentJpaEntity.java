@@ -57,12 +57,18 @@ public class TaskCommentJpaEntity extends BaseTimeEntity {
   }
 
   public void complete(Long completedBy, LocalDateTime completedAt) {
+    if (completed) {
+      return;
+    }
     this.completed = true;
     this.completedBy = completedBy;
     this.completedAt = completedAt;
   }
 
   public void cancelCompletion() {
+    if (!completed) {
+      return;
+    }
     this.completed = false;
     this.completedBy = null;
     this.completedAt = null;

@@ -128,7 +128,7 @@ Application Service
 
 - Domain Model과 JPA Entity 간 변환은 MapStruct를 사용한다.
 - Mapper는 `infrastructure.persistence` 하위에 둔다.
-- 모든 Mapper는 `global.infrastructure.mapper.MapStructConfig`를 사용한다.
+- 모든 Mapper는 `global.infrastructure.config.MapStructConfig`를 사용한다.
 - `MapStructConfig`는 `componentModel = "spring"`, `unmappedTargetPolicy = ReportingPolicy.ERROR`로 설정한다.
 - Domain Model은 private 생성자와 public Builder를 사용한다.
 - JPA Entity는 Builder를 제공한다.

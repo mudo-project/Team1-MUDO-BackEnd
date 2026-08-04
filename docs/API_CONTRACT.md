@@ -128,7 +128,7 @@ return ResponseEntity.ok(
 {
   "timestamp": "2026-08-02T14:30:00+09:00",
   "status": 400,
-  "code": "COMMON_400",
+  "code": "COMMON_400_1",
   "message": "유효하지 않은 요청입니다.",
   "traceId": "a1b2c3d4",
   "details": {
@@ -177,12 +177,12 @@ return ResponseEntity.ok(
 - 도메인 오류는 도메인별 접두사를 사용한다.
 
 ```text
-COMMON_400
-COMMON_401
-COMMON_403
-COMMON_404
-COMMON_409
-COMMON_500
+COMMON_400_1
+COMMON_401_1
+COMMON_403_1
+COMMON_404_1
+COMMON_409_1
+COMMON_500_1
 
 USER_404_1
 ORDER_409_1
