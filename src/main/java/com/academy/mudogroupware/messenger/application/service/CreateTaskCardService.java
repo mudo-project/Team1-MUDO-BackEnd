@@ -1,5 +1,8 @@
 package com.academy.mudogroupware.messenger.application.service;
 
+import java.time.Clock;
+import java.time.LocalDateTime;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +24,7 @@ public class CreateTaskCardService implements CreateTaskCardUseCase {
 
     private final ChatRoomRepository chatRoomRepository;
     private final ChatTaskCardRepository chatTaskCardRepository;
+    private final Clock clock;
 
     @Override
     public Long createTaskCard(CreateTaskCardCommand command) {
@@ -35,7 +39,7 @@ public class CreateTaskCardService implements CreateTaskCardUseCase {
         }
 
         ChatTaskCard chatTaskCard = ChatTaskCard.create(command.chatRoomId(), command.assignerId(),
-                command.content(), command.dueDate(), command.assigneeIds());
+                command.content(), command.dueDate(), command.assigneeIds(), LocalDateTime.now(clock));
         return chatTaskCardRepository.save(chatTaskCard).getId();
     }
 }

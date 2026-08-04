@@ -2,6 +2,7 @@ package com.academy.mudogroupware.messenger.application.service;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,8 +41,10 @@ public class TaskCardQueryService implements TaskCardQueryUseCase {
 
         List<ChatTaskCard> chatTaskCards = chatTaskCardRepository.findAllByChatRoomId(chatRoomId);
 
-        List<Long> memberIds = chatRoom.getMembers().stream()
-                .map(member -> member.getUserId())
+        List<Long> memberIds = chatTaskCards.stream()
+                .flatMap(card -> Stream.concat(Stream.of(card.getAssignerUserId()),
+                        card.getAssignees().stream().map(ChatTaskAssignee::getUserId)))
+                .distinct()
                 .toList();
         Map<Long, ChatMemberInfo> members = chatMemberDirectoryPort.getMembers(memberIds);
 

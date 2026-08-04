@@ -6,8 +6,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import com.academy.mudogroupware.messenger.domain.exception.MessengerErrorCode;
 import com.academy.mudogroupware.messenger.domain.exception.MessengerException;
@@ -46,15 +48,18 @@ public final class ChatTaskCard {
     }
 
     public static ChatTaskCard create(Long chatRoomId, Long assignerUserId, String content, LocalDate dueDate,
-                                       List<Long> assigneeUserIds) {
-        if (assigneeUserIds == null || assigneeUserIds.isEmpty()) {
+                                       List<Long> assigneeUserIds, LocalDateTime createdAt) {
+        Set<Long> distinctAssigneeIds = assigneeUserIds == null
+                ? Set.of()
+                : assigneeUserIds.stream()
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toCollection(LinkedHashSet::new));
+        if (distinctAssigneeIds.isEmpty()) {
             throw new MessengerException(MessengerErrorCode.ASSIGNEE_REQUIRED);
         }
-        Set<Long> distinctAssigneeIds = new LinkedHashSet<>(assigneeUserIds);
         List<ChatTaskAssignee> assignees = distinctAssigneeIds.stream().map(ChatTaskAssignee::create).toList();
 
-        return new ChatTaskCard(null, chatRoomId, assignerUserId, content, dueDate, assignees,
-                LocalDateTime.now());
+        return new ChatTaskCard(null, chatRoomId, assignerUserId, content, dueDate, assignees, createdAt);
     }
 
     public static ChatTaskCard restore(Long id, Long chatRoomId, Long assignerUserId, String content,
