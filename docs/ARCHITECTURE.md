@@ -57,6 +57,16 @@ infrastructure → application 또는 domain
 | domain | 도메인 모델, Aggregate, 상태 변경, 비즈니스 규칙, 도메인 예외 | Spring, JPA, HTTP, 외부 API 의존 |
 | infrastructure / adapter-out | JPA, DB, 외부 API, 메시징, 파일 저장소, Port 구현 | Presentation 책임, 도메인 규칙 판단 |
 
+## Command, Query와 API DTO
+
+- 상태를 변경하는 Application Service는 `<Domain>Service`로 두고 Command를 입력으로 사용한다.
+- 조회 전용 Application Service는 `application.query` 하위의 `<Domain>QueryService`로 분리한다. Query Service는 상태를 변경하지 않는다.
+- Request와 Response는 HTTP API 계약이므로 `presentation.api.request`, `presentation.api.response`에 둔다.
+- Controller는 Request를 Command로 변환해 상태 변경 Service를 호출한다.
+- Query Service는 Domain Model을 반환하고, Controller가 `Response.from(domain)`으로 HTTP 응답 DTO를 생성한다.
+- Application과 Domain은 Presentation의 Request, Response, Swagger 어노테이션, `GlobalApiResponse`를 직접 참조하지 않는다.
+- 조회 반환 타입에 `Result`, `View` 접미사를 사용하지 않는다. HTTP 응답은 Presentation의 `Response`로 표현한다.
+
 ## 인증과 인가
 
 - 인증 정보 추출과 Security Context 처리는 Presentation 또는 Global 영역에서 담당한다.
