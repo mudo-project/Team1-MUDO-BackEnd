@@ -2,7 +2,8 @@ package com.academy.mudogroupware.messenger.domain.model;
 
 import java.time.LocalDateTime;
 
-import com.academy.mudogroupware.global.domain.common.exception.BadRequestException;
+import com.academy.mudogroupware.messenger.domain.exception.MessengerErrorCode;
+import com.academy.mudogroupware.messenger.domain.exception.MessengerException;
 
 public final class ChatMessage {
 
@@ -28,10 +29,10 @@ public final class ChatMessage {
         }
         if (messageType == MessageType.TEXT) {
             if (content == null || content.isBlank()) {
-                throw new BadRequestException("메시지 내용은 비어 있을 수 없습니다.");
+                throw new MessengerException(MessengerErrorCode.MESSAGE_CONTENT_REQUIRED);
             }
         } else if (fileUrl == null || fileUrl.isBlank()) {
-            throw new BadRequestException("파일 URL은 비어 있을 수 없습니다.");
+            throw new MessengerException(MessengerErrorCode.FILE_URL_REQUIRED);
         }
         this.id = id;
         this.chatRoomId = chatRoomId;
