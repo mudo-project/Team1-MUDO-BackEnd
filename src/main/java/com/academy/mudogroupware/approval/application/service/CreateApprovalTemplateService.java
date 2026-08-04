@@ -22,11 +22,13 @@ public class CreateApprovalTemplateService implements CreateApprovalTemplateUseC
 
     private final ApprovalTemplateRepository approvalTemplateRepository;
     private final ApproverDirectoryPort approverDirectoryPort;
+    private final ApproverValidator approverValidator;
     private final Clock clock;
 
     @Override
     public Long createTemplate(CreateApprovalTemplateCommand command) {
         ApproverInfo creator = approverDirectoryPort.getApprover(command.creatorId());
+        approverValidator.validate(command.approverIds(), creator.academyId());
         ApprovalTemplate approvalTemplate = ApprovalTemplate.create(
                 creator.academyId(), command.name(), command.creatorId(), command.approverIds(),
                 LocalDateTime.now(clock));

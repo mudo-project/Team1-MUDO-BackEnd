@@ -7,6 +7,24 @@
 
 ---
 
+## ✅ 2026-08-04 · 코드 리뷰 반영 (템플릿 스코프, 결재자 검증, 트랜잭션 롤백)
+
+### 배경
+
+코드 리뷰에서 P1 2건, P2 1건이 발견됐다.
+
+### 확정된 정책
+
+- **템플릿 단건 조회/수정/삭제**가 요청자 정보 없이 ID만으로 동작해, 공유 `template` 테이블(다른 기능도 같은 테이블을 `type` 컬럼으로 구분해 쓰는 구조)에서 다른 학원 또는 다른 기능(type != 'APPROVAL')의 템플릿을 조회·수정·삭제할 수 있는 상태였다. `ApprovalTemplateJpaRepository.findByIdAndType`으로 type을 always 필터링하고, 상세/수정/삭제 3개 API에 요청자 인증을 추가해 학원 일치까지 검증하도록 고쳤다.
+- **결재자(approverId) 목록**이 실제 존재 여부·소속 학원 확인 없이 그대로 저장되고 있었다(템플릿 생성/수정, 문서 생성, 결재선 수정 4곳). `ApproverValidator`(공용 검증 컴포넌트)를 추가해 4곳 모두에서 결재자 지정 시 검증하도록 통일했다.
+- `SummarizeApprovalAttachmentService`가 요약 실패 시 `markSummaryFailed()`를 저장한 뒤 예외를 던지는데, `@Transactional` 기본 롤백 규칙(RuntimeException 전체 롤백) 때문에 그 저장까지 함께 롤백되는 문제가 있었다. `@Transactional(noRollbackFor = ApprovalException.class)`로 고쳤다.
+
+### 완료 기준
+
+- [x] `./gradlew test` 통과 (신규 유닛 테스트 포함).
+
+---
+
 ## ✅ 2026-08-04 · 첨부파일 AI 요약(Gemini) 실제 연동
 
 ### 배경
