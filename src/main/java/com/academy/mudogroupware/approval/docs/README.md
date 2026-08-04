@@ -39,6 +39,9 @@ Web Push 구독 (`/api/approvals/push-subscriptions`):
 - `RegisterPushSubscriptionUseCase` — 브라우저 푸시 구독 정보(endpoint/p256dh/auth) 등록 (같은 사용자·endpoint면 키 갱신)
 - `UnregisterPushSubscriptionUseCase` — 구독 해지
 
+첨부파일 AI 요약 (`/api/approvals/{documentId}/attachments/{fileId}/summarize`):
+- `SummarizeApprovalAttachmentUseCase` — Gemini API를 호출해 첨부파일 요약을 생성하고 `approval_attachment`에 반영
+
 세부 요청/응답 형식은 [docs/API.md](API.md), 계층별 호출 흐름은 [docs/API_FLOW.md](API_FLOW.md) 참고.
 
 ## 다른 모듈 또는 외부 시스템에 요청하는 의존성
@@ -46,6 +49,7 @@ Web Push 구독 (`/api/approvals/push-subscriptions`):
 - **결재자·생성자 이름/역할/소속학원 조회**: `ApproverDirectoryPort`(application/port)로 추상화되어 있으나, User 도메인 모듈이 아직 없어 `infrastructure/persistence`에 `users` 테이블을 직접 읽는 임시 shim(`UserNameEntity`)으로 구현되어 있다. **MODULES.md의 "다른 도메인 JPA Entity 직접 참조 금지" 규칙 위반 상태이며, User 모듈이 생기면 정식 Port 구현으로 교체해야 한다.** (notice 모듈에도 같은 성격의 별도 shim이 있다 — User 모듈 생기면 둘 다 교체 필요)
 - **파일 업로드**: 결재 문서의 첨부파일은 공유 `file_id`(BIGINT) 목록만 저장한다. 실제 업로드(presigned URL 발급)는 `file` 모듈이 담당하며, approval 모듈은 직접 연동하지 않는다.
 - **인증 사용자 정보**: `global.presentation.security.AuthUser`(JWT 인증 principal)를 컨트롤러에서 사용한다.
+- **AI 요약(Gemini)**: `AttachmentSummarizerPort`(application/port)로 추상화되어 있고, `infrastructure/external/gemini`의 `GeminiSummarizerAdapter`가 Google Gemini `generateContent` REST API를 직접 호출해 구현한다. `GEMINI_API_KEY`(필수)/`GEMINI_MODEL`(기본값 `gemini-2.0-flash`) 환경변수로 설정한다. **`file` 모듈이 아직 `fileId → 실제 파일 내용` 조회를 제공하지 않아, 실제 첨부파일 내용 대신 안내문(placeholder)을 요약 요청으로 보낸다** — file 모듈이 조회 기능을 제공하면 교체해야 한다.
 
 ## 발행·소비하는 Event
 
@@ -60,7 +64,7 @@ Web Push 구독 (`/api/approvals/push-subscriptions`):
 - 목록 API(내 결재함, 내가 신청한 결재, 템플릿 목록)는 `page`/`size` 쿼리 파라미터 기반 Slice 페이지네이션을 지원한다 (`API_CONTRACT.md` 규칙 반영, 전체 개수 없이 `hasNext`만 제공).
 - 템플릿 생성/수정/삭제 권한(행정직원 제한)과 결재 신청 권한(직원+강사) 인가 로직은 아직 반영되지 않았다. `users.role` 값 체계가 확정되면 Application 또는 Domain Policy에 추가한다 (Controller에 두지 않는다).
 - `role_id`(결재선의 역할 기반 지정) 컬럼은 스키마만 있고 해석 로직이 없다. role 테이블이 생기면 구현한다.
-- AI 요약(`approval_attachment.ai_summary` 등)은 컬럼만 있고 실제 요약 로직은 없다.
+- AI 요약은 `POST .../summarize` 호출 시 동기적으로 Gemini를 호출해 처리한다(업로드 시 자동 트리거 없음). **file 모듈이 실제 파일 내용을 조회하는 방법을 제공하기 전까지는 실제 첨부파일 내용이 아니라 placeholder 텍스트로 요약을 생성한다** — 진짜 요약이 아니므로 그대로 서비스에 노출하면 안 된다.
 
 ## 세부 문서
 

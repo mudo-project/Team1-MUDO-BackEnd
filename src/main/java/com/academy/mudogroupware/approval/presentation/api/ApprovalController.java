@@ -13,16 +13,20 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.academy.mudogroupware.approval.application.command.ResubmitApprovalDocumentCommand;
+import com.academy.mudogroupware.approval.application.command.SummarizeApprovalAttachmentCommand;
+import com.academy.mudogroupware.approval.application.query.ApprovalAttachmentSummaryView;
 import com.academy.mudogroupware.approval.application.query.ApprovalDetailView;
 import com.academy.mudogroupware.approval.application.usecase.ApprovalQueryUseCase;
 import com.academy.mudogroupware.approval.application.usecase.CreateApprovalDocumentUseCase;
 import com.academy.mudogroupware.approval.application.usecase.DecideApprovalLineUseCase;
 import com.academy.mudogroupware.approval.application.usecase.ResubmitApprovalDocumentUseCase;
+import com.academy.mudogroupware.approval.application.usecase.SummarizeApprovalAttachmentUseCase;
 import com.academy.mudogroupware.approval.application.usecase.UpdateApprovalDocumentLinesUseCase;
 import com.academy.mudogroupware.approval.presentation.api.common.ApprovalResponseCode;
 import com.academy.mudogroupware.approval.presentation.api.request.CreateApprovalDocumentRequest;
 import com.academy.mudogroupware.approval.presentation.api.request.DecideApprovalLineRequest;
 import com.academy.mudogroupware.approval.presentation.api.request.UpdateApprovalDocumentLinesRequest;
+import com.academy.mudogroupware.approval.presentation.api.response.ApprovalAttachmentSummaryResponse;
 import com.academy.mudogroupware.approval.presentation.api.response.ApprovalCreateResponse;
 import com.academy.mudogroupware.approval.presentation.api.response.ApprovalDetailResponse;
 import com.academy.mudogroupware.approval.presentation.api.response.ApprovalPendingCountResponse;
@@ -44,6 +48,7 @@ public class ApprovalController {
     private final DecideApprovalLineUseCase decideApprovalLineUseCase;
     private final UpdateApprovalDocumentLinesUseCase updateApprovalDocumentLinesUseCase;
     private final ResubmitApprovalDocumentUseCase resubmitApprovalDocumentUseCase;
+    private final SummarizeApprovalAttachmentUseCase summarizeApprovalAttachmentUseCase;
     private final ApprovalQueryUseCase approvalQueryUseCase;
 
     @PostMapping
@@ -119,5 +124,16 @@ public class ApprovalController {
         ApprovalCreateResponse data = ApprovalCreateResponse.from(newDocumentId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(GlobalApiResponse.created(ApprovalResponseCode.DOCUMENT_RESUBMITTED, data));
+    }
+
+    @PostMapping("/{documentId}/attachments/{fileId}/summarize")
+    public ResponseEntity<GlobalApiResponse<ApprovalAttachmentSummaryResponse>> summarizeAttachment(
+            @AuthenticationPrincipal AuthUser authUser,
+            @PathVariable Long documentId,
+            @PathVariable Long fileId) {
+        ApprovalAttachmentSummaryView view = summarizeApprovalAttachmentUseCase.summarize(
+                new SummarizeApprovalAttachmentCommand(documentId, fileId, authUser.userId()));
+        ApprovalAttachmentSummaryResponse data = ApprovalAttachmentSummaryResponse.from(view);
+        return ResponseEntity.ok(GlobalApiResponse.ok(ApprovalResponseCode.ATTACHMENT_SUMMARIZED, data));
     }
 }

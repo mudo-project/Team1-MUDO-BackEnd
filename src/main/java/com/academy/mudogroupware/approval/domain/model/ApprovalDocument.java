@@ -137,6 +137,10 @@ public final class ApprovalDocument {
         return Optional.ofNullable(currentPendingLine()).map(ApprovalDocumentLine::getApproverId);
     }
 
+    public Optional<ApprovalAttachment> findAttachmentByFileId(Long fileId) {
+        return attachments.stream().filter(attachment -> attachment.getFileId().equals(fileId)).findFirst();
+    }
+
     private static List<ApprovalDocumentLine> buildLines(List<Long> approverIds) {
         List<ApprovalDocumentLine> lines = new ArrayList<>();
         int order = 1;

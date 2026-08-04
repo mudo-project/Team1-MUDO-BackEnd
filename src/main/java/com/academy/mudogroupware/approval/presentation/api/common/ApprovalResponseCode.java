@@ -18,7 +18,8 @@ public enum ApprovalResponseCode implements ResponseCode {
     DOCUMENT_DETAIL_RETRIEVED("APPROVAL_200_5", "결재 상세 조회에 성공했습니다."),
     PENDING_COUNT_RETRIEVED("APPROVAL_200_6", "결재 대기 건수 조회에 성공했습니다."),
     DOCUMENT_RESUBMITTED("APPROVAL_201_3", "결재 재상신에 성공했습니다."),
-    PUSH_SUBSCRIPTION_REGISTERED("APPROVAL_201_4", "푸시 구독 등록에 성공했습니다.");
+    PUSH_SUBSCRIPTION_REGISTERED("APPROVAL_201_4", "푸시 구독 등록에 성공했습니다."),
+    ATTACHMENT_SUMMARIZED("APPROVAL_200_7", "첨부파일 요약 생성에 성공했습니다.");
 
     private final String code;
     private final String message;
