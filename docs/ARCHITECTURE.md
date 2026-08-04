@@ -112,6 +112,17 @@ Application Service
 - JPA Entity는 DB 저장 구조를 표현한다.
 - 두 모델의 변환은 Persistence Adapter 내부에서 수행한다.
 - Domain은 JPA 어노테이션과 영속성 기술을 알지 못한다.
+- 생성일·수정일·삭제일이 필요한 JPA Entity는 직접 필드를 선언하지 않고, `global.infrastructure.persistence`의 `CreatedAtEntity`(생성일) / `BaseTimeEntity`(생성일+수정일) / `SoftDeleteTimeEntity`(생성일+수정일+삭제일)를 상속한다. 시간대 정책은 [DATABASE.md](DATABASE.md)를 따른다.
+
+### Mapper 규칙
+
+- Domain Model과 JPA Entity 간 변환은 MapStruct를 사용한다.
+- Mapper는 `infrastructure.persistence` 하위에 둔다.
+- 모든 Mapper는 `global.infrastructure.mapper.MapStructConfig`를 사용한다.
+- `MapStructConfig`는 `componentModel = "spring"`, `unmappedTargetPolicy = ReportingPolicy.ERROR`로 설정한다.
+- Domain Model은 private 생성자와 public Builder를 사용한다.
+- JPA Entity는 Builder를 제공한다.
+- Application과 Domain 계층은 JPA Entity를 직접 참조하지 않는다.
 
 ## Policy 사용 기준
 

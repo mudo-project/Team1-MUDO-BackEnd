@@ -21,7 +21,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "task_status_history")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class TaskStatusHistoryJpaEntity extends CreatedAtEntity {
+public class  TaskStatusHistoryJpaEntity extends CreatedAtEntity {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
