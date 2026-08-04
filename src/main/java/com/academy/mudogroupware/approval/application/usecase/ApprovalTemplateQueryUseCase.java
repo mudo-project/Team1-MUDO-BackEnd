@@ -8,5 +8,5 @@ public interface ApprovalTemplateQueryUseCase {
 
     PageResult<ApprovalTemplateSummaryView> getTemplates(Long requesterId, int page, int size);
 
-    ApprovalTemplateDetailView getTemplateDetail(Long templateId);
+    ApprovalTemplateDetailView getTemplateDetail(Long templateId, Long requesterId);
 }

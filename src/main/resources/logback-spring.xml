@@ -19,7 +19,7 @@
     </appender>
     <springProfile name="local,default">
         <root level="INFO"><appender-ref ref="CONSOLE"/><appender-ref ref="FILE"/><appender-ref ref="ERROR_FILE"/></root>
-        <logger name="com.academy.mudogroupware" level="DEBUG" additivity="false"><appender-ref ref="CONSOLE"/><appender-ref ref="FILE"/><appender-ref ref="ERROR_FILE"/></logger>
+        <logger name="com.academy.mudogroupware" level="INFO" additivity="false"><appender-ref ref="CONSOLE"/><appender-ref ref="FILE"/><appender-ref ref="ERROR_FILE"/></logger>
         <logger name="com.academy.mudogroupware.global.infrastructure.aop.PerformanceLogAspect" level="INFO" additivity="false"><appender-ref ref="CONSOLE"/><appender-ref ref="PERFORMANCE_FILE"/></logger>
     </springProfile>
     <springProfile name="prod">

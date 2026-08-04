@@ -70,24 +70,28 @@ public class ApprovalTemplateController {
 
     @Operation(summary = "결재 템플릿 상세 조회")
     @GetMapping("/{templateId}")
-    public ResponseEntity<GlobalApiResponse<ApprovalTemplateDetailResponse>> getTemplateDetail(@PathVariable Long templateId) {
-        ApprovalTemplateDetailView view = approvalTemplateQueryUseCase.getTemplateDetail(templateId);
+    public ResponseEntity<GlobalApiResponse<ApprovalTemplateDetailResponse>> getTemplateDetail(
+            @AuthenticationPrincipal AuthUser authUser,
+            @PathVariable Long templateId) {
+        ApprovalTemplateDetailView view = approvalTemplateQueryUseCase.getTemplateDetail(templateId, authUser.userId());
         ApprovalTemplateDetailResponse data = ApprovalTemplateDetailResponse.from(view);
         return ResponseEntity.ok(GlobalApiResponse.ok(ApprovalResponseCode.TEMPLATE_DETAIL_RETRIEVED, data));
     }
 
     @Operation(summary = "결재 템플릿 수정", description = "이름·결재선을 요청 값으로 전체 교체한다.")
     @PatchMapping("/{templateId}")
-    public ResponseEntity<Void> updateTemplate(@PathVariable Long templateId,
+    public ResponseEntity<Void> updateTemplate(@AuthenticationPrincipal AuthUser authUser,
+                                                @PathVariable Long templateId,
                                                 @Valid @RequestBody UpdateApprovalTemplateRequest request) {
-        updateApprovalTemplateUseCase.updateTemplate(request.toCommand(templateId));
+        updateApprovalTemplateUseCase.updateTemplate(request.toCommand(templateId, authUser.userId()));
         return ResponseEntity.noContent().build();
     }
 
     @Operation(summary = "결재 템플릿 삭제")
     @DeleteMapping("/{templateId}")
-    public ResponseEntity<Void> deleteTemplate(@PathVariable Long templateId) {
-        deleteApprovalTemplateUseCase.deleteTemplate(templateId);
+    public ResponseEntity<Void> deleteTemplate(@AuthenticationPrincipal AuthUser authUser,
+                                                @PathVariable Long templateId) {
+        deleteApprovalTemplateUseCase.deleteTemplate(templateId, authUser.userId());
         return ResponseEntity.noContent().build();
     }
 }

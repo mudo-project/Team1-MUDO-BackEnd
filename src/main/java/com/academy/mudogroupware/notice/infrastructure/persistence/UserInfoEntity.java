@@ -24,8 +24,8 @@ public class UserInfoEntity {
     @Column(nullable = false, length = 50)
     private String name;
 
-    @Column(nullable = false, length = 20)
-    private String role;
+    @Column(name = "role_id")
+    private Long roleId;
 
     @Column(name = "academy_id", nullable = false)
     private Long academyId;

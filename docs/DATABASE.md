@@ -7,6 +7,7 @@
 - 데이터베이스에 저장하는 날짜·시간의 기준은 `Asia/Seoul (UTC+09:00)`이다.
 - 날짜·시간 생성·변환 시 시스템 기본 시간대에 의존하지 않고, `Asia/Seoul` 또는 UTC를 명시적으로 사용한다.
 - API 응답은 `Asia/Seoul` 기준의 ISO-8601 오프셋 형식으로 반환한다.
+- 생성일·수정일·삭제일 컬럼을 갖는 JPA Entity의 상속 규칙은 [ARCHITECTURE.md](ARCHITECTURE.md)의 "Domain Model과 JPA Entity" 섹션을 따른다.
 
 ## Flyway 마이그레이션
 

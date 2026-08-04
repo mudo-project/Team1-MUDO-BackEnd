@@ -31,7 +31,7 @@ public class ApprovalTemplateRepositoryImpl implements ApprovalTemplateRepositor
 
     @Override
     public Optional<ApprovalTemplate> findById(Long id) {
-        return approvalTemplateJpaRepository.findById(id).map(this::toDomain);
+        return approvalTemplateJpaRepository.findByIdAndType(id, ApprovalTemplateEntity.TYPE).map(this::toDomain);
     }
 
     @Override

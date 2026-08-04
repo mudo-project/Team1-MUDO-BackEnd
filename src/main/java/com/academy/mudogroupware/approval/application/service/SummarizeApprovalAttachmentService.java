@@ -19,9 +19,12 @@ import com.academy.mudogroupware.approval.domain.repository.ApprovalDocumentRepo
 
 import lombok.RequiredArgsConstructor;
 
+// noRollbackFor: 실패 시 markSummaryFailed()를 save()한 뒤 ApprovalException을 던지는데,
+// 기본 롤백 규칙(RuntimeException 전체 롤백)이면 그 save()까지 함께 롤백돼 FAILED 상태가
+// 유실된다. 이 예외로는 롤백하지 않아야 실패 상태가 실제로 저장된다.
 @Service
 @RequiredArgsConstructor
-@Transactional
+@Transactional(noRollbackFor = ApprovalException.class)
 public class SummarizeApprovalAttachmentService implements SummarizeApprovalAttachmentUseCase {
 
     private final ApprovalDocumentRepository approvalDocumentRepository;

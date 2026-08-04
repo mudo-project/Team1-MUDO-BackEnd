@@ -19,6 +19,8 @@ public enum ApprovalErrorCode implements ErrorCode {
     CROSS_ACADEMY_TEMPLATE(HttpStatus.FORBIDDEN, "APPROVAL_403_2", "다른 학원의 템플릿으로는 결재를 신청할 수 없습니다."),
     NOT_DOCUMENT_OWNER_RESUBMIT(HttpStatus.FORBIDDEN, "APPROVAL_403_3", "본인이 신청한 결재만 재상신할 수 있습니다."),
     NOT_DOCUMENT_OWNER_LINES(HttpStatus.FORBIDDEN, "APPROVAL_403_4", "본인이 신청한 결재만 결재선을 수정할 수 있습니다."),
+    TEMPLATE_ACCESS_DENIED(HttpStatus.FORBIDDEN, "APPROVAL_403_5", "해당 템플릿에 접근할 권한이 없습니다."),
+    CROSS_ACADEMY_APPROVER(HttpStatus.FORBIDDEN, "APPROVAL_403_6", "다른 학원 소속 사용자를 결재자로 지정할 수 없습니다."),
 
     TEMPLATE_NOT_FOUND(HttpStatus.NOT_FOUND, "APPROVAL_404_1", "결재 템플릿을 찾을 수 없습니다."),
     DOCUMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "APPROVAL_404_2", "결재 문서를 찾을 수 없습니다."),

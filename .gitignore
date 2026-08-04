@@ -246,3 +246,6 @@ monitoring/grafana/dashboards
 
 # Local Git worktrees
 .worktrees/
+
+# Superpowers implementation plans
+/docs/superpowers/
