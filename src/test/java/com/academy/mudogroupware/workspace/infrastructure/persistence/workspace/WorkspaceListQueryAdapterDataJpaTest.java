@@ -80,6 +80,23 @@ class WorkspaceListQueryAdapterDataJpaTest {
   }
 
   @Test
+  void findAllOrdersOnlyRequestersRecentAccessAndIgnoresAnotherUsersAccess() {
+    insertWorkspace(1L, ACADEMY_ID, "requester-older-access", at(1));
+    insertWorkspace(2L, ACADEMY_ID, "requester-newer-access", at(2));
+    insertWorkspace(3L, ACADEMY_ID, "another-user-access", at(4));
+    insertWorkspace(4L, ACADEMY_ID, "unvisited", at(3));
+    insertRecentAccess(REQUESTER_ID, 1L, at(5));
+    insertRecentAccess(REQUESTER_ID, 2L, at(6));
+    insertRecentAccess(99L, 3L, at(7));
+
+    List<WorkspaceListItem> result = workspaceListQueryAdapter.findAll(ACADEMY_ID, REQUESTER_ID);
+
+    assertThat(result)
+        .extracting(WorkspaceListItem::workspaceId)
+        .containsExactly(2L, 1L, 3L, 4L);
+  }
+
+  @Test
   void existsAccessibleRequiresMembershipUnlessRequesterCanReadAll() {
     insertWorkspace(1L, ACADEMY_ID, "member", at(1));
     insertWorkspace(2L, ACADEMY_ID, "non-member", at(2));
@@ -94,6 +111,17 @@ class WorkspaceListQueryAdapterDataJpaTest {
     assertThat(workspaceListQueryAdapter.existsAccessible(2L, ACADEMY_ID, REQUESTER_ID, true))
         .isTrue();
     assertThat(workspaceListQueryAdapter.existsAccessible(3L, ACADEMY_ID, REQUESTER_ID, true))
+        .isFalse();
+  }
+
+  @Test
+  void existsAccessibleRejectsWorkspaceFromAnotherAcademyRegardlessOfReadAllPermission() {
+    insertWorkspace(1L, 2L, "another-academy", at(1));
+    insertMember(1L, REQUESTER_ID);
+
+    assertThat(workspaceListQueryAdapter.existsAccessible(1L, ACADEMY_ID, REQUESTER_ID, false))
+        .isFalse();
+    assertThat(workspaceListQueryAdapter.existsAccessible(1L, ACADEMY_ID, REQUESTER_ID, true))
         .isFalse();
   }
 
