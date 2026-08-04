@@ -7,6 +7,25 @@
 
 ---
 
+## ✅ 2026-08-04 · 저장 시각을 한국 시간(KST)으로 고정 (approval 뒤늦은 반영)
+
+### 배경
+
+approval 모듈에서 서버 시간대(UTC)와 무관하게 KST로 저장하도록 `Clock` 기반으로 고친 적이 있는데, notice는 그 작업 범위에서 빠져 있었다. `Notice.create()`/`update()`와 `NoticeReadRepositoryImpl.markRead()`가 여전히 `LocalDateTime.now()`를 직접 호출하고 있었던 걸 뒤늦게 발견해서 동일하게 고쳤다.
+
+### 확정된 정책
+
+- `Notice.create(..., LocalDateTime now)`/`update(..., LocalDateTime now)`가 시각을 파라미터로 받는다. `CreateNoticeService`/`UpdateNoticeService`가 `Clock`을 주입받아 `LocalDateTime.now(clock)`을 넘긴다.
+- `NoticeReadRepositoryImpl`은 도메인 계층을 거치지 않는 순수 인프라 기록(읽음 시각)이라, 서비스 계층 경유 없이 `Clock`을 직접 주입받아 처리한다.
+- 새로 추가한 도메인 클래스(`Notice`)와 인프라 클래스(`NoticeReadRepositoryImpl`)에 유닛 테스트를 함께 추가했다 (notice 모듈에 유닛 테스트가 전무했던 상태였다).
+
+### 완료 기준
+
+- [x] notice 코드에 `LocalDateTime.now()` 직접 호출이 남아있지 않다.
+- [x] `./gradlew test` 통과 (신규 유닛 테스트 10케이스 포함).
+
+---
+
 ## ✅ 2026-08-04 · 전용 ErrorCode 도입 및 목록 API 페이지네이션
 
 ### 배경

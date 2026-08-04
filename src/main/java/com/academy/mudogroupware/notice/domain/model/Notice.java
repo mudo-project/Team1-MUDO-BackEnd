@@ -36,6 +36,12 @@ public final class Notice {
         if (content == null || content.isBlank()) {
             throw new NoticeException(NoticeErrorCode.CONTENT_REQUIRED);
         }
+        if (createdAt == null) {
+            throw new IllegalArgumentException("createdAt must not be null");
+        }
+        if (updatedAt == null) {
+            throw new IllegalArgumentException("updatedAt must not be null");
+        }
         this.id = id;
         this.academyId = academyId;
         this.authorUserId = authorUserId;
@@ -49,8 +55,7 @@ public final class Notice {
     }
 
     public static Notice create(Long academyId, Long authorUserId, String title, String content,
-                                 boolean pinned, List<NoticeAttachment> attachments) {
-        LocalDateTime now = LocalDateTime.now();
+                                 boolean pinned, List<NoticeAttachment> attachments, LocalDateTime now) {
         return new Notice(null, academyId, authorUserId, title, content, pinned, 0L, attachments, now, now);
     }
 
@@ -65,7 +70,10 @@ public final class Notice {
         this.viewCount++;
     }
 
-    public void update(String title, String content) {
+    public void update(String title, String content, LocalDateTime now) {
+        if (now == null) {
+            throw new IllegalArgumentException("now must not be null");
+        }
         if (title == null || title.isBlank()) {
             throw new NoticeException(NoticeErrorCode.TITLE_REQUIRED);
         }
@@ -74,7 +82,7 @@ public final class Notice {
         }
         this.title = title;
         this.content = content;
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = now;
     }
 
     public void pin() {
