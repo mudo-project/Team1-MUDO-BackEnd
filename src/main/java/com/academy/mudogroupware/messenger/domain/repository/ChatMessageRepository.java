@@ -2,12 +2,16 @@ package com.academy.mudogroupware.messenger.domain.repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 import com.academy.mudogroupware.messenger.domain.model.ChatMessage;
 
 public interface ChatMessageRepository {
 
     ChatMessage save(ChatMessage chatMessage);
+
+    // 채팅방별 가장 최근(created_at 기준) 메시지 1건. 목록조회의 미리보기 텍스트에 사용한다.
+    Map<Long, ChatMessage> findLatestByChatRoomIds(List<Long> chatRoomIds);
 
     // created_at DESC, message_id DESC 정렬로 (cursorCreatedAt, cursorMessageId)보다 앞선 size + 1건을 반환한다.
     // cursor가 둘 다 null이면 최신 메시지부터 조회한다. 호출측(application)이 size + 1건째의 존재 여부로
