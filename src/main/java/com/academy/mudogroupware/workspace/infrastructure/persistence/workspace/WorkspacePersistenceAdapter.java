@@ -27,7 +27,7 @@ public class WorkspacePersistenceAdapter implements WorkspaceRepository {
       return workspacePersistenceMapper.toDomain(workspaceJpaRepository.saveAndFlush(entity));
     } catch (DataIntegrityViolationException exception) {
       if (isActiveNameConflict(exception)) {
-        throw new WorkspaceNameConflictException();
+        throw new WorkspaceNameConflictException(exception);
       }
       throw exception;
     }

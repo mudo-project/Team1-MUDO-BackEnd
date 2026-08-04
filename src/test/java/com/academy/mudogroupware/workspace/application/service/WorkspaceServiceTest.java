@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -16,7 +15,6 @@ import com.academy.mudogroupware.workspace.domain.exception.WorkspaceErrorCode;
 import com.academy.mudogroupware.workspace.domain.exception.WorkspaceNameConflictException;
 import com.academy.mudogroupware.workspace.domain.model.Workspace;
 import com.academy.mudogroupware.workspace.domain.repository.WorkspaceRepository;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,9 +34,7 @@ class WorkspaceServiceTest {
 
   @BeforeEach
   void setUp() {
-    WorkspaceCreationTransaction creationTransaction =
-        new WorkspaceCreationTransaction(workspaceRepository);
-    workspaceService = new WorkspaceService(workspaceMemberDirectoryPort, creationTransaction);
+    workspaceService = new WorkspaceService(workspaceMemberDirectoryPort, workspaceRepository);
   }
 
   @Test
@@ -70,7 +66,6 @@ class WorkspaceServiceTest {
     @SuppressWarnings("unchecked")
     ArgumentCaptor<Set<Long>> memberIdsCaptor = ArgumentCaptor.forClass(Set.class);
     verify(workspaceMemberDirectoryPort).findActiveUserIds(any(), memberIdsCaptor.capture());
-    assertThat(memberIdsCaptor.getValue()).isInstanceOf(LinkedHashSet.class);
     assertThat(memberIdsCaptor.getValue()).containsExactly(20L, 10L);
 
     ArgumentCaptor<Workspace> workspaceCaptor = ArgumentCaptor.forClass(Workspace.class);
@@ -95,73 +90,10 @@ class WorkspaceServiceTest {
   }
 
   @Test
-  void appendsSmallestAvailableSuffixToAnExistingActiveName() {
+  void rejectsCreationWhenActiveWorkspaceNameAlreadyExists() {
     when(workspaceMemberDirectoryPort.findActiveUserIds(1L, Set.of(10L)))
         .thenReturn(Set.of(10L));
     when(workspaceRepository.existsByAcademyIdAndName(1L, "개발팀")).thenReturn(true);
-    when(workspaceRepository.existsByAcademyIdAndName(1L, "개발팀 (1)")).thenReturn(true);
-    when(workspaceRepository.existsByAcademyIdAndName(1L, "개발팀 (2)")).thenReturn(false);
-    stubSuccessfulSave(101L);
-
-    workspaceService.createWorkspace(
-        new CreateWorkspaceCommand(1L, 10L, "개발팀", List.of()));
-
-    ArgumentCaptor<Workspace> workspaceCaptor = ArgumentCaptor.forClass(Workspace.class);
-    verify(workspaceRepository).save(workspaceCaptor.capture());
-    assertThat(workspaceCaptor.getValue().getName()).isEqualTo("개발팀 (2)");
-  }
-
-  @Test
-  void shortensBaseNameSoSuffixKeepsGeneratedNameWithinOneHundredCharacters() {
-    String baseName = "a".repeat(100);
-    String suffixedName = "a".repeat(96) + " (1)";
-    when(workspaceMemberDirectoryPort.findActiveUserIds(1L, Set.of(10L)))
-        .thenReturn(Set.of(10L));
-    when(workspaceRepository.existsByAcademyIdAndName(1L, baseName)).thenReturn(true);
-    when(workspaceRepository.existsByAcademyIdAndName(1L, suffixedName)).thenReturn(false);
-    stubSuccessfulSave(101L);
-
-    workspaceService.createWorkspace(
-        new CreateWorkspaceCommand(1L, 10L, baseName, List.of()));
-
-    ArgumentCaptor<Workspace> workspaceCaptor = ArgumentCaptor.forClass(Workspace.class);
-    verify(workspaceRepository).save(workspaceCaptor.capture());
-    assertThat(workspaceCaptor.getValue().getName()).isEqualTo(suffixedName).hasSize(100);
-  }
-
-  @Test
-  void retriesOnceWithAResolvedNameAfterPersistenceNameCollision() {
-    when(workspaceMemberDirectoryPort.findActiveUserIds(1L, Set.of(10L)))
-        .thenReturn(Set.of(10L));
-    when(workspaceRepository.existsByAcademyIdAndName(1L, "개발팀"))
-        .thenReturn(false, true);
-    when(workspaceRepository.existsByAcademyIdAndName(1L, "개발팀 (1)")).thenReturn(false);
-    when(workspaceRepository.save(any(Workspace.class)))
-        .thenThrow(new WorkspaceNameConflictException())
-        .thenAnswer(invocation -> persisted(invocation.getArgument(0), 101L));
-
-    Long workspaceId =
-        workspaceService.createWorkspace(
-            new CreateWorkspaceCommand(1L, 10L, "개발팀", List.of()));
-
-    assertThat(workspaceId).isEqualTo(101L);
-    ArgumentCaptor<Workspace> workspaceCaptor = ArgumentCaptor.forClass(Workspace.class);
-    verify(workspaceRepository, times(2)).save(workspaceCaptor.capture());
-    assertThat(workspaceCaptor.getAllValues())
-        .extracting(Workspace::getName)
-        .containsExactly("개발팀", "개발팀 (1)");
-  }
-
-  @Test
-  void propagatesSecondPersistenceNameCollisionWithoutThirdAttempt() {
-    when(workspaceMemberDirectoryPort.findActiveUserIds(1L, Set.of(10L)))
-        .thenReturn(Set.of(10L));
-    when(workspaceRepository.existsByAcademyIdAndName(1L, "개발팀"))
-        .thenReturn(false, true);
-    when(workspaceRepository.existsByAcademyIdAndName(1L, "개발팀 (1)")).thenReturn(false);
-    when(workspaceRepository.save(any(Workspace.class)))
-        .thenThrow(new WorkspaceNameConflictException())
-        .thenThrow(new WorkspaceNameConflictException());
 
     assertThatThrownBy(
             () ->
@@ -171,8 +103,7 @@ class WorkspaceServiceTest {
         .extracting("errorCode")
         .isEqualTo(WorkspaceErrorCode.NAME_CONFLICT);
 
-    verify(workspaceRepository, times(2)).save(any(Workspace.class));
-    verify(workspaceRepository, never()).existsByAcademyIdAndName(1L, "개발팀 (2)");
+    verify(workspaceRepository, never()).save(any());
   }
 
   private void stubSuccessfulSave(Long workspaceId) {

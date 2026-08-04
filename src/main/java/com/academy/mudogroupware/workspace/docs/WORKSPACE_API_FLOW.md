@@ -18,7 +18,6 @@ POST /api/workspaces
   → UserRepository
   → UserRepositoryImpl
   → UserJpaRepository
-  → WorkspaceCreationTransaction (REQUIRES_NEW)
   → WorkspaceRepository
   → WorkspacePersistenceAdapter
   → WorkspaceJpaRepository
@@ -40,15 +39,12 @@ POST /api/workspaces
 
 요청한 ID 전체가 반환되지 않으면 `InvalidWorkspaceMemberException`을 발생시키고 `WORKSPACE_400_1`로 응답한다.
 
-## 4. 이름 결정과 저장
+## 4. 이름 확인과 저장
 
-`WorkspaceCreationTransaction`은 `REQUIRES_NEW` 트랜잭션에서 활성 이름 사용 여부를 조회한다.
+`WorkspaceService`는 하나의 트랜잭션에서 활성 이름 사용 여부를 조회한다.
 
-- 사용 가능한 기본 이름이 있으면 그대로 사용한다.
-- 이미 존재하면 `이름 (1)`, `이름 (2)` 순서로 가장 작은 사용 가능 이름을 찾는다.
-- 접미사 때문에 100자를 넘으면 기본 이름을 잘라 전체 길이를 맞춘다.
-
-결정된 이름과 참여자 ID로 `Workspace` Domain Model을 만들고 `WorkspaceRepository`에 저장한다.
+- 같은 학원에 이미 존재하는 활성 이름이면 `WorkspaceNameConflictException`을 발생시켜 `WORKSPACE_409_1`을 반환한다.
+- 사용 가능한 이름이면 앞뒤 공백을 제거한 이름과 참여자 ID로 `Workspace` Domain Model을 만들고 `WorkspaceRepository`에 전달한다.
 
 ## 5. 영속화
 
@@ -56,10 +52,6 @@ POST /api/workspaces
 
 `workspace` 테이블의 `(academy_id, active_name)` unique 제약이 충돌하면 Adapter가 `WorkspaceNameConflictException`으로 변환한다.
 
-## 6. 이름 충돌 재시도
-
-`WorkspaceService`는 이름 충돌 예외가 발생하면 `WorkspaceCreationTransaction`을 한 번 더 호출한다. 새 트랜잭션에서 이름을 다시 계산하며, 두 번째 충돌은 `WORKSPACE_409_1`로 종료한다.
-
-## 7. 응답
+## 6. 응답
 
 성공하면 Controller가 `GlobalApiResponse.created`로 HTTP `201 Created`와 `workspaceId`를 반환한다.

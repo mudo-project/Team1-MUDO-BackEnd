@@ -21,13 +21,14 @@ class WorkspacePersistenceAdapterTest {
     WorkspacePersistenceAdapter adapter = new WorkspacePersistenceAdapter(jpaRepository, mapper);
     Workspace workspace = workspace();
     when(mapper.toEntity(workspace)).thenReturn(WorkspaceJpaEntity.create(1L, "개발팀", 10L));
-    when(jpaRepository.saveAndFlush(any(WorkspaceJpaEntity.class)))
-        .thenThrow(
-            new DataIntegrityViolationException(
-                "Duplicate entry for key 'uk_workspace_academy_active_name'"));
+    DataIntegrityViolationException violation =
+        new DataIntegrityViolationException(
+            "Duplicate entry for key 'uk_workspace_academy_active_name'");
+    when(jpaRepository.saveAndFlush(any(WorkspaceJpaEntity.class))).thenThrow(violation);
 
     assertThatThrownBy(() -> adapter.save(workspace))
-        .isInstanceOf(WorkspaceNameConflictException.class);
+        .isInstanceOf(WorkspaceNameConflictException.class)
+        .hasCause(violation);
   }
 
   @Test

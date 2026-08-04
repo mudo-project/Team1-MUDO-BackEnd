@@ -33,7 +33,7 @@ public class WorkspaceController {
   @ApiResponses({
     @ApiResponse(responseCode = "201", description = "워크스페이스 생성 성공"),
     @ApiResponse(responseCode = "400", description = "요청값 또는 참여자가 유효하지 않음"),
-    @ApiResponse(responseCode = "409", description = "이름 충돌 재시도 후 생성 실패")
+    @ApiResponse(responseCode = "409", description = "같은 학원에 동일한 활성 워크스페이스 이름이 존재함")
   })
   @PostMapping
   public ResponseEntity<GlobalApiResponse<CreateWorkspaceResponse>> createWorkspace(

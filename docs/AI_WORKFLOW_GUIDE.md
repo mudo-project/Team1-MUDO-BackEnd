@@ -33,9 +33,11 @@ AI 도구가 Superpowers 스킬을 사용할 때, 작업 위험도와 범위에 
 
 ### 실행 방식
 
-요구사항이 명확한 기능은 짧은 구현 계획 → 직접 구현 → 관련 테스트 → 한 번의 코드 검토 순서로 진행합니다.
+요구사항이 명확한 기능은 짧은 구현 계획 → 직접 구현 → 관련 테스트 → 한 번의 코드 검토(`requesting-code-review`) 순서로 진행합니다.
 
 원인이 불명확한 버그는 `systematic-debugging`으로 원인을 확인한 뒤 수정하고 회귀 테스트를 실행합니다.
+
+> STANDARD는 `test-driven-development` 스킬을 의도적으로 생략합니다. 테스트를 구현 이후에 작성해도 되는 대신, 핵심 로직 변경 시 관련 테스트는 반드시 실행·통과시켜야 합니다. 실패 시 원인이 불명확해지면 즉시 `systematic-debugging`으로 전환합니다.
 
 ## FULL — Superpowers 전체 사용
 
@@ -45,10 +47,16 @@ AI 도구가 Superpowers 스킬을 사용할 때, 작업 위험도와 범위에 
 - 예약·결제·동시성 제어
 - 트랜잭션 경계 변경
 - DB 스키마 및 Flyway 마이그레이션
-- 멀티모듈 또는 아키텍처 변경
+- 멀티모듈 또는 아키텍처 변경 (타 도메인 코드 관련 변경은 `AGENTS.md` 절대규칙 4번의 사전 동의·주석 규칙을 함께 따릅니다)
 - Spring–FastAPI 등 외부 시스템 연동
 - 대규모 리팩터링
 - 요구사항이 모호한 신규 기능
+
+### 실행 방식
+
+아래 체인을 기본 순서로 사용하고, 작업 성격에 맞지 않는 단계는 생략 사유를 명시하고 건너뜁니다.
+
+`brainstorming` → `writing-plans` (필요시 `using-git-worktrees`) → `test-driven-development` → `subagent-driven-development` 또는 `executing-plans` → `verification-before-completion` → `requesting-code-review`
 
 ## 공통 원칙
 
@@ -56,6 +64,7 @@ AI 도구가 Superpowers 스킬을 사용할 때, 작업 위험도와 범위에 
 - 모든 작업에 다단계 계획·에이전트 분업·반복 리뷰를 적용하지 않습니다.
 - 핵심 비즈니스 로직과 고위험 변경은 관련 테스트로 검증합니다.
 - AI 도구를 사용하더라도 도메인 소유권, API 계약, DB 마이그레이션, 보안 규칙은 저장소 문서를 우선합니다.
+- **FULL 조건 우선 원칙**: 변경 파일 개수나 범위가 FAST/STANDARD 기준에 들어맞아도, FULL 조건 목록(인증·인가, 트랜잭션, 마이그레이션, 멀티모듈 등)에 하나라도 해당하면 항상 FULL을 적용합니다. 파일 개수 기준은 FULL 조건에 해당하지 않을 때만 유효합니다.
 
 ## 확장 가이드
 

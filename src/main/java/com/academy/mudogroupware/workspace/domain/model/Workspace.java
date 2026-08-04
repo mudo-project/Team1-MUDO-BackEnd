@@ -1,5 +1,7 @@
 package com.academy.mudogroupware.workspace.domain.model;
 
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.Set;
 import lombok.Builder;
 import lombok.Getter;
@@ -19,6 +21,8 @@ public class Workspace {
     this.academyId = academyId;
     this.name = name;
     this.createdBy = createdBy;
-    this.memberIds = Set.copyOf(memberIds);
+    Set<Long> members = new LinkedHashSet<>(memberIds);
+    members.add(createdBy);
+    this.memberIds = Collections.unmodifiableSet(members);
   }
 }
