@@ -23,13 +23,16 @@ public enum ApprovalErrorCode implements ErrorCode {
     TEMPLATE_NOT_FOUND(HttpStatus.NOT_FOUND, "APPROVAL_404_1", "결재 템플릿을 찾을 수 없습니다."),
     DOCUMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "APPROVAL_404_2", "결재 문서를 찾을 수 없습니다."),
     APPROVER_NOT_FOUND(HttpStatus.NOT_FOUND, "APPROVAL_404_3", "사용자를 찾을 수 없습니다."),
+    ATTACHMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "APPROVAL_404_4", "첨부파일을 찾을 수 없습니다."),
 
     RESUBMIT_NOT_REJECTED(HttpStatus.CONFLICT, "APPROVAL_409_1", "반려된 결재만 재상신할 수 있습니다."),
     ALREADY_RESUBMITTED(HttpStatus.CONFLICT, "APPROVAL_409_2", "이미 재상신된 결재입니다."),
     DOCUMENT_ALREADY_DECIDED(HttpStatus.CONFLICT, "APPROVAL_409_3", "이미 처리가 완료된 결재입니다."),
     NOT_YOUR_TURN(HttpStatus.CONFLICT, "APPROVAL_409_4", "본인 차례의 결재가 아닙니다."),
     LINES_ALREADY_IN_PROGRESS(HttpStatus.CONFLICT, "APPROVAL_409_5", "이미 결재가 진행된 건은 결재선을 수정할 수 없습니다."),
-    LINE_ALREADY_DECIDED(HttpStatus.CONFLICT, "APPROVAL_409_6", "이미 처리가 완료된 결재선입니다.");
+    LINE_ALREADY_DECIDED(HttpStatus.CONFLICT, "APPROVAL_409_6", "이미 처리가 완료된 결재선입니다."),
+
+    SUMMARY_GENERATION_FAILED(HttpStatus.BAD_GATEWAY, "APPROVAL_502_1", "첨부파일 요약 생성에 실패했습니다.");
 
     private final HttpStatus httpStatus;
     private final String code;

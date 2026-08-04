@@ -362,6 +362,79 @@
 
 ---
 
+## 🔔 Web Push 구독 API
+
+> ⚠️ 이 API는 구독 정보 저장까지만 합니다. 실제 푸시 발송(VAPID, `web-push` 라이브러리 연동)은 아직 구현되지 않았습니다. 결재 승인으로 다음 결재자 차례가 되면 서버 내부적으로 `ApprovalLineActivatedEvent`가 발행되지만, 이를 소비해 실제로 알림을 보내는 리스너는 없습니다.
+
+### 14. 푸시 구독 등록
+
+`POST /api/approvals/push-subscriptions`
+권한: 인증 사용자 전체
+
+#### Request
+
+```json
+{
+  "endpoint": "https://fcm.googleapis.com/fcm/send/xxxxx",
+  "p256dh": "BN4Gv...",
+  "auth": "k8Jv..."
+}
+```
+
+#### Response · `201 Created`
+
+```json
+{
+  "status": 201,
+  "code": "APPROVAL_201_4",
+  "message": "푸시 구독 등록에 성공했습니다.",
+  "data": { "subscriptionId": 1 }
+}
+```
+
+- 같은 사용자·`endpoint` 조합으로 다시 등록하면 새로 만들지 않고 `p256dh`/`auth` 키만 갱신합니다 (브라우저가 주기적으로 구독을 재발급하는 경우 대비).
+
+---
+
+### 15. 푸시 구독 해지
+
+`DELETE /api/approvals/push-subscriptions?endpoint={endpoint}`
+권한: 인증 사용자 전체 (본인 구독만 삭제)
+
+#### Response · `204 No Content`
+
+---
+
+## 🤖 AI 요약 API
+
+> ⚠️ 실제 첨부파일 내용이 아니라 placeholder 텍스트로 요약을 생성합니다. `file` 모듈이 `fileId → 실제 파일 내용` 조회를 제공하기 전까지는 반환되는 `aiSummary`가 진짜 파일 요약이 아닙니다 (연동 확인용).
+
+### 16. 첨부파일 AI 요약 생성
+
+`POST /api/approvals/{documentId}/attachments/{fileId}/summarize`
+권한: 신청자 본인 또는 결재선 포함자만
+
+- 호출할 때마다 동기적으로 Gemini API(`gemini-2.0-flash`, `GEMINI_MODEL`로 변경 가능)를 호출합니다. 업로드 시 자동 트리거는 없습니다.
+- Gemini 호출이 실패하면 `summaryStatus`가 `FAILED`로 기록되고 `502`를 반환합니다.
+
+#### Response · `200 OK`
+
+```json
+{
+  "status": 200,
+  "code": "APPROVAL_200_7",
+  "message": "첨부파일 요약 생성에 성공했습니다.",
+  "data": {
+    "fileId": 101,
+    "aiSummary": "(Gemini가 생성한 요약 텍스트)",
+    "summaryStatus": "COMPLETED",
+    "summarizedAt": "2026-08-04T15:00:00"
+  }
+}
+```
+
+---
+
 ## ⚠️ 오류 코드 (`ApprovalErrorCode`)
 
 approval 도메인 규칙 위반은 `ApprovalErrorCode`(→ `ApprovalException`)로 던집니다. 응답의 `code` 필드에 아래 값이 그대로 노출됩니다.
@@ -379,11 +452,13 @@ approval 도메인 규칙 위반은 `ApprovalErrorCode`(→ `ApprovalException`)
 | `APPROVAL_404_1` | 404 | 결재 템플릿을 찾을 수 없습니다. |
 | `APPROVAL_404_2` | 404 | 결재 문서를 찾을 수 없습니다. |
 | `APPROVAL_404_3` | 404 | 사용자를 찾을 수 없습니다. |
+| `APPROVAL_404_4` | 404 | 첨부파일을 찾을 수 없습니다. |
 | `APPROVAL_409_1` | 409 | 반려된 결재만 재상신할 수 있습니다. |
 | `APPROVAL_409_2` | 409 | 이미 재상신된 결재입니다. |
 | `APPROVAL_409_3` | 409 | 이미 처리가 완료된 결재입니다. |
 | `APPROVAL_409_4` | 409 | 본인 차례의 결재가 아닙니다. |
 | `APPROVAL_409_5` | 409 | 이미 결재가 진행된 건은 결재선을 수정할 수 없습니다. |
 | `APPROVAL_409_6` | 409 | 이미 처리가 완료된 결재선입니다. |
+| `APPROVAL_502_1` | 502 | 첨부파일 요약 생성에 실패했습니다. |
 
 인증 실패(`401`)와 `role_id`/`approver_id` 상호배타 위반처럼 DB `CHECK` 제약으로만 막는 경우는 `CommonErrorCode`(글로벌 공통)를 그대로 사용합니다.

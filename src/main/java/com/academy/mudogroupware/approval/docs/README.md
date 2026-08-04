@@ -15,6 +15,7 @@
 
 - `ApprovalTemplate`, `ApprovalTemplateLine` — DB 테이블 `template`(공유, `type='APPROVAL'`), `approval_line_step`
 - `ApprovalDocument`, `ApprovalDocumentLine`, `ApprovalAttachment` — DB 테이블 `approval_document`, `approval_step`, `approval_attachment`
+- `PushSubscription`(Web Push 구독 정보) — DB 테이블 `push_subscription` (`user_id`+`endpoint` 유니크, 실제 알림 발송 로직은 아직 없음)
 - `ApprovalDocument` 상태: `IN_PROGRESS` → `APPROVED` 또는 `REJECTED`, 재상신 여부는 `resubmittedAt`으로 별도 추적
 - `ApprovalDocumentLine` 상태: `WAITING` → `PENDING` → `APPROVED` 또는 `REJECTED`
 - 모든 테이블에 `academy_id`(멀티테넌시) 컬럼이 있으며, 조회/생성 시 요청자 학원으로 스코프를 검증한다.
@@ -31,8 +32,15 @@
 - `CreateApprovalDocumentUseCase` — 결재 신청 (다중 파일 첨부, 학원 교차 신청 차단)
 - `ApprovalQueryUseCase` — 내게 온 결재 / 내가 신청한 결재 / 대기 건수 / 상세 조회
 - `UpdateApprovalDocumentLinesUseCase` — 결재선 수정 (이미 처리된 앞 단계는 유지, 이후 단계만 교체 가능)
-- `DecideApprovalLineUseCase` — 결재 승인/반려
+- `DecideApprovalLineUseCase` — 결재 승인/반려 (승인으로 다음 결재자 라인이 활성화되면 `ApprovalLineActivatedEvent` 발행)
 - `ResubmitApprovalDocumentUseCase` — 반려된 결재 재상신 (1회 제한)
+
+Web Push 구독 (`/api/approvals/push-subscriptions`):
+- `RegisterPushSubscriptionUseCase` — 브라우저 푸시 구독 정보(endpoint/p256dh/auth) 등록 (같은 사용자·endpoint면 키 갱신)
+- `UnregisterPushSubscriptionUseCase` — 구독 해지
+
+첨부파일 AI 요약 (`/api/approvals/{documentId}/attachments/{fileId}/summarize`):
+- `SummarizeApprovalAttachmentUseCase` — Gemini API를 호출해 첨부파일 요약을 생성하고 `approval_attachment`에 반영
 
 세부 요청/응답 형식은 [docs/API.md](API.md), 계층별 호출 흐름은 [docs/API_FLOW.md](API_FLOW.md) 참고.
 
@@ -41,11 +49,12 @@
 - **결재자·생성자 이름/역할/소속학원 조회**: `ApproverDirectoryPort`(application/port)로 추상화되어 있으나, User 도메인 모듈이 아직 없어 `infrastructure/persistence`에 `users` 테이블을 직접 읽는 임시 shim(`UserNameEntity`)으로 구현되어 있다. **MODULES.md의 "다른 도메인 JPA Entity 직접 참조 금지" 규칙 위반 상태이며, User 모듈이 생기면 정식 Port 구현으로 교체해야 한다.** (notice 모듈에도 같은 성격의 별도 shim이 있다 — User 모듈 생기면 둘 다 교체 필요)
 - **파일 업로드**: 결재 문서의 첨부파일은 공유 `file_id`(BIGINT) 목록만 저장한다. 실제 업로드(presigned URL 발급)는 `file` 모듈이 담당하며, approval 모듈은 직접 연동하지 않는다.
 - **인증 사용자 정보**: `global.presentation.security.AuthUser`(JWT 인증 principal)를 컨트롤러에서 사용한다.
+- **AI 요약(Gemini)**: `AttachmentSummarizerPort`(application/port)로 추상화되어 있고, `infrastructure/external/gemini`의 `GeminiSummarizerAdapter`가 Google Gemini `generateContent` REST API를 직접 호출해 구현한다. `GEMINI_API_KEY`(필수)/`GEMINI_MODEL`(기본값 `gemini-2.0-flash`) 환경변수로 설정한다. **`file` 모듈이 아직 `fileId → 실제 파일 내용` 조회를 제공하지 않아, 실제 첨부파일 내용 대신 안내문(placeholder)을 요약 요청으로 보낸다** — file 모듈이 조회 기능을 제공하면 교체해야 한다.
 
 ## 발행·소비하는 Event
 
-- 현재 없음.
-- "결재 차례 도래 시 Web Push 알림 발송" 기능 추가 시, `ApprovalDocument.decide()`에서 다음 결재자 라인이 활성화되는 시점에 이벤트(예: `ApprovalLineActivatedEvent`) 발행이 필요할 것으로 예상됨 (미착수).
+- `ApprovalLineActivatedEvent`(documentId, documentTitle, approverId, activatedAt) — `DecideApprovalLineService`가 승인 처리로 다음 결재자 라인이 `PENDING`이 될 때 Spring `ApplicationEventPublisher`로 발행한다.
+- **아직 이 이벤트를 소비하는 리스너는 없다.** 실제 Web Push 발송(구독 대상 조회 → `web-push` 라이브러리로 전송)은 VAPID 키 발급과 프론트 서비스워커가 준비된 뒤 별도 작업으로 리스너를 추가해 연동한다. 지금은 `PushSubscription`(구독 정보: endpoint/p256dh/auth) 저장 API까지만 준비되어 있다.
 
 ## 변경 시 주의 사항
 
@@ -55,7 +64,7 @@
 - 목록 API(내 결재함, 내가 신청한 결재, 템플릿 목록)는 `page`/`size` 쿼리 파라미터 기반 Slice 페이지네이션을 지원한다 (`API_CONTRACT.md` 규칙 반영, 전체 개수 없이 `hasNext`만 제공).
 - 템플릿 생성/수정/삭제 권한(행정직원 제한)과 결재 신청 권한(직원+강사) 인가 로직은 아직 반영되지 않았다. `users.role` 값 체계가 확정되면 Application 또는 Domain Policy에 추가한다 (Controller에 두지 않는다).
 - `role_id`(결재선의 역할 기반 지정) 컬럼은 스키마만 있고 해석 로직이 없다. role 테이블이 생기면 구현한다.
-- AI 요약(`approval_attachment.ai_summary` 등)은 컬럼만 있고 실제 요약 로직은 없다.
+- AI 요약은 `POST .../summarize` 호출 시 동기적으로 Gemini를 호출해 처리한다(업로드 시 자동 트리거 없음). **file 모듈이 실제 파일 내용을 조회하는 방법을 제공하기 전까지는 실제 첨부파일 내용이 아니라 placeholder 텍스트로 요약을 생성한다** — 진짜 요약이 아니므로 그대로 서비스에 노출하면 안 된다.
 
 ## 세부 문서
 
