@@ -3,6 +3,7 @@ package com.academy.mudogroupware.messenger.infrastructure.persistence;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -27,6 +28,11 @@ public class ChatMessageRepositoryImpl implements ChatMessageRepository {
     }
 
     @Override
+    public Optional<ChatMessage> findById(Long id) {
+        return chatMessageJpaRepository.findById(id).map(this::toDomain);
+    }
+
+    @Override
     public List<ChatMessage> findByChatRoomId(Long chatRoomId, LocalDateTime cursorCreatedAt, Long cursorMessageId,
                                                int size) {
         return chatMessageJpaRepository.findPage(chatRoomId, cursorCreatedAt, cursorMessageId,
@@ -47,6 +53,16 @@ public class ChatMessageRepositoryImpl implements ChatMessageRepository {
     }
 
     @Override
+    public Map<Long, Long> countUnreadByMessageIds(Long chatRoomId, List<Long> messageIds) {
+        if (messageIds.isEmpty()) {
+            return Map.of();
+        }
+        return chatMessageJpaRepository.countUnreadByMessageIds(chatRoomId, messageIds).stream()
+                .collect(Collectors.toMap(MessageUnreadCountProjection::getMessageId,
+                        MessageUnreadCountProjection::getUnreadCount));
+    }
+
+    @Override
     public Map<Long, ChatMessage> findLatestByChatRoomIds(List<Long> chatRoomIds) {
         return chatMessageJpaRepository.findLatestByChatRoomIds(chatRoomIds).stream()
                 .map(this::toDomain)
@@ -64,12 +80,14 @@ public class ChatMessageRepositoryImpl implements ChatMessageRepository {
                 .fileUrl(chatMessage.getFileUrl())
                 .fileName(chatMessage.getFileName())
                 .createdAt(chatMessage.getCreatedAt())
+                .editedAt(chatMessage.getEditedAt())
+                .deletedAt(chatMessage.getDeletedAt())
                 .build();
     }
 
     private ChatMessage toDomain(ChatMessageEntity entity) {
         return ChatMessage.restore(entity.getId(), entity.getChatRoomId(), entity.getSenderUserId(),
                 entity.getMessageType(), entity.getContent(), entity.getFileUrl(), entity.getFileName(),
-                entity.getCreatedAt());
+                entity.getCreatedAt(), entity.getEditedAt(), entity.getDeletedAt());
     }
 }

@@ -3,12 +3,15 @@ package com.academy.mudogroupware.messenger.domain.repository;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import com.academy.mudogroupware.messenger.domain.model.ChatMessage;
 
 public interface ChatMessageRepository {
 
     ChatMessage save(ChatMessage chatMessage);
+
+    Optional<ChatMessage> findById(Long id);
 
     // 채팅방별 가장 최근(created_at 기준) 메시지 1건. 목록조회의 미리보기 텍스트에 사용한다.
     Map<Long, ChatMessage> findLatestByChatRoomIds(List<Long> chatRoomIds);
@@ -23,4 +26,6 @@ public interface ChatMessageRepository {
 
     // 요청자가 참여 중인 채팅방들의 안읽은 메시지 수를 한 번에 집계한다(방 개수만큼 쿼리하는 N+1 방지).
     Map<Long, Long> countUnreadByRequester(Long userId, List<Long> chatRoomIds);
+
+    Map<Long, Long> countUnreadByMessageIds(Long chatRoomId, List<Long> messageIds);
 }

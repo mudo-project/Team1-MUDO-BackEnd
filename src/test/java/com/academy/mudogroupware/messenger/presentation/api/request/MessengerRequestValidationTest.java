@@ -34,6 +34,13 @@ class MessengerRequestValidationTest {
     }
 
     @Test
+    void rejectsBlankUpdatedMessageContent() {
+        UpdateMessageRequest request = new UpdateMessageRequest(" ");
+
+        assertThat(validator.validate(request)).isNotEmpty();
+    }
+
+    @Test
     void commandRejectsNullParticipantIdAsDomainException() {
         assertThatThrownBy(() -> new CreateChatRoomCommand(1L, Collections.singletonList(null), null))
                 .isInstanceOf(MessengerException.class);

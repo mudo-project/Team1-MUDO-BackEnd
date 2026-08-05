@@ -1,5 +1,15 @@
 # Messenger API
 
+## 2026-08-05 added behavior
+
+- `POST /api/messenger/rooms` reuses an existing DM room when the requester opens a 1:1 chat with the same user again.
+- `PATCH /api/messenger/rooms/{roomId}/messages/{messageId}` edits the sender's own TEXT message and returns `204 No Content`.
+- `DELETE /api/messenger/rooms/{roomId}/messages/{messageId}` soft-deletes the sender's own message and returns `204 No Content`.
+- Message list responses include `editedAt`, `deletedAt`, `deleted`, and `unreadCount`.
+- Deleted messages keep their row for cursor stability, but API responses mask `content`, `fileUrl`, and `fileName`.
+- Messenger WebSocket uses the existing STOMP endpoint `/ws`.
+- Subscribe to `/topic/messenger/rooms/{roomId}` for `MESSAGE_SENT` and `MESSAGE_READ` events.
+
 ## 공통
 
 - 기본 경로: `/api/messenger/rooms`
