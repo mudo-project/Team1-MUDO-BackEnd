@@ -1,7 +1,9 @@
 package com.academy.mudogroupware.users.infrastructure.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
+import java.util.List;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
@@ -10,6 +12,7 @@ import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import com.academy.mudogroupware.users.domain.model.User;
 import com.academy.mudogroupware.users.domain.model.UserStatus;
 
 @DataJpaTest(properties = "spring.jpa.hibernate.ddl-auto=create-drop")
@@ -40,6 +43,22 @@ class UserRepositoryImplDataJpaTest {
 
         assertThat(activeUserIds).containsExactly(includedId);
         assertThat(activeUserIds).doesNotContain(notRequestedId);
+    }
+
+    @Test
+    void findAllByIdReturnsOnlyExistingUsersAndIgnoresUnknownIds() {
+        insertUser(1L, 1L, "one", UserStatus.ACTIVE);
+        insertUser(2L, 1L, "two", UserStatus.ACTIVE);
+
+        List<User> result = userRepository.findAllById(Set.of(1L, 2L, 999L));
+
+        assertThat(result).extracting(User::getId, User::getName)
+                .containsExactlyInAnyOrder(tuple(1L, "사용자-one"), tuple(2L, "사용자-two"));
+    }
+
+    @Test
+    void findAllByIdReturnsEmptyListForEmptyIds() {
+        assertThat(userRepository.findAllById(Set.of())).isEmpty();
     }
 
     private void insertUser(long id, long academyId, String suffix, UserStatus status) {

@@ -5,16 +5,20 @@ import com.academy.mudogroupware.global.presentation.security.AuthUser;
 import com.academy.mudogroupware.workspace.application.query.WorkspaceListScope;
 import com.academy.mudogroupware.workspace.application.usecase.CreateWorkspaceUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.RecordWorkspaceRecentAccessUseCase;
+import com.academy.mudogroupware.workspace.application.usecase.WorkspaceDetailQueryUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.WorkspaceQueryUseCase;
 import com.academy.mudogroupware.workspace.presentation.api.common.WorkspaceResponseCode;
 import com.academy.mudogroupware.workspace.presentation.api.request.CreateWorkspaceRequest;
 import com.academy.mudogroupware.workspace.presentation.api.response.CreateWorkspaceResponse;
+import com.academy.mudogroupware.workspace.presentation.api.response.WorkspaceDetailResponse;
 import com.academy.mudogroupware.workspace.presentation.api.response.WorkspaceListResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.time.Clock;
+import java.time.LocalDate;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -43,6 +47,8 @@ public class WorkspaceController {
   private final CreateWorkspaceUseCase createWorkspaceUseCase;
   private final WorkspaceQueryUseCase workspaceQueryUseCase;
   private final RecordWorkspaceRecentAccessUseCase recordWorkspaceRecentAccessUseCase;
+  private final WorkspaceDetailQueryUseCase workspaceDetailQueryUseCase;
+  private final Clock clock;
 
   @Operation(
       summary = "워크스페이스 목록 조회",
@@ -110,5 +116,34 @@ public class WorkspaceController {
     recordWorkspaceRecentAccessUseCase.recordRecentAccess(
         authUser.academyId(), authUser.userId(), workspaceId, canReadAll);
     return ResponseEntity.noContent().build();
+  }
+
+  @Operation(
+      summary = "워크스페이스 상세 조회",
+      description = "기본 정보, 참여자, 업무 카드와 코멘트 진행도를 조회합니다.")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "워크스페이스 상세 조회 성공"),
+    @ApiResponse(responseCode = "403", description = "워크스페이스 접근 권한이 없음"),
+    @ApiResponse(responseCode = "404", description = "워크스페이스가 존재하지 않거나 삭제됨")
+  })
+  @GetMapping("/{workspaceId}")
+  public ResponseEntity<GlobalApiResponse<WorkspaceDetailResponse>> getWorkspaceDetail(
+      @AuthenticationPrincipal AuthUser authUser,
+      Authentication authentication,
+      @PathVariable Long workspaceId,
+      @RequestParam(required = false) LocalDate date) {
+    boolean canReadAll =
+        authentication.getAuthorities().stream()
+            .anyMatch(authority -> WORKSPACE_READ_ALL_AUTHORITY.equals(authority.getAuthority()));
+    LocalDate targetDate = date != null ? date : LocalDate.now(clock);
+
+    var detail =
+        workspaceDetailQueryUseCase.getWorkspaceDetail(
+            authUser.academyId(), authUser.userId(), workspaceId, targetDate, canReadAll);
+
+    return ResponseEntity.ok(
+        GlobalApiResponse.ok(
+            WorkspaceResponseCode.WORKSPACE_DETAIL_RETRIEVED,
+            WorkspaceDetailResponse.from(detail)));
   }
 }

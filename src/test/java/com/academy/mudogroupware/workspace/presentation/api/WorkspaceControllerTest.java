@@ -1,5 +1,7 @@
 package com.academy.mudogroupware.workspace.presentation.api;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -14,11 +16,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.academy.mudogroupware.global.infrastructure.security.jwt.JwtTokenProvider;
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
 import com.academy.mudogroupware.global.presentation.security.JwtAuthenticationConverter;
+import com.academy.mudogroupware.workspace.application.query.WorkspaceDetail;
 import com.academy.mudogroupware.workspace.application.query.WorkspaceListItem;
 import com.academy.mudogroupware.workspace.application.query.WorkspaceListScope;
 import com.academy.mudogroupware.workspace.application.usecase.CreateWorkspaceUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.RecordWorkspaceRecentAccessUseCase;
+import com.academy.mudogroupware.workspace.application.usecase.WorkspaceDetailQueryUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.WorkspaceQueryUseCase;
+import com.academy.mudogroupware.workspace.domain.exception.WorkspaceNotFoundException;
+import java.time.Clock;
+import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,6 +51,8 @@ class WorkspaceControllerTest {
   @MockitoBean private RecordWorkspaceRecentAccessUseCase recordWorkspaceRecentAccessUseCase;
   @MockitoBean private JwtTokenProvider jwtTokenProvider;
   @MockitoBean private JwtAuthenticationConverter jwtAuthenticationConverter;
+  @MockitoBean private WorkspaceDetailQueryUseCase workspaceDetailQueryUseCase;
+  @MockitoBean private Clock clock;
 
   @Test
   void defaultsToMineAndMapsAuthenticatedUsersWorkspaceList() throws Exception {
@@ -124,6 +133,41 @@ class WorkspaceControllerTest {
         .andExpect(status().isNoContent());
 
     verify(recordWorkspaceRecentAccessUseCase).recordRecentAccess(1L, 10L, 100L, true);
+  }
+
+  @Test
+  void returns404WhenWorkspaceDoesNotExist() throws Exception {
+    when(workspaceDetailQueryUseCase.getWorkspaceDetail(
+            eq(1L), eq(10L), eq(100L), any(LocalDate.class), eq(false)))
+        .thenThrow(new WorkspaceNotFoundException());
+
+    mockMvc
+        .perform(
+            get("/api/workspaces/{workspaceId}", 100L)
+                .param("date", "2026-08-05")
+                .with(authentication(authenticatedUser())))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.status").value(404))
+        .andExpect(jsonPath("$.code").value("WORKSPACE_404_1"));
+  }
+
+  @Test
+  void returns200WithDetailWhenAccessible() throws Exception {
+    WorkspaceDetail detail = new WorkspaceDetail(100L, "1월 학사 운영", List.of(), List.of());
+    when(workspaceDetailQueryUseCase.getWorkspaceDetail(
+            eq(1L), eq(10L), eq(100L), eq(LocalDate.of(2026, 8, 5)), eq(false)))
+        .thenReturn(detail);
+
+    mockMvc
+        .perform(
+            get("/api/workspaces/{workspaceId}", 100L)
+                .param("date", "2026-08-05")
+                .with(authentication(authenticatedUser())))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value(200))
+        .andExpect(jsonPath("$.code").value("WORKSPACE_200_2"))
+        .andExpect(jsonPath("$.data.workspaceId").value(100))
+        .andExpect(jsonPath("$.data.name").value("1월 학사 운영"));
   }
 
   private Authentication authenticatedUser(String... authorities) {
