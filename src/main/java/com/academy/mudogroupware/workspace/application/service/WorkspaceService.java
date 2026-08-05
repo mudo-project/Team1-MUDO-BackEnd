@@ -26,13 +26,11 @@ public class WorkspaceService implements CreateWorkspaceUseCase {
     // ws 이름 저장
     String name = command.name().trim();
     // Domain 모델 생성
-    // TODO : 이건 도메인에서 create() 메서드 만들어서 그걸 호출하는게 좋지 않아?
-    Workspace workspace = Workspace.builder()
-        .academyId(command.academyId())
-        .name(name)
-        .createdBy(command.creatorId())
-        .memberIds(requestedAdditionalMemberIds(command))
-        .build();
+    Workspace workspace = Workspace.create(
+        command.academyId(),
+        name,
+        command.creatorId(),
+        requestedAdditionalMemberIds(command));
 
     // 참여자 검증
     Set<Long> activeUserIds =
