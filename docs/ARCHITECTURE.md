@@ -16,8 +16,9 @@
 
 - 각 도메인은 자신의 패키지 내부 코드와 데이터 모델만 수정한다.
 - 다른 도메인의 내부 Service, JPA Entity, Repository, Adapter를 직접 수정하거나 참조하지 않는다.
-- 타 도메인의 기능 또는 데이터가 필요하면 공개 Port를 통해 요청한다.
-- 공개 Port가 없으면 대상 도메인에 필요한 계약의 추가를 요청한다.
+- 타 도메인 조회가 필요하면 요청 도메인이 필요한 최소 Port와 응답 DTO를 정의한다.
+- 데이터를 소유한 대상 도메인은 해당 Port를 구현하는 Adapter를 자기 Infrastructure에 두고, 자기 Repository로 필요한 값만 조회한다.
+- 이 간소화 방식의 타 도메인 Adapter 추가·수정은 대상 도메인 담당자의 사전 동의가 있어야 한다.
 - 공통화가 필요하더라도 특정 도메인 규칙을 임의로 Global 영역으로 이동하지 않는다.
 
 ## 공유 플랫폼 영역
@@ -110,11 +111,20 @@ Application Service
 
 ## 도메인 간 연동
 
-- 다른 도메인의 내부 Service, JPA Entity, Repository를 직접 참조하지 않는다.
-- 필요한 정보는 Port를 통해 요청한다.
-- 도메인 간 전달 값은 식별자, Projection, Port 전용 Result처럼 최소한으로 유지한다.
-- 상대 도메인의 내부 모델을 응답 객체에 노출하지 않는다.
-- 도메인 간 연동을 위해 Entity 연관관계나 공유 Repository를 만들지 않는다.
+- 요청 도메인은 필요한 최소 Port와 응답 DTO를 정의한다.
+- 데이터를 소유한 대상 도메인은 자기 Infrastructure Adapter에서 해당 Port를 구현하고, 자기 Repository를 호출한다.
+- 요청 도메인은 대상 도메인의 Entity, Repository, 내부 Service, Adapter를 직접 참조하지 않고 Port만 호출한다.
+- Port 응답은 식별자와 호출 도메인에 필요한 Projection만 포함하며, 대상 도메인의 Entity/Aggregate를 노출하지 않는다.
+- Adapter 메서드에는 소비 도메인과 용도를 주석으로 기록한다.
+- 이 규칙은 현재 모놀리식 실습의 단순화 방식이다. 서비스 분리 시 요청 도메인에 HTTP Adapter를 두고 대상 서비스 API를 호출하도록 전환한다.
+- 도메인 간 Entity 연관관계나 공유 Repository를 만들지 않는다.
+
+```text
+OrderApplicationService
+→ MemberStatusPort                 // order가 정의
+→ MemberStatusAdapter              // member가 구현
+→ MemberRepository                 // member 내부 Repository
+```
 
 ## Domain Model과 JPA Entity
 
