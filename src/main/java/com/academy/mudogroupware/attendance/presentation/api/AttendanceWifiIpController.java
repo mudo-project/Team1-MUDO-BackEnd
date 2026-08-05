@@ -22,10 +22,13 @@ import com.academy.mudogroupware.global.infrastructure.web.ClientIpResolver;
 import com.academy.mudogroupware.global.presentation.api.common.GlobalApiResponse;
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+@Tag(name = "근태 Wi-Fi IP", description = "학원 출퇴근 허용 IP 관리 API")
 @RestController
 @RequestMapping("/api/attendance/wifi-ips")
 @RequiredArgsConstructor
@@ -35,6 +38,9 @@ public class AttendanceWifiIpController {
     private final DeleteWifiIpUseCase deleteWifiIpUseCase;
     private final ClientIpResolver clientIpResolver;
 
+    @Operation(
+            summary = "현재 접속 IP 조회",
+            description = "요청을 보낸 클라이언트의 공인 IP 주소를 조회합니다.")
     @GetMapping("/current")
     public GlobalApiResponse<CurrentClientIpResponse> getCurrentClientIp(
             HttpServletRequest servletRequest) {
@@ -45,6 +51,9 @@ public class AttendanceWifiIpController {
                 new CurrentClientIpResponse(clientIp));
     }
 
+    @Operation(
+            summary = "출퇴근 허용 IP 등록",
+            description = "현재 접속 IP와 사용자가 확인한 IP가 일치하면 소유 학원의 출퇴근 허용 IP로 등록합니다.")
     @PostMapping
     public ResponseEntity<GlobalApiResponse<AcademyWifiIpResponse>> register(
             @AuthenticationPrincipal AuthUser authUser,
@@ -60,6 +69,9 @@ public class AttendanceWifiIpController {
                         AcademyWifiIpResponse.from(result)));
     }
 
+    @Operation(
+            summary = "출퇴근 허용 IP 삭제",
+            description = "소유 학원에 등록된 출퇴근 허용 IP를 삭제합니다.")
     @DeleteMapping("/{wifiIpId}")
     public ResponseEntity<GlobalApiResponse<Void>> delete(
             @AuthenticationPrincipal AuthUser authUser,
