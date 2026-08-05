@@ -23,7 +23,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
-@Tag(name = "근태 출퇴근", description = "직원 출퇴근 기록 API")
+@Tag(name = "근태", description = "근태 관리 API")
 @RestController
 @RequestMapping("/api/attendance/check-ins")
 @RequiredArgsConstructor

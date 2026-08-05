@@ -19,7 +19,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
-@Tag(name = "근태 정책", description = "학원 근무시간 정책 API")
+@Tag(name = "근태", description = "근태 관리 API")
 @RestController
 @RequestMapping("/api/attendance/policies")
 @RequiredArgsConstructor
