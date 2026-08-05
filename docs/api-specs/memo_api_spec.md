@@ -64,9 +64,7 @@ Response Body
 
 | HTTP 상태 | code | message | 설명 |
 | --- | --- | --- | --- |
-| `400 Bad Request` | `MEMO_400_1` | 제목은 비어 있을 수 없습니다. | `title`이 공백/누락 |
-| `400 Bad Request` | `MEMO_400_3` | 제목은 100자를 초과할 수 없습니다. | `title`이 100자 초과 |
-| `400 Bad Request` | `MEMO_400_2` | 색상을 지정해야 합니다. | `color`가 누락/유효하지 않은 값 |
+| `400 Bad Request` | `COMMON_400_1` | 입력값이 올바르지 않습니다. | `title` 공백/누락/100자 초과, `color` 누락/유효하지 않은 값 (Bean Validation이 도메인 검증보다 먼저 적용되어 `MEMO_400_*` 대신 공통 코드로 응답, `details.errors[]`에 필드별 사유 포함) |
 | `401 Unauthorized` | `COMMON_401_1` | 인증이 필요합니다. | 토큰 누락/만료 |
 
 ---
@@ -180,8 +178,7 @@ Request Body
 
 | HTTP 상태 | code | message | 설명 |
 | --- | --- | --- | --- |
-| `400 Bad Request` | `MEMO_400_1` | 제목은 비어 있을 수 없습니다. | `title`이 공백/누락 |
-| `400 Bad Request` | `MEMO_400_3` | 제목은 100자를 초과할 수 없습니다. | `title`이 100자 초과 |
+| `400 Bad Request` | `COMMON_400_1` | 입력값이 올바르지 않습니다. | `title` 공백/누락/100자 초과 (Bean Validation이 도메인 검증보다 먼저 적용되어 `MEMO_400_*` 대신 공통 코드로 응답) |
 | `401 Unauthorized` | `COMMON_401_1` | 인증이 필요합니다. | 토큰 누락/만료 |
 | `403 Forbidden` | `MEMO_403_1` | 본인의 메모가 아닙니다. | 다른 사용자의 메모를 수정하려는 경우 |
 | `404 Not Found` | `MEMO_404_1` | 메모를 찾을 수 없습니다. | `memoId`에 해당하는 메모가 없음 |
@@ -228,7 +225,7 @@ Request Body
 
 | HTTP 상태 | code | message | 설명 |
 | --- | --- | --- | --- |
-| `400 Bad Request` | `MEMO_400_2` | 색상을 지정해야 합니다. | `color`가 누락/유효하지 않은 값 |
+| `400 Bad Request` | `COMMON_400_1` | 입력값이 올바르지 않습니다. | `color` 누락/유효하지 않은 값 (Bean Validation이 도메인 검증보다 먼저 적용되어 `MEMO_400_*` 대신 공통 코드로 응답) |
 | `401 Unauthorized` | `COMMON_401_1` | 인증이 필요합니다. | 토큰 누락/만료 |
 | `403 Forbidden` | `MEMO_403_1` | 본인의 메모가 아닙니다. | 다른 사용자의 메모를 변경하려는 경우 |
 | `404 Not Found` | `MEMO_404_1` | 메모를 찾을 수 없습니다. | `memoId`에 해당하는 메모가 없음 |
@@ -281,7 +278,7 @@ Request Body
 
 | HTTP 상태 | code | message | 설명 |
 | --- | --- | --- | --- |
-| `400 Bad Request` |  | 요청 값이 올바르지 않습니다. | `width`/`height`가 0 이하이거나 필수값 누락 |
+| `400 Bad Request` | `COMMON_400_1` | 입력값이 올바르지 않습니다. | `width`/`height`가 0 이하이거나 필수값 누락 (Bean Validation, `details.errors[]`에 필드별 사유 포함) |
 | `401 Unauthorized` | `COMMON_401_1` | 인증이 필요합니다. | 토큰 누락/만료 |
 | `403 Forbidden` | `MEMO_403_1` | 본인의 메모가 아닙니다. | 다른 사용자의 메모를 변경하려는 경우 |
 | `404 Not Found` | `MEMO_404_1` | 메모를 찾을 수 없습니다. | `memoId`에 해당하는 메모가 없음 |
