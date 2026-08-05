@@ -91,6 +91,10 @@ public enum AttendanceErrorCode implements ErrorCode {
             HttpStatus.FORBIDDEN,
             "ATTENDANCE_403_4",
             "퇴근을 등록할 수 있는 학원 소속이 아닙니다."),
+    TEAM_ATTENDANCE_VIEW_FORBIDDEN(
+            HttpStatus.FORBIDDEN,
+            "ATTENDANCE_403_6",
+            "오늘 팀 근태 현황을 조회할 권한이 없습니다."),
     UNREGISTERED_CHECK_OUT_IP(
             HttpStatus.FORBIDDEN,
             "ATTENDANCE_403_5",

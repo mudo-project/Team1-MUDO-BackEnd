@@ -16,10 +16,12 @@ import com.academy.mudogroupware.global.infrastructure.web.ClientIpResolver;
 import com.academy.mudogroupware.global.presentation.api.common.GlobalApiResponse;
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+@Tag(name = "근태", description = "근태 관리 API")
 @RestController
 @RequestMapping("/api/attendance/check-outs")
 @RequiredArgsConstructor
