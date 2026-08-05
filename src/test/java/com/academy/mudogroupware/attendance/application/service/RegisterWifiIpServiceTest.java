@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -49,7 +48,8 @@ class RegisterWifiIpServiceTest {
                 () -> service.register(new RegisterWifiIpCommand(
                         10L,
                         "2001:0db8:0000:0000:0000:0000:0000:0001",
-                        "2001:db8::1")));
+                        "2001:db8::1",
+                        null)));
 
         assertSame(AttendanceErrorCode.WIFI_IP_ALREADY_REGISTERED, exception.getErrorCode());
         verify(academyWifiIpRepository).existsByAcademyIdAndIpAddress(
@@ -66,14 +66,14 @@ class RegisterWifiIpServiceTest {
         AttendanceException exception = assertThrows(
                 AttendanceException.class,
                 () -> service.register(new RegisterWifiIpCommand(
-                        10L, "203.0.113.10", "203.0.113.11")));
+                        10L, "203.0.113.10", "203.0.113.11", "본원")));
 
         assertSame(AttendanceErrorCode.WIFI_IP_CHANGED, exception.getErrorCode());
         verifyNoInteractions(academyWifiIpRepository);
     }
 
     @Test
-    void registersWifiIpWhenConfirmedAndDetectedIpsMatch() {
+    void savesAndReturnsNormalizedNote() {
         RegisterWifiIpService service = new RegisterWifiIpService(
                 academyRepository, academyWifiIpRepository);
         when(academyRepository.findByOwnerUserId(10L))
@@ -85,12 +85,14 @@ class RegisterWifiIpServiceTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
         var result = service.register(new RegisterWifiIpCommand(
-                10L, "203.0.113.10", "203.0.113.10"));
+                10L, "203.0.113.10", "203.0.113.10", "  본원 와이파이  "));
 
-        assertEquals("203.0.113.10", result.ipAddress());
         ArgumentCaptor<AcademyWifiIp> captor = ArgumentCaptor.forClass(AcademyWifiIp.class);
-        verify(academyWifiIpRepository, times(1)).save(captor.capture());
+        verify(academyWifiIpRepository).save(captor.capture());
         assertEquals(1L, captor.getValue().getAcademyId());
         assertEquals("203.0.113.10", captor.getValue().getIpAddress());
+        assertEquals("본원 와이파이", captor.getValue().getNote());
+        assertEquals("203.0.113.10", result.ipAddress());
+        assertEquals("본원 와이파이", result.note());
     }
 }
