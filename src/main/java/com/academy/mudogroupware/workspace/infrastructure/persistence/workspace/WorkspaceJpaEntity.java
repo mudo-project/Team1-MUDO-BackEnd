@@ -9,6 +9,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.AccessLevel;
@@ -17,7 +18,12 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "workspace")
+@Table(
+    name = "workspace",
+    uniqueConstraints =
+        @UniqueConstraint(
+            name = "uk_workspace_academy_active_name",
+            columnNames = {"academy_id", "name"}))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class WorkspaceJpaEntity extends SoftDeleteTimeEntity {
@@ -58,5 +64,13 @@ public class WorkspaceJpaEntity extends SoftDeleteTimeEntity {
     WorkspaceMemberJpaEntity member = WorkspaceMemberJpaEntity.create(this, userId);
     members.add(member);
     return member;
+  }
+
+  public void rename(String name) {
+    this.name = name;
+  }
+
+  public void removeMember(Long userId) {
+    members.removeIf(member -> member.getUserId().equals(userId));
   }
 }
