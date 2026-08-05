@@ -34,4 +34,15 @@ public interface TaskJpaRepository extends JpaRepository<TaskJpaEntity, Long> {
       @Param("workspaceId") Long workspaceId,
       @Param("date") LocalDate date,
       @Param("completed") TaskStatus completed);
+
+  @Query(
+      """
+      select t
+      from TaskJpaEntity t
+      where t.workspace.id = :workspaceId
+          and t.recurringTemplate is not null
+          and cast(t.scheduledFor as date) = :date
+      """)
+  List<TaskJpaEntity> findVisibleRecurringTasks(
+      @Param("workspaceId") Long workspaceId, @Param("date") LocalDate date);
 }

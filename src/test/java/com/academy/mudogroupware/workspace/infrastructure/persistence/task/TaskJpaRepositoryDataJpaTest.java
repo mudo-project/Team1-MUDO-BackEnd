@@ -70,6 +70,26 @@ class TaskJpaRepositoryDataJpaTest {
         .containsExactly(1L);
   }
 
+  @Test
+  void findVisibleRecurringTasksReturnsOnlyTheOccurrenceScheduledForTheSelectedDate() {
+    insertWorkspace(WORKSPACE_ID);
+    insertRecurringTemplate(100L, WORKSPACE_ID);
+    insertRecurringTask(1L, WORKSPACE_ID, 100L, TaskStatus.WAITING, at(2026, 8, 5));
+    insertRecurringTask(2L, WORKSPACE_ID, 100L, TaskStatus.DELAYED, at(2026, 8, 3));
+
+    assertThat(
+            taskJpaRepository.findVisibleRecurringTasks(WORKSPACE_ID, LocalDate.of(2026, 8, 5)))
+        .extracting(TaskJpaEntity::getId)
+        .containsExactly(1L);
+    assertThat(
+            taskJpaRepository.findVisibleRecurringTasks(WORKSPACE_ID, LocalDate.of(2026, 8, 3)))
+        .extracting(TaskJpaEntity::getId)
+        .containsExactly(2L);
+    assertThat(
+            taskJpaRepository.findVisibleRecurringTasks(WORKSPACE_ID, LocalDate.of(2026, 8, 4)))
+        .isEmpty();
+  }
+
   private void insertWorkspace(long workspaceId) {
     jdbcTemplate.update(
         "insert into workspace (workspace_id, academy_id, name, created_by, created_at, updated_at) "
@@ -102,6 +122,31 @@ class TaskJpaRepositoryDataJpaTest {
         previous.name(),
         current.name(),
         createdAt);
+  }
+
+  private void insertRecurringTemplate(long templateId, long workspaceId) {
+    jdbcTemplate.update(
+        "insert into recurring_task_template "
+            + "(recurring_template_id, workspace_id, title, recurrence_type, recurrence_rule, is_active, created_by, created_at, updated_at) "
+            + "values (?, ?, 'daily', 'DAILY', '{}', true, 10, ?, ?)",
+        templateId,
+        workspaceId,
+        at(2026, 8, 1),
+        at(2026, 8, 1));
+  }
+
+  private void insertRecurringTask(
+      long taskId, long workspaceId, long templateId, TaskStatus status, LocalDateTime scheduledFor) {
+    jdbcTemplate.update(
+        "insert into task (task_id, workspace_id, recurring_template_id, title, status, scheduled_for, created_by, created_at, updated_at) "
+            + "values (?, ?, ?, '반복 업무', ?, ?, 10, ?, ?)",
+        taskId,
+        workspaceId,
+        templateId,
+        status.name(),
+        scheduledFor,
+        at(2026, 8, 1),
+        at(2026, 8, 1));
   }
 
   private LocalDateTime at(int year, int month, int day) {
