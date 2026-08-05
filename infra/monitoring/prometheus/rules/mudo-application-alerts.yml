@@ -1,0 +1,91 @@
+groups:
+  - name: mudo-application
+    rules:
+      - alert: MudoApplicationScrapeDown
+        expr: up{environment="prod", service="backend"} == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.tenant }} 백엔드 메트릭 수집 중단"
+          runbook_url: "https://github.com/mudo-project/Team1-MUDO-BackEnd/blob/main/infra/runbooks/application-down.md"
+
+      - alert: MudoHikariPendingConnections
+        expr: max_over_time(hikaricp_connections_pending{environment="prod"}[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.tenant }} DB 연결 대기 발생"
+          runbook_url: "https://github.com/mudo-project/Team1-MUDO-BackEnd/blob/main/infra/runbooks/database-pool.md"
+
+      - alert: MudoTomcatThreadSaturation
+        expr: |
+          tomcat_threads_busy_threads{environment="prod"}
+          / clamp_min(tomcat_threads_config_max_threads{environment="prod"}, 1) > 0.8
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.tenant }} Tomcat 스레드 사용률 80% 초과"
+          runbook_url: "https://github.com/mudo-project/Team1-MUDO-BackEnd/blob/main/infra/runbooks/thread-saturation.md"
+
+      - alert: MudoAsyncQueueSaturation
+        expr: |
+          mudo_async_queue_size{environment="prod"}
+          / clamp_min(mudo_async_queue_capacity{environment="prod"}, 1) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.tenant }} 비동기 작업 대기열 80% 초과"
+          runbook_url: "https://github.com/mudo-project/Team1-MUDO-BackEnd/blob/main/infra/runbooks/thread-saturation.md"
+
+      - alert: MudoAsyncTaskRejected
+        expr: increase(mudo_async_rejected_total{environment="prod"}[5m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.tenant }} 비동기 작업 거부 발생"
+          runbook_url: "https://github.com/mudo-project/Team1-MUDO-BackEnd/blob/main/infra/runbooks/thread-saturation.md"
+
+      - alert: MudoHeavyJobRejected
+        expr: increase(mudo_heavy_job_rejected_total{environment="prod"}[5m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.tenant }} 무거운 작업 동시성 제한 발생"
+          runbook_url: "https://github.com/mudo-project/Team1-MUDO-BackEnd/blob/main/infra/runbooks/thread-saturation.md"
+
+      - alert: MudoHighServerErrorRate
+        expr: |
+          sum by (tenant) (rate(http_server_requests_seconds_count{environment="prod", status=~"5.."}[5m]))
+          / clamp_min(sum by (tenant) (rate(http_server_requests_seconds_count{environment="prod"}[5m])), 0.001) > 0.05
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.tenant }} 서버 오류율 5% 초과"
+          runbook_url: "https://github.com/mudo-project/Team1-MUDO-BackEnd/blob/main/infra/runbooks/application-down.md"
+
+  - name: mudo-observability
+    rules:
+      - alert: MudoObservabilityTargetDown
+        expr: up{job="observability-stack"} == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "관측성 구성요소 {{ $labels.instance }} 응답 중단"
+          runbook_url: "https://github.com/mudo-project/Team1-MUDO-BackEnd/blob/main/infra/runbooks/monitoring-stack.md"
+
+      - alert: MudoAlloyRemoteWriteFailure
+        expr: increase(prometheus_remote_storage_samples_failed_total{service="alloy"}[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "ECS 호스트 Alloy remote write 실패"
+          runbook_url: "https://github.com/mudo-project/Team1-MUDO-BackEnd/blob/main/infra/runbooks/monitoring-stack.md"

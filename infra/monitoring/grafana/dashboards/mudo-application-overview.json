@@ -1,0 +1,212 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": false,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "green", "value": 1}
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {"h": 5, "w": 4, "x": 0, "y": 0},
+      "id": 1,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "expr": "min(up{tenant=~\"$tenant\", environment=~\"$environment\", service=~\"$service\"})",
+          "legendFormat": "service up",
+          "refId": "A"
+        }
+      ],
+      "title": "서비스 정상 여부",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "reqps"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 10, "x": 4, "y": 0},
+      "id": 2,
+      "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}},
+      "targets": [
+        {
+          "expr": "sum by (tenant) (rate(http_server_requests_seconds_count{tenant=~\"$tenant\", environment=~\"$environment\"}[5m]))",
+          "legendFormat": "{{tenant}}",
+          "refId": "A"
+        }
+      ],
+      "title": "학원별 요청률",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 10, "x": 14, "y": 0},
+      "id": 3,
+      "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}},
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, tenant) (rate(http_server_requests_seconds_bucket{tenant=~\"$tenant\", environment=~\"$environment\"}[5m])))",
+          "legendFormat": "{{tenant}} p95",
+          "refId": "A"
+        }
+      ],
+      "title": "응답시간 p95",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"max": 100, "min": 0, "unit": "percent"}, "overrides": []},
+      "gridPos": {"h": 7, "w": 8, "x": 0, "y": 8},
+      "id": 4,
+      "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}},
+      "targets": [
+        {
+          "expr": "100 * sum by (tenant) (rate(http_server_requests_seconds_count{tenant=~\"$tenant\", environment=~\"$environment\", status=~\"5..\"}[5m])) / clamp_min(sum by (tenant) (rate(http_server_requests_seconds_count{tenant=~\"$tenant\", environment=~\"$environment\"}[5m])), 0.001)",
+          "legendFormat": "{{tenant}}",
+          "refId": "A"
+        }
+      ],
+      "title": "서버 오류율",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+      "gridPos": {"h": 7, "w": 8, "x": 8, "y": 8},
+      "id": 5,
+      "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}},
+      "targets": [
+        {"expr": "hikaricp_connections_active{tenant=~\"$tenant\", environment=~\"$environment\"}", "legendFormat": "{{tenant}} active", "refId": "A"},
+        {"expr": "hikaricp_connections_pending{tenant=~\"$tenant\", environment=~\"$environment\"}", "legendFormat": "{{tenant}} pending", "refId": "B"},
+        {"expr": "hikaricp_connections_max{tenant=~\"$tenant\", environment=~\"$environment\"}", "legendFormat": "{{tenant}} max", "refId": "C"}
+      ],
+      "title": "Hikari 연결 풀",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+      "gridPos": {"h": 7, "w": 8, "x": 16, "y": 8},
+      "id": 6,
+      "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}},
+      "targets": [
+        {"expr": "tomcat_threads_busy_threads{tenant=~\"$tenant\", environment=~\"$environment\"}", "legendFormat": "{{tenant}} busy", "refId": "A"},
+        {"expr": "tomcat_threads_config_max_threads{tenant=~\"$tenant\", environment=~\"$environment\"}", "legendFormat": "{{tenant}} max", "refId": "B"}
+      ],
+      "title": "Tomcat 스레드",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+      "gridPos": {"h": 7, "w": 12, "x": 0, "y": 15},
+      "id": 7,
+      "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}},
+      "targets": [
+        {"expr": "mudo_async_active{tenant=~\"$tenant\", environment=~\"$environment\"}", "legendFormat": "{{tenant}} active", "refId": "A"},
+        {"expr": "mudo_async_queue_size{tenant=~\"$tenant\", environment=~\"$environment\"}", "legendFormat": "{{tenant}} queued", "refId": "B"},
+        {"expr": "mudo_async_queue_capacity{tenant=~\"$tenant\", environment=~\"$environment\"}", "legendFormat": "{{tenant}} capacity", "refId": "C"}
+      ],
+      "title": "비동기 Executor",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+      "gridPos": {"h": 7, "w": 12, "x": 12, "y": 15},
+      "id": 8,
+      "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}},
+      "targets": [
+        {"expr": "mudo_heavy_job_active{tenant=~\"$tenant\", environment=~\"$environment\"}", "legendFormat": "{{tenant}} active", "refId": "A"},
+        {"expr": "increase(mudo_heavy_job_rejected_total{tenant=~\"$tenant\", environment=~\"$environment\"}[5m])", "legendFormat": "{{tenant}} rejected", "refId": "B"}
+      ],
+      "title": "무거운 작업 제한",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "loki", "uid": "loki"},
+      "gridPos": {"h": 9, "w": 24, "x": 0, "y": 22},
+      "id": 9,
+      "options": {"dedupStrategy": "none", "enableLogDetails": true, "prettifyLogMessage": false, "showCommonLabels": false, "showLabels": false, "showTime": true, "sortOrder": "Descending", "wrapLogMessage": true},
+      "targets": [
+        {"expr": "{tenant=~\"$tenant\", environment=~\"$environment\", service=~\"$service\", level=~\"ERROR|WARN\"}", "refId": "A"}
+      ],
+      "title": "최근 경고·오류 로그",
+      "type": "logs"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 41,
+  "tags": ["mudo", "operations"],
+  "templating": {
+    "list": [
+      {
+        "allValue": ".*",
+        "current": {"text": "All", "value": "$__all"},
+        "datasource": {"type": "prometheus", "uid": "prometheus"},
+        "definition": "label_values(up{service=\"backend\"}, tenant)",
+        "includeAll": true,
+        "label": "학원",
+        "multi": true,
+        "name": "tenant",
+        "query": {"query": "label_values(up{service=\"backend\"}, tenant)", "refId": "PrometheusVariableQueryEditor-tenant"},
+        "refresh": 2,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": {"text": "prod", "value": "prod"},
+        "datasource": {"type": "prometheus", "uid": "prometheus"},
+        "definition": "label_values(up, environment)",
+        "includeAll": true,
+        "label": "환경",
+        "multi": true,
+        "name": "environment",
+        "query": {"query": "label_values(up, environment)", "refId": "PrometheusVariableQueryEditor-environment"},
+        "refresh": 2,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": {"text": "backend", "value": "backend"},
+        "datasource": {"type": "prometheus", "uid": "prometheus"},
+        "definition": "label_values(up, service)",
+        "includeAll": true,
+        "label": "서비스",
+        "multi": true,
+        "name": "service",
+        "query": {"query": "label_values(up, service)", "refId": "PrometheusVariableQueryEditor-service"},
+        "refresh": 2,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {"from": "now-6h", "to": "now"},
+  "timezone": "browser",
+  "title": "MUDO 애플리케이션 운영 현황",
+  "uid": "mudo-application-overview",
+  "version": 1
+}
