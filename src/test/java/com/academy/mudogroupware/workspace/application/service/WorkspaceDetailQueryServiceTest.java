@@ -130,4 +130,53 @@ class WorkspaceDetailQueryServiceTest {
 
     assertThat(result.tasks()).extracting(WorkspaceTaskItem::taskId).containsExactly(1L, 2L, 3L);
   }
+
+  @Test
+  void sortsTasksByTaskIdWhenStatusDueDateAndCreatedAtAreAllTied() {
+    when(workspaceDetailQueryPort.findActiveWorkspaceName(WORKSPACE_ID))
+        .thenReturn(Optional.of("ws"));
+    when(workspaceListQueryPort.existsAccessible(WORKSPACE_ID, ACADEMY_ID, USER_ID, false))
+        .thenReturn(true);
+    when(workspaceDetailQueryPort.findMemberIds(WORKSPACE_ID)).thenReturn(List.of());
+    LocalDate sameDue = LocalDate.of(2026, 8, 10);
+    LocalDateTime sameCreatedAt = LocalDateTime.of(2026, 8, 1, 0, 0);
+    WorkspaceTaskCandidate second =
+        new WorkspaceTaskCandidate(102L, "둘째", TaskStatus.WAITING, sameDue, 25L, sameCreatedAt);
+    WorkspaceTaskCandidate first =
+        new WorkspaceTaskCandidate(101L, "첫째", TaskStatus.WAITING, sameDue, 25L, sameCreatedAt);
+    when(workspaceDetailQueryPort.findVisibleTasks(WORKSPACE_ID, DATE))
+        .thenReturn(List.of(second, first));
+    when(workspaceUserInfoPort.findUserInfo(Set.of(25L)))
+        .thenReturn(List.of(new WorkspaceMemberInfo(25L, "정다은")));
+    when(workspaceDetailQueryPort.findCommentSummaries(List.of(102L, 101L))).thenReturn(List.of());
+
+    WorkspaceDetail result =
+        service().getWorkspaceDetail(ACADEMY_ID, USER_ID, WORKSPACE_ID, DATE, false);
+
+    assertThat(result.tasks())
+        .extracting(WorkspaceTaskItem::taskId)
+        .containsExactly(101L, 102L);
+  }
+
+  @Test
+  void fallsBackToUnknownNameWhenMemberOrCreatorNameCannotBeResolved() {
+    when(workspaceDetailQueryPort.findActiveWorkspaceName(WORKSPACE_ID))
+        .thenReturn(Optional.of("ws"));
+    when(workspaceListQueryPort.existsAccessible(WORKSPACE_ID, ACADEMY_ID, USER_ID, false))
+        .thenReturn(true);
+    when(workspaceDetailQueryPort.findMemberIds(WORKSPACE_ID)).thenReturn(List.of(12L));
+    WorkspaceTaskCandidate candidate =
+        new WorkspaceTaskCandidate(
+            101L, "청구서 발송", TaskStatus.WAITING, null, 99L, LocalDateTime.of(2026, 8, 1, 0, 0));
+    when(workspaceDetailQueryPort.findVisibleTasks(WORKSPACE_ID, DATE))
+        .thenReturn(List.of(candidate));
+    when(workspaceUserInfoPort.findUserInfo(Set.of(12L, 99L))).thenReturn(List.of());
+    when(workspaceDetailQueryPort.findCommentSummaries(List.of(101L))).thenReturn(List.of());
+
+    WorkspaceDetail result =
+        service().getWorkspaceDetail(ACADEMY_ID, USER_ID, WORKSPACE_ID, DATE, false);
+
+    assertThat(result.members()).containsExactly(new WorkspaceMemberInfo(12L, "알 수 없음"));
+    assertThat(result.tasks().get(0).creator()).isEqualTo(new WorkspaceMemberInfo(99L, "알 수 없음"));
+  }
 }

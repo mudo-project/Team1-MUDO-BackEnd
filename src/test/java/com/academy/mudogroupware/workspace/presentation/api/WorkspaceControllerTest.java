@@ -23,9 +23,11 @@ import com.academy.mudogroupware.workspace.application.usecase.CreateWorkspaceUs
 import com.academy.mudogroupware.workspace.application.usecase.RecordWorkspaceRecentAccessUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.WorkspaceDetailQueryUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.WorkspaceQueryUseCase;
+import com.academy.mudogroupware.workspace.domain.exception.WorkspaceAccessDeniedException;
 import com.academy.mudogroupware.workspace.domain.exception.WorkspaceNotFoundException;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -168,6 +170,60 @@ class WorkspaceControllerTest {
         .andExpect(jsonPath("$.code").value("WORKSPACE_200_2"))
         .andExpect(jsonPath("$.data.workspaceId").value(100))
         .andExpect(jsonPath("$.data.name").value("1월 학사 운영"));
+  }
+
+  @Test
+  void usesClockDateWhenDateParameterIsOmitted() throws Exception {
+    Clock fixedClock =
+        Clock.fixed(LocalDate.of(2026, 8, 5).atStartOfDay(ZoneOffset.UTC).toInstant(), ZoneOffset.UTC);
+    when(clock.instant()).thenReturn(fixedClock.instant());
+    when(clock.getZone()).thenReturn(fixedClock.getZone());
+    WorkspaceDetail detail = new WorkspaceDetail(100L, "1월 학사 운영", List.of(), List.of());
+    when(workspaceDetailQueryUseCase.getWorkspaceDetail(
+            eq(1L), eq(10L), eq(100L), eq(LocalDate.of(2026, 8, 5)), eq(false)))
+        .thenReturn(detail);
+
+    mockMvc
+        .perform(
+            get("/api/workspaces/{workspaceId}", 100L).with(authentication(authenticatedUser())))
+        .andExpect(status().isOk());
+
+    verify(workspaceDetailQueryUseCase)
+        .getWorkspaceDetail(1L, 10L, 100L, LocalDate.of(2026, 8, 5), false);
+  }
+
+  @Test
+  void forwardsReadAllAuthorityWhenRequestingWorkspaceDetail() throws Exception {
+    WorkspaceDetail detail = new WorkspaceDetail(100L, "1월 학사 운영", List.of(), List.of());
+    when(workspaceDetailQueryUseCase.getWorkspaceDetail(
+            eq(1L), eq(10L), eq(100L), eq(LocalDate.of(2026, 8, 5)), eq(true)))
+        .thenReturn(detail);
+
+    mockMvc
+        .perform(
+            get("/api/workspaces/{workspaceId}", 100L)
+                .param("date", "2026-08-05")
+                .with(authentication(authenticatedUser("WORKSPACE:READ_ALL"))))
+        .andExpect(status().isOk());
+
+    verify(workspaceDetailQueryUseCase)
+        .getWorkspaceDetail(1L, 10L, 100L, LocalDate.of(2026, 8, 5), true);
+  }
+
+  @Test
+  void returns403WhenRequesterCannotAccessWorkspace() throws Exception {
+    when(workspaceDetailQueryUseCase.getWorkspaceDetail(
+            eq(1L), eq(10L), eq(100L), any(LocalDate.class), eq(false)))
+        .thenThrow(new WorkspaceAccessDeniedException());
+
+    mockMvc
+        .perform(
+            get("/api/workspaces/{workspaceId}", 100L)
+                .param("date", "2026-08-05")
+                .with(authentication(authenticatedUser())))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.status").value(403))
+        .andExpect(jsonPath("$.code").value("WORKSPACE_403_1"));
   }
 
   private Authentication authenticatedUser(String... authorities) {

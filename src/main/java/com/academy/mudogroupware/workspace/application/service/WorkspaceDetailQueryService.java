@@ -27,10 +27,13 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class WorkspaceDetailQueryService implements WorkspaceDetailQueryUseCase {
 
+  private static final String UNKNOWN_NAME = "알 수 없음";
+
   private static final Comparator<WorkspaceTaskCandidate> TASK_ORDER =
       Comparator.comparing(WorkspaceTaskCandidate::status)
           .thenComparing(WorkspaceTaskCandidate::dueAt, Comparator.nullsLast(Comparator.naturalOrder()))
-          .thenComparing(WorkspaceTaskCandidate::createdAt);
+          .thenComparing(WorkspaceTaskCandidate::createdAt)
+          .thenComparing(WorkspaceTaskCandidate::taskId);
 
   private final WorkspaceDetailQueryPort workspaceDetailQueryPort;
   private final WorkspaceListQueryPort workspaceListQueryPort;
@@ -59,7 +62,7 @@ public class WorkspaceDetailQueryService implements WorkspaceDetailQueryUseCase 
             .collect(Collectors.toMap(WorkspaceMemberInfo::userId, WorkspaceMemberInfo::name));
 
     List<WorkspaceMemberInfo> members =
-        memberIds.stream().map(id -> new WorkspaceMemberInfo(id, nameByUserId.get(id))).toList();
+        memberIds.stream().map(id -> new WorkspaceMemberInfo(id, resolveName(id, nameByUserId))).toList();
 
     Map<Long, TaskCommentSummary> commentSummaryByTaskId =
         workspaceDetailQueryPort
@@ -81,7 +84,8 @@ public class WorkspaceDetailQueryService implements WorkspaceDetailQueryUseCase 
       Map<Long, String> nameByUserId,
       Map<Long, TaskCommentSummary> commentSummaryByTaskId) {
     WorkspaceMemberInfo creator =
-        new WorkspaceMemberInfo(candidate.createdBy(), nameByUserId.get(candidate.createdBy()));
+        new WorkspaceMemberInfo(
+            candidate.createdBy(), resolveName(candidate.createdBy(), nameByUserId));
     TaskCommentSummary summary = commentSummaryByTaskId.get(candidate.taskId());
 
     return new WorkspaceTaskItem(
@@ -92,5 +96,9 @@ public class WorkspaceDetailQueryService implements WorkspaceDetailQueryUseCase 
         candidate.dueAt(),
         summary == null ? null : summary.completedCount(),
         summary == null ? null : summary.totalCount());
+  }
+
+  private String resolveName(Long userId, Map<Long, String> nameByUserId) {
+    return nameByUserId.getOrDefault(userId, UNKNOWN_NAME);
   }
 }

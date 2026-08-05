@@ -84,6 +84,7 @@ public interface WorkspaceJpaRepository extends JpaRepository<WorkspaceJpaEntity
       select member.id.userId
       from WorkspaceMemberJpaEntity member
       where member.workspace.id = :workspaceId
+      order by member.id.userId asc
       """)
   List<Long> findMemberUserIds(@Param("workspaceId") Long workspaceId);
 

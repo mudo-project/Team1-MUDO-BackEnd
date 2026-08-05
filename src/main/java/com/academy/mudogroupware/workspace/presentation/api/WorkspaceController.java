@@ -131,7 +131,8 @@ public class WorkspaceController {
       @AuthenticationPrincipal AuthUser authUser,
       Authentication authentication,
       @PathVariable Long workspaceId,
-      @RequestParam(required = false) LocalDate date) {
+      @RequestParam(required = false) LocalDate date
+  ) {
     boolean canReadAll =
         authentication.getAuthorities().stream()
             .anyMatch(authority -> WORKSPACE_READ_ALL_AUTHORITY.equals(authority.getAuthority()));

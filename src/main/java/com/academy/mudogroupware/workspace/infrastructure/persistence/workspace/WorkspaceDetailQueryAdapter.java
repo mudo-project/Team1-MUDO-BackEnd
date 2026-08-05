@@ -9,6 +9,7 @@ import com.academy.mudogroupware.workspace.infrastructure.persistence.task.TaskC
 import com.academy.mudogroupware.workspace.infrastructure.persistence.task.TaskJpaEntity;
 import com.academy.mudogroupware.workspace.infrastructure.persistence.task.TaskJpaRepository;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -35,10 +36,14 @@ public class WorkspaceDetailQueryAdapter implements WorkspaceDetailQueryPort {
 
   @Override
   public List<WorkspaceTaskCandidate> findVisibleTasks(Long workspaceId, LocalDate date) {
+    LocalDateTime startOfDay = date.atStartOfDay();
+    LocalDateTime endOfDay = date.plusDays(1).atStartOfDay();
+
     List<TaskJpaEntity> tasks = new ArrayList<>();
     tasks.addAll(
-        taskJpaRepository.findVisibleRegularTasks(workspaceId, date, TaskStatus.COMPLETED));
-    tasks.addAll(taskJpaRepository.findVisibleRecurringTasks(workspaceId, date));
+        taskJpaRepository.findVisibleRegularTasks(
+            workspaceId, startOfDay, endOfDay, TaskStatus.COMPLETED));
+    tasks.addAll(taskJpaRepository.findVisibleRecurringTasks(workspaceId, startOfDay, endOfDay));
 
     return tasks.stream().map(this::toCandidate).toList();
   }
