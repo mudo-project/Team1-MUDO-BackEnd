@@ -6,4 +6,6 @@ public interface AcademyWifiIpRepository {
     boolean existsByAcademyIdAndIpAddress(Long academyId, String ipAddress);
 
     AcademyWifiIp save(AcademyWifiIp wifiIp);
+
+    boolean deleteByIdAndAcademyId(Long wifiIpId, Long academyId);
 }
