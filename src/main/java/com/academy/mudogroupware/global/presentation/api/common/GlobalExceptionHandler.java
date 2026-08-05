@@ -5,6 +5,7 @@ import jakarta.validation.ConstraintViolationException;
 import java.util.*;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
+import org.springframework.core.task.TaskRejectedException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -130,6 +131,13 @@ public class GlobalExceptionHandler {
         e.getMessage());
     return ResponseEntity.status(CommonErrorCode.ACCESS_DENIED.getHttpStatus())
         .body(GlobalApiErrorResponse.of(CommonErrorCode.ACCESS_DENIED, traceId));
+  }
+
+  @ExceptionHandler(TaskRejectedException.class)
+  public ResponseEntity<GlobalApiErrorResponse> taskRejected(TaskRejectedException e) {
+    log.warn("event=async_task_rejected traceId={}", trace());
+    return ResponseEntity.status(CommonErrorCode.SERVICE_UNAVAILABLE.getHttpStatus())
+        .body(GlobalApiErrorResponse.of(CommonErrorCode.SERVICE_UNAVAILABLE, trace()));
   }
 
   @ExceptionHandler(Exception.class)
