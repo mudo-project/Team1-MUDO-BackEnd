@@ -9,6 +9,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.academy.mudogroupware.global.domain.common.page.PageResult;
+import com.academy.mudogroupware.lecture.application.port.EnrolledStudentInfo;
+import com.academy.mudogroupware.lecture.application.port.EnrolledStudentsPort;
 import com.academy.mudogroupware.lecture.application.query.LectureDetailView;
 import com.academy.mudogroupware.lecture.application.query.LectureSummaryView;
 import com.academy.mudogroupware.lecture.application.query.ScheduleView;
@@ -17,16 +19,12 @@ import com.academy.mudogroupware.lecture.application.usecase.LectureQueryUseCase
 import com.academy.mudogroupware.lecture.domain.exception.LectureAccessDeniedException;
 import com.academy.mudogroupware.lecture.domain.exception.LectureNotFoundException;
 import com.academy.mudogroupware.lecture.domain.model.Classroom;
-import com.academy.mudogroupware.lecture.domain.model.Enrollment;
 import com.academy.mudogroupware.lecture.domain.model.Lecture;
-import com.academy.mudogroupware.lecture.domain.model.Student;
 import com.academy.mudogroupware.lecture.domain.model.Subject;
 import com.academy.mudogroupware.lecture.domain.model.Term;
 import com.academy.mudogroupware.lecture.domain.repository.ClassroomRepository;
-import com.academy.mudogroupware.lecture.domain.repository.EnrollmentRepository;
 import com.academy.mudogroupware.lecture.domain.repository.LectureFilter;
 import com.academy.mudogroupware.lecture.domain.repository.LectureRepository;
-import com.academy.mudogroupware.lecture.domain.repository.StudentRepository;
 import com.academy.mudogroupware.lecture.domain.repository.SubjectRepository;
 import com.academy.mudogroupware.lecture.domain.repository.TermRepository;
 
@@ -41,8 +39,7 @@ public class LectureQueryService implements LectureQueryUseCase {
     private final TermRepository termRepository;
     private final SubjectRepository subjectRepository;
     private final ClassroomRepository classroomRepository;
-    private final EnrollmentRepository enrollmentRepository;
-    private final StudentRepository studentRepository;
+    private final EnrolledStudentsPort enrolledStudentsPort;
 
     @Override
     public PageResult<LectureSummaryView> getLectures(Long academyId, LectureFilter filter, int page, int size) {
@@ -59,7 +56,8 @@ public class LectureQueryService implements LectureQueryUseCase {
                 classroomRepository.findAllById(distinctIds(lectures, Lecture::getClassroomId)),
                 Classroom::getId, Classroom::getName);
         Map<Long, Integer> studentCounts = lectures.stream()
-                .collect(Collectors.toMap(Lecture::getId, l -> enrollmentRepository.findByLectureId(l.getId()).size()));
+                .collect(Collectors.toMap(Lecture::getId,
+                        l -> enrolledStudentsPort.findByLectureId(academyId, l.getId()).size()));
 
         return result.map(lecture -> new LectureSummaryView(
                 lecture.getId(),
@@ -86,11 +84,9 @@ public class LectureQueryService implements LectureQueryUseCase {
         String classroomName = singleName(classroomRepository.findAllById(List.of(lecture.getClassroomId())),
                 Classroom::getName);
 
-        List<Enrollment> enrollments = enrollmentRepository.findByLectureId(lectureId);
-        List<Student> students = studentRepository.findAllById(
-                enrollments.stream().map(Enrollment::getStudentId).toList());
-        List<StudentSummaryView> studentViews = students.stream()
-                .map(s -> new StudentSummaryView(s.getId(), s.getName(), s.getGrade()))
+        List<EnrolledStudentInfo> enrolledStudents = enrolledStudentsPort.findByLectureId(academyId, lectureId);
+        List<StudentSummaryView> studentViews = enrolledStudents.stream()
+                .map(s -> new StudentSummaryView(s.studentId(), s.name(), s.grade()))
                 .toList();
 
         return new LectureDetailView(lecture.getId(), lecture.getName(), lecture.getGrade(), termName, subjectName,

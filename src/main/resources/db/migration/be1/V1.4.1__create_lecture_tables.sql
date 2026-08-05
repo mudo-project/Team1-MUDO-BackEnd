@@ -54,27 +54,3 @@ CREATE TABLE `lecture_schedule` (
     CONSTRAINT `fk_lecture_schedule_lecture` FOREIGN KEY (`lecture_id`)
         REFERENCES `lecture` (`lecture_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE `student` (
-    `student_id`   BIGINT      NOT NULL AUTO_INCREMENT,
-    `academy_id`   BIGINT      NOT NULL,
-    `name`         VARCHAR(50) NOT NULL,
-    `grade`        VARCHAR(20) NOT NULL,
-    `school`       VARCHAR(100) NULL,
-    `phone`        VARCHAR(20) NULL,
-    `parent_phone` VARCHAR(20) NULL,
-    `note`         VARCHAR(500) NULL,
-    `created_at`   DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-    PRIMARY KEY (`student_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE `enrollment` (
-    `enrollment_id` BIGINT      NOT NULL AUTO_INCREMENT,
-    `student_id`    BIGINT      NOT NULL,
-    `lecture_id`    BIGINT      NOT NULL,
-    `created_at`    DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-    PRIMARY KEY (`enrollment_id`),
-    UNIQUE KEY `uk_enrollment_student_lecture` (`student_id`, `lecture_id`),
-    CONSTRAINT `fk_enrollment_student` FOREIGN KEY (`student_id`) REFERENCES `student` (`student_id`),
-    CONSTRAINT `fk_enrollment_lecture` FOREIGN KEY (`lecture_id`) REFERENCES `lecture` (`lecture_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
