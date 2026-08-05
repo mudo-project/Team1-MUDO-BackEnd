@@ -63,7 +63,7 @@ UNIQUE (academy_id, active_name)
 - 워크스페이스 상세 화면을 정상적으로 연 뒤 `PUT /api/workspaces/{workspaceId}/recent-access`를 호출해 최근 접속 시각을 기록한다. 목록을 불러온 것만으로는 접속 기록을 갱신하지 않는다.
 - 최근 접속 기록은 공유 워크스페이스 상태가 아니라 사용자별 상태이다. 한 사용자가 같은 워크스페이스에 다시 접속하면 기존 행의 시각을 갱신한다.
 - `workspace_recent_access`는 `(user_id, workspace_id)`를 복합 PK로 사용하므로 사용자·워크스페이스 조합당 최대 한 행만 저장한다.
-- 최근 접속 기록은 MySQL의 `INSERT ... ON DUPLICATE KEY UPDATE`로 저장해, 같은 최초 접속 요청이 동시에 들어와도 중복 키 오류 없이 한 행을 생성하거나 갱신한다.
+- 최근 접속 기록은 MySQL의 `INSERT ... ON DUPLICATE KEY UPDATE`로 저장해, 같은 최초 접속 요청이 동시에 들어와도 중복 키 오류 없이 한 행을 생성하거나 갱신한다. 늦게 도착한 요청의 시각이 더 과거면 기존의 더 최신 접속 시각을 유지한다.
 - 삭제된 워크스페이스는 목록과 최근 접속 기록 대상에서 제외한다.
 
 ## 👥 참여자

@@ -18,9 +18,9 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.mysql.MySQLContainer;
 
 @DataJpaTest(properties = "spring.jpa.hibernate.ddl-auto=create-drop")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
@@ -29,7 +29,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 class WorkspaceRecentAccessMySqlIntegrationTest {
 
   @Container
-  static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.0");
+  static final MySQLContainer MYSQL = new MySQLContainer("mysql:8.0");
 
   @DynamicPropertySource
   static void configureDataSource(DynamicPropertyRegistry registry) {
@@ -80,6 +80,26 @@ class WorkspaceRecentAccessMySqlIntegrationTest {
 
     assertThat(count).isEqualTo(1);
     assertThat(lastAccessedAt).isEqualTo(accessedAt);
+  }
+
+  @Test
+  @Transactional(propagation = Propagation.NOT_SUPPORTED)
+  void upsertPreservesNewerAccessTimeWhenOlderRequestArrivesLater() {
+    insertWorkspace(101L);
+    LocalDateTime newerAccessedAt = LocalDateTime.of(2026, 8, 5, 10, 1);
+    LocalDateTime olderAccessedAt = LocalDateTime.of(2026, 8, 5, 10, 0);
+
+    workspaceRecentAccessJpaRepository.upsert(10L, 101L, newerAccessedAt);
+    workspaceRecentAccessJpaRepository.upsert(10L, 101L, olderAccessedAt);
+
+    LocalDateTime lastAccessedAt =
+        jdbcTemplate.queryForObject(
+            "select last_accessed_at from workspace_recent_access where user_id = ? and workspace_id = ?",
+            LocalDateTime.class,
+            10L,
+            101L);
+
+    assertThat(lastAccessedAt).isEqualTo(newerAccessedAt);
   }
 
   private Future<?> submitUpsert(

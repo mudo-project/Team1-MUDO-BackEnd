@@ -122,4 +122,4 @@ Controller는 `AuthUser`에서 `academyId`, `userId`를 추출한다. 인증 객
 
 ### 3. 최근 접속 시각 저장과 응답
 
-접근 가능하면 서버의 `Clock` 기준 현재 시각을 저장한다. Repository는 MySQL의 `INSERT ... ON DUPLICATE KEY UPDATE` 단일 쿼리로 `(userId, workspaceId)` 기록을 생성하거나 갱신한다. 동일한 최초 요청이 동시에 들어와도 복합 PK 충돌로 실패하지 않는다. 성공 응답은 본문 없는 HTTP `204 No Content`이다.
+접근 가능하면 서버의 `Clock` 기준 현재 시각을 저장한다. Repository는 MySQL의 `INSERT ... ON DUPLICATE KEY UPDATE` 단일 쿼리로 `(userId, workspaceId)` 기록을 생성하거나 갱신한다. 동일한 최초 요청이 동시에 들어와도 복합 PK 충돌로 실패하지 않으며, 갱신 시에는 더 최신 접속 시각을 유지한다. 성공 응답은 본문 없는 HTTP `204 No Content`이다.

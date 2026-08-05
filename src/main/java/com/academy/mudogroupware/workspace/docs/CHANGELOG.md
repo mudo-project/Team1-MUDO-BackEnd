@@ -15,6 +15,7 @@
 - 상세 화면을 정상적으로 연 뒤 `PUT /api/workspaces/{workspaceId}/recent-access`를 호출하면 사용자별 최근 접속 시각을 생성하거나 갱신합니다.
 - `workspace_recent_access` 테이블은 사용자·워크스페이스 조합당 한 행만 유지해 접속할 때마다 새 데이터를 계속 쌓지 않습니다.
 - 같은 최근 접속 요청이 동시에 들어와도 기록 생성·갱신이 실패하지 않도록 DB upsert 방식으로 처리합니다.
+- 늦게 도착한 과거 접속 기록은 더 최신의 최근 접속 시각을 덮어쓰지 않습니다.
 
 자세한 처리 흐름과 응답 형식은 [WORKSPACE_API.md](WORKSPACE_API.md), [WORKSPACE_API_FLOW.md](WORKSPACE_API_FLOW.md), [REVISION.md](REVISION.md)를 참고해주세요. 📚
 

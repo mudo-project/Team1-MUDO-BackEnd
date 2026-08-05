@@ -17,7 +17,7 @@ public interface WorkspaceRecentAccessJpaRepository
           """
           insert into workspace_recent_access (user_id, workspace_id, last_accessed_at)
           values (:userId, :workspaceId, :accessedAt)
-          on duplicate key update last_accessed_at = :accessedAt
+          on duplicate key update last_accessed_at = greatest(last_accessed_at, :accessedAt)
           """,
       nativeQuery = true)
   void upsert(
