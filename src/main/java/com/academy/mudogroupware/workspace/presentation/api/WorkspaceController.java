@@ -46,7 +46,7 @@ public class WorkspaceController {
 
   @Operation(
       summary = "워크스페이스 목록 조회",
-      description = "내 워크스페이스를 조회하며, 전체 조회에는 WORKSPACE:READ_ALL 권한이 필요합니다.")
+      description = "내 워크스페이스를 조회합니다. 전체 조회는 권한 모듈 연동 후 제공됩니다.")
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "워크스페이스 목록 조회 성공"),
     @ApiResponse(responseCode = "400", description = "scope 값이 유효하지 않음"),

@@ -76,19 +76,15 @@ class WorkspaceControllerTest {
   }
 
   @Test
-  void returnsAllWorkspacesWhenAuthorityIsPresent() throws Exception {
-    when(workspaceQueryUseCase.getWorkspaces(1L, 10L, WorkspaceListScope.ALL))
-        .thenReturn(List.of(new WorkspaceListItem(200L, "전체 공개", 7L)));
-
+  void rejectsAllBeforePermissionModuleIntegrationEvenWithReadAllAuthority() throws Exception {
     mockMvc
         .perform(
             get("/api/workspaces")
                 .param("scope", "ALL")
                 .with(authentication(authenticatedUser("WORKSPACE:READ_ALL"))))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.data[0].workspaceId").value(200));
+        .andExpect(status().isForbidden());
 
-    verify(workspaceQueryUseCase).getWorkspaces(1L, 10L, WorkspaceListScope.ALL);
+    verifyNoInteractions(workspaceQueryUseCase);
   }
 
   @Test
