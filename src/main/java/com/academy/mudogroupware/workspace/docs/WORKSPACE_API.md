@@ -289,3 +289,16 @@ HTTP `200 OK`
 | `403 Forbidden` | `WORKSPACE_403_1` | 참여자가 아님 |
 | `404 Not Found` | `WORKSPACE_404_1` | 워크스페이스가 존재하지 않거나 삭제됨 |
 | `409 Conflict` | `WORKSPACE_409_1` | 같은 학원에 활성 상태로 이름이 중복됨 |
+
+## 워크스페이스 삭제
+
+`DELETE /api/workspaces/{workspaceId}`
+
+- 소프트 삭제로 처리하며, 응답 본문 없이 `204`를 반환한다.
+- 현재 참여자만 호출할 수 있다.
+
+| 응답 | 코드 | 설명 |
+| --- | --- | --- |
+| `204 No Content` | - | 삭제 성공 |
+| `403 Forbidden` | `WORKSPACE_403_1` | 참여자가 아님 |
+| `404 Not Found` | `WORKSPACE_404_1` | 워크스페이스가 존재하지 않거나 이미 삭제됨 |

@@ -3,7 +3,9 @@ package com.academy.mudogroupware.workspace.presentation.api;
 import com.academy.mudogroupware.global.presentation.api.common.GlobalApiResponse;
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
 import com.academy.mudogroupware.workspace.application.query.WorkspaceListScope;
+import com.academy.mudogroupware.workspace.application.command.DeleteWorkspaceCommand;
 import com.academy.mudogroupware.workspace.application.usecase.CreateWorkspaceUseCase;
+import com.academy.mudogroupware.workspace.application.usecase.DeleteWorkspaceUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.RecordWorkspaceRecentAccessUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.RenameWorkspaceUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.WorkspaceDetailQueryUseCase;
@@ -29,6 +31,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -53,6 +56,7 @@ public class WorkspaceController {
   private final RecordWorkspaceRecentAccessUseCase recordWorkspaceRecentAccessUseCase;
   private final WorkspaceDetailQueryUseCase workspaceDetailQueryUseCase;
   private final RenameWorkspaceUseCase renameWorkspaceUseCase;
+  private final DeleteWorkspaceUseCase deleteWorkspaceUseCase;
   private final Clock clock;
 
   @Operation(
@@ -170,5 +174,20 @@ public class WorkspaceController {
     return ResponseEntity.ok(
         GlobalApiResponse.ok(
             WorkspaceResponseCode.WORKSPACE_RENAMED, WorkspaceRenameResponse.from(workspaceId, name)));
+  }
+
+  @Operation(summary = "워크스페이스 삭제", description = "현재 참여자만 삭제할 수 있습니다. 소프트 삭제로 처리됩니다.")
+  @ApiResponses({
+    @ApiResponse(responseCode = "204", description = "삭제 성공"),
+    @ApiResponse(responseCode = "403", description = "참여자가 아님"),
+    @ApiResponse(responseCode = "404", description = "워크스페이스가 존재하지 않거나 이미 삭제됨")
+  })
+  // TODO: 권한 모듈의 WORKSPACE:DELETE 권한이 준비되면 @PreAuthorize를 추가한다.
+  // 단, 본인이 유일한 참여자인 경우의 삭제는 자진 탈퇴의 대체 행위이므로 계속 권한 없이 허용한다.
+  @DeleteMapping("/{workspaceId}")
+  public ResponseEntity<Void> deleteWorkspace(
+      @AuthenticationPrincipal AuthUser authUser, @PathVariable Long workspaceId) {
+    deleteWorkspaceUseCase.delete(new DeleteWorkspaceCommand(authUser.userId(), workspaceId));
+    return ResponseEntity.noContent().build();
   }
 }

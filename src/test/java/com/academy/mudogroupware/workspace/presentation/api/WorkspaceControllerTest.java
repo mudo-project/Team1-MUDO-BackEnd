@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -20,8 +21,10 @@ import com.academy.mudogroupware.global.presentation.security.JwtAuthenticationC
 import com.academy.mudogroupware.workspace.application.query.WorkspaceDetail;
 import com.academy.mudogroupware.workspace.application.query.WorkspaceListItem;
 import com.academy.mudogroupware.workspace.application.query.WorkspaceListScope;
+import com.academy.mudogroupware.workspace.application.command.DeleteWorkspaceCommand;
 import com.academy.mudogroupware.workspace.application.command.RenameWorkspaceCommand;
 import com.academy.mudogroupware.workspace.application.usecase.CreateWorkspaceUseCase;
+import com.academy.mudogroupware.workspace.application.usecase.DeleteWorkspaceUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.RecordWorkspaceRecentAccessUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.RenameWorkspaceUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.WorkspaceDetailQueryUseCase;
@@ -59,6 +62,7 @@ class WorkspaceControllerTest {
   @MockitoBean private JwtAuthenticationConverter jwtAuthenticationConverter;
   @MockitoBean private WorkspaceDetailQueryUseCase workspaceDetailQueryUseCase;
   @MockitoBean private RenameWorkspaceUseCase renameWorkspaceUseCase;
+  @MockitoBean private DeleteWorkspaceUseCase deleteWorkspaceUseCase;
   @MockitoBean private Clock clock;
 
   @Test
@@ -278,6 +282,32 @@ class WorkspaceControllerTest {
         .andExpect(status().isBadRequest());
 
     verifyNoInteractions(renameWorkspaceUseCase);
+  }
+
+  @Test
+  void deletesWorkspaceAndReturns204() throws Exception {
+    mockMvc
+        .perform(
+            delete("/api/workspaces/{workspaceId}", 100L)
+                .with(authentication(authenticatedUser()))
+                .with(csrf()))
+        .andExpect(status().isNoContent());
+
+    verify(deleteWorkspaceUseCase).delete(new DeleteWorkspaceCommand(10L, 100L));
+  }
+
+  @Test
+  void returns404WhenDeletingNonExistentWorkspace() throws Exception {
+    org.mockito.Mockito.doThrow(new WorkspaceNotFoundException())
+        .when(deleteWorkspaceUseCase)
+        .delete(any(DeleteWorkspaceCommand.class));
+
+    mockMvc
+        .perform(
+            delete("/api/workspaces/{workspaceId}", 100L)
+                .with(authentication(authenticatedUser()))
+                .with(csrf()))
+        .andExpect(status().isNotFound());
   }
 
   private Authentication authenticatedUser(String... authorities) {
