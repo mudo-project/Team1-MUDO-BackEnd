@@ -74,6 +74,22 @@ public final class AttendanceRecord {
                 clockInNote, clockOutAt, clockOutNote, status, createdAt, updatedAt);
     }
 
+    public AttendanceRecord checkOut(LocalDateTime checkedOutAt, String note) {
+        if (checkedOutAt == null || clockInAt == null || checkedOutAt.isBefore(clockInAt)) {
+            throw new AttendanceException(AttendanceErrorCode.INVALID_CLOCK_OUT_TIME);
+        }
+        if (clockOutAt != null) {
+            throw new AttendanceException(AttendanceErrorCode.ATTENDANCE_ALREADY_CHECKED_OUT);
+        }
+        String normalizedNote = normalizeNote(note);
+        if (normalizedNote != null && normalizedNote.length() > 255) {
+            throw new AttendanceException(AttendanceErrorCode.INVALID_CLOCK_OUT_NOTE);
+        }
+        return new AttendanceRecord(id, academyId, userId, workDate,
+                clockInAt, clockInNote, checkedOutAt, normalizedNote,
+                status, createdAt, checkedOutAt);
+    }
+
     private static String normalizeNote(String note) {
         if (note == null) {
             return null;

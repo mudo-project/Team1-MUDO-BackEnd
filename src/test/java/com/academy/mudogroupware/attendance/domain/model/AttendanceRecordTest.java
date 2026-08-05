@@ -45,4 +45,36 @@ class AttendanceRecordTest {
         assertEquals(AttendanceStatus.LATE, record.getStatus());
         assertEquals("교통 정체", record.getClockInNote());
     }
+
+    @Test
+    void checksOutWithOptionalTrimmedNote() {
+        AttendanceRecord checkedIn = AttendanceRecord.restore(
+                5L, 1L, 10L, java.time.LocalDate.of(2026, 8, 5),
+                LocalDateTime.of(2026, 8, 5, 22, 0), null,
+                null, null, AttendanceStatus.NORMAL,
+                LocalDateTime.of(2026, 8, 5, 22, 0),
+                LocalDateTime.of(2026, 8, 5, 22, 0));
+
+        AttendanceRecord checkedOut = checkedIn.checkOut(
+                LocalDateTime.of(2026, 8, 6, 2, 0), " 추가 근무 ");
+
+        assertEquals(LocalDateTime.of(2026, 8, 6, 2, 0), checkedOut.getClockOutAt());
+        assertEquals("추가 근무", checkedOut.getClockOutNote());
+        assertEquals(AttendanceStatus.NORMAL, checkedOut.getStatus());
+    }
+
+    @Test
+    void convertsBlankClockOutNoteToNull() {
+        AttendanceRecord checkedIn = AttendanceRecord.restore(
+                5L, 1L, 10L, java.time.LocalDate.of(2026, 8, 5),
+                LocalDateTime.of(2026, 8, 5, 9, 0), null,
+                null, null, AttendanceStatus.NORMAL,
+                LocalDateTime.of(2026, 8, 5, 9, 0),
+                LocalDateTime.of(2026, 8, 5, 9, 0));
+
+        AttendanceRecord checkedOut = checkedIn.checkOut(
+                LocalDateTime.of(2026, 8, 5, 18, 0), "   ");
+
+        assertNull(checkedOut.getClockOutNote());
+    }
 }

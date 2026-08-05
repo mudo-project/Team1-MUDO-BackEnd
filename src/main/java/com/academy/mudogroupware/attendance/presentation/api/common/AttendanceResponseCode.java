@@ -12,7 +12,8 @@ public enum AttendanceResponseCode implements ResponseCode {
     CURRENT_CLIENT_IP_RETRIEVED("ACADEMY_200_1", "현재 접속 IP가 조회되었습니다."),
     ATTENDANCE_POLICY_SAVED("ATTENDANCE_200_1", "근무시간 정책이 저장되었습니다."),
     WIFI_IP_REGISTERED("ACADEMY_201_1", "와이파이 IP가 등록되었습니다."),
-    ATTENDANCE_CHECKED_IN("ATTENDANCE_201_1", "출근이 등록되었습니다.");
+    ATTENDANCE_CHECKED_IN("ATTENDANCE_201_1", "출근이 등록되었습니다."),
+    ATTENDANCE_CHECKED_OUT("ATTENDANCE_200_2", "퇴근이 등록되었습니다.");
 
     private final String code;
     private final String message;

@@ -1,7 +1,9 @@
 package com.academy.mudogroupware.attendance.infrastructure.persistence;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Locale;
+import java.util.Optional;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Repository;
@@ -53,6 +55,23 @@ public class AttendanceRecordRepositoryImpl implements AttendanceRecordRepositor
             }
             throw e;
         }
+    }
+
+    @Override
+    public Optional<AttendanceRecord> findLatestOpenSince(
+            Long academyId, Long userId, LocalDate earliestWorkDate) {
+        return attendanceRecordJpaRepository
+                .findFirstByAcademyIdAndUserIdAndWorkDateGreaterThanEqualAndClockOutAtIsNullOrderByClockInAtDesc(
+                        academyId, userId, earliestWorkDate)
+                .map(this::toDomain);
+    }
+
+    @Override
+    public boolean existsCheckedOutBetween(
+            Long academyId, Long userId, LocalDateTime from, LocalDateTime to) {
+        return attendanceRecordJpaRepository
+                .existsByAcademyIdAndUserIdAndClockOutAtBetween(
+                        academyId, userId, from, to);
     }
 
     private AttendanceRecord toDomain(AttendanceRecordJpaEntity entity) {

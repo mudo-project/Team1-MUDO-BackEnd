@@ -59,6 +59,14 @@ public enum AttendanceErrorCode implements ErrorCode {
             HttpStatus.BAD_REQUEST,
             "ATTENDANCE_400_6",
             "유효하지 않은 출근 기록입니다."),
+    INVALID_CLOCK_OUT_NOTE(
+            HttpStatus.BAD_REQUEST,
+            "ATTENDANCE_400_7",
+            "퇴근 메모는 255자 이하여야 합니다."),
+    INVALID_CLOCK_OUT_TIME(
+            HttpStatus.BAD_REQUEST,
+            "ATTENDANCE_400_8",
+            "퇴근 시각은 출근 시각보다 빠를 수 없습니다."),
     CHECK_IN_FORBIDDEN(
             HttpStatus.FORBIDDEN,
             "ATTENDANCE_403_2",
@@ -67,10 +75,22 @@ public enum AttendanceErrorCode implements ErrorCode {
             HttpStatus.FORBIDDEN,
             "ATTENDANCE_403_3",
             "등록된 학원 IP에서만 출근할 수 있습니다."),
+    CHECK_OUT_FORBIDDEN(
+            HttpStatus.FORBIDDEN,
+            "ATTENDANCE_403_4",
+            "퇴근을 등록할 수 있는 학원 소속이 아닙니다."),
+    UNREGISTERED_CHECK_OUT_IP(
+            HttpStatus.FORBIDDEN,
+            "ATTENDANCE_403_5",
+            "등록된 학원 IP에서만 퇴근할 수 있습니다."),
     ATTENDANCE_POLICY_NOT_FOUND(
             HttpStatus.NOT_FOUND,
             "ATTENDANCE_404_1",
             "학원의 근무시간 정책을 찾을 수 없습니다."),
+    ATTENDANCE_CHECK_IN_NOT_FOUND(
+            HttpStatus.NOT_FOUND,
+            "ATTENDANCE_404_2",
+            "퇴근할 출근 기록을 찾을 수 없습니다."),
     ATTENDANCE_ALREADY_CHECKED_IN(
             HttpStatus.CONFLICT,
             "ATTENDANCE_409_1",
@@ -78,7 +98,11 @@ public enum AttendanceErrorCode implements ErrorCode {
     ATTENDANCE_NON_WORKDAY(
             HttpStatus.CONFLICT,
             "ATTENDANCE_409_2",
-            "오늘은 근무일이 아닙니다.");
+            "오늘은 근무일이 아닙니다."),
+    ATTENDANCE_ALREADY_CHECKED_OUT(
+            HttpStatus.CONFLICT,
+            "ATTENDANCE_409_3",
+            "오늘은 이미 퇴근이 등록되었습니다.");
 
     private final HttpStatus httpStatus;
     private final String code;
