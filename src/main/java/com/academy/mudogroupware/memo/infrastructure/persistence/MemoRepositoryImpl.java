@@ -1,5 +1,8 @@
 package com.academy.mudogroupware.memo.infrastructure.persistence;
 
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.stereotype.Repository;
 
 import com.academy.mudogroupware.memo.domain.model.Memo;
@@ -17,6 +20,30 @@ public class MemoRepositoryImpl implements MemoRepository {
     public Memo save(Memo memo) {
         MemoEntity entity = toEntity(memo);
         return toDomain(memoJpaRepository.save(entity));
+    }
+
+    @Override
+    public Optional<Memo> findById(Long id) {
+        return memoJpaRepository.findById(id).map(this::toDomain);
+    }
+
+    @Override
+    public List<Memo> findAllByUserIdOrderByCreatedAtDesc(Long userId) {
+        return memoJpaRepository.findAllByUserIdOrderByCreatedAtDesc(userId).stream()
+                .map(this::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<Memo> findAllByUserIdOrderByCreatedAtAsc(Long userId) {
+        return memoJpaRepository.findAllByUserIdOrderByCreatedAtAsc(userId).stream()
+                .map(this::toDomain)
+                .toList();
+    }
+
+    @Override
+    public void deleteById(Long id) {
+        memoJpaRepository.deleteById(id);
     }
 
     private MemoEntity toEntity(Memo memo) {
