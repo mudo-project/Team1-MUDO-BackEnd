@@ -19,7 +19,7 @@ public final class Role {
         this.name = name;
         this.description = description;
         this.createdAt = createdAt;
-        this.permissionCodes = permissionCodes;
+        this.permissionCodes = Set.copyOf(permissionCodes);
     }
 
     public static Role create(Long academyId, String name, String description, LocalDateTime createdAt) {

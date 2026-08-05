@@ -27,6 +27,10 @@ public class RoleRepositoryImpl implements RoleRepository {
 
     @Override
     public Role save(Role role) {
+        if (!role.getPermissionCodes().isEmpty()) {
+            throw new IllegalStateException(
+                    "save()는 역할 생성 전용이며 권한을 저장하지 않습니다. 권한 조립은 updatePermissions()를 사용하세요.");
+        }
         RoleEntity entity = RoleEntity.builder()
                 .academyId(role.getAcademyId())
                 .name(role.getName())
@@ -56,7 +60,7 @@ public class RoleRepositoryImpl implements RoleRepository {
 
     @Override
     public void updatePermissions(Long roleId, Set<String> permissionCodes) {
-        RoleEntity role = roleJpaRepository.findWithPermissionsById(roleId)
+        RoleEntity role = roleJpaRepository.findWithPermissionsByIdForUpdate(roleId)
                 .orElseThrow(RoleNotFoundException::new);
         Set<PermissionEntity> permissions = new HashSet<>(permissionJpaRepository.findAllByCodeIn(permissionCodes));
         role.getPermissions().clear();

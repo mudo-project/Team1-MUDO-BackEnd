@@ -88,4 +88,19 @@ class AssignRolePermissionsServiceTest {
 
         verify(roleRepository).updatePermissions(1L, Set.of("NOTICE:READ"));
     }
+
+    @Test
+    void assignsEmptyPermissionsClearsAllPermissions() {
+        RoleRepository roleRepository = mock(RoleRepository.class);
+        PermissionRepository permissionRepository = mock(PermissionRepository.class);
+        Role role = Role.restore(1L, 10L, "강사", "설명", LocalDateTime.now(), Set.of("NOTICE:READ"));
+        when(roleRepository.findById(1L)).thenReturn(Optional.of(role));
+        when(permissionRepository.findAllByCodeIn(Set.of())).thenReturn(List.of());
+        AssignRolePermissionsService service =
+                new AssignRolePermissionsService(roleRepository, permissionRepository);
+
+        service.assignPermissions(new AssignRolePermissionsCommand(1L, 10L, Set.of()));
+
+        verify(roleRepository).updatePermissions(1L, Set.of());
+    }
 }

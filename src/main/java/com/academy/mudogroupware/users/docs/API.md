@@ -145,11 +145,11 @@
 `GET /api/permissions`
 권한: `ROLE:MANAGE` 필요
 
-#### Request
+### Request
 
 없음
 
-#### Response · `200 OK`
+### Response · `200 OK`
 
 ```json
 {
@@ -168,7 +168,7 @@
 }
 ```
 
-#### 검증 및 정책
+### 검증 및 정책
 
 - 시스템 전체 고정 권한 카탈로그를 그대로 반환합니다. 학원별로 다르지 않습니다.
 - `description`은 프론트에서 그대로 표시할 수 있는 한글 설명입니다.
@@ -180,7 +180,7 @@
 `PUT /api/roles/{roleId}/permissions`
 권한: `ROLE:MANAGE` 필요
 
-#### Request
+### Request
 
 ```json
 {
@@ -192,11 +192,11 @@
 | --- | --- | --- | --- |
 | `permissionCodes` | String[] | true (빈 배열 허용) | 역할에 부여할 권한 코드 전체 목록 |
 
-#### Response · `204 No Content`
+### Response · `204 No Content`
 
 본문 없음.
 
-#### 검증 및 정책
+### 검증 및 정책
 
 - 요청한 `permissionCodes`로 역할의 권한을 **전체 교체**합니다(기존 권한과의 합집합이 아님). 빈 배열을 보내면 역할의 모든 권한이 제거됩니다 — 의도된 동작입니다.
 - `roleId`가 존재하지 않거나 요청자와 다른 학원 소속이면 동일하게 `USER_404_2`로 응답합니다 — 다른 학원의 역할 존재 여부가 노출되지 않도록 하기 위함입니다.
