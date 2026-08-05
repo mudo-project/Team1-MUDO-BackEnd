@@ -49,7 +49,7 @@ public class AttendanceRecordRepositoryImpl implements AttendanceRecordRepositor
         } catch (DataIntegrityViolationException e) {
             if (isDuplicateCheckIn(e)) {
                 throw new AttendanceException(
-                        AttendanceErrorCode.ATTENDANCE_ALREADY_CHECKED_IN);
+                        AttendanceErrorCode.ATTENDANCE_ALREADY_CHECKED_IN, e);
             }
             throw e;
         }
