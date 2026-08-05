@@ -17,3 +17,6 @@ ALTER TABLE attendance_record
         FOREIGN KEY (academy_id) REFERENCES academy (academy_id),
     ADD CONSTRAINT uk_attendance_record_academy_user_date
         UNIQUE (user_id, academy_id, work_date);
+
+ALTER TABLE attendance_record
+    DROP INDEX idx_attendance_record_user_id;

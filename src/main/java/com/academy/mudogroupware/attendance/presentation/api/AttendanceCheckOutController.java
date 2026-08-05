@@ -16,10 +16,13 @@ import com.academy.mudogroupware.global.infrastructure.web.ClientIpResolver;
 import com.academy.mudogroupware.global.presentation.api.common.GlobalApiResponse;
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+@Tag(name = "근태 출퇴근", description = "직원 출퇴근 기록 API")
 @RestController
 @RequestMapping("/api/attendance/check-outs")
 @RequiredArgsConstructor
@@ -28,6 +31,9 @@ public class AttendanceCheckOutController {
     private final CheckOutUseCase checkOutUseCase;
     private final ClientIpResolver clientIpResolver;
 
+    @Operation(
+            summary = "퇴근 체크아웃",
+            description = "소속 학원에 등록된 허용 IP에서 퇴근을 기록합니다. 초과근무 퇴근은 사유가 필요합니다.")
     @PostMapping
     public ResponseEntity<GlobalApiResponse<CheckOutResponse>> checkOut(
             @AuthenticationPrincipal AuthUser authUser,
