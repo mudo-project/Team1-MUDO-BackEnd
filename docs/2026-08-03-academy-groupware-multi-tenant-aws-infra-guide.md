@@ -68,15 +68,17 @@ RDS Cell 1
 
 ### 1-1. 계정과 권한
 
-- AWS 루트 사용자는 팀이 사용할 수 없다.
-- 인프라 담당자와 개발팀원은 하나의 IAM 사용자 `groupware-team`을 공유한다.
+- AWS 루트 사용자는 팀이 사용할 수 없고, 루트 사용자나 별도 계정 관리자에게 권한 변경을 요청할 수도 없다.
+- 인프라 담당자와 개발팀원은 하나의 IAM 사용자 `team04-02`를 공유한다.
 - 공유 IAM 사용자에는 Access Key를 발급하지 않는다.
-- 공유 IAM 사용자에는 콘솔 비밀번호와 구성원별 MFA 장치를 등록한다.
-- 평상시 작업은 `groupware-ops-role`, 인프라 변경은 `groupware-infra-admin-role`로 역할을 전환한다.
+- 현재 계정에서 `team04-02`의 Access Key는 0개인 것을 확인했다.
+- IAM 사용자 MFA 장치와 연결 정책은 현재 사용자에게 조회 권한이 없어 콘솔 로그인 과정과 실제 권한 오류를 기준으로 확인한다.
+- 별도 `groupware-ops-role`, `groupware-infra-admin-role` 전환은 구성할 수 없으므로 `team04-02`로 허용된 범위의 작업을 직접 수행한다.
+- 기존 `AWSServiceRoleFor*` 서비스 연결 역할과 공용 `ecsTaskExecutionRole`은 수정하지 않고, 생성 권한이 허용되면 `mudo-prod-*` 전용 역할만 새로 만든다.
 - 같은 IAM 사용자를 쓰기 때문에 CloudTrail만으로 실제 작업자를 구분할 수 없다.
 - 운영 변경 시 GitHub 이슈에 작업자, 일시, 대상, 이유, 결과를 기록한다.
 
-> 이 방식은 AWS 권장 방식이 아니다. 사람별 계정을 쓸 수 없다는 프로젝트 제약을 수용한 보완책이다. 면접에서는 이 제약과 감사 추적 한계를 숨기지 않고 설명한다.
+> 이 방식은 AWS 권장 방식이 아니다. 사람별 계정을 쓸 수 없고 루트·관리자 협조도 받을 수 없다는 프로젝트 제약을 수용한 보완책이다. 면접에서는 이 제약, 최소 권한 분리 미완료, 감사 추적 한계를 숨기지 않고 설명한다.
 
 ### 1-2. 브랜치와 이미지 배포
 
@@ -201,6 +203,8 @@ ECS Capacity Provider가 제공하는 배치와 확장을 우선 사용하고, �
 |---|---|---|
 | AWS 계정 ID | `123456789012` | `<ACCOUNT_ID>` |
 | 리전 | `ap-northeast-2` | `ap-northeast-2` |
+| 공유 IAM 사용자 | `team-user` | `team04-02` |
+| IAM 관리 제약 | 별도 관리자 역할 사용 | 루트·관리자 접근 및 요청 불가 |
 | GitHub 조직/사용자 | `team-mudo` | `<GITHUB_OWNER>` |
 | GitHub 저장소 | `Team1-MUDO-BackEnd` | `<GITHUB_REPO>` |
 | 서비스 기본 도메인 | `groupware.example.com` | `<BASE_DOMAIN>` |
@@ -293,7 +297,7 @@ Alloy 중단·재시작 후 로그 위치와 메트릭 전송이 복구되는지
 
 아래 순서를 바꾸지 않는다.
 
-1. 공유 IAM 사용자와 역할 확인
+1. 제한된 공유 IAM 사용자와 기존 AWS 서비스 역할 확인
 2. 비용 알람과 최대 확장 한도 결정
 3. VPC·서브넷·라우팅·보안 그룹 생성
 4. ACM 인증서와 Route 53 준비
@@ -320,50 +324,70 @@ Alloy 중단·재시작 후 로그 위치와 메트릭 전송이 복구되는지
 
 ---
 
-## 5. IAM 공유 로그인과 역할 구성
+## 5. 제한된 IAM 공유 로그인과 역할 구성
 
-### 5-1. 공유 IAM 사용자 확인
+### 5-1. 실제 계정 제약 확인
 
-AWS 콘솔 상단 검색창에서 `IAM`을 검색한다.
+2026-08-05 콘솔 확인 기준은 다음과 같다.
 
-1. IAM → **Users(사용자)** → `groupware-team` 선택
-2. **Security credentials(보안 자격 증명)** 탭 선택
-3. Console access가 활성화됐는지 확인
-4. Access keys가 `0`개인지 확인
-5. MFA devices에서 팀원이 사용하는 MFA 장치를 확인
+```text
+AWS Account ID: <ACCOUNT_ID>
+Shared IAM User: team04-02
+Region: ap-northeast-2
+Access Keys: 0
+Root/Admin access: unavailable
+Root/Admin permission request: unavailable
+```
 
-Access Key가 있으면 사용처를 확인하고 불필요한 키는 비활성화 후 삭제한다.
+`team04-02`는 `iam:ListMFADevices`, `iam:ListUserPolicies`, `iam:ListGroupsForUser` 같은 IAM 조회가 거부된다. 따라서 사용자에게 어떤 정책과 MFA 장치가 연결됐는지 완전히 감사할 수 없다. 역할 생성 버튼은 보이지만 실제 생성 권한은 MUDO 전용 역할을 하나씩 만들며 검증한다.
 
-### 5-2. 일상 운영 역할
+### 5-2. 확인된 기존 역할
 
-1. IAM → **Roles** → **Create role**
-2. Trusted entity type → **AWS account**
-3. This account 선택
-4. 역할 이름 `groupware-ops-role`
-5. CloudWatch·ECS·EC2·RDS·WAF의 조회 권한과 제한된 ECS 재배포 권한만 부여
-6. Trust policy에 `groupware-team`만 Assume할 수 있도록 제한
-7. MFA 조건 `aws:MultiFactorAuthPresent=true` 추가
+다음 기존 역할은 계정에서 확인됐다.
 
-이 역할로 리소스 삭제, IAM 변경, 보안 그룹 변경은 할 수 없어야 한다.
+```text
+ecsTaskExecutionRole
+AWSServiceRoleForECS
+AWSServiceRoleForAutoScaling
+AWSServiceRoleForElasticLoadBalancing
+AWSServiceRoleForRDS
+```
 
-### 5-3. 인프라 관리자 역할
+- `AWSServiceRoleFor*` 역할은 AWS가 관리하는 서비스 연결 역할이므로 정책과 신뢰 관계를 직접 수정하지 않는다.
+- 공용 `ecsTaskExecutionRole`은 MUDO 전용 역할 생성이 거부될 때만 제한적으로 재사용한다.
+- MUDO 전용 역할을 만들 수 있으면 `mudo-prod-*` 이름으로 분리하고 필요한 최소 권한만 부여한다.
 
-같은 화면에서 역할 `groupware-infra-admin-role`을 만든다.
+### 5-3. 역할 생성 권한 검증
 
-- VPC, EC2, ECS, ALB, WAF, RDS, S3, IAM, KMS, SSM, CloudWatch와 모니터링 EC2 생성·변경 권한을 부여한다.
-- 신뢰 대상은 `groupware-team`으로 제한한다.
-- MFA 조건을 적용한다.
-- AWS 콘솔 역할 표시 색상은 빨간색으로 지정해 관리자 모드임을 눈에 띄게 한다.
+첫 검증 대상으로 다음 역할을 만든다.
 
-### 5-4. 역할 전환 시험
+```text
+Role: mudo-prod-ecs-instance-role
+Trusted service: EC2
+Policies:
+  - AmazonEC2ContainerServiceforEC2Role
+  - AmazonSSMManagedInstanceCore
+```
 
-1. 콘솔 오른쪽 위 사용자 이름 선택
-2. **Switch role(역할 전환)** 선택
-3. Account ID 입력
-4. Role에 `groupware-ops-role` 입력
-5. Display name `OPS`, 색상 초록색 선택
-6. 전환 후 IAM 리소스 생성이 거부되는지 확인
-7. 다시 `groupware-infra-admin-role`로 전환해 관리자 화면에 접근되는지 확인
+공통 태그를 적용한다.
+
+```text
+Project=MUDO
+Environment=prod
+ManagedBy=team
+CostCenter=groupware
+```
+
+이 역할 생성이 거부되면 ECS on EC2, SSM, GitHub OIDC 자동 배포를 현재 목표 구조대로 완성할 수 없다. 그 경우 기존 역할로 가능한 범위를 먼저 확인하고, 운영 배포는 EC2 직접 Docker 실행 방식의 Test Cell로 축소한다.
+
+### 5-4. 현재 계정의 운영 원칙
+
+- 별도 Ops/Admin 역할 전환 없이 `team04-02`로 콘솔 작업을 수행한다.
+- Access Key를 만들지 않는다.
+- 권한 오류를 우회하기 위해 기존 서비스 연결 역할을 확장하지 않는다.
+- 권한이 없어 만들 수 없는 보안 장치는 구현 완료로 표시하지 않는다.
+- GitHub OIDC Provider 또는 배포 역할 생성이 거부되면 `PRODUCTION_DEPLOY_ENABLED=false`를 유지하고 수동 배포만 사용한다.
+- 운영 서비스로 전환하기 전에는 사람별 IAM·SSO와 최소 권한 역할 분리를 별도 개선 과제로 등록한다.
 
 ### 5-5. 공유 로그인 감사 보완
 
@@ -398,12 +422,15 @@ Access Key가 있으면 사용처를 확인하고 불필요한 키는 비활성�
 
 ### 6-2. IAM 사용자가 Billing을 볼 수 없는 현재 제약
 
-계정 소유자에게 다음 둘 중 하나를 요청한다.
+현재 팀은 루트·계정 관리자에게 Billing 설정이나 예산 알림 생성을 요청할 수 없다. 따라서 AWS Budgets와 실제 청구액 조회는 구축 완료 조건에서 제외하되, 다음 기술적 상한을 필수로 적용한다.
 
-- 소유자가 직접 예산 알림을 만들고 팀 메일을 수신자로 추가
-- Billing 조회는 계속 막되 비용 초과 알림만 SNS·이메일로 전달
+- ASG Max size 고정
+- RDS Storage autoscaling 최대 용량 고정
+- 학원별 API Rate Limit과 무거운 작업 동시성 제한
+- 모니터링 EBS 용량·Prometheus·Loki 보존 기간 고정
+- CloudWatch에서 접근 가능한 서비스별 사용량·리소스 지표 알람 설정
 
-권한이 없다는 이유로 비용 보호를 생략하지 않는다.
+이 제약은 비용 통제가 완성됐다는 의미가 아니다. 실제 운영 계정으로 이전할 때 Billing Budget과 예상 비용 알림을 반드시 추가한다.
 
 ### 6-3. 기술적 최대값
 
@@ -645,10 +672,10 @@ CloudWatch → Logs → Log groups → Create log group:
 2. Customer managed keys → Create key
 3. Symmetric / Encrypt and decrypt
 4. Alias `alias/mudo-prod-ssm`
-5. Key administrator → `groupware-infra-admin-role`
-6. Key users → `groupware-infra-admin-role`, ECS Task Execution Role
+5. Key administrator → `team04-02`
+6. Key users → `team04-02`, `mudo-prod-ecs-task-execution-role`
 
-인프라 관리자 역할은 SecureString을 생성·변경할 때 암호화 권한이 필요하고, Task Execution Role은 Task 시작 시 복호화 권한이 필요하다.
+공유 IAM 사용자는 SecureString을 생성·변경할 때 암호화 권한이 필요하고, Task Execution Role은 Task 시작 시 복호화 권한이 필요하다. MUDO 전용 Task Execution Role 생성이 거부돼 기존 `ecsTaskExecutionRole`을 사용한다면 Key user도 해당 실제 역할로 바꾼다.
 
 ### 9-4. Parameter Store 경로
 
@@ -2660,8 +2687,10 @@ RDS Cell 2는 같은 DB에 쓰는 두 번째 writer가 아니다. 서로 다른 
 ### 계정
 
 - [ ] 공유 IAM 사용자 Access Key 0개
-- [ ] 구성원별 MFA 등록
-- [ ] Ops/Admin 역할 전환 검증
+- [ ] 공유 IAM 사용자 MFA 사용 여부 확인 또는 조회 불가 제약 기록
+- [ ] 기존 AWS 서비스 연결 역할 미수정 확인
+- [ ] MUDO 전용 역할 생성 가능 여부 검증
+- [ ] Ops/Admin 역할 분리 불가 위험과 향후 개선 과제 기록
 - [ ] 변경 이슈 기록 절차 마련
 
 ### 네트워크
