@@ -20,9 +20,9 @@ spring:
 server:
   tomcat:
     threads:
-      max: 30
+      max: 60
       min-spare: 5
-      max-queue-capacity: 50
+      max-queue-capacity: 100
 
 app:
   instance:
