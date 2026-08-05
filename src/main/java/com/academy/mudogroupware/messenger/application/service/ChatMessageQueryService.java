@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -12,6 +13,7 @@ import com.academy.mudogroupware.messenger.application.port.ChatMemberInfo;
 import com.academy.mudogroupware.messenger.application.query.ChatMessagePageView;
 import com.academy.mudogroupware.messenger.application.query.ChatMessageView;
 import com.academy.mudogroupware.messenger.application.usecase.ChatMessageQueryUseCase;
+import com.academy.mudogroupware.messenger.domain.event.ChatRoomReadEvent;
 import com.academy.mudogroupware.messenger.domain.exception.MessengerErrorCode;
 import com.academy.mudogroupware.messenger.domain.exception.MessengerException;
 import com.academy.mudogroupware.messenger.domain.model.ChatMessage;
@@ -29,6 +31,7 @@ public class ChatMessageQueryService implements ChatMessageQueryUseCase {
     private final ChatRoomRepository chatRoomRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final ChatMemberDirectoryPort chatMemberDirectoryPort;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     public ChatMessagePageView getMessages(Long chatRoomId, Long requesterId, LocalDateTime cursorCreatedAt,
@@ -54,18 +57,21 @@ public class ChatMessageQueryService implements ChatMessageQueryUseCase {
         boolean hasNext = fetched.size() > size;
         List<ChatMessage> pageMessages = hasNext ? fetched.subList(0, size) : fetched;
 
-        List<Long> senderIds = pageMessages.stream().map(ChatMessage::getSenderUserId).distinct().toList();
-        Map<Long, ChatMemberInfo> senders = chatMemberDirectoryPort.getMembers(senderIds);
-        List<ChatMessageView> messageViews = pageMessages.stream()
-                .map(message -> toMessageView(message, senders))
-                .toList();
-
         boolean isFirstPage = !cursorProvided;
         if (isFirstPage && !pageMessages.isEmpty()) {
             LocalDateTime readAt = pageMessages.get(0).getCreatedAt();
             chatRoom.markRead(requesterId, readAt);
             chatRoomRepository.markRead(chatRoomId, requesterId, readAt);
+            eventPublisher.publishEvent(new ChatRoomReadEvent(chatRoomId, requesterId, readAt));
         }
+
+        List<Long> senderIds = pageMessages.stream().map(ChatMessage::getSenderUserId).distinct().toList();
+        Map<Long, ChatMemberInfo> senders = chatMemberDirectoryPort.getMembers(senderIds);
+        List<Long> messageIds = pageMessages.stream().map(ChatMessage::getId).toList();
+        Map<Long, Long> unreadCounts = chatMessageRepository.countUnreadByMessageIds(chatRoomId, messageIds);
+        List<ChatMessageView> messageViews = pageMessages.stream()
+                .map(message -> toMessageView(message, senders, unreadCounts))
+                .toList();
 
         ChatMessage lastInPage = pageMessages.isEmpty() ? null : pageMessages.get(pageMessages.size() - 1);
         LocalDateTime nextCursorCreatedAt = hasNext ? lastInPage.getCreatedAt() : null;
@@ -74,10 +80,12 @@ public class ChatMessageQueryService implements ChatMessageQueryUseCase {
         return new ChatMessagePageView(messageViews, hasNext, nextCursorCreatedAt, nextCursorMessageId);
     }
 
-    private ChatMessageView toMessageView(ChatMessage message, Map<Long, ChatMemberInfo> senders) {
+    private ChatMessageView toMessageView(ChatMessage message, Map<Long, ChatMemberInfo> senders,
+                                          Map<Long, Long> unreadCounts) {
         ChatMemberInfo sender = senders.get(message.getSenderUserId());
         return new ChatMessageView(message.getId(), message.getSenderUserId(),
                 sender != null ? sender.name() : null, message.getMessageType(), message.getContent(),
-                message.getFileUrl(), message.getFileName(), message.getCreatedAt());
+                message.getFileUrl(), message.getFileName(), message.getCreatedAt(), message.getEditedAt(),
+                message.getDeletedAt(), unreadCounts.getOrDefault(message.getId(), 0L));
     }
 }

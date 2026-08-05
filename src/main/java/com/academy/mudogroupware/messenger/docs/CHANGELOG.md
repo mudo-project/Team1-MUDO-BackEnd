@@ -1,5 +1,14 @@
 # Messenger Changelog
 
+## 2026-08-05 - Realtime and message controls
+
+- Reused existing DM rooms to prevent duplicate 1:1 conversations.
+- Added sender-only text message editing.
+- Added sender-only soft delete for messages.
+- Added per-message `unreadCount` for KakaoTalk-style read number display.
+- Added WebSocket broadcasts for message sent and room read events on `/topic/messenger/rooms/{roomId}`.
+- Kept notification work out of a new package; messenger uses existing global WebSocket infrastructure.
+
 ## 2026-08-05 · 코드 리뷰 보완
 
 - 채팅방과 메시지 생성 시각이 항상 한국 시간 기준으로 저장되도록 고쳤습니다.

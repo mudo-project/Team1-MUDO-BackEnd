@@ -12,6 +12,9 @@ public record ChatMessageView(
         String content,
         String fileUrl,
         String fileName,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        LocalDateTime editedAt,
+        LocalDateTime deletedAt,
+        long unreadCount
 ) {
 }
