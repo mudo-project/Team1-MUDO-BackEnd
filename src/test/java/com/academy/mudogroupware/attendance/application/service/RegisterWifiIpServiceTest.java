@@ -1,7 +1,10 @@
 package com.academy.mudogroupware.attendance.application.service;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -10,12 +13,14 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.academy.mudogroupware.attendance.application.command.RegisterWifiIpCommand;
 import com.academy.mudogroupware.attendance.domain.exception.AttendanceErrorCode;
 import com.academy.mudogroupware.attendance.domain.exception.AttendanceException;
+import com.academy.mudogroupware.attendance.domain.model.AcademyWifiIp;
 import com.academy.mudogroupware.attendance.domain.model.OwnedAcademy;
 import com.academy.mudogroupware.attendance.domain.repository.AcademyRepository;
 import com.academy.mudogroupware.attendance.domain.repository.AcademyWifiIpRepository;
@@ -65,5 +70,27 @@ class RegisterWifiIpServiceTest {
 
         assertSame(AttendanceErrorCode.WIFI_IP_CHANGED, exception.getErrorCode());
         verifyNoInteractions(academyWifiIpRepository);
+    }
+
+    @Test
+    void registersWifiIpWhenConfirmedAndDetectedIpsMatch() {
+        RegisterWifiIpService service = new RegisterWifiIpService(
+                academyRepository, academyWifiIpRepository);
+        when(academyRepository.findByOwnerUserId(10L))
+                .thenReturn(Optional.of(new OwnedAcademy(1L, 10L)));
+        when(academyWifiIpRepository.existsByAcademyIdAndIpAddress(
+                1L, "203.0.113.10"))
+                .thenReturn(false);
+        when(academyWifiIpRepository.save(any(AcademyWifiIp.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        var result = service.register(new RegisterWifiIpCommand(
+                10L, "203.0.113.10", "203.0.113.10"));
+
+        assertEquals("203.0.113.10", result.ipAddress());
+        ArgumentCaptor<AcademyWifiIp> captor = ArgumentCaptor.forClass(AcademyWifiIp.class);
+        verify(academyWifiIpRepository, times(1)).save(captor.capture());
+        assertEquals(1L, captor.getValue().getAcademyId());
+        assertEquals("203.0.113.10", captor.getValue().getIpAddress());
     }
 }
