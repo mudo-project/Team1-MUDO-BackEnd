@@ -15,8 +15,12 @@
 
 ## 외부에 공개하는 Application API
 
-- `CreateMemoUseCase` — 메모 생성 (구현 완료)
-- 목록조회/수정/색상변경/위치변경/삭제 UseCase는 엔드포인트 단위로 PR을 나눠 순차 구현 예정 (아래 "변경 시 주의 사항" 참고)
+- `CreateMemoUseCase` — 메모 생성
+- `MemoQueryUseCase` — 내 메모 목록 조회 (정렬: 최신순/오래된순)
+- `UpdateMemoContentUseCase` — 제목/내용 수정
+- `UpdateMemoColorUseCase` — 색상 변경
+- `UpdateMemoPositionUseCase` — 위치·크기 변경 (자유배치 드래그·리사이즈 결과 저장)
+- `DeleteMemoUseCase` — 메모 삭제
 
 ## 다른 모듈 또는 외부 시스템에 요청하는 의존성
 
@@ -28,7 +32,9 @@
 
 ## 변경 시 주의 사항
 
-- **엔드포인트 단위로 PR을 쪼개서 진행 중이다** (CodeRabbit 리뷰 부담을 줄이기 위한 팀 결정). 순서: 생성(완료) → 목록조회 → 수정(내용) → 색상변경 → 위치변경 → 삭제. 색상변경과 위치변경은 저장 시점이 서로 다르고(메뉴 클릭 1회 vs 드래그 중 연속 호출) Command를 액션 단위로 좁게 쓰는 팀 컨벤션에 맞춰 각각 별도 API로 분리한다.
+- 생성 API는 별도 PR로 먼저 올리고, 나머지 5개(목록조회/수정/색상변경/위치변경/삭제)는 CodeRabbit 무료 리뷰 쿼터 제한(짧은 시간에 PR을 여러 번 올리면 소진됨) 때문에 하나의 PR로 묶어서 진행했다.
+- 색상변경과 위치변경은 저장 시점이 서로 다르고(메뉴 클릭 1회 vs 드래그 중 연속 호출) Command를 액션 단위로 좁게 쓰는 팀 컨벤션에 맞춰 수정(내용)과는 별도 API로 분리했다.
+- 수정/색상변경/위치변경/삭제는 대상 메모를 `findById`로 조회한 뒤 `Memo.isOwnedBy(userId)`로 소유권을 검증한다. 소유자가 아니면 `NOT_MEMO_OWNER`(403), 대상이 없으면 `MEMO_NOT_FOUND`(404).
 - 위치·크기(`position_x/y`, `width`, `height`)는 메모 생성 시점엔 서버가 관여하지 않고 `null`로 둔다. 사용자가 보드 화면에서 "자유배치" 모드로 드래그·리사이즈한 뒤에만 별도 API로 값이 채워진다.
 - `createdAt`/`updatedAt`은 JPA Auditing(`BaseTimeEntity`)을 쓰지 않고, messenger 패턴을 따라 애플리케이션 서비스가 주입받은 `Clock`으로 직접 계산해 도메인 팩토리에 전달한다.
 - 도메인 규칙 위반은 `memo.domain.exception.MemoErrorCode`(→ `MemoException`, `BusinessException` 상속)로 던진다(`MEMO_{status}_{n}` 코드 체계).

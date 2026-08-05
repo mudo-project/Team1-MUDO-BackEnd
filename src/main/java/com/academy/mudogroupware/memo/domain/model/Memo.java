@@ -11,15 +11,15 @@ public final class Memo {
 
     private final Long id;
     private final Long userId;
-    private final String title;
-    private final String content;
-    private final MemoColor color;
-    private final Integer positionX;
-    private final Integer positionY;
-    private final Integer width;
-    private final Integer height;
+    private String title;
+    private String content;
+    private MemoColor color;
+    private Integer positionX;
+    private Integer positionY;
+    private Integer width;
+    private Integer height;
     private final LocalDateTime createdAt;
-    private final LocalDateTime updatedAt;
+    private LocalDateTime updatedAt;
 
     private Memo(Long id, Long userId, String title, String content, MemoColor color, Integer positionX,
                  Integer positionY, Integer width, Integer height, LocalDateTime createdAt, LocalDateTime updatedAt) {
@@ -60,6 +60,44 @@ public final class Memo {
                                 LocalDateTime createdAt, LocalDateTime updatedAt) {
         return new Memo(id, userId, title, content, color, positionX, positionY, width, height, createdAt,
                 updatedAt);
+    }
+
+    public void updateContent(String title, String content, LocalDateTime now) {
+        if (title == null || title.isBlank()) {
+            throw new MemoException(MemoErrorCode.TITLE_REQUIRED);
+        }
+        if (title.length() > TITLE_MAX_LENGTH) {
+            throw new MemoException(MemoErrorCode.TITLE_TOO_LONG);
+        }
+        this.title = title;
+        this.content = content;
+        this.updatedAt = now;
+    }
+
+    public void updateColor(MemoColor color, LocalDateTime now) {
+        if (color == null) {
+            throw new MemoException(MemoErrorCode.COLOR_REQUIRED);
+        }
+        this.color = color;
+        this.updatedAt = now;
+    }
+
+    public void updatePosition(int positionX, int positionY, int width, int height, LocalDateTime now) {
+        if (width <= 0) {
+            throw new IllegalArgumentException("width must be positive");
+        }
+        if (height <= 0) {
+            throw new IllegalArgumentException("height must be positive");
+        }
+        this.positionX = positionX;
+        this.positionY = positionY;
+        this.width = width;
+        this.height = height;
+        this.updatedAt = now;
+    }
+
+    public boolean isOwnedBy(Long userId) {
+        return this.userId.equals(userId);
     }
 
     public Long getId() {
