@@ -54,7 +54,39 @@ public enum AttendanceErrorCode implements ErrorCode {
     DUPLICATE_ATTENDANCE_POLICY_WEEKDAY(
             HttpStatus.BAD_REQUEST,
             "ATTENDANCE_400_3",
-            "같은 요일을 중복해서 설정할 수 없습니다.");
+            "같은 요일을 중복해서 설정할 수 없습니다."),
+    LATE_NOTE_REQUIRED(
+            HttpStatus.BAD_REQUEST,
+            "ATTENDANCE_400_4",
+            "지각한 경우 출근 사유를 입력해야 합니다."),
+    INVALID_CLOCK_IN_NOTE(
+            HttpStatus.BAD_REQUEST,
+            "ATTENDANCE_400_5",
+            "출근 메모는 255자 이하여야 합니다."),
+    INVALID_ATTENDANCE_RECORD(
+            HttpStatus.BAD_REQUEST,
+            "ATTENDANCE_400_6",
+            "유효하지 않은 출근 기록입니다."),
+    CHECK_IN_FORBIDDEN(
+            HttpStatus.FORBIDDEN,
+            "ATTENDANCE_403_2",
+            "출근을 등록할 수 있는 학원 소속이 아닙니다."),
+    UNREGISTERED_CHECK_IN_IP(
+            HttpStatus.FORBIDDEN,
+            "ATTENDANCE_403_3",
+            "등록된 학원 IP에서만 출근할 수 있습니다."),
+    ATTENDANCE_POLICY_NOT_FOUND(
+            HttpStatus.NOT_FOUND,
+            "ATTENDANCE_404_1",
+            "학원의 근무시간 정책을 찾을 수 없습니다."),
+    ATTENDANCE_ALREADY_CHECKED_IN(
+            HttpStatus.CONFLICT,
+            "ATTENDANCE_409_1",
+            "오늘은 이미 출근이 등록되었습니다."),
+    ATTENDANCE_NON_WORKDAY(
+            HttpStatus.CONFLICT,
+            "ATTENDANCE_409_2",
+            "오늘은 근무일이 아닙니다.");
 
     private final HttpStatus httpStatus;
     private final String code;
