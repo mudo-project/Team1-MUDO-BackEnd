@@ -49,6 +49,7 @@ jobs:
     if: >-
       ${{
         vars.PRODUCTION_DEPLOY_ENABLED == 'true' &&
+        github.ref == 'refs/heads/main' &&
         (github.event_name == 'push' || inputs.deploy == true)
       }}
     runs-on: ubuntu-latest
