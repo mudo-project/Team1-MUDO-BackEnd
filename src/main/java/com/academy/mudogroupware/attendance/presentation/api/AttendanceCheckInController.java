@@ -18,6 +18,7 @@ import com.academy.mudogroupware.global.infrastructure.web.ClientIpResolver;
 import com.academy.mudogroupware.global.presentation.api.common.GlobalApiResponse;
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -33,6 +34,9 @@ public class AttendanceCheckInController {
     private final ClientIpResolver clientIpResolver;
 
     @PreAuthorize("hasAuthority('ATTENDANCE:CHECK_IN')")
+    @Operation(
+            summary = "출근 체크인",
+            description = "소속 학원에 등록된 허용 IP에서 출근을 기록합니다. 지각인 경우 사유가 필요합니다.")
     @PostMapping
     public ResponseEntity<GlobalApiResponse<CheckInResponse>> checkIn(
             @AuthenticationPrincipal AuthUser authUser,
