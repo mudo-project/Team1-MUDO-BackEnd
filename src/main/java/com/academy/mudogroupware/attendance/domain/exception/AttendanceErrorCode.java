@@ -35,6 +35,10 @@ public enum AttendanceErrorCode implements ErrorCode {
             HttpStatus.FORBIDDEN,
             "ACADEMY_403_2",
             "와이파이 IP를 삭제할 권한이 없습니다."),
+    WIFI_IP_VIEW_FORBIDDEN(
+            HttpStatus.FORBIDDEN,
+            "ACADEMY_403_3",
+            "와이파이 IP를 조회할 권한이 없습니다."),
     WIFI_IP_NOT_FOUND(
             HttpStatus.NOT_FOUND,
             "ACADEMY_404_1",
