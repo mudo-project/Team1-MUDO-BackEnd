@@ -72,3 +72,11 @@ Web Push 구독 (`/api/approvals/push-subscriptions`):
 - [API_FLOW.md](API_FLOW.md) — 계층별 호출 흐름
 - [REVISION.md](REVISION.md) — 설계 변경 이력과 배경
 - [CHANGELOG.md](CHANGELOG.md) — 사용자 관점 변경 요약
+# 2026-08-05 WebSocket notification update
+
+- `ApprovalLineActivatedEvent` is now consumed by `ApprovalWebSocketNotifier`.
+- The notifier uses the existing global STOMP endpoint `/ws`.
+- Clients can subscribe to `/topic/approvals/users/{userId}` for `APPROVAL_LINE_ACTIVATED`.
+- This keeps approval realtime notification inside the approval package.
+- No shared `notification` package was introduced.
+- Existing Web Push subscription APIs remain as stored subscription data only; actual Web Push sending is still not implemented.
