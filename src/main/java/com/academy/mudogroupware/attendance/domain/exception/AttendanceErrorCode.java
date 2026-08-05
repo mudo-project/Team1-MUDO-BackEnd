@@ -31,6 +31,14 @@ public enum AttendanceErrorCode implements ErrorCode {
             HttpStatus.BAD_REQUEST,
             "ACADEMY_400_2",
             "와이파이 IP 메모는 100자 이하여야 합니다."),
+    WIFI_IP_DELETION_FORBIDDEN(
+            HttpStatus.FORBIDDEN,
+            "ACADEMY_403_2",
+            "와이파이 IP를 삭제할 권한이 없습니다."),
+    WIFI_IP_NOT_FOUND(
+            HttpStatus.NOT_FOUND,
+            "ACADEMY_404_1",
+            "등록된 와이파이 IP를 찾을 수 없습니다."),
     ATTENDANCE_POLICY_SAVE_FORBIDDEN(
             HttpStatus.FORBIDDEN,
             "ATTENDANCE_403_1",

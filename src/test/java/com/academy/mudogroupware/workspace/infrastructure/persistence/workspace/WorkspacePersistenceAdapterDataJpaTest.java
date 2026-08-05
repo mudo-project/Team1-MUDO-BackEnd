@@ -19,12 +19,7 @@ class WorkspacePersistenceAdapterDataJpaTest {
   @Test
   void savesWorkspaceAndReturnsItsPersistedAggregate() {
     Workspace workspace =
-        Workspace.builder()
-            .academyId(1L)
-            .name("\uac1c\ubc1c\ud300")
-            .createdBy(10L)
-            .memberIds(Set.of(10L, 20L))
-            .build();
+        Workspace.create(1L, "\uac1c\ubc1c\ud300", 10L, Set.of(20L));
 
     Workspace saved = workspaceRepository.save(workspace);
 
@@ -40,12 +35,7 @@ class WorkspacePersistenceAdapterDataJpaTest {
     assertThat(workspaceRepository.existsByAcademyIdAndName(1L, "\uac1c\ubc1c\ud300")).isFalse();
 
     workspaceRepository.save(
-        Workspace.builder()
-            .academyId(1L)
-            .name("\uac1c\ubc1c\ud300")
-            .createdBy(10L)
-            .memberIds(Set.of(10L))
-            .build());
+        Workspace.create(1L, "\uac1c\ubc1c\ud300", 10L, Set.of()));
 
     assertThat(workspaceRepository.existsByAcademyIdAndName(1L, "\uac1c\ubc1c\ud300")).isTrue();
     assertThat(workspaceRepository.existsByAcademyIdAndName(2L, "\uac1c\ubc1c\ud300")).isFalse();

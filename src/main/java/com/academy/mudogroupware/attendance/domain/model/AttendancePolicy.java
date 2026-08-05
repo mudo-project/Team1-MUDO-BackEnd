@@ -65,7 +65,9 @@ public final class AttendancePolicy {
                                    int graceMinutes, boolean exceptionEnabled,
                                    List<AttendancePolicyWeekday> replacementWeekdays) {
         List<AttendancePolicyWeekday> nextWeekdays =
-                replacementWeekdays == null ? weekdays : replacementWeekdays;
+                !exceptionEnabled || replacementWeekdays == null
+                        ? weekdays
+                        : replacementWeekdays;
         return new AttendancePolicy(id, academyId, startTime, endTime,
                 graceMinutes, exceptionEnabled, nextWeekdays, createdAt, LocalDateTime.now());
     }

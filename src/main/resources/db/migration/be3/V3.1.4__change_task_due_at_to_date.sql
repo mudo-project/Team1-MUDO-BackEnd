@@ -1,0 +1,2 @@
+ALTER TABLE `task`
+    MODIFY COLUMN `due_at` DATE NULL;

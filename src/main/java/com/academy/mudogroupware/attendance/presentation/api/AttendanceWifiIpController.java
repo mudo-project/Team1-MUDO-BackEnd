@@ -3,13 +3,16 @@ package com.academy.mudogroupware.attendance.presentation.api;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.academy.mudogroupware.attendance.application.result.RegisterWifiIpResult;
+import com.academy.mudogroupware.attendance.application.usecase.DeleteWifiIpUseCase;
 import com.academy.mudogroupware.attendance.application.usecase.RegisterWifiIpUseCase;
 import com.academy.mudogroupware.attendance.presentation.api.common.AttendanceResponseCode;
 import com.academy.mudogroupware.attendance.presentation.api.request.RegisterWifiIpRequest;
@@ -29,6 +32,7 @@ import lombok.RequiredArgsConstructor;
 public class AttendanceWifiIpController {
 
     private final RegisterWifiIpUseCase registerWifiIpUseCase;
+    private final DeleteWifiIpUseCase deleteWifiIpUseCase;
     private final ClientIpResolver clientIpResolver;
 
     @GetMapping("/current")
@@ -54,5 +58,15 @@ public class AttendanceWifiIpController {
                 .body(GlobalApiResponse.created(
                         AttendanceResponseCode.WIFI_IP_REGISTERED,
                         AcademyWifiIpResponse.from(result)));
+    }
+
+    @DeleteMapping("/{wifiIpId}")
+    public ResponseEntity<GlobalApiResponse<Void>> delete(
+            @AuthenticationPrincipal AuthUser authUser,
+            @PathVariable Long wifiIpId) {
+        deleteWifiIpUseCase.delete(authUser.userId(), wifiIpId);
+
+        return ResponseEntity.ok(GlobalApiResponse.ok(
+                AttendanceResponseCode.WIFI_IP_DELETED));
     }
 }

@@ -112,12 +112,11 @@ class WorkspaceServiceTest {
   }
 
   private Workspace persisted(Workspace workspace, Long workspaceId) {
-    return Workspace.builder()
-        .id(workspaceId)
-        .academyId(workspace.getAcademyId())
-        .name(workspace.getName())
-        .createdBy(workspace.getCreatedBy())
-        .memberIds(workspace.getMemberIds())
-        .build();
+    return Workspace.restore(
+        workspaceId,
+        workspace.getAcademyId(),
+        workspace.getName(),
+        workspace.getCreatedBy(),
+        workspace.getMemberIds());
   }
 }

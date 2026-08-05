@@ -2,6 +2,7 @@ package com.academy.mudogroupware.workspace.infrastructure.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.academy.mudogroupware.workspace.domain.model.TaskStatus;
 import com.academy.mudogroupware.workspace.infrastructure.persistence.task.RecurringTaskSkipJpaEntity;
 import com.academy.mudogroupware.workspace.infrastructure.persistence.task.RecurringTaskTemplateJpaEntity;
 import com.academy.mudogroupware.workspace.infrastructure.persistence.task.TaskCommentJpaEntity;
@@ -15,6 +16,7 @@ import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Lob;
 import jakarta.persistence.metamodel.EntityType;
 import java.lang.reflect.Field;
+import java.time.LocalDate;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
@@ -54,5 +56,13 @@ class WorkspaceJpaMappingTest {
             TaskStatusHistoryJpaEntity.class,
             TaskCommentMentionJpaEntity.class,
             RecurringTaskSkipJpaEntity.class);
+  }
+
+  @Test
+  void taskDueAtUsesDateOnly() {
+    TaskJpaEntity task =
+        TaskJpaEntity.create(null, null, "업무", 1L, TaskStatus.WAITING, LocalDate.of(2026, 8, 6), null);
+
+    assertThat(task.getDueAt()).isEqualTo(LocalDate.of(2026, 8, 6));
   }
 }
