@@ -65,7 +65,8 @@ class CheckInServiceTest {
                     return AttendanceRecord.restore(
                             5L, record.getAcademyId(), record.getUserId(),
                             record.getWorkDate(), record.getClockInAt(),
-                            record.getClockInNote(), null, null, record.getStatus(),
+                            record.getClockInNote(), null, null, null,
+                            record.getStatus(),
                             record.getCreatedAt(), record.getUpdatedAt());
                 });
 

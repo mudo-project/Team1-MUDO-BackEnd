@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import com.academy.mudogroupware.attendance.domain.model.AttendanceStatus;
+import com.academy.mudogroupware.attendance.domain.model.ClockOutType;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -51,6 +52,10 @@ public class AttendanceRecordJpaEntity {
     private String clockOutNote;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "clock_out_type")
+    private ClockOutType clockOutType;
+
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     private AttendanceStatus status;
 
@@ -64,7 +69,8 @@ public class AttendanceRecordJpaEntity {
     private AttendanceRecordJpaEntity(Long id, Long academyId, Long userId,
                                       LocalDate workDate, LocalDateTime clockInAt,
                                       String clockInNote, LocalDateTime clockOutAt,
-                                      String clockOutNote, AttendanceStatus status,
+                                      String clockOutNote, ClockOutType clockOutType,
+                                      AttendanceStatus status,
                                       LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.academyId = academyId;
@@ -74,6 +80,7 @@ public class AttendanceRecordJpaEntity {
         this.clockInNote = clockInNote;
         this.clockOutAt = clockOutAt;
         this.clockOutNote = clockOutNote;
+        this.clockOutType = clockOutType;
         this.status = status;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
