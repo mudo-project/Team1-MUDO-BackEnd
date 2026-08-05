@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -25,12 +26,15 @@ import com.academy.mudogroupware.messenger.application.usecase.ChatRoomQueryUseC
 import com.academy.mudogroupware.messenger.application.usecase.CompleteTaskUseCase;
 import com.academy.mudogroupware.messenger.application.usecase.CreateChatRoomUseCase;
 import com.academy.mudogroupware.messenger.application.usecase.CreateTaskCardUseCase;
+import com.academy.mudogroupware.messenger.application.usecase.DeleteMessageUseCase;
 import com.academy.mudogroupware.messenger.application.usecase.SendMessageUseCase;
 import com.academy.mudogroupware.messenger.application.usecase.TaskCardQueryUseCase;
+import com.academy.mudogroupware.messenger.application.usecase.UpdateMessageUseCase;
 import com.academy.mudogroupware.messenger.presentation.api.common.MessengerResponseCode;
 import com.academy.mudogroupware.messenger.presentation.api.request.CreateChatRoomRequest;
 import com.academy.mudogroupware.messenger.presentation.api.request.CreateTaskCardRequest;
 import com.academy.mudogroupware.messenger.presentation.api.request.SendMessageRequest;
+import com.academy.mudogroupware.messenger.presentation.api.request.UpdateMessageRequest;
 import com.academy.mudogroupware.messenger.presentation.api.response.ChatMessagePageResponse;
 import com.academy.mudogroupware.messenger.presentation.api.response.ChatRoomCreateResponse;
 import com.academy.mudogroupware.messenger.presentation.api.response.ChatRoomMemberResponse;
@@ -46,7 +50,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 
-@Tag(name = "메신저", description = "채팅방 생성/목록조회/참여자조회, 메시지 전송/목록조회, 업무지시 카드 API")
+@Tag(name = "메신저", description = "채팅방, 메시지, 업무지시 카드 API")
 @RestController
 @RequestMapping("/api/messenger/rooms")
 @RequiredArgsConstructor
@@ -57,6 +61,8 @@ public class MessengerController {
     private final ChatRoomQueryUseCase chatRoomQueryUseCase;
     private final ChatRoomMemberQueryUseCase chatRoomMemberQueryUseCase;
     private final SendMessageUseCase sendMessageUseCase;
+    private final UpdateMessageUseCase updateMessageUseCase;
+    private final DeleteMessageUseCase deleteMessageUseCase;
     private final ChatMessageQueryUseCase chatMessageQueryUseCase;
     private final CreateTaskCardUseCase createTaskCardUseCase;
     private final TaskCardQueryUseCase taskCardQueryUseCase;
@@ -73,7 +79,7 @@ public class MessengerController {
                         ChatRoomCreateResponse.from(chatRoomId)));
     }
 
-    @Operation(summary = "채팅방 목록조회", description = "내가 참여 중인 채팅방을 최근 활동순으로 조회. 안읽은 메시지 수·최근 메시지 미리보기 포함.")
+    @Operation(summary = "채팅방 목록조회", description = "내가 참여 중인 채팅방을 최근 활동순으로 조회합니다.")
     @GetMapping
     public ResponseEntity<GlobalApiResponse<List<ChatRoomSummaryResponse>>> getRooms(
             @AuthenticationPrincipal AuthUser authUser) {
@@ -83,7 +89,7 @@ public class MessengerController {
         return ResponseEntity.ok(GlobalApiResponse.ok(MessengerResponseCode.CHAT_ROOM_LIST_RETRIEVED, responses));
     }
 
-    @Operation(summary = "채팅방 참여자 목록조회", description = "요청자가 참여 중인 방에 한해 참여자 목록을 조회.")
+    @Operation(summary = "채팅방 참여자 목록조회", description = "요청자가 참여 중인 방의 참여자 목록을 조회합니다.")
     @GetMapping("/{roomId}/members")
     public ResponseEntity<GlobalApiResponse<List<ChatRoomMemberResponse>>> getMembers(
             @AuthenticationPrincipal AuthUser authUser,
@@ -95,7 +101,7 @@ public class MessengerController {
         return ResponseEntity.ok(GlobalApiResponse.ok(MessengerResponseCode.CHAT_ROOM_MEMBERS_RETRIEVED, responses));
     }
 
-    @Operation(summary = "메시지 전송", description = "TEXT/IMAGE/FILE 메시지 전송. 이미지·파일은 messageType+fileUrl/fileName으로 전달(별도 업로드 API 없음).")
+    @Operation(summary = "메시지 전송", description = "TEXT/IMAGE/FILE 메시지를 전송합니다.")
     @PostMapping("/{roomId}/messages")
     public ResponseEntity<GlobalApiResponse<MessageSendResponse>> sendMessage(
             @AuthenticationPrincipal AuthUser authUser,
@@ -107,7 +113,28 @@ public class MessengerController {
                         MessageSendResponse.from(messageId)));
     }
 
-    @Operation(summary = "메시지 목록조회", description = "cursor(createdAt+messageId) 기반 페이지네이션. cursor가 없는 첫 조회일 때만 읽음 처리.")
+    @Operation(summary = "메시지 수정", description = "본인이 보낸 TEXT 메시지만 수정합니다.")
+    @PatchMapping("/{roomId}/messages/{messageId}")
+    public ResponseEntity<Void> updateMessage(
+            @AuthenticationPrincipal AuthUser authUser,
+            @PathVariable Long roomId,
+            @PathVariable Long messageId,
+            @Valid @RequestBody UpdateMessageRequest request) {
+        updateMessageUseCase.update(request.toCommand(roomId, messageId, authUser.userId()));
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "메시지 삭제", description = "본인이 보낸 메시지를 소프트 삭제합니다.")
+    @DeleteMapping("/{roomId}/messages/{messageId}")
+    public ResponseEntity<Void> deleteMessage(
+            @AuthenticationPrincipal AuthUser authUser,
+            @PathVariable Long roomId,
+            @PathVariable Long messageId) {
+        deleteMessageUseCase.delete(roomId, messageId, authUser.userId());
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "메시지 목록조회", description = "cursor(createdAt+messageId) 기반 페이지네이션으로 조회합니다.")
     @GetMapping("/{roomId}/messages")
     public ResponseEntity<GlobalApiResponse<ChatMessagePageResponse>> getMessages(
             @AuthenticationPrincipal AuthUser authUser,
@@ -120,7 +147,7 @@ public class MessengerController {
         return ResponseEntity.ok(GlobalApiResponse.ok(MessengerResponseCode.MESSAGE_LIST_RETRIEVED, response));
     }
 
-    @Operation(summary = "업무지시 카드 등록", description = "담당자는 반드시 해당 채팅방 멤버여야 한다.")
+    @Operation(summary = "업무지시 카드 등록", description = "담당자는 반드시 해당 채팅방 멤버여야 합니다.")
     @PostMapping("/{roomId}/task-cards")
     public ResponseEntity<GlobalApiResponse<TaskCardCreateResponse>> createTaskCard(
             @AuthenticationPrincipal AuthUser authUser,
@@ -132,7 +159,7 @@ public class MessengerController {
                         TaskCardCreateResponse.from(cardId)));
     }
 
-    @Operation(summary = "업무지시 카드 목록조회", description = "완료 인원/전체 담당자 수, 전원완료 여부를 포함해 조회.")
+    @Operation(summary = "업무지시 카드 목록조회", description = "완료 인원과 전체 담당자 수를 포함해 조회합니다.")
     @GetMapping("/{roomId}/task-cards")
     public ResponseEntity<GlobalApiResponse<List<TaskCardResponse>>> getTaskCards(
             @AuthenticationPrincipal AuthUser authUser,
@@ -143,7 +170,7 @@ public class MessengerController {
         return ResponseEntity.ok(GlobalApiResponse.ok(MessengerResponseCode.TASK_CARD_LIST_RETRIEVED, responses));
     }
 
-    @Operation(summary = "업무지시 완료 처리", description = "담당자 본인만 가능. 이미 완료한 담당자가 다시 호출해도 시각은 덮어쓰지 않는다.")
+    @Operation(summary = "업무지시 완료 처리", description = "담당자 본인만 완료 처리할 수 있습니다.")
     @PatchMapping("/{roomId}/task-cards/{cardId}/complete")
     public ResponseEntity<Void> completeTaskCard(@AuthenticationPrincipal AuthUser authUser,
                                                   @PathVariable Long roomId,

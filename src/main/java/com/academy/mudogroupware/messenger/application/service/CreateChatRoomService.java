@@ -2,8 +2,10 @@ package com.academy.mudogroupware.messenger.application.service;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,8 +45,21 @@ public class CreateChatRoomService implements CreateChatRoomUseCase {
             throw new MessengerException(MessengerErrorCode.CROSS_ACADEMY_INVITE);
         }
 
+        Set<Long> inviteeIds = new LinkedHashSet<>(participantIds);
+        inviteeIds.remove(requester.userId());
+        if (inviteeIds.size() == 1) {
+            Long otherUserId = inviteeIds.iterator().next();
+            return chatRoomRepository.findDirectMessage(requester.academyId(), requester.userId(), otherUserId)
+                    .map(ChatRoom::getId)
+                    .orElseGet(() -> createRoom(requester, participantIds, command.name()));
+        }
+
+        return createRoom(requester, participantIds, command.name());
+    }
+
+    private Long createRoom(ChatMemberInfo requester, List<Long> participantIds, String name) {
         ChatRoom chatRoom = ChatRoom.create(requester.academyId(), requester.userId(), participantIds,
-                command.name(), LocalDateTime.now(clock));
+                name, LocalDateTime.now(clock));
         return chatRoomRepository.save(chatRoom).getId();
     }
 }
