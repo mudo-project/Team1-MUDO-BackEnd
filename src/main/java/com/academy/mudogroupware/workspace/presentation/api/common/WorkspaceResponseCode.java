@@ -8,7 +8,8 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum WorkspaceResponseCode implements ResponseCode {
 
-  WORKSPACE_CREATED("WORKSPACE_201_1", "워크스페이스 생성에 성공했습니다.");
+  WORKSPACE_CREATED("WORKSPACE_201_1", "워크스페이스 생성에 성공했습니다."),
+  WORKSPACE_LIST_RETRIEVED("WORKSPACE_200_1", "워크스페이스 목록 조회에 성공했습니다.");
 
   private final String code;
   private final String message;
