@@ -5,13 +5,16 @@ import com.academy.mudogroupware.global.presentation.security.AuthUser;
 import com.academy.mudogroupware.workspace.application.query.WorkspaceListScope;
 import com.academy.mudogroupware.workspace.application.usecase.CreateWorkspaceUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.RecordWorkspaceRecentAccessUseCase;
+import com.academy.mudogroupware.workspace.application.usecase.RenameWorkspaceUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.WorkspaceDetailQueryUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.WorkspaceQueryUseCase;
 import com.academy.mudogroupware.workspace.presentation.api.common.WorkspaceResponseCode;
 import com.academy.mudogroupware.workspace.presentation.api.request.CreateWorkspaceRequest;
+import com.academy.mudogroupware.workspace.presentation.api.request.RenameWorkspaceRequest;
 import com.academy.mudogroupware.workspace.presentation.api.response.CreateWorkspaceResponse;
 import com.academy.mudogroupware.workspace.presentation.api.response.WorkspaceDetailResponse;
 import com.academy.mudogroupware.workspace.presentation.api.response.WorkspaceListResponse;
+import com.academy.mudogroupware.workspace.presentation.api.response.WorkspaceRenameResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -27,6 +30,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -48,6 +52,7 @@ public class WorkspaceController {
   private final WorkspaceQueryUseCase workspaceQueryUseCase;
   private final RecordWorkspaceRecentAccessUseCase recordWorkspaceRecentAccessUseCase;
   private final WorkspaceDetailQueryUseCase workspaceDetailQueryUseCase;
+  private final RenameWorkspaceUseCase renameWorkspaceUseCase;
   private final Clock clock;
 
   @Operation(
@@ -146,5 +151,24 @@ public class WorkspaceController {
         GlobalApiResponse.ok(
             WorkspaceResponseCode.WORKSPACE_DETAIL_RETRIEVED,
             WorkspaceDetailResponse.from(detail)));
+  }
+
+  @Operation(summary = "워크스페이스 이름 수정", description = "현재 참여자만 이름을 수정할 수 있습니다.")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "이름 수정 성공"),
+    @ApiResponse(responseCode = "403", description = "참여자가 아님"),
+    @ApiResponse(responseCode = "404", description = "워크스페이스가 존재하지 않거나 삭제됨"),
+    @ApiResponse(responseCode = "409", description = "같은 학원에 동일한 활성 워크스페이스 이름이 존재함")
+  })
+  // TODO: 권한 모듈의 WORKSPACE:CREATE 권한이 준비되면 @PreAuthorize를 추가한다.
+  @PatchMapping("/{workspaceId}")
+  public ResponseEntity<GlobalApiResponse<WorkspaceRenameResponse>> renameWorkspace(
+      @AuthenticationPrincipal AuthUser authUser,
+      @PathVariable Long workspaceId,
+      @Valid @RequestBody RenameWorkspaceRequest request) {
+    String name = renameWorkspaceUseCase.rename(request.toCommand(authUser, workspaceId));
+    return ResponseEntity.ok(
+        GlobalApiResponse.ok(
+            WorkspaceResponseCode.WORKSPACE_RENAMED, WorkspaceRenameResponse.from(workspaceId, name)));
   }
 }

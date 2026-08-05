@@ -56,6 +56,13 @@ active_name = CASE WHEN deleted_at IS NULL THEN name ELSE NULL END
 UNIQUE (academy_id, active_name)
 ```
 
+### 이름 수정과 삭제 권한
+
+- 워크스페이스 이름 수정, 참여자 추가, 참여자 제거(타인)는 `WORKSPACE:CREATE` 권한을 보유한 현재 참여자만 할 수 있다.
+- 워크스페이스 삭제는 `WORKSPACE:DELETE` 권한을 보유한 현재 참여자만 할 수 있다. 생성·이름수정·참여자관리 권한과 의도적으로 분리한다.
+- 참여자 본인에 대한 조작(자진 탈퇴, 본인이 유일한 참여자일 때의 워크스페이스 삭제)은 위 권한 없이 참여자이기만 하면 항상 허용한다.
+- `WORKSPACE:CREATE`, `WORKSPACE:DELETE`는 권한 모듈 연동 전까지 시드되지 않으며, 그동안은 "현재 참여자" 조건만 적용한다.
+
 ### 목록과 최근 접속
 
 - 목록 응답에는 워크스페이스 식별자, 이름, 현재 참여자 수만 제공한다.

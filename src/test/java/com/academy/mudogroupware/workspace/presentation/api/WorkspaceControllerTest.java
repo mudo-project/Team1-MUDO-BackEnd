@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -19,8 +20,10 @@ import com.academy.mudogroupware.global.presentation.security.JwtAuthenticationC
 import com.academy.mudogroupware.workspace.application.query.WorkspaceDetail;
 import com.academy.mudogroupware.workspace.application.query.WorkspaceListItem;
 import com.academy.mudogroupware.workspace.application.query.WorkspaceListScope;
+import com.academy.mudogroupware.workspace.application.command.RenameWorkspaceCommand;
 import com.academy.mudogroupware.workspace.application.usecase.CreateWorkspaceUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.RecordWorkspaceRecentAccessUseCase;
+import com.academy.mudogroupware.workspace.application.usecase.RenameWorkspaceUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.WorkspaceDetailQueryUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.WorkspaceQueryUseCase;
 import com.academy.mudogroupware.workspace.domain.exception.WorkspaceAccessDeniedException;
@@ -30,6 +33,7 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.MediaType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -54,6 +58,7 @@ class WorkspaceControllerTest {
   @MockitoBean private JwtTokenProvider jwtTokenProvider;
   @MockitoBean private JwtAuthenticationConverter jwtAuthenticationConverter;
   @MockitoBean private WorkspaceDetailQueryUseCase workspaceDetailQueryUseCase;
+  @MockitoBean private RenameWorkspaceUseCase renameWorkspaceUseCase;
   @MockitoBean private Clock clock;
 
   @Test
@@ -224,6 +229,55 @@ class WorkspaceControllerTest {
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.status").value(403))
         .andExpect(jsonPath("$.code").value("WORKSPACE_403_1"));
+  }
+
+  @Test
+  void renamesWorkspaceAndReturns200() throws Exception {
+    when(renameWorkspaceUseCase.rename(
+            new RenameWorkspaceCommand(10L, 100L, "운영팀")))
+        .thenReturn("운영팀");
+
+    mockMvc
+        .perform(
+            patch("/api/workspaces/{workspaceId}", 100L)
+                .with(authentication(authenticatedUser()))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"운영팀\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.code").value("WORKSPACE_200_3"))
+        .andExpect(jsonPath("$.data.workspaceId").value(100))
+        .andExpect(jsonPath("$.data.name").value("운영팀"));
+  }
+
+  @Test
+  void returns403WhenRenamingWorkspaceRequesterCannotAccess() throws Exception {
+    when(renameWorkspaceUseCase.rename(any(RenameWorkspaceCommand.class)))
+        .thenThrow(new WorkspaceAccessDeniedException());
+
+    mockMvc
+        .perform(
+            patch("/api/workspaces/{workspaceId}", 100L)
+                .with(authentication(authenticatedUser()))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"운영팀\"}"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("WORKSPACE_403_1"));
+  }
+
+  @Test
+  void returns400WhenRenameRequestHasBlankName() throws Exception {
+    mockMvc
+        .perform(
+            patch("/api/workspaces/{workspaceId}", 100L)
+                .with(authentication(authenticatedUser()))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"  \"}"))
+        .andExpect(status().isBadRequest());
+
+    verifyNoInteractions(renameWorkspaceUseCase);
   }
 
   private Authentication authenticatedUser(String... authorities) {
