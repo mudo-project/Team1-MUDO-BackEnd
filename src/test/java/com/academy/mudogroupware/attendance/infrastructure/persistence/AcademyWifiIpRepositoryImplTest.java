@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.verify;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -13,6 +15,19 @@ import com.academy.mudogroupware.attendance.domain.exception.AttendanceException
 import com.academy.mudogroupware.attendance.domain.model.AcademyWifiIp;
 
 class AcademyWifiIpRepositoryImplTest {
+
+    @Test
+    void deletesWifiIpWithinAcademyScope() {
+        AcademyWifiIpJpaRepository jpaRepository =
+                org.mockito.Mockito.mock(AcademyWifiIpJpaRepository.class);
+        AcademyWifiIpRepositoryImpl repository = new AcademyWifiIpRepositoryImpl(jpaRepository);
+        when(jpaRepository.deleteByIdAndAcademyId(5L, 1L)).thenReturn(1L);
+
+        boolean deleted = repository.deleteByIdAndAcademyId(5L, 1L);
+
+        assertTrue(deleted);
+        verify(jpaRepository).deleteByIdAndAcademyId(5L, 1L);
+    }
 
     @Test
     void convertsWifiIpUniqueConstraintViolationToDomainException() {

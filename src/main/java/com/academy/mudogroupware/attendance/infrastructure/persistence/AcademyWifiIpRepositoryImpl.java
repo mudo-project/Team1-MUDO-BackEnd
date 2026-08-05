@@ -53,6 +53,11 @@ public class AcademyWifiIpRepositoryImpl implements AcademyWifiIpRepository {
                 saved.getUpdatedAt());
     }
 
+    @Override
+    public boolean deleteByIdAndAcademyId(Long wifiIpId, Long academyId) {
+        return academyWifiIpJpaRepository.deleteByIdAndAcademyId(wifiIpId, academyId) > 0;
+    }
+
     private boolean isWifiIpUniqueConstraintViolation(Throwable throwable) {
         Throwable current = throwable;
         while (current != null) {
