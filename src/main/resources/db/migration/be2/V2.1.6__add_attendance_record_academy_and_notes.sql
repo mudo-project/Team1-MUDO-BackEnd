@@ -15,4 +15,4 @@ ALTER TABLE attendance_record
     ADD CONSTRAINT fk_attendance_record_academy
         FOREIGN KEY (academy_id) REFERENCES academy (academy_id),
     ADD CONSTRAINT uk_attendance_record_academy_user_date
-        UNIQUE (academy_id, user_id, work_date);
+        UNIQUE (user_id, academy_id, work_date);
