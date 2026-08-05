@@ -180,3 +180,96 @@ HTTP `204 No Content`
 
 - `academyId`, `userId`, `WORKSPACE:READ_ALL` 보유 여부는 인증 정보에서 가져온다.
 - 최초 접속이면 최근 접속 기록을 생성하고, 기존 기록이 있으면 현재 서버 시각으로 갱신한다. MySQL 단일 upsert를 사용하므로 동일한 최초 접속 요청이 동시에 들어와도 중복 키 오류가 발생하지 않으며, 늦게 도착한 과거 시각은 더 최신 기록을 덮어쓰지 않는다.
+
+## 워크스페이스 상세 조회
+
+### Endpoint
+
+`GET /api/workspaces/{workspaceId}?date=yyyy-MM-dd`
+
+### 인증 및 권한
+
+- `Authorization: Bearer {accessToken}` 헤더가 필요하다.
+- 일반 사용자는 자신이 참여한 같은 학원의 활성 워크스페이스만 조회할 수 있다.
+- `WORKSPACE:READ_ALL` Authority가 있으면 참여 여부와 관계없이 같은 학원의 활성 워크스페이스를 조회할 수 있다.
+
+### Path Variable
+
+| name | type | required | description |
+| --- | --- | --- | --- |
+| `workspaceId` | Long | true | 조회할 워크스페이스 번호 |
+
+### Query Parameter
+
+| name | type | required | default | description |
+| --- | --- | --- | --- | --- |
+| `date` | LocalDate (`yyyy-MM-dd`) | false | 서버 `Clock` 기준 오늘 | 업무 카드 표시 기준일 |
+
+### Success Response
+
+HTTP `200 OK`
+
+```json
+{
+  "status": 200,
+  "code": "WORKSPACE_200_2",
+  "message": "워크스페이스 상세 조회에 성공했습니다.",
+  "data": {
+    "workspaceId": 1,
+    "name": "8월 학사 운영",
+    "memberCount": 3,
+    "members": [
+      { "userId": 12, "name": "김지수" }
+    ],
+    "taskCount": 1,
+    "tasks": [
+      {
+        "taskId": 101,
+        "title": "8월 원생 청구서 발송",
+        "status": "IN_PROGRESS",
+        "creator": { "userId": 12, "name": "김지수" },
+        "dueAt": "2026-08-07",
+        "completedCommentCount": 1,
+        "commentCount": 2
+      }
+    ]
+  }
+}
+```
+
+| name | type | description |
+| --- | --- | --- |
+| `data.workspaceId` | Long | 워크스페이스 번호 |
+| `data.name` | String | 워크스페이스 이름 |
+| `data.memberCount` | Long | 참여자 수 |
+| `data.members[].userId` | Long | 참여자 사용자 번호 |
+| `data.members[].name` | String | 참여자 표시 이름. 조회 실패 시 `"알 수 없음"` |
+| `data.taskCount` | Long | 표시되는 업무 카드 수 |
+| `data.tasks[].taskId` | Long | 업무 번호 |
+| `data.tasks[].title` | String | 업무 제목 |
+| `data.tasks[].status` | String | 업무 상태 (`WAITING`/`IN_PROGRESS`/`COMPLETED`/`DELAYED`) |
+| `data.tasks[].creator` | Object | 업무 생성자 (`userId`, `name`). `name`은 조회 실패 시 `"알 수 없음"` |
+| `data.tasks[].dueAt` | LocalDate | 기한. 반복 업무는 항상 `null` |
+| `data.tasks[].completedCommentCount` | Long | 완료 코멘트 수. 코멘트가 없으면 필드 자체가 응답에서 제외 |
+| `data.tasks[].commentCount` | Long | 전체 코멘트 수. 코멘트가 없으면 필드 자체가 응답에서 제외 |
+
+### Error Response
+
+| HTTP 상태 | code | 발생 조건 |
+| --- | --- | --- |
+| `401 Unauthorized` | `COMMON_401_1` | Access Token이 없거나 유효하지 않은 경우 |
+| `403 Forbidden` | `WORKSPACE_403_1` | 참여하지 않았고 `WORKSPACE:READ_ALL`도 없는 워크스페이스에 접근한 경우 |
+| `404 Not Found` | `WORKSPACE_404_1` | 워크스페이스가 없거나 삭제된 경우 |
+
+### Business Rules
+
+- `academyId`, `userId`, `WORKSPACE:READ_ALL` 보유 여부는 인증 정보에서 가져온다.
+- `date`를 생략하면 서버 `Clock` 기준 오늘 날짜를 기준일로 사용한다.
+- 존재 여부를 접근 권한보다 먼저 확인한다 — 삭제되었거나 없는 워크스페이스는 참여 여부와 무관하게 `WORKSPACE_404_1`을 반환한다.
+- 표시 대상 업무 카드:
+  - 일반 업무: 상태가 `COMPLETED`가 아니면 항상 표시한다. `COMPLETED`면 상태 이력상 가장 최근에 `COMPLETED`로 바뀐 날짜가 조회 기준일과 같은 경우에만 표시한다(당일 완료된 업무만 노출).
+  - 반복 업무: 생성 일시(`scheduledFor`)의 날짜가 조회 기준일과 같은 경우에만 표시한다. 기한(`dueAt`)은 항상 `null`이다.
+- 업무 카드는 상태 → 기한(`null`은 마지막) → 생성 시각 → 업무 번호 순으로 정렬한다. 업무 번호는 앞선 세 기준이 모두 같을 때의 동점 처리(tie-break) 기준이며, 같은 요청은 항상 같은 순서를 반환한다.
+- 참여자는 사용자 번호 오름차순으로 정렬한다.
+- 참여자와 업무 생성자의 표시 이름은 users 도메인에서 조회한다. 대상 사용자를 찾지 못하면 `"알 수 없음"`으로 대체하며, 목록에서 제외하지 않는다(참여자 수·업무 카드 수와 실제 배열 길이가 항상 일치한다).
+- 코멘트가 없는 업무는 `completedCommentCount`, `commentCount` 필드가 응답에서 생략된다(코멘트가 있는 업무만 두 필드를 포함).

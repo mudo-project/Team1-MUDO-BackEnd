@@ -29,7 +29,7 @@ class TaskJpaRepositoryDataJpaTest {
 
     List<TaskJpaEntity> result =
         taskJpaRepository.findVisibleRegularTasks(
-            WORKSPACE_ID, LocalDate.of(2099, 1, 1), TaskStatus.COMPLETED);
+            WORKSPACE_ID, startOfDay(2099, 1, 1), endOfDay(2099, 1, 1), TaskStatus.COMPLETED);
 
     assertThat(result).extracting(TaskJpaEntity::getId).containsExactly(1L);
   }
@@ -42,12 +42,12 @@ class TaskJpaRepositoryDataJpaTest {
 
     assertThat(
             taskJpaRepository.findVisibleRegularTasks(
-                WORKSPACE_ID, LocalDate.of(2026, 8, 5), TaskStatus.COMPLETED))
+                WORKSPACE_ID, startOfDay(2026, 8, 5), endOfDay(2026, 8, 5), TaskStatus.COMPLETED))
         .extracting(TaskJpaEntity::getId)
         .containsExactly(1L);
     assertThat(
             taskJpaRepository.findVisibleRegularTasks(
-                WORKSPACE_ID, LocalDate.of(2026, 8, 6), TaskStatus.COMPLETED))
+                WORKSPACE_ID, startOfDay(2026, 8, 6), endOfDay(2026, 8, 6), TaskStatus.COMPLETED))
         .isEmpty();
   }
 
@@ -61,11 +61,11 @@ class TaskJpaRepositoryDataJpaTest {
 
     assertThat(
             taskJpaRepository.findVisibleRegularTasks(
-                WORKSPACE_ID, LocalDate.of(2026, 8, 3), TaskStatus.COMPLETED))
+                WORKSPACE_ID, startOfDay(2026, 8, 3), endOfDay(2026, 8, 3), TaskStatus.COMPLETED))
         .isEmpty();
     assertThat(
             taskJpaRepository.findVisibleRegularTasks(
-                WORKSPACE_ID, LocalDate.of(2026, 8, 6), TaskStatus.COMPLETED))
+                WORKSPACE_ID, startOfDay(2026, 8, 6), endOfDay(2026, 8, 6), TaskStatus.COMPLETED))
         .extracting(TaskJpaEntity::getId)
         .containsExactly(1L);
   }
@@ -78,16 +78,59 @@ class TaskJpaRepositoryDataJpaTest {
     insertRecurringTask(2L, WORKSPACE_ID, 100L, TaskStatus.DELAYED, at(2026, 8, 3));
 
     assertThat(
-            taskJpaRepository.findVisibleRecurringTasks(WORKSPACE_ID, LocalDate.of(2026, 8, 5)))
+            taskJpaRepository.findVisibleRecurringTasks(
+                WORKSPACE_ID, startOfDay(2026, 8, 5), endOfDay(2026, 8, 5)))
         .extracting(TaskJpaEntity::getId)
         .containsExactly(1L);
     assertThat(
-            taskJpaRepository.findVisibleRecurringTasks(WORKSPACE_ID, LocalDate.of(2026, 8, 3)))
+            taskJpaRepository.findVisibleRecurringTasks(
+                WORKSPACE_ID, startOfDay(2026, 8, 3), endOfDay(2026, 8, 3)))
         .extracting(TaskJpaEntity::getId)
         .containsExactly(2L);
     assertThat(
-            taskJpaRepository.findVisibleRecurringTasks(WORKSPACE_ID, LocalDate.of(2026, 8, 4)))
+            taskJpaRepository.findVisibleRecurringTasks(
+                WORKSPACE_ID, startOfDay(2026, 8, 4), endOfDay(2026, 8, 4)))
         .isEmpty();
+  }
+
+  @Test
+  void findVisibleRegularTasksExcludesTasksFromOtherWorkspaces() {
+    long otherWorkspaceId = 2L;
+    insertWorkspace(WORKSPACE_ID);
+    insertWorkspace(otherWorkspaceId);
+    insertTask(1L, WORKSPACE_ID, "내 워크스페이스 업무", TaskStatus.IN_PROGRESS, LocalDate.of(2026, 8, 7));
+    insertTask(2L, otherWorkspaceId, "다른 워크스페이스 업무", TaskStatus.IN_PROGRESS, LocalDate.of(2026, 8, 7));
+
+    List<TaskJpaEntity> result =
+        taskJpaRepository.findVisibleRegularTasks(
+            WORKSPACE_ID, startOfDay(2099, 1, 1), endOfDay(2099, 1, 1), TaskStatus.COMPLETED);
+
+    assertThat(result).extracting(TaskJpaEntity::getId).containsExactly(1L);
+  }
+
+  @Test
+  void findVisibleRegularTasksDoesNotExposeCompletedTaskWithoutStatusHistory() {
+    insertWorkspace(WORKSPACE_ID);
+    insertTask(1L, WORKSPACE_ID, "이력 없는 완료 업무", TaskStatus.COMPLETED, LocalDate.of(2026, 8, 5));
+
+    List<TaskJpaEntity> result =
+        taskJpaRepository.findVisibleRegularTasks(
+            WORKSPACE_ID, startOfDay(2026, 8, 5), endOfDay(2026, 8, 5), TaskStatus.COMPLETED);
+
+    assertThat(result).isEmpty();
+  }
+
+  @Test
+  void findVisibleRecurringTasksExposesCompletedRecurringTaskOnItsScheduledDate() {
+    insertWorkspace(WORKSPACE_ID);
+    insertRecurringTemplate(100L, WORKSPACE_ID);
+    insertRecurringTask(1L, WORKSPACE_ID, 100L, TaskStatus.COMPLETED, at(2026, 8, 5));
+
+    List<TaskJpaEntity> result =
+        taskJpaRepository.findVisibleRecurringTasks(
+            WORKSPACE_ID, startOfDay(2026, 8, 5), endOfDay(2026, 8, 5));
+
+    assertThat(result).extracting(TaskJpaEntity::getId).containsExactly(1L);
   }
 
   private void insertWorkspace(long workspaceId) {
@@ -151,5 +194,13 @@ class TaskJpaRepositoryDataJpaTest {
 
   private LocalDateTime at(int year, int month, int day) {
     return LocalDateTime.of(year, month, day, 9, 0);
+  }
+
+  private LocalDateTime startOfDay(int year, int month, int day) {
+    return LocalDate.of(year, month, day).atStartOfDay();
+  }
+
+  private LocalDateTime endOfDay(int year, int month, int day) {
+    return LocalDate.of(year, month, day).plusDays(1).atStartOfDay();
   }
 }

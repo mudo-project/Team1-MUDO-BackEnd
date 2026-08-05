@@ -1,6 +1,7 @@
 package com.academy.mudogroupware.workspace.infrastructure.persistence.workspace;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.groups.Tuple.tuple;
 
 import com.academy.mudogroupware.global.infrastructure.config.TimeConfig;
 import com.academy.mudogroupware.workspace.application.query.TaskCommentSummary;
@@ -27,25 +28,60 @@ class WorkspaceDetailQueryAdapterDataJpaTest {
   @Autowired private TaskCommentJpaRepository taskCommentJpaRepository;
 
   @Test
-  void assemblesNameMembersTasksAndCommentSummariesForTheSelectedDate() {
+  void findActiveWorkspaceNameReturnsTheWorkspaceName() {
+    insertWorkspace(1L);
+
+    assertThat(adapter.findActiveWorkspaceName(1L)).contains("ws");
+  }
+
+  @Test
+  void findMemberIdsReturnsAllMembersOfTheWorkspace() {
     insertWorkspace(1L);
     insertMember(1L, 10L);
+
+    assertThat(adapter.findMemberIds(1L)).containsExactly(10L);
+  }
+
+  @Test
+  void findVisibleTasksMergesRegularAndRecurringTasksForTheSelectedDate() {
+    insertWorkspace(1L);
+    insertTask(101L, 1L, "일반 업무", TaskStatus.IN_PROGRESS, LocalDate.of(2026, 8, 7), 10L);
+    insertRecurringTemplate(200L, 1L);
+    insertRecurringTask(102L, 1L, 200L, TaskStatus.WAITING, at(2026, 8, 5), 10L);
+
+    List<WorkspaceTaskCandidate> tasks = adapter.findVisibleTasks(1L, LocalDate.of(2026, 8, 5));
+
+    assertThat(tasks)
+        .extracting(WorkspaceTaskCandidate::taskId)
+        .containsExactlyInAnyOrder(101L, 102L);
+  }
+
+  @Test
+  void findVisibleTasksExcludesRecurringTaskNotScheduledForTheSelectedDate() {
+    insertWorkspace(1L);
+    insertRecurringTemplate(200L, 1L);
+    insertRecurringTask(102L, 1L, 200L, TaskStatus.WAITING, at(2026, 8, 5), 10L);
+
+    List<WorkspaceTaskCandidate> tasks = adapter.findVisibleTasks(1L, LocalDate.of(2026, 8, 6));
+
+    assertThat(tasks).isEmpty();
+  }
+
+  @Test
+  void findCommentSummariesReturnsCompletedAndTotalCountPerTask() {
+    insertWorkspace(1L);
     insertTask(101L, 1L, "업무", TaskStatus.IN_PROGRESS, LocalDate.of(2026, 8, 7), 10L);
     insertComment(1L, 101L, true);
     insertComment(2L, 101L, false);
 
-    assertThat(adapter.findActiveWorkspaceName(1L)).contains("ws");
-    assertThat(adapter.findMemberIds(1L)).containsExactly(10L);
+    List<TaskCommentSummary> summaries = adapter.findCommentSummaries(List.of(101L));
 
-    List<WorkspaceTaskCandidate> tasks =
-        adapter.findVisibleTasks(1L, LocalDate.of(2026, 8, 5));
-    assertThat(tasks).extracting(WorkspaceTaskCandidate::taskId).containsExactly(101L);
-
-    List<TaskCommentSummary> summaries =
-        adapter.findCommentSummaries(List.of(101L));
     assertThat(summaries)
-        .extracting(TaskCommentSummary::taskId, TaskCommentSummary::completedCount, TaskCommentSummary::totalCount)
-        .containsExactly(org.assertj.core.groups.Tuple.tuple(101L, 1L, 2L));
+        .extracting(
+            TaskCommentSummary::taskId,
+            TaskCommentSummary::completedCount,
+            TaskCommentSummary::totalCount)
+        .containsExactly(tuple(101L, 1L, 2L));
   }
 
   @Test
@@ -71,7 +107,12 @@ class WorkspaceDetailQueryAdapterDataJpaTest {
   }
 
   private void insertTask(
-      long taskId, long workspaceId, String title, TaskStatus status, LocalDate dueAt, long createdBy) {
+      long taskId,
+      long workspaceId,
+      String title,
+      TaskStatus status,
+      LocalDate dueAt,
+      long createdBy) {
     jdbcTemplate.update(
         "insert into task (task_id, workspace_id, title, status, due_at, created_by, created_at, updated_at) "
             + "values (?, ?, ?, ?, ?, ?, ?, ?)",
@@ -80,6 +121,37 @@ class WorkspaceDetailQueryAdapterDataJpaTest {
         title,
         status.name(),
         dueAt,
+        createdBy,
+        at(),
+        at());
+  }
+
+  private void insertRecurringTemplate(long templateId, long workspaceId) {
+    jdbcTemplate.update(
+        "insert into recurring_task_template "
+            + "(recurring_template_id, workspace_id, title, recurrence_type, recurrence_rule, is_active, created_by, created_at, updated_at) "
+            + "values (?, ?, 'daily', 'DAILY', '{}', true, 10, ?, ?)",
+        templateId,
+        workspaceId,
+        at(),
+        at());
+  }
+
+  private void insertRecurringTask(
+      long taskId,
+      long workspaceId,
+      long templateId,
+      TaskStatus status,
+      LocalDateTime scheduledFor,
+      long createdBy) {
+    jdbcTemplate.update(
+        "insert into task (task_id, workspace_id, recurring_template_id, title, status, scheduled_for, created_by, created_at, updated_at) "
+            + "values (?, ?, ?, '반복 업무', ?, ?, ?, ?, ?)",
+        taskId,
+        workspaceId,
+        templateId,
+        status.name(),
+        scheduledFor,
         createdBy,
         at(),
         at());
@@ -98,5 +170,9 @@ class WorkspaceDetailQueryAdapterDataJpaTest {
 
   private LocalDateTime at() {
     return LocalDateTime.of(2026, 8, 1, 9, 0);
+  }
+
+  private LocalDateTime at(int year, int month, int day) {
+    return LocalDateTime.of(year, month, day, 9, 0);
   }
 }

@@ -33,14 +33,14 @@ class WorkspaceJpaRepositoryDetailQueryDataJpaTest {
   }
 
   @Test
-  void findMemberUserIdsReturnsAllMembersOfTheWorkspace() {
+  void findMemberUserIdsReturnsAllMembersOfTheWorkspaceOrderedByUserId() {
     insertWorkspace(1L, 1L, "ws", at());
-    insertMember(1L, 10L);
     insertMember(1L, 20L);
+    insertMember(1L, 10L);
 
     List<Long> result = workspaceJpaRepository.findMemberUserIds(1L);
 
-    assertThat(result).containsExactlyInAnyOrder(10L, 20L);
+    assertThat(result).containsExactly(10L, 20L);
   }
 
   private void insertWorkspace(long workspaceId, long academyId, String name, LocalDateTime at) {
