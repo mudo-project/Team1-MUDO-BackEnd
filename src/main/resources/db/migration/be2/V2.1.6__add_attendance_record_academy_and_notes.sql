@@ -1,7 +1,8 @@
 ALTER TABLE attendance_record
     ADD COLUMN academy_id BIGINT NULL AFTER user_id,
     ADD COLUMN clock_in_note VARCHAR(255) NULL AFTER clock_in_at,
-    ADD COLUMN clock_out_note VARCHAR(255) NULL AFTER clock_out_at;
+    ADD COLUMN clock_out_note VARCHAR(255) NULL AFTER clock_out_at,
+    ADD INDEX idx_attendance_record_user_id (user_id);
 
 UPDATE attendance_record ar
 JOIN users u ON u.id = ar.user_id
