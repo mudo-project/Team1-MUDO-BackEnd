@@ -99,4 +99,65 @@ class AttendanceRecordTest {
         assertSame(AttendanceErrorCode.OVERTIME_NOTE_REQUIRED,
                 exception.getErrorCode());
     }
+
+    @Test
+    void rejectsCheckOutBeforeClockIn() {
+        AttendanceRecord checkedIn = openRecord();
+
+        AttendanceException exception = assertThrows(
+                AttendanceException.class,
+                () -> checkedIn.checkOut(
+                        LocalDateTime.of(2026, 8, 5, 8, 59),
+                        ClockOutType.NORMAL, null));
+
+        assertSame(AttendanceErrorCode.INVALID_CLOCK_OUT_TIME,
+                exception.getErrorCode());
+    }
+
+    @Test
+    void rejectsSecondCheckOut() {
+        AttendanceRecord checkedOut = openRecord().checkOut(
+                LocalDateTime.of(2026, 8, 5, 18, 0),
+                ClockOutType.NORMAL, null);
+
+        AttendanceException exception = assertThrows(
+                AttendanceException.class,
+                () -> checkedOut.checkOut(
+                        LocalDateTime.of(2026, 8, 5, 18, 1),
+                        ClockOutType.NORMAL, null));
+
+        assertSame(AttendanceErrorCode.ATTENDANCE_ALREADY_CHECKED_OUT,
+                exception.getErrorCode());
+    }
+
+    @Test
+    void acceptsClockOutNoteWith255Characters() {
+        String note = "a".repeat(255);
+
+        AttendanceRecord checkedOut = openRecord().checkOut(
+                LocalDateTime.of(2026, 8, 5, 18, 0),
+                ClockOutType.NORMAL, note);
+
+        assertEquals(note, checkedOut.getClockOutNote());
+    }
+
+    @Test
+    void rejectsClockOutNoteWith256Characters() {
+        AttendanceException exception = assertThrows(
+                AttendanceException.class,
+                () -> openRecord().checkOut(
+                        LocalDateTime.of(2026, 8, 5, 18, 0),
+                        ClockOutType.NORMAL, "a".repeat(256)));
+
+        assertSame(AttendanceErrorCode.INVALID_CLOCK_OUT_NOTE,
+                exception.getErrorCode());
+    }
+
+    private AttendanceRecord openRecord() {
+        LocalDateTime clockInAt = LocalDateTime.of(2026, 8, 5, 9, 0);
+        return AttendanceRecord.restore(
+                5L, 1L, 10L, clockInAt.toLocalDate(), clockInAt, null,
+                null, null, null, AttendanceStatus.NORMAL,
+                clockInAt, clockInAt);
+    }
 }
