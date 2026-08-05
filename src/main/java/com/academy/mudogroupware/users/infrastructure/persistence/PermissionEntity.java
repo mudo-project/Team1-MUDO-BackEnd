@@ -7,6 +7,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -32,4 +33,13 @@ public class PermissionEntity {
 
     @Column(length = 255)
     private String description;
+
+    @Builder
+    private PermissionEntity(Long id, String code, String resource, String action, String description) {
+        this.id = id;
+        this.code = code;
+        this.resource = resource;
+        this.action = action;
+        this.description = description;
+    }
 }
