@@ -26,7 +26,7 @@ public record SaveAttendancePolicyRequest(
         Boolean weekdayExceptionEnabled,
 
         @Valid
-        List<WeekdayRequest> weekdays
+        List<@NotNull WeekdayRequest> weekdays
 ) {
     public SaveAttendancePolicyCommand toCommand(Long requesterId) {
         List<AttendancePolicyWeekday> weekdayCommands = weekdays == null ? null

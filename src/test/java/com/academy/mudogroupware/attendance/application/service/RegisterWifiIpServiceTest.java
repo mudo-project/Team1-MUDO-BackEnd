@@ -89,7 +89,10 @@ class RegisterWifiIpServiceTest {
 
         ArgumentCaptor<AcademyWifiIp> captor = ArgumentCaptor.forClass(AcademyWifiIp.class);
         verify(academyWifiIpRepository).save(captor.capture());
+        assertEquals(1L, captor.getValue().getAcademyId());
+        assertEquals("203.0.113.10", captor.getValue().getIpAddress());
         assertEquals("본원 와이파이", captor.getValue().getNote());
+        assertEquals("203.0.113.10", result.ipAddress());
         assertEquals("본원 와이파이", result.note());
     }
 }
