@@ -19,13 +19,11 @@ import com.academy.mudogroupware.global.presentation.api.common.SliceResponse;
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
 import com.academy.mudogroupware.lecture.application.query.LectureDetailView;
 import com.academy.mudogroupware.lecture.application.usecase.CreateLectureUseCase;
-import com.academy.mudogroupware.lecture.application.usecase.EnrollStudentUseCase;
 import com.academy.mudogroupware.lecture.application.usecase.LectureQueryUseCase;
 import com.academy.mudogroupware.lecture.domain.model.Grade;
 import com.academy.mudogroupware.lecture.domain.repository.LectureFilter;
 import com.academy.mudogroupware.lecture.presentation.api.common.LectureResponseCode;
 import com.academy.mudogroupware.lecture.presentation.api.request.CreateLectureRequest;
-import com.academy.mudogroupware.lecture.presentation.api.request.EnrollStudentRequest;
 import com.academy.mudogroupware.lecture.presentation.api.response.LectureCreateResponse;
 import com.academy.mudogroupware.lecture.presentation.api.response.LectureDetailResponse;
 import com.academy.mudogroupware.lecture.presentation.api.response.LectureSummaryResponse;
@@ -35,7 +33,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
-@Tag(name = "강의 관리", description = "강의 등록/조회, 수강 등록 API")
+@Tag(name = "강의 관리", description = "강의 등록/조회 API. 수강 등록은 student 모듈(/api/students/{studentId}/enrollments)이 담당한다.")
 @RestController
 @RequestMapping("/api/lectures")
 @RequiredArgsConstructor
@@ -43,7 +41,6 @@ public class LectureController {
 
     private final CreateLectureUseCase createLectureUseCase;
     private final LectureQueryUseCase lectureQueryUseCase;
-    private final EnrollStudentUseCase enrollStudentUseCase;
 
     @Operation(summary = "강의 등록",
             description = "학년/시즌/과목/교실/담당 선생님/요일·시간대를 지정해 강의를 등록한다. "
@@ -88,15 +85,5 @@ public class LectureController {
         LectureDetailView view = lectureQueryUseCase.getLectureDetail(lectureId, authUser.academyId());
         return ResponseEntity.ok(GlobalApiResponse.ok(LectureResponseCode.LECTURE_DETAIL_RETRIEVED,
                 LectureDetailResponse.from(view)));
-    }
-
-    @Operation(summary = "수강 등록", description = "학생을 강의에 수강 등록한다.")
-    @PreAuthorize("hasAuthority('LECTURE:MANAGE')")
-    @PostMapping("/{lectureId}/enrollments")
-    public ResponseEntity<Void> enrollStudent(@AuthenticationPrincipal AuthUser authUser,
-                                               @PathVariable Long lectureId,
-                                               @Valid @RequestBody EnrollStudentRequest request) {
-        enrollStudentUseCase.enrollStudent(request.toCommand(lectureId));
-        return ResponseEntity.noContent().build();
     }
 }

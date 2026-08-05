@@ -17,7 +17,6 @@ public enum LectureErrorCode implements ErrorCode {
     ACCESS_DENIED(HttpStatus.FORBIDDEN, "LECTURE_403_1", "다른 학원의 강의에는 접근할 수 없습니다."),
 
     LECTURE_NOT_FOUND(HttpStatus.NOT_FOUND, "LECTURE_404_1", "강의를 찾을 수 없습니다."),
-    STUDENT_NOT_FOUND(HttpStatus.NOT_FOUND, "LECTURE_404_2", "학생을 찾을 수 없습니다."),
 
     CLASSROOM_TIME_CONFLICT(HttpStatus.CONFLICT, "LECTURE_409_1", "같은 교실·요일·시간대에 이미 다른 강의가 있습니다.");
 

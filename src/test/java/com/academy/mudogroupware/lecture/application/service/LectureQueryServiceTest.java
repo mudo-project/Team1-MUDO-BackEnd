@@ -15,6 +15,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.academy.mudogroupware.lecture.application.port.EnrolledStudentsPort;
 import com.academy.mudogroupware.lecture.application.query.LectureDetailView;
 import com.academy.mudogroupware.lecture.domain.exception.LectureAccessDeniedException;
 import com.academy.mudogroupware.lecture.domain.exception.LectureNotFoundException;
@@ -26,9 +27,7 @@ import com.academy.mudogroupware.lecture.domain.model.LectureSchedule;
 import com.academy.mudogroupware.lecture.domain.model.Subject;
 import com.academy.mudogroupware.lecture.domain.model.Term;
 import com.academy.mudogroupware.lecture.domain.repository.ClassroomRepository;
-import com.academy.mudogroupware.lecture.domain.repository.EnrollmentRepository;
 import com.academy.mudogroupware.lecture.domain.repository.LectureRepository;
-import com.academy.mudogroupware.lecture.domain.repository.StudentRepository;
 import com.academy.mudogroupware.lecture.domain.repository.SubjectRepository;
 import com.academy.mudogroupware.lecture.domain.repository.TermRepository;
 
@@ -40,15 +39,14 @@ class LectureQueryServiceTest {
     private final TermRepository termRepository = mock(TermRepository.class);
     private final SubjectRepository subjectRepository = mock(SubjectRepository.class);
     private final ClassroomRepository classroomRepository = mock(ClassroomRepository.class);
-    private final EnrollmentRepository enrollmentRepository = mock(EnrollmentRepository.class);
-    private final StudentRepository studentRepository = mock(StudentRepository.class);
+    private final EnrolledStudentsPort enrolledStudentsPort = mock(EnrolledStudentsPort.class);
 
     private LectureQueryService service;
 
     @BeforeEach
     void setUp() {
         service = new LectureQueryService(lectureRepository, termRepository, subjectRepository, classroomRepository,
-                enrollmentRepository, studentRepository);
+                enrolledStudentsPort);
     }
 
     private Lecture lecture(Long academyId) {
@@ -80,8 +78,7 @@ class LectureQueryServiceTest {
                 .thenReturn(List.of(Subject.restore(20L, 1L, "수학", NOW)));
         when(classroomRepository.findAllById(List.of(40L)))
                 .thenReturn(List.of(Classroom.restore(40L, 1L, "101호", NOW)));
-        when(enrollmentRepository.findByLectureId(anyLong())).thenReturn(List.of());
-        when(studentRepository.findAllById(List.of())).thenReturn(List.of());
+        when(enrolledStudentsPort.findByLectureId(anyLong(), anyLong())).thenReturn(List.of());
 
         LectureDetailView view = service.getLectureDetail(1L, 1L);
 
