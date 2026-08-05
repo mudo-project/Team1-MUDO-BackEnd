@@ -4,10 +4,12 @@ import com.academy.mudogroupware.global.presentation.api.common.GlobalApiRespons
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
 import com.academy.mudogroupware.workspace.application.query.WorkspaceListScope;
 import com.academy.mudogroupware.workspace.application.command.DeleteWorkspaceCommand;
+import com.academy.mudogroupware.workspace.application.command.RemoveWorkspaceMemberCommand;
 import com.academy.mudogroupware.workspace.application.usecase.CreateWorkspaceUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.DeleteWorkspaceUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.RecordWorkspaceRecentAccessUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.AddWorkspaceMembersUseCase;
+import com.academy.mudogroupware.workspace.application.usecase.RemoveWorkspaceMemberUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.RenameWorkspaceUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.WorkspaceDetailQueryUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.WorkspaceQueryUseCase;
@@ -62,6 +64,7 @@ public class WorkspaceController {
   private final RenameWorkspaceUseCase renameWorkspaceUseCase;
   private final DeleteWorkspaceUseCase deleteWorkspaceUseCase;
   private final AddWorkspaceMembersUseCase addWorkspaceMembersUseCase;
+  private final RemoveWorkspaceMemberUseCase removeWorkspaceMemberUseCase;
   private final Clock clock;
 
   @Operation(
@@ -213,5 +216,26 @@ public class WorkspaceController {
     return ResponseEntity.ok(
         GlobalApiResponse.ok(
             WorkspaceResponseCode.WORKSPACE_MEMBER_ADDED, WorkspaceMemberAddResponse.from(added)));
+  }
+
+  @Operation(
+      summary = "워크스페이스 참여자 제거",
+      description = "본인을 대상으로 하면 자진 탈퇴이며 항상 허용됩니다. 타인 제거는 현재 참여자만 할 수 있습니다. 마지막 남은 참여자는 나가거나 제거될 수 없습니다.")
+  @ApiResponses({
+    @ApiResponse(responseCode = "204", description = "제거 성공"),
+    @ApiResponse(responseCode = "400", description = "마지막 참여자의 탈퇴/제거 시도"),
+    @ApiResponse(responseCode = "403", description = "요청자가 참여자가 아님"),
+    @ApiResponse(responseCode = "404", description = "워크스페이스가 없거나 대상이 참여자가 아님")
+  })
+  // TODO: 권한 모듈의 WORKSPACE:CREATE 권한이 준비되면 타인 제거에만 참여자 조건에 추가한다.
+  // 자진 탈퇴(본인 대상)는 앞으로도 권한 없이 허용한다.
+  @DeleteMapping("/{workspaceId}/members/{userId}")
+  public ResponseEntity<Void> removeWorkspaceMember(
+      @AuthenticationPrincipal AuthUser authUser,
+      @PathVariable Long workspaceId,
+      @PathVariable Long userId) {
+    removeWorkspaceMemberUseCase.removeMember(
+        new RemoveWorkspaceMemberCommand(authUser.userId(), workspaceId, userId));
+    return ResponseEntity.noContent().build();
   }
 }

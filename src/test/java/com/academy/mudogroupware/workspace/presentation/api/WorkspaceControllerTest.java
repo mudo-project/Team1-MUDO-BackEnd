@@ -24,16 +24,19 @@ import com.academy.mudogroupware.workspace.application.query.WorkspaceListItem;
 import com.academy.mudogroupware.workspace.application.query.WorkspaceListScope;
 import com.academy.mudogroupware.workspace.application.command.AddWorkspaceMembersCommand;
 import com.academy.mudogroupware.workspace.application.command.DeleteWorkspaceCommand;
+import com.academy.mudogroupware.workspace.application.command.RemoveWorkspaceMemberCommand;
 import com.academy.mudogroupware.workspace.application.command.RenameWorkspaceCommand;
 import com.academy.mudogroupware.workspace.application.usecase.AddWorkspaceMembersUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.CreateWorkspaceUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.DeleteWorkspaceUseCase;
+import com.academy.mudogroupware.workspace.application.usecase.RemoveWorkspaceMemberUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.RecordWorkspaceRecentAccessUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.RenameWorkspaceUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.WorkspaceDetailQueryUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.WorkspaceQueryUseCase;
 import com.academy.mudogroupware.workspace.domain.exception.InvalidWorkspaceMemberException;
 import com.academy.mudogroupware.workspace.domain.exception.WorkspaceAccessDeniedException;
+import com.academy.mudogroupware.workspace.domain.exception.WorkspaceLastMemberException;
 import com.academy.mudogroupware.workspace.domain.exception.WorkspaceNotFoundException;
 import java.time.Clock;
 import java.time.LocalDate;
@@ -69,6 +72,7 @@ class WorkspaceControllerTest {
   @MockitoBean private RenameWorkspaceUseCase renameWorkspaceUseCase;
   @MockitoBean private DeleteWorkspaceUseCase deleteWorkspaceUseCase;
   @MockitoBean private AddWorkspaceMembersUseCase addWorkspaceMembersUseCase;
+  @MockitoBean private RemoveWorkspaceMemberUseCase removeWorkspaceMemberUseCase;
   @MockitoBean private Clock clock;
 
   @Test
@@ -348,6 +352,47 @@ class WorkspaceControllerTest {
                 .content("{\"memberIds\":[30]}"))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("WORKSPACE_400_1"));
+  }
+
+  @Test
+  void removesOtherMemberAndReturns204() throws Exception {
+    mockMvc
+        .perform(
+            delete("/api/workspaces/{workspaceId}/members/{userId}", 100L, 20L)
+                .with(authentication(authenticatedUser()))
+                .with(csrf()))
+        .andExpect(status().isNoContent());
+
+    verify(removeWorkspaceMemberUseCase)
+        .removeMember(new RemoveWorkspaceMemberCommand(10L, 100L, 20L));
+  }
+
+  @Test
+  void leavesSelfAndReturns204() throws Exception {
+    mockMvc
+        .perform(
+            delete("/api/workspaces/{workspaceId}/members/{userId}", 100L, 10L)
+                .with(authentication(authenticatedUser()))
+                .with(csrf()))
+        .andExpect(status().isNoContent());
+
+    verify(removeWorkspaceMemberUseCase)
+        .removeMember(new RemoveWorkspaceMemberCommand(10L, 100L, 10L));
+  }
+
+  @Test
+  void returns400WhenLastRemainingMemberTriesToLeave() throws Exception {
+    org.mockito.Mockito.doThrow(new WorkspaceLastMemberException())
+        .when(removeWorkspaceMemberUseCase)
+        .removeMember(any(RemoveWorkspaceMemberCommand.class));
+
+    mockMvc
+        .perform(
+            delete("/api/workspaces/{workspaceId}/members/{userId}", 100L, 10L)
+                .with(authentication(authenticatedUser()))
+                .with(csrf()))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("WORKSPACE_400_2"));
   }
 
   private Authentication authenticatedUser(String... authorities) {

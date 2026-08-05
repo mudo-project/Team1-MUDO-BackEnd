@@ -317,3 +317,17 @@ HTTP `200 OK`
 | `400 Bad Request` | `WORKSPACE_400_1` | 선택할 수 없는 참여자가 포함됨 |
 | `403 Forbidden` | `WORKSPACE_403_1` | 요청자가 참여자가 아님 |
 | `404 Not Found` | `WORKSPACE_404_1` | 워크스페이스가 존재하지 않거나 삭제됨 |
+
+## 워크스페이스 참여자 제거 (자진 탈퇴 겸용)
+
+`DELETE /api/workspaces/{workspaceId}/members/{userId}`
+
+- 대상 `userId`가 요청자 자신이면 자진 탈퇴이며 항상 허용된다. 타인 제거는 현재 참여자만 할 수 있다.
+- 본인이 유일하게 남은 참여자면 자진 탈퇴·제거 모두 거부된다 — 이 경우 워크스페이스 삭제를 이용해야 한다.
+
+| 응답 | 코드 | 설명 |
+| --- | --- | --- |
+| `204 No Content` | - | 제거 성공 |
+| `400 Bad Request` | `WORKSPACE_400_2` | 마지막 남은 참여자의 탈퇴/제거 시도 |
+| `403 Forbidden` | `WORKSPACE_403_1` | 요청자가 참여자가 아님 |
+| `404 Not Found` | `WORKSPACE_404_1` / `WORKSPACE_404_2` | 워크스페이스가 없음 / 대상이 참여자가 아님 |
