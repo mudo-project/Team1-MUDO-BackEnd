@@ -67,7 +67,7 @@ GET /api/workspaces?scope=MINE|ALL
   → WorkspaceQueryService
   → WorkspaceListQueryPort
   → WorkspaceListQueryAdapter
-  → EntityManager
+  → WorkspaceJpaRepository
   → WorkspaceListResponse
   → GlobalApiResponse
 ```
@@ -76,7 +76,7 @@ GET /api/workspaces?scope=MINE|ALL
 
 `WorkspaceController`는 `AuthUser`의 `academyId`, `userId`를 사용한다. `scope`를 생략하면 `MINE`으로 바인딩된다.
 
-`scope=ALL`이면 Spring Method Security의 `@PreAuthorize`가 `WORKSPACE:READ_ALL` Authority를 검사한다. Authority가 없으면 Controller 메서드와 `WorkspaceQueryUseCase`를 실행하기 전에 공통 `COMMON_403_1` 응답을 반환한다.
+현재는 권한 모듈 연동 전이므로 Spring Method Security의 `@PreAuthorize`가 `scope=ALL` 요청을 차단한다. `WORKSPACE:READ_ALL` Authority 연동이 완료되면 해당 권한 보유자만 `ALL`을 조회하도록 확장한다.
 
 ### 2. 조회 범위 선택
 
@@ -122,4 +122,4 @@ Controller는 `AuthUser`에서 `academyId`, `userId`를 추출한다. 인증 객
 
 ### 3. 최근 접속 시각 저장과 응답
 
-접근 가능하면 서버의 `Clock` 기준 현재 시각을 저장한다. `(userId, workspaceId)` 기록이 있으면 갱신하고, 없으면 생성한다. 성공 응답은 본문 없는 HTTP `204 No Content`이다.
+접근 가능하면 서버의 `Clock` 기준 현재 시각을 저장한다. Repository는 MySQL의 `INSERT ... ON DUPLICATE KEY UPDATE` 단일 쿼리로 `(userId, workspaceId)` 기록을 생성하거나 갱신한다. 동일한 최초 요청이 동시에 들어와도 복합 PK 충돌로 실패하지 않는다. 성공 응답은 본문 없는 HTTP `204 No Content`이다.

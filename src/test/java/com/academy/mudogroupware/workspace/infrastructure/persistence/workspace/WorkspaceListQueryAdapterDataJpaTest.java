@@ -97,6 +97,18 @@ class WorkspaceListQueryAdapterDataJpaTest {
   }
 
   @Test
+  void findAllUsesWorkspaceIdAsFinalTieBreakerWhenRecentAccessAndCreatedAtMatch() {
+    insertWorkspace(1L, ACADEMY_ID, "first", at(1));
+    insertWorkspace(2L, ACADEMY_ID, "second", at(1));
+    insertRecentAccess(REQUESTER_ID, 1L, at(2));
+    insertRecentAccess(REQUESTER_ID, 2L, at(2));
+
+    List<WorkspaceListItem> result = workspaceListQueryAdapter.findAll(ACADEMY_ID, REQUESTER_ID);
+
+    assertThat(result).extracting(WorkspaceListItem::workspaceId).containsExactly(2L, 1L);
+  }
+
+  @Test
   void existsAccessibleRequiresMembershipUnlessRequesterCanReadAll() {
     insertWorkspace(1L, ACADEMY_ID, "member", at(1));
     insertWorkspace(2L, ACADEMY_ID, "non-member", at(2));

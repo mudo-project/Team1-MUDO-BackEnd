@@ -14,11 +14,13 @@
 - 목록 응답은 `workspaceId`, `name`, `memberCount`만 제공하며, 요청 사용자 기준 최근 접속 시각 내림차순으로 정렬합니다. 미접속 워크스페이스는 생성 시각 내림차순으로 뒤에 배치합니다.
 - `PUT /api/workspaces/{workspaceId}/recent-access` 최근 접속 기록 API를 추가했습니다. 상세 화면을 정상적으로 연 뒤 호출하며, 요청 본문 없이 `204 No Content`를 반환합니다.
 - `workspace_recent_access`는 `(user_id, workspace_id)` 복합 PK를 사용해 사용자별·워크스페이스별 한 행만 유지하고, 재접속 시 `last_accessed_at`을 갱신합니다.
+- 최근 접속 기록은 MySQL 단일 upsert로 처리해 같은 최초 접속 요청이 동시에 들어와도 중복 키 오류 없이 생성 또는 갱신합니다.
 
 ### 검증
 
 - 목록 조회의 `MINE`·`ALL` 범위, 같은 학원 제한, `WORKSPACE:READ_ALL` 권한 경계를 검증했습니다.
 - 최근 접속 기록의 생성·갱신, 사용자별 정렬, 미접속 항목의 후순위 정렬을 검증했습니다.
+- Testcontainers MySQL에서 동일한 `(user_id, workspace_id)`에 대한 동시 최초 upsert 요청이 한 행으로 저장되고 모두 성공하는지 검증했습니다.
 - 전체 Gradle 테스트와 `git diff --check`를 통과했습니다.
 
 ## ✅ 2026-08-05 · 도메인 생성·복원 경로 분리

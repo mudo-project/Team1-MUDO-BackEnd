@@ -84,13 +84,14 @@ HTTP `201 Created`
 
 - `Authorization: Bearer {accessToken}` 헤더가 필요하다.
 - `scope=MINE`은 인증된 사용자가 호출할 수 있다.
-- `scope=ALL`은 `WORKSPACE:READ_ALL` Authority가 필요하다. 권한이 없으면 조회 UseCase 호출 전에 `403 Forbidden`으로 차단한다.
+- 권한 모듈 연동 전에는 `scope=ALL` 요청을 조회 UseCase 호출 전에 `403 Forbidden`으로 차단한다.
+- 권한 모듈 연동 후에는 `WORKSPACE:READ_ALL` Authority가 있는 사용자만 `scope=ALL`을 호출할 수 있다.
 
 ### Query Parameter
 
 | name | type | required | default | description |
 | --- | --- | --- | --- | --- |
-| `scope` | String | false | `MINE` | `MINE`: 사용자가 참여한 워크스페이스, `ALL`: 같은 학원의 전체 활성 워크스페이스 |
+| `scope` | String | false | `MINE` | `MINE`: 사용자가 참여한 워크스페이스, `ALL`: 권한 모듈 연동 후 같은 학원의 전체 활성 워크스페이스 |
 
 ### Success Response
 
@@ -134,12 +135,13 @@ HTTP `200 OK`
 | --- | --- | --- |
 | `400 Bad Request` | `COMMON_400_1` | `scope`가 `MINE`, `ALL` 중 하나가 아닌 경우 |
 | `401 Unauthorized` | `COMMON_401_1` | Access Token이 없거나 유효하지 않은 경우 |
-| `403 Forbidden` | `COMMON_403_1` | `WORKSPACE:READ_ALL` 없이 `scope=ALL`을 요청한 경우 |
+| `403 Forbidden` | `COMMON_403_1` | 권한 모듈 연동 전 `scope=ALL`을 요청한 경우. 연동 후에는 `WORKSPACE:READ_ALL` 없이 요청한 경우 |
 
 ### Business Rules
 
 - `scope`를 생략하면 `MINE`으로 처리한다.
 - 목록은 사용자별 최근 접속 시각 내림차순이며, 최근 접속 기록이 없는 항목은 워크스페이스 생성 시각 내림차순으로 뒤에 배치한다.
+- 최근 접속 시각과 생성 시각이 모두 같으면 워크스페이스 번호 내림차순으로 정렬한다.
 - 삭제된 워크스페이스는 반환하지 않는다.
 - `academyId`, `userId`는 요청 파라미터가 아니라 Access Token의 인증 정보에서 가져온다.
 
@@ -177,4 +179,4 @@ HTTP `204 No Content`
 ### Business Rules
 
 - `academyId`, `userId`, `WORKSPACE:READ_ALL` 보유 여부는 인증 정보에서 가져온다.
-- 최초 접속이면 최근 접속 기록을 생성하고, 기존 기록이 있으면 현재 서버 시각으로 갱신한다.
+- 최초 접속이면 최근 접속 기록을 생성하고, 기존 기록이 있으면 현재 서버 시각으로 갱신한다. MySQL 단일 upsert를 사용하므로 동일한 최초 접속 요청이 동시에 들어와도 중복 키 오류가 발생하지 않는다.

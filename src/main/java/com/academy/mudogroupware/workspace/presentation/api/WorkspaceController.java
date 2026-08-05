@@ -54,8 +54,11 @@ public class WorkspaceController {
   })
   // TODO : 권한 모듈의 WORKSPACE:READ_ALL 권한 시드·조회 로직 완성 후 통합 검증
   @PreAuthorize(
-      "#p1 != T(com.academy.mudogroupware.workspace.application.query.WorkspaceListScope).ALL"
-          + " or hasAuthority('WORKSPACE:READ_ALL')")
+          "#p1 != T(com.academy.mudogroupware.workspace.application.query.WorkspaceListScope).ALL"
+  )
+//  @PreAuthorize(
+//      "#p1 != T(com.academy.mudogroupware.workspace.application.query.WorkspaceListScope).ALL"
+//          + " or hasAuthority('WORKSPACE:READ_ALL')")
   @GetMapping
   public ResponseEntity<GlobalApiResponse<List<WorkspaceListResponse>>> getWorkspaces(
       @AuthenticationPrincipal AuthUser authUser,
