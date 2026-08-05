@@ -1,5 +1,5 @@
 > 작성일: 2026-08-04
-> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료 · 계정 발급(회원가입)·역할 관리 API 미착수
+> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, 역할 생성 API 완료 · 역할 수정·삭제·권한 조립·목록/상세 조회, 계정 발급(회원가입) API 미착수
 
 ## 🎯 변경 목적
 
@@ -170,6 +170,27 @@ Redis 도입이 확정되면서(WebSocket Pub/Sub 용도로 시작해 액세스 
 
 ---
 
+## ✅ 2026-08-05 · 역할 생성 API 구현 (`POST /api/roles`, 이슈 #59)
+
+### 배경
+
+`docs/superpowers/specs/2026-08-04-role-management-api-design.md`에서 설계한 역할 관리 API 7개 중 첫 번째인 역할 생성부터 구현했다. 설계 시점엔 보류했던 두 가지를 이번에 확정했다.
+
+### 확정된 정책
+
+- **에러 예외 클래스는 새 `docs/ERROR_HANDLING.md` 컨벤션을 따랐다.** 설계 시점엔 "구현 시점에 결정"으로 미뤄뒀는데, 구현하는 사이 `global`의 `NotFoundException`/`ConflictException`/`BadRequestException`에 `protected ErrorCode` 생성자가 실제로 추가됐고 `workspace` 도메인(`WorkspaceNameConflictException`)이 이미 이 방식을 쓰고 있어서, 기존 `UserException(UserErrorCode)` 단일 생성자 대신 `RoleNameDuplicateException extends ConflictException`을 새로 만들었다. 기존 `LOGIN_FAILED` 등에서 쓰던 `UserException`은 이번 작업에서 건드리지 않았다(범위 밖, 두 패턴이 과도기적으로 공존).
+- **이름 중복은 애플리케이션 사전 체크 + DB 유니크 제약 둘 다로 방어한다.** `CreateRoleService`가 `existsByAcademyIdAndName`으로 먼저 확인하지만, 두 요청이 동시에 들어오면 이 체크만으로는 못 막는다(check-then-act race). `role(academy_id, name)` UNIQUE 제약(`uk_role_academy_name`)이 이미 있었으므로, `RoleRepositoryImpl.save()`가 `saveAndFlush()` + `DataIntegrityViolationException` 캐치로 이 제약 위반을 `RoleNameDuplicateException`으로 변환하도록 만들었다 — `workspace` 도메인의 `WorkspacePersistenceAdapter`가 이미 똑같은 문제(워크스페이스 이름 중복)를 이 방식으로 풀어놨어서 그대로 포팅했다. (이 방어책은 최종 전체 리뷰에서 처음엔 빠져있던 걸 발견해서 추가했다 — 개별 태스크 리뷰에선 안 보이다가 전체를 놓고 봤을 때 `workspace`와 비교해서 드러난 케이스.)
+- **`permissionCodes`는 `Role` 도메인 모델에 아직 안 넣었다.** 역할 생성 API는 이름·설명만 받고, 권한 조립은 별도 API(`PUT /api/roles/{roleId}/permissions`, 후속 작업)에서 다룬다 — 설계 스펙에서 이미 결정된 사항 그대로.
+
+### 완료 기준
+
+- [x] `RoleController`/`CreateRoleUseCase`/`CreateRoleService`/`RoleRepository`/`RoleRepositoryImpl` 등 구현
+- [x] `UserErrorCode` 1건(`ROLE_NAME_DUPLICATE`, `USER_409_1`) + `RoleNameDuplicateException` 추가
+- [x] `CreateRoleServiceTest`(이름 중복/정상 생성), `RoleRepositoryImplTest`(DB 유니크 제약 위반 변환) 테스트 작성
+- [x] 로컬 curl로 생성 성공(201)/이름 중복(409)/권한 없음(403) 확인
+- [x] `./gradlew build` 통과
+- [x] `users/docs/{README,API,CHANGELOG,REVISION}.md` 갱신
+
 ## 🧩 영향 범위
 
 | 계층 | 변경 내용 |
@@ -183,6 +204,10 @@ Redis 도입이 확정되면서(WebSocket Pub/Sub 용도로 시작해 액세스 
 | Presentation(추가) | `AuthController.logout` 신규 |
 | Application(추가) | `LogoutUseCase`/`LogoutService` 신규. `auth` 모듈에 `TokenRevokerUseCase` 신규 |
 | 공통(`global`) | `AuthErrorCode`에 리프레시 토큰 실패 코드 2종 추가·`ROLE_CLAIM_MISSING` 제거, `SecurityConfig` CORS 설정 정리, `JwtClaims`/`JwtTokenProvider`/`AuthUser`/`JwtAuthenticationConverter`를 `roleId`/`academyId`/`RolePermissionLookupPort` 기반으로 재작업 |
+| Presentation(추가) | `RoleController`(`POST /api/roles`) 신규 |
+| Application(추가) | `CreateRoleCommand`/`CreateRoleUseCase`/`CreateRoleService` 신규 |
+| Domain(추가) | `Role`(불변 객체), `RoleRepository`, `RoleNameDuplicateException` 신규. `UserErrorCode`에 `ROLE_NAME_DUPLICATE`(`USER_409_1`) 추가 |
+| Persistence(추가) | `RoleEntity`에 `@Builder` 생성자 추가, `RoleJpaRepository`에 `existsByAcademyIdAndName` 추가, `RoleRepositoryImpl` 신규(DB 유니크 제약 위반 → `RoleNameDuplicateException` 변환 포함) |
 
 ## 🧪 완료 기준 (전체)
 
@@ -193,7 +218,8 @@ Redis 도입이 확정되면서(WebSocket Pub/Sub 용도로 시작해 액세스 
 - [x] role/permission 테이블 신설, `users.role_id` 전환, 매 요청 권한 조회(`hasAuthority`) 기반 구축
 - [ ] 계정 발급(회원가입, 원장이 하위 직원 계정 생성) API — 미착수
 - [x] 로그아웃 API — `POST /api/auth/logout` 추가, `TokenRevokerUseCase`로 refreshToken 삭제
-- [ ] 역할 생성·수정·삭제, 권한 조립 API — 미착수 (`ROLE:MANAGE` permission만 시드됨)
+- [x] 역할 생성 API — `POST /api/roles` 추가, DB 유니크 제약 백스톱 포함
+- [ ] 역할 수정·삭제, 권한 조립, 목록/상세 조회 API — 미착수
 - [x] `academy` 테이블 생성됨(다른 팀원, `V2.1.2`~`V2.1.4`) — `role.academy_id`, `users.academy_id` 모두 FK 연결 완료(`V4.1.3`)
 
 ## 📌 후속 문서
