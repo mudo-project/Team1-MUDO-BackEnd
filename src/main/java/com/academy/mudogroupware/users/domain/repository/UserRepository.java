@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.users.domain.repository;
 
+import java.util.List;
 import java.util.Set;
 import java.util.Optional;
 
@@ -12,4 +13,6 @@ public interface UserRepository {
     Optional<User> findById(Long id);
 
     Set<Long> findActiveUserIds(Long academyId, Set<Long> userIds);
+
+    List<User> findAllById(Set<Long> ids);
 }
