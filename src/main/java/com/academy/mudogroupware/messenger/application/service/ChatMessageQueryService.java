@@ -33,6 +33,10 @@ public class ChatMessageQueryService implements ChatMessageQueryUseCase {
     @Override
     public ChatMessagePageView getMessages(Long chatRoomId, Long requesterId, LocalDateTime cursorCreatedAt,
                                             Long cursorMessageId, int size) {
+        if (size < 1 || size > 100) {
+            throw new MessengerException(MessengerErrorCode.INVALID_PAGE_SIZE);
+        }
+
         boolean cursorProvided = cursorCreatedAt != null || cursorMessageId != null;
         boolean cursorComplete = cursorCreatedAt != null && cursorMessageId != null;
         if (cursorProvided && !cursorComplete) {

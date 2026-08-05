@@ -1,5 +1,8 @@
 package com.academy.mudogroupware.messenger.application.service;
 
+import java.time.Clock;
+import java.time.LocalDateTime;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +24,7 @@ public class SendMessageService implements SendMessageUseCase {
 
     private final ChatRoomRepository chatRoomRepository;
     private final ChatMessageRepository chatMessageRepository;
+    private final Clock clock;
 
     @Override
     public Long sendMessage(SendMessageCommand command) {
@@ -30,8 +34,12 @@ public class SendMessageService implements SendMessageUseCase {
             throw new MessengerException(MessengerErrorCode.NOT_ROOM_MEMBER);
         }
 
+        LocalDateTime createdAt = LocalDateTime.now(clock);
         ChatMessage chatMessage = ChatMessage.create(command.chatRoomId(), command.senderId(),
-                command.messageType(), command.content(), command.fileUrl(), command.fileName());
-        return chatMessageRepository.save(chatMessage).getId();
+                command.messageType(), command.content(), command.fileUrl(), command.fileName(), createdAt);
+        ChatMessage saved = chatMessageRepository.save(chatMessage);
+        chatRoom.markRead(command.senderId(), saved.getCreatedAt());
+        chatRoomRepository.markRead(command.chatRoomId(), command.senderId(), saved.getCreatedAt());
+        return saved.getId();
     }
 }

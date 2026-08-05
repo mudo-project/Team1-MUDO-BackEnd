@@ -42,6 +42,7 @@ import com.academy.mudogroupware.messenger.presentation.api.response.TaskCardRes
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 
@@ -113,7 +114,7 @@ public class MessengerController {
             @PathVariable Long roomId,
             @RequestParam(required = false) LocalDateTime cursorCreatedAt,
             @RequestParam(required = false) Long cursorMessageId,
-            @RequestParam(defaultValue = "20") @Min(1) int size) {
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
         ChatMessagePageResponse response = ChatMessagePageResponse.from(chatMessageQueryUseCase.getMessages(
                 roomId, authUser.userId(), cursorCreatedAt, cursorMessageId, size));
         return ResponseEntity.ok(GlobalApiResponse.ok(MessengerResponseCode.MESSAGE_LIST_RETRIEVED, response));

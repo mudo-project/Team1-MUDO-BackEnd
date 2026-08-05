@@ -20,9 +20,11 @@ public enum MessengerErrorCode implements ErrorCode {
     CROSS_ACADEMY_INVITE(HttpStatus.BAD_REQUEST, "MESSENGER_400_8", "다른 학원 소속 사용자는 초대할 수 없습니다."),
     INVALID_CURSOR(HttpStatus.BAD_REQUEST, "MESSENGER_400_11",
             "cursorCreatedAt과 cursorMessageId는 함께 전달하거나 함께 생략해야 합니다."),
+    INVALID_PAGE_SIZE(HttpStatus.BAD_REQUEST, "MESSENGER_400_12", "메시지 조회 size는 1 이상 100 이하여야 합니다."),
 
     TASK_CONTENT_REQUIRED(HttpStatus.BAD_REQUEST, "MESSENGER_400_9", "업무지시 내용은 비어 있을 수 없습니다."),
     ASSIGNEE_REQUIRED(HttpStatus.BAD_REQUEST, "MESSENGER_400_10", "담당자를 최소 1명 이상 지정해야 합니다."),
+    INVALID_ASSIGNEE(HttpStatus.BAD_REQUEST, "MESSENGER_400_13", "유효하지 않은 담당자가 포함되어 있습니다."),
 
     NOT_ROOM_MEMBER(HttpStatus.FORBIDDEN, "MESSENGER_403_1", "채팅방 참여자가 아닙니다."),
     NOT_TASK_ASSIGNEE(HttpStatus.FORBIDDEN, "MESSENGER_403_2", "해당 업무지시의 담당자가 아닙니다."),

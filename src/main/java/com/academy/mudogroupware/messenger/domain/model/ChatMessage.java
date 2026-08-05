@@ -45,9 +45,9 @@ public final class ChatMessage {
     }
 
     public static ChatMessage create(Long chatRoomId, Long senderUserId, MessageType messageType, String content,
-                                      String fileUrl, String fileName) {
+                                      String fileUrl, String fileName, LocalDateTime createdAt) {
         return new ChatMessage(null, chatRoomId, senderUserId, messageType, content, fileUrl, fileName,
-                LocalDateTime.now());
+                createdAt);
     }
 
     public static ChatMessage restore(Long id, Long chatRoomId, Long senderUserId, MessageType messageType,

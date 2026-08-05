@@ -5,9 +5,11 @@ import java.util.List;
 import com.academy.mudogroupware.messenger.application.command.CreateChatRoomCommand;
 
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 
 public record CreateChatRoomRequest(
-        @NotEmpty List<Long> participantIds,
+        @NotEmpty List<@NotNull @Positive Long> participantIds,
         String name
 ) {
 
