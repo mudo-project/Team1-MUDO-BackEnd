@@ -32,7 +32,7 @@ public class RegisterWifiIpService implements RegisterWifiIpUseCase {
         AcademyWifiIp confirmedWifiIp = AcademyWifiIp.create(
                 academy.id(), command.confirmedIpAddress(), null);
         AcademyWifiIp detectedWifiIp = AcademyWifiIp.create(
-                academy.id(), command.detectedIpAddress(), null);
+                academy.id(), command.detectedIpAddress(), command.note());
 
         if (!confirmedWifiIp.getIpAddress().equals(detectedWifiIp.getIpAddress())) {
             throw new AttendanceException(AttendanceErrorCode.WIFI_IP_CHANGED);
