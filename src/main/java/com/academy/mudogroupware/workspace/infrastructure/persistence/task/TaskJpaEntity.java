@@ -15,6 +15,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -52,7 +53,7 @@ public class TaskJpaEntity extends BaseTimeEntity {
   private TaskStatus status;
 
   @Column(name = "due_at")
-  private LocalDateTime dueAt;
+  private LocalDate dueAt;
 
   @Column(name = "scheduled_for")
   private LocalDateTime scheduledFor;
@@ -66,7 +67,7 @@ public class TaskJpaEntity extends BaseTimeEntity {
       String title,
       Long createdBy,
       TaskStatus status,
-      LocalDateTime dueAt,
+      LocalDate dueAt,
       LocalDateTime scheduledFor) {
     this.workspace = workspace;
     this.recurringTemplate = recurringTemplate;
@@ -83,7 +84,7 @@ public class TaskJpaEntity extends BaseTimeEntity {
       String title,
       Long createdBy,
       TaskStatus status,
-      LocalDateTime dueAt,
+      LocalDate dueAt,
       LocalDateTime scheduledFor) {
     return new TaskJpaEntity(
         workspace, recurringTemplate, title, createdBy, status, dueAt, scheduledFor);

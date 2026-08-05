@@ -48,11 +48,6 @@ class WorkspacePersistenceAdapterTest {
   }
 
   private Workspace workspace() {
-    return Workspace.builder()
-        .academyId(1L)
-        .name("개발팀")
-        .createdBy(10L)
-        .memberIds(Set.of(10L))
-        .build();
+    return Workspace.create(1L, "개발팀", 10L, Set.of());
   }
 }
