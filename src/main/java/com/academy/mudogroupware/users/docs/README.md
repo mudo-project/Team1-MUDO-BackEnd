@@ -2,7 +2,7 @@
 
 ## 책임과 범위
 
-계정·권한(로그인, 회원, 역할)을 담당한다. 로그인·액세스 토큰 재발급과, 조립식 권한(역할·권한)의 DB/인증 기반이 구현돼 있다. 역할 생성·수정·삭제, 권한 조립, 직원 계정 발급 API는 아직 없다(후속 작업).
+계정·권한(로그인, 회원, 역할)을 담당한다. 로그인·액세스 토큰 재발급과, 조립식 권한(역할·권한)의 DB/인증 기반이 구현돼 있다. 역할 생성 API가 구현돼 있다. 역할 수정·삭제, 권한 조립, 목록·상세 조회, 직원 계정 발급 API는 아직 없다(후속 작업).
 
 - **User(사용자)**: 학원 소속 직원(원장/행정/강사/조교) 계정. `academy_id`로 소속 학원을, `role_id`로 역할을 가진다.
 - **Role(역할)**: 학원마다 자유롭게 만드는 역할(예: "원장", "행정"). 학원 간 이름이 겹쳐도 무방하다(`academy_id`+`name` 유니크).
@@ -27,6 +27,9 @@ be4 (계정·권한)
 - `RefreshUseCase` — `POST /api/token/reissue`. 요청의 `refreshToken` HttpOnly 쿠키를 `auth` 모듈의 `RefreshTokenValidatorUseCase`로 검증하고, 검증된 사용자 정보로 `TokenIssuerUseCase.issueAccessToken()`을 호출해 accessToken만 재발급한다. **refreshToken은 로테이션하지 않는다** — 재발급 응답에도 새 refreshToken 쿠키를 내려주지 않고, 기존 쿠키가 만료 전까지 그대로 유지된다.
 - `LogoutUseCase` — `POST /api/auth/logout`(인증 필요). `auth` 모듈의 `TokenRevokerUseCase`로 서버에 저장된 refreshToken을 삭제하고, 응답에서 refreshToken 쿠키를 Max-Age=0으로 만료시킨다.
 
+역할 관리 (`/api/roles`, `ROLE:MANAGE` 권한 필요):
+- `CreateRoleUseCase` — `POST /api/roles`. 요청자의 `academyId`(JWT)로 역할을 생성한다. 같은 학원 내 이름 중복은 애플리케이션 사전 체크(`USER_409_1`)와 DB `UNIQUE` 제약(`uk_role_academy_name`) 둘 다로 방어한다(동시 요청 대비).
+
 ## 다른 모듈 또는 외부 시스템에 요청하는 의존성
 
 - **토큰 발급**: `auth.application.usecase.TokenIssuerUseCase`(auth 모듈이 공개한 계약, 구현체는 `TokenService`)를 호출한다.
@@ -46,7 +49,7 @@ be4 (계정·권한)
 
 - 로그인 실패 시 "아이디 또는 비밀번호가 올바르지 않습니다"로 통일해서 응답한다 — 아이디 존재 여부가 노출되지 않도록 하기 위함.
 - 계정 발급(회원가입) API는 아직 없다. ERD상 자체 회원가입이 아니라 "원장이 하위 계정 발급" 흐름으로 확정돼 있어, 이후 구현 시 권한 검증(원장만 발급 가능, `ACCOUNT:CREATE` permission)이 필요하다.
-- 역할 생성·수정·삭제, 역할에 권한 조립하는 API도 아직 없다(`ROLE:MANAGE` permission이 시드는 돼 있으나 이를 쓰는 컨트롤러 없음). 지금은 로컬 SQL로 직접 role/permission 행을 넣어야 로그인 후 authorities가 채워진다.
+- 역할 생성 API(`POST /api/roles`)는 구현됐다. 역할 수정·삭제, 역할에 권한 조립하는 API는 아직 없다. 권한 조립은 지금도 로컬 SQL로 직접 `role_permission` 행을 넣어야 한다.
 - **⚠️ Breaking Change (2026-08-04)**: `users.role`(문자열) 컬럼이 제거되고 `role_id`로 대체됐다. `notice` 도메인의 `UserInfoEntity`가 이 컬럼을 직접 매핑하고 있어 별도 수정이 필요하다(notice 담당자 몫, 이전 `resign_date` 삭제 때와 동일한 패턴).
 - JWT의 `roleId`는 재로그인 전까지 예전 값을 유지한다(원장이 역할을 재배정해도 즉시 반영 안 됨). 반면 `roleName`과 permission 목록은 매 요청마다 새로 조회하므로 즉시 반영된다. `academyId`는 계정 소속이 구조적으로 불변이라 이 문제 자체가 없다.
 
