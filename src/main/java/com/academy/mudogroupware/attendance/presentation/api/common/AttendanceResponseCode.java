@@ -14,7 +14,9 @@ public enum AttendanceResponseCode implements ResponseCode {
     WIFI_IP_REGISTERED("ACADEMY_201_1", "와이파이 IP가 등록되었습니다."),
     WIFI_IP_DELETED("ACADEMY_200_2", "와이파이 IP가 삭제되었습니다."),
     ATTENDANCE_CHECKED_IN("ATTENDANCE_201_1", "출근이 등록되었습니다."),
-    ATTENDANCE_CHECKED_OUT("ATTENDANCE_200_2", "퇴근이 등록되었습니다.");
+    ATTENDANCE_CHECKED_OUT("ATTENDANCE_200_2", "퇴근이 등록되었습니다."),
+    TODAY_TEAM_ATTENDANCE_RETRIEVED(
+            "ATTENDANCE_200_3", "오늘 팀 근태 현황을 조회했습니다.");
 
     private final String code;
     private final String message;

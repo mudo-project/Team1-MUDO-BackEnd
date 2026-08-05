@@ -2,6 +2,7 @@ package com.academy.mudogroupware.attendance.presentation.api;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -23,7 +24,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
-@Tag(name = "근태 출퇴근", description = "직원 출퇴근 기록 API")
+@Tag(name = "근태", description = "근태 관리 API")
 @RestController
 @RequestMapping("/api/attendance/check-ins")
 @RequiredArgsConstructor
@@ -32,6 +33,7 @@ public class AttendanceCheckInController {
     private final CheckInUseCase checkInUseCase;
     private final ClientIpResolver clientIpResolver;
 
+    @PreAuthorize("hasAuthority('ATTENDANCE:CHECK_IN')")
     @Operation(
             summary = "출근 체크인",
             description = "소속 학원에 등록된 허용 IP에서 출근을 기록합니다. 지각인 경우 사유가 필요합니다.")

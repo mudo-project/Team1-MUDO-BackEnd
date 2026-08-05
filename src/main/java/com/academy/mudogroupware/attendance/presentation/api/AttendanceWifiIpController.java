@@ -2,6 +2,7 @@ package com.academy.mudogroupware.attendance.presentation.api;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,7 +29,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
-@Tag(name = "근태 Wi-Fi IP", description = "학원 출퇴근 허용 IP 관리 API")
+@Tag(name = "근태", description = "근태 관리 API")
 @RestController
 @RequestMapping("/api/attendance/wifi-ips")
 @RequiredArgsConstructor
@@ -38,6 +39,7 @@ public class AttendanceWifiIpController {
     private final DeleteWifiIpUseCase deleteWifiIpUseCase;
     private final ClientIpResolver clientIpResolver;
 
+    @PreAuthorize("hasAuthority('ATTENDANCE:WIFI_IP_MANAGE')")
     @Operation(
             summary = "현재 접속 IP 조회",
             description = "요청을 보낸 클라이언트의 공인 IP 주소를 조회합니다.")
@@ -51,6 +53,7 @@ public class AttendanceWifiIpController {
                 new CurrentClientIpResponse(clientIp));
     }
 
+    @PreAuthorize("hasAuthority('ATTENDANCE:WIFI_IP_MANAGE')")
     @Operation(
             summary = "출퇴근 허용 IP 등록",
             description = "현재 접속 IP와 사용자가 확인한 IP가 일치하면 소유 학원의 출퇴근 허용 IP로 등록합니다.")
@@ -69,6 +72,7 @@ public class AttendanceWifiIpController {
                         AcademyWifiIpResponse.from(result)));
     }
 
+    @PreAuthorize("hasAuthority('ATTENDANCE:WIFI_IP_MANAGE')")
     @Operation(
             summary = "출퇴근 허용 IP 삭제",
             description = "소유 학원에 등록된 출퇴근 허용 IP를 삭제합니다.")
