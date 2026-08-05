@@ -1,0 +1,41 @@
+{
+  "family": "REPLACED_BY_DEPLOY_SCRIPT",
+  "networkMode": "bridge",
+  "requiresCompatibilities": ["EC2"],
+  "executionRoleArn": "REPLACED_BY_DEPLOY_SCRIPT",
+  "taskRoleArn": "REPLACED_BY_DEPLOY_SCRIPT",
+  "containerDefinitions": [
+    {
+      "name": "app",
+      "image": "REPLACED_BY_DEPLOY_SCRIPT",
+      "essential": true,
+      "cpu": 0,
+      "memoryReservation": 0,
+      "memory": 0,
+      "portMappings": [
+        {
+          "containerPort": 8080,
+          "hostPort": 0,
+          "protocol": "tcp"
+        }
+      ],
+      "dockerLabels": {},
+      "environment": [],
+      "secrets": [],
+      "healthCheck": {
+        "command": ["CMD-SHELL", "curl --fail --silent http://localhost:8080/actuator/health || exit 1"],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 90
+      },
+      "logConfiguration": {
+        "logDriver": "json-file",
+        "options": {
+          "max-size": "20m",
+          "max-file": "5"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "family": "REPLACED_BY_DEPLOY_SCRIPT",
+  "networkMode": "bridge",
+  "requiresCompatibilities": ["EC2"],
+  "executionRoleArn": "REPLACED_BY_DEPLOY_SCRIPT",
+  "containerDefinitions": [
+    {
+      "name": "migration",
+      "image": "REPLACED_BY_DEPLOY_SCRIPT",
+      "essential": true,
+      "cpu": 128,
+      "memoryReservation": 256,
+      "memory": 512,
+      "environment": [
+        {"name": "FLYWAY_VALIDATE_MIGRATION_NAMING", "value": "true"}
+      ],
+      "secrets": [],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/mudo/prod/migration",
+          "awslogs-region": "ap-northeast-2",
+          "awslogs-stream-prefix": "flyway"
+        }
+      }
+    }
+  ]
+}

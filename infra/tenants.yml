@@ -1,0 +1,12 @@
+tenants:
+  - code: academy-a
+    # AWS DB·SSM·S3·Target Group·ECS Service 준비와 격리 검증 후 true로 변경한다.
+    enabled: false
+    # 결제 플랜은 유료 엔드포인트·쿼터 메타데이터이며 Task 자원을 선택하지 않는다.
+    billing_plan: basic
+    runtime_profile: shared-default
+    cell: cell-1
+    service: mudo-prod-svc-academy-a
+    task_family: mudo-prod-tenant-academy-a
+    health_url: https://academy-a.groupware.example.com/actuator/health
+    s3_bucket: mudo-prod-staff-REPLACE_ACCOUNT_SUFFIX

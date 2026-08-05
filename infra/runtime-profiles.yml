@@ -1,0 +1,14 @@
+runtime_profiles:
+  shared-default:
+    # 결제 플랜과 무관하게 모든 학원에 적용하는 공통 런타임 상한이다.
+    cpu: 1024
+    memory_reservation_mib: 1536
+    memory_limit_mib: 2048
+    tomcat_max_threads: 60
+    tomcat_queue_capacity: 100
+    hikari_max_pool_size: 10
+    hikari_connection_timeout_ms: 3000
+    async_core_pool_size: 2
+    async_max_pool_size: 4
+    async_queue_capacity: 40
+    heavy_job_max_concurrency: 2

@@ -35,6 +35,18 @@ jobs:
           java-version: "17"
           cache: gradle
 
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Validate infrastructure manifests
+        run: |
+          python -m pip install --disable-pip-version-check -r infra/requirements.txt
+          python infra/scripts/test_deploy_production.py
+          python infra/scripts/deploy_production.py --validate-only
+
       - name: Grant execute permission to Gradle Wrapper
         run: chmod +x gradlew
 

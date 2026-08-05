@@ -1,0 +1,12 @@
+cells:
+  cell-1:
+    ecs_cluster: mudo-prod-cluster
+    capacity_provider: mudo-prod-capacity-provider
+    rds_identifier: mudo-prod-rds-cell-1
+    rds_app_connection_ratio: 0.70
+    ecs_app_capacity_ratio: 0.80
+
+    # AWS 리소스 생성 후 실제 값을 기록한다. null인 동안 운영 배포는 실패하도록 설계한다.
+    ecs_registered_cpu: null
+    ecs_registered_memory_mib: null
+    rds_max_connections: null
