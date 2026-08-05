@@ -22,8 +22,8 @@ public class MemoQueryService implements MemoQueryUseCase {
     @Override
     public List<Memo> getMemos(Long userId, MemoSortOrder sortOrder) {
         if (sortOrder == MemoSortOrder.OLDEST) {
-            return memoRepository.findAllByUserIdOrderByCreatedAtAsc(userId);
+            return memoRepository.findAllByUserIdOrderByCreatedAtAscIdAsc(userId);
         }
-        return memoRepository.findAllByUserIdOrderByCreatedAtDesc(userId);
+        return memoRepository.findAllByUserIdOrderByCreatedAtDescIdDesc(userId);
     }
 }

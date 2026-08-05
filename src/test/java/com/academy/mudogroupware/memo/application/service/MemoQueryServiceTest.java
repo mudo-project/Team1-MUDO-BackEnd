@@ -26,7 +26,7 @@ class MemoQueryServiceTest {
     void getMemosUsesDescendingOrderForNewest() {
         MemoQueryService service = new MemoQueryService(memoRepository);
         Memo memo = Memo.create(10L, "제목", "내용", MemoColor.YELLOW, LocalDateTime.now());
-        when(memoRepository.findAllByUserIdOrderByCreatedAtDesc(10L)).thenReturn(List.of(memo));
+        when(memoRepository.findAllByUserIdOrderByCreatedAtDescIdDesc(10L)).thenReturn(List.of(memo));
 
         List<Memo> result = service.getMemos(10L, MemoSortOrder.NEWEST);
 
@@ -37,7 +37,7 @@ class MemoQueryServiceTest {
     void getMemosUsesAscendingOrderForOldest() {
         MemoQueryService service = new MemoQueryService(memoRepository);
         Memo memo = Memo.create(10L, "제목", "내용", MemoColor.YELLOW, LocalDateTime.now());
-        when(memoRepository.findAllByUserIdOrderByCreatedAtAsc(10L)).thenReturn(List.of(memo));
+        when(memoRepository.findAllByUserIdOrderByCreatedAtAscIdAsc(10L)).thenReturn(List.of(memo));
 
         List<Memo> result = service.getMemos(10L, MemoSortOrder.OLDEST);
 

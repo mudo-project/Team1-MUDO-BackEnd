@@ -30,8 +30,9 @@ public class UpdateMemoPositionService implements UpdateMemoPositionUseCase {
         if (!memo.isOwnedBy(command.userId())) {
             throw new MemoException(MemoErrorCode.NOT_MEMO_OWNER);
         }
-        memo.updatePosition(command.positionX(), command.positionY(), command.width(), command.height(),
-                LocalDateTime.now(clock));
-        memoRepository.save(memo);
+        LocalDateTime now = LocalDateTime.now(clock);
+        memo.updatePosition(command.positionX(), command.positionY(), command.width(), command.height(), now);
+        memoRepository.updatePosition(memo.getId(), memo.getPositionX(), memo.getPositionY(), memo.getWidth(),
+                memo.getHeight(), now);
     }
 }

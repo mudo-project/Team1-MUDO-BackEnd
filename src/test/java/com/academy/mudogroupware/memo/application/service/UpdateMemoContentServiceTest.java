@@ -16,6 +16,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.academy.mudogroupware.memo.application.command.UpdateMemoContentCommand;
+import com.academy.mudogroupware.memo.domain.exception.MemoErrorCode;
 import com.academy.mudogroupware.memo.domain.exception.MemoException;
 import com.academy.mudogroupware.memo.domain.model.Memo;
 import com.academy.mudogroupware.memo.domain.model.MemoColor;
@@ -47,8 +48,9 @@ class UpdateMemoContentServiceTest {
         Memo memo = Memo.create(10L, "제목", "내용", MemoColor.YELLOW, LocalDateTime.now());
         when(memoRepository.findById(1L)).thenReturn(Optional.of(memo));
 
-        assertThrows(MemoException.class,
+        MemoException exception = assertThrows(MemoException.class,
                 () -> service.updateContent(new UpdateMemoContentCommand(1L, 99L, "새 제목", "새 내용")));
+        assertEquals(MemoErrorCode.NOT_MEMO_OWNER, exception.getErrorCode());
     }
 
     @Test
@@ -56,7 +58,8 @@ class UpdateMemoContentServiceTest {
         UpdateMemoContentService service = new UpdateMemoContentService(memoRepository, clock);
         when(memoRepository.findById(1L)).thenReturn(Optional.empty());
 
-        assertThrows(MemoException.class,
+        MemoException exception = assertThrows(MemoException.class,
                 () -> service.updateContent(new UpdateMemoContentCommand(1L, 10L, "새 제목", "새 내용")));
+        assertEquals(MemoErrorCode.MEMO_NOT_FOUND, exception.getErrorCode());
     }
 }

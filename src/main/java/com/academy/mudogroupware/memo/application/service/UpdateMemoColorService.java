@@ -30,7 +30,8 @@ public class UpdateMemoColorService implements UpdateMemoColorUseCase {
         if (!memo.isOwnedBy(command.userId())) {
             throw new MemoException(MemoErrorCode.NOT_MEMO_OWNER);
         }
-        memo.updateColor(command.color(), LocalDateTime.now(clock));
-        memoRepository.save(memo);
+        LocalDateTime now = LocalDateTime.now(clock);
+        memo.updateColor(command.color(), now);
+        memoRepository.updateColor(memo.getId(), memo.getColor(), now);
     }
 }

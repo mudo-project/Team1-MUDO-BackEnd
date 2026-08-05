@@ -30,7 +30,8 @@ public class UpdateMemoContentService implements UpdateMemoContentUseCase {
         if (!memo.isOwnedBy(command.userId())) {
             throw new MemoException(MemoErrorCode.NOT_MEMO_OWNER);
         }
-        memo.updateContent(command.title(), command.content(), LocalDateTime.now(clock));
-        memoRepository.save(memo);
+        LocalDateTime now = LocalDateTime.now(clock);
+        memo.updateContent(command.title(), command.content(), now);
+        memoRepository.updateContent(memo.getId(), memo.getTitle(), memo.getContent(), now);
     }
 }

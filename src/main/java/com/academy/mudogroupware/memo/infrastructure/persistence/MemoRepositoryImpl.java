@@ -1,11 +1,13 @@
 package com.academy.mudogroupware.memo.infrastructure.persistence;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 import org.springframework.stereotype.Repository;
 
 import com.academy.mudogroupware.memo.domain.model.Memo;
+import com.academy.mudogroupware.memo.domain.model.MemoColor;
 import com.academy.mudogroupware.memo.domain.repository.MemoRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -28,17 +30,33 @@ public class MemoRepositoryImpl implements MemoRepository {
     }
 
     @Override
-    public List<Memo> findAllByUserIdOrderByCreatedAtDesc(Long userId) {
-        return memoJpaRepository.findAllByUserIdOrderByCreatedAtDesc(userId).stream()
+    public List<Memo> findAllByUserIdOrderByCreatedAtDescIdDesc(Long userId) {
+        return memoJpaRepository.findAllByUserIdOrderByCreatedAtDescIdDesc(userId).stream()
                 .map(this::toDomain)
                 .toList();
     }
 
     @Override
-    public List<Memo> findAllByUserIdOrderByCreatedAtAsc(Long userId) {
-        return memoJpaRepository.findAllByUserIdOrderByCreatedAtAsc(userId).stream()
+    public List<Memo> findAllByUserIdOrderByCreatedAtAscIdAsc(Long userId) {
+        return memoJpaRepository.findAllByUserIdOrderByCreatedAtAscIdAsc(userId).stream()
                 .map(this::toDomain)
                 .toList();
+    }
+
+    @Override
+    public void updateContent(Long id, String title, String content, LocalDateTime updatedAt) {
+        memoJpaRepository.updateContent(id, title, content, updatedAt);
+    }
+
+    @Override
+    public void updateColor(Long id, MemoColor color, LocalDateTime updatedAt) {
+        memoJpaRepository.updateColor(id, color, updatedAt);
+    }
+
+    @Override
+    public void updatePosition(Long id, int positionX, int positionY, int width, int height,
+                                LocalDateTime updatedAt) {
+        memoJpaRepository.updatePosition(id, positionX, positionY, width, height, updatedAt);
     }
 
     @Override

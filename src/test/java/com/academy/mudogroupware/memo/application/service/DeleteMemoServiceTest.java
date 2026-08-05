@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.memo.application.service;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -14,6 +15,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.academy.mudogroupware.memo.application.command.DeleteMemoCommand;
+import com.academy.mudogroupware.memo.domain.exception.MemoErrorCode;
 import com.academy.mudogroupware.memo.domain.exception.MemoException;
 import com.academy.mudogroupware.memo.domain.model.Memo;
 import com.academy.mudogroupware.memo.domain.model.MemoColor;
@@ -42,7 +44,9 @@ class DeleteMemoServiceTest {
         Memo memo = Memo.create(10L, "제목", "내용", MemoColor.YELLOW, LocalDateTime.now());
         when(memoRepository.findById(1L)).thenReturn(Optional.of(memo));
 
-        assertThrows(MemoException.class, () -> service.deleteMemo(new DeleteMemoCommand(1L, 99L)));
+        MemoException exception = assertThrows(MemoException.class,
+                () -> service.deleteMemo(new DeleteMemoCommand(1L, 99L)));
+        assertEquals(MemoErrorCode.NOT_MEMO_OWNER, exception.getErrorCode());
     }
 
     @Test
@@ -50,6 +54,8 @@ class DeleteMemoServiceTest {
         DeleteMemoService service = new DeleteMemoService(memoRepository);
         when(memoRepository.findById(1L)).thenReturn(Optional.empty());
 
-        assertThrows(MemoException.class, () -> service.deleteMemo(new DeleteMemoCommand(1L, 10L)));
+        MemoException exception = assertThrows(MemoException.class,
+                () -> service.deleteMemo(new DeleteMemoCommand(1L, 10L)));
+        assertEquals(MemoErrorCode.MEMO_NOT_FOUND, exception.getErrorCode());
     }
 }
