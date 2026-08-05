@@ -7,6 +7,8 @@ import com.academy.mudogroupware.memo.domain.exception.MemoException;
 
 public final class Memo {
 
+    private static final int TITLE_MAX_LENGTH = 100;
+
     private final Long id;
     private final Long userId;
     private final String title;
@@ -26,6 +28,9 @@ public final class Memo {
         }
         if (title == null || title.isBlank()) {
             throw new MemoException(MemoErrorCode.TITLE_REQUIRED);
+        }
+        if (title.length() > TITLE_MAX_LENGTH) {
+            throw new MemoException(MemoErrorCode.TITLE_TOO_LONG);
         }
         if (color == null) {
             throw new MemoException(MemoErrorCode.COLOR_REQUIRED);
