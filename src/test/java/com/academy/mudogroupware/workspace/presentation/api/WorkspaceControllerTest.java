@@ -10,6 +10,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -21,20 +22,24 @@ import com.academy.mudogroupware.global.presentation.security.JwtAuthenticationC
 import com.academy.mudogroupware.workspace.application.query.WorkspaceDetail;
 import com.academy.mudogroupware.workspace.application.query.WorkspaceListItem;
 import com.academy.mudogroupware.workspace.application.query.WorkspaceListScope;
+import com.academy.mudogroupware.workspace.application.command.AddWorkspaceMembersCommand;
 import com.academy.mudogroupware.workspace.application.command.DeleteWorkspaceCommand;
 import com.academy.mudogroupware.workspace.application.command.RenameWorkspaceCommand;
+import com.academy.mudogroupware.workspace.application.usecase.AddWorkspaceMembersUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.CreateWorkspaceUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.DeleteWorkspaceUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.RecordWorkspaceRecentAccessUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.RenameWorkspaceUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.WorkspaceDetailQueryUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.WorkspaceQueryUseCase;
+import com.academy.mudogroupware.workspace.domain.exception.InvalidWorkspaceMemberException;
 import com.academy.mudogroupware.workspace.domain.exception.WorkspaceAccessDeniedException;
 import com.academy.mudogroupware.workspace.domain.exception.WorkspaceNotFoundException;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -63,6 +68,7 @@ class WorkspaceControllerTest {
   @MockitoBean private WorkspaceDetailQueryUseCase workspaceDetailQueryUseCase;
   @MockitoBean private RenameWorkspaceUseCase renameWorkspaceUseCase;
   @MockitoBean private DeleteWorkspaceUseCase deleteWorkspaceUseCase;
+  @MockitoBean private AddWorkspaceMembersUseCase addWorkspaceMembersUseCase;
   @MockitoBean private Clock clock;
 
   @Test
@@ -308,6 +314,40 @@ class WorkspaceControllerTest {
                 .with(authentication(authenticatedUser()))
                 .with(csrf()))
         .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void addsMembersAndReturns200WithOnlyNewlyAddedIds() throws Exception {
+    when(addWorkspaceMembersUseCase.addMembers(
+            new AddWorkspaceMembersCommand(1L, 10L, 100L, List.of(20L, 30L))))
+        .thenReturn(Set.of(30L));
+
+    mockMvc
+        .perform(
+            post("/api/workspaces/{workspaceId}/members", 100L)
+                .with(authentication(authenticatedUser()))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"memberIds\":[20,30]}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.code").value("WORKSPACE_200_4"))
+        .andExpect(jsonPath("$.data.addedMemberIds[0]").value(30));
+  }
+
+  @Test
+  void returns400WhenAddingMemberNotActiveInSameAcademy() throws Exception {
+    when(addWorkspaceMembersUseCase.addMembers(any(AddWorkspaceMembersCommand.class)))
+        .thenThrow(new InvalidWorkspaceMemberException());
+
+    mockMvc
+        .perform(
+            post("/api/workspaces/{workspaceId}/members", 100L)
+                .with(authentication(authenticatedUser()))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"memberIds\":[30]}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("WORKSPACE_400_1"));
   }
 
   private Authentication authenticatedUser(String... authorities) {

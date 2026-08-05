@@ -302,3 +302,18 @@ HTTP `200 OK`
 | `204 No Content` | - | 삭제 성공 |
 | `403 Forbidden` | `WORKSPACE_403_1` | 참여자가 아님 |
 | `404 Not Found` | `WORKSPACE_404_1` | 워크스페이스가 존재하지 않거나 이미 삭제됨 |
+
+## 워크스페이스 참여자 추가
+
+`POST /api/workspaces/{workspaceId}/members`
+
+- 요청 본문: `{ "memberIds": [12, 25] }`
+- 현재 참여자만 호출할 수 있고, 대상은 같은 학원의 활성 사용자여야 한다.
+- 이미 참여 중인 사용자는 멱등 처리되어 응답의 `addedMemberIds`에서 제외된다.
+
+| 응답 | 코드 | 설명 |
+| --- | --- | --- |
+| `200 OK` | `WORKSPACE_200_4` | 참여자 추가 성공 (신규 추가분만 반환) |
+| `400 Bad Request` | `WORKSPACE_400_1` | 선택할 수 없는 참여자가 포함됨 |
+| `403 Forbidden` | `WORKSPACE_403_1` | 요청자가 참여자가 아님 |
+| `404 Not Found` | `WORKSPACE_404_1` | 워크스페이스가 존재하지 않거나 삭제됨 |

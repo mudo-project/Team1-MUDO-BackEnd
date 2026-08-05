@@ -7,15 +7,18 @@ import com.academy.mudogroupware.workspace.application.command.DeleteWorkspaceCo
 import com.academy.mudogroupware.workspace.application.usecase.CreateWorkspaceUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.DeleteWorkspaceUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.RecordWorkspaceRecentAccessUseCase;
+import com.academy.mudogroupware.workspace.application.usecase.AddWorkspaceMembersUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.RenameWorkspaceUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.WorkspaceDetailQueryUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.WorkspaceQueryUseCase;
 import com.academy.mudogroupware.workspace.presentation.api.common.WorkspaceResponseCode;
+import com.academy.mudogroupware.workspace.presentation.api.request.AddWorkspaceMembersRequest;
 import com.academy.mudogroupware.workspace.presentation.api.request.CreateWorkspaceRequest;
 import com.academy.mudogroupware.workspace.presentation.api.request.RenameWorkspaceRequest;
 import com.academy.mudogroupware.workspace.presentation.api.response.CreateWorkspaceResponse;
 import com.academy.mudogroupware.workspace.presentation.api.response.WorkspaceDetailResponse;
 import com.academy.mudogroupware.workspace.presentation.api.response.WorkspaceListResponse;
+import com.academy.mudogroupware.workspace.presentation.api.response.WorkspaceMemberAddResponse;
 import com.academy.mudogroupware.workspace.presentation.api.response.WorkspaceRenameResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -25,6 +28,7 @@ import jakarta.validation.Valid;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -57,6 +61,7 @@ public class WorkspaceController {
   private final WorkspaceDetailQueryUseCase workspaceDetailQueryUseCase;
   private final RenameWorkspaceUseCase renameWorkspaceUseCase;
   private final DeleteWorkspaceUseCase deleteWorkspaceUseCase;
+  private final AddWorkspaceMembersUseCase addWorkspaceMembersUseCase;
   private final Clock clock;
 
   @Operation(
@@ -189,5 +194,24 @@ public class WorkspaceController {
       @AuthenticationPrincipal AuthUser authUser, @PathVariable Long workspaceId) {
     deleteWorkspaceUseCase.delete(new DeleteWorkspaceCommand(authUser.userId(), workspaceId));
     return ResponseEntity.noContent().build();
+  }
+
+  @Operation(summary = "워크스페이스 참여자 추가", description = "현재 참여자만 추가할 수 있습니다. 이미 참여 중인 사용자는 멱등 처리됩니다.")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "참여자 추가 성공"),
+    @ApiResponse(responseCode = "400", description = "선택할 수 없는 참여자가 포함됨"),
+    @ApiResponse(responseCode = "403", description = "참여자가 아님"),
+    @ApiResponse(responseCode = "404", description = "워크스페이스가 존재하지 않거나 삭제됨")
+  })
+  // TODO: 권한 모듈의 WORKSPACE:CREATE 권한이 준비되면 @PreAuthorize를 추가한다.
+  @PostMapping("/{workspaceId}/members")
+  public ResponseEntity<GlobalApiResponse<WorkspaceMemberAddResponse>> addWorkspaceMembers(
+      @AuthenticationPrincipal AuthUser authUser,
+      @PathVariable Long workspaceId,
+      @Valid @RequestBody AddWorkspaceMembersRequest request) {
+    Set<Long> added = addWorkspaceMembersUseCase.addMembers(request.toCommand(authUser, workspaceId));
+    return ResponseEntity.ok(
+        GlobalApiResponse.ok(
+            WorkspaceResponseCode.WORKSPACE_MEMBER_ADDED, WorkspaceMemberAddResponse.from(added)));
   }
 }
