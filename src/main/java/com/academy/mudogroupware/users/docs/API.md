@@ -140,6 +140,70 @@
 
 ---
 
+## 5. 권한 카탈로그 조회
+
+`GET /api/permissions`
+권한: `ROLE:MANAGE` 필요
+
+#### Request
+
+없음
+
+#### Response · `200 OK`
+
+```json
+{
+  "status": 200,
+  "code": "PERMISSION_200_1",
+  "message": "권한 카탈로그 조회에 성공했습니다.",
+  "data": [
+    {
+      "permissionId": 1,
+      "code": "ROLE:MANAGE",
+      "resource": "ROLE",
+      "action": "MANAGE",
+      "description": "역할 생성/수정/삭제 및 권한 조립"
+    }
+  ]
+}
+```
+
+#### 검증 및 정책
+
+- 시스템 전체 고정 권한 카탈로그를 그대로 반환합니다. 학원별로 다르지 않습니다.
+- `description`은 프론트에서 그대로 표시할 수 있는 한글 설명입니다.
+
+---
+
+## 6. 역할 권한 조립
+
+`PUT /api/roles/{roleId}/permissions`
+권한: `ROLE:MANAGE` 필요
+
+#### Request
+
+```json
+{
+  "permissionCodes": ["ROLE:MANAGE", "ACCOUNT:CREATE"]
+}
+```
+
+| name | type | required | 설명 |
+| --- | --- | --- | --- |
+| `permissionCodes` | String[] | true (빈 배열 허용) | 역할에 부여할 권한 코드 전체 목록 |
+
+#### Response · `204 No Content`
+
+본문 없음.
+
+#### 검증 및 정책
+
+- 요청한 `permissionCodes`로 역할의 권한을 **전체 교체**합니다(기존 권한과의 합집합이 아님). 빈 배열을 보내면 역할의 모든 권한이 제거됩니다 — 의도된 동작입니다.
+- `roleId`가 존재하지 않거나 요청자와 다른 학원 소속이면 동일하게 `USER_404_2`로 응답합니다 — 다른 학원의 역할 존재 여부가 노출되지 않도록 하기 위함입니다.
+- `permissionCodes` 중 하나라도 존재하지 않는 코드가 있으면 `USER_400_1`로 거부하고, 어떤 코드가 없는지 `details.missingCodes`로 알려줍니다.
+
+---
+
 ## ⚠️ 주요 오류
 
 | HTTP | 코드 | 상황 |
@@ -149,6 +213,8 @@
 | `401` | `USER_401_2` | 리프레시 토큰 쿠키가 없음 |
 | `404` | `USER_404_1` | 리프레시 토큰의 사용자 정보를 찾을 수 없음 |
 | `409` | `USER_409_1` | 같은 학원 내에 이미 존재하는 역할 이름 |
+| `400` | `USER_400_1` | 존재하지 않는 권한 코드로 역할 권한 조립 시도 |
+| `404` | `USER_404_2` | 역할이 존재하지 않거나 다른 학원 소속 |
 | `401` | `AUTH_401_1` | 리프레시 토큰 자체가 위조되었거나 형식이 올바르지 않음 |
 | `401` | `AUTH_401_2` | 리프레시 토큰이 만료됨 |
 | `401` | `AUTH_401_6` | 서버에 저장된 리프레시 토큰이 없음 |
