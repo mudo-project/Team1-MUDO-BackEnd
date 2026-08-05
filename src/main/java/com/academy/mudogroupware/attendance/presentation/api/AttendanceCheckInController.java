@@ -2,6 +2,7 @@ package com.academy.mudogroupware.attendance.presentation.api;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -31,6 +32,7 @@ public class AttendanceCheckInController {
     private final CheckInUseCase checkInUseCase;
     private final ClientIpResolver clientIpResolver;
 
+    @PreAuthorize("hasAuthority('ATTENDANCE:CHECK_IN')")
     @PostMapping
     public ResponseEntity<GlobalApiResponse<CheckInResponse>> checkIn(
             @AuthenticationPrincipal AuthUser authUser,

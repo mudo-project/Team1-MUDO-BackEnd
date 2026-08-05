@@ -1,6 +1,7 @@
 package com.academy.mudogroupware.attendance.presentation.api;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -30,6 +31,7 @@ public class AttendanceCheckOutController {
     private final CheckOutUseCase checkOutUseCase;
     private final ClientIpResolver clientIpResolver;
 
+    @PreAuthorize("hasAuthority('ATTENDANCE:CHECK_OUT')")
     @PostMapping
     public ResponseEntity<GlobalApiResponse<CheckOutResponse>> checkOut(
             @AuthenticationPrincipal AuthUser authUser,

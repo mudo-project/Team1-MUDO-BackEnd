@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.attendance.presentation.api;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -34,6 +35,7 @@ public class AttendanceTeamController {
             @ApiResponse(responseCode = "403", description = "학원 원장이 아님"),
             @ApiResponse(responseCode = "404", description = "근무 정책이 등록되지 않음")
     })
+    @PreAuthorize("hasAuthority('ATTENDANCE:READ')")
     @GetMapping("/today")
     public GlobalApiResponse<TodayTeamAttendanceResponse> getToday(
             @AuthenticationPrincipal AuthUser authUser) {

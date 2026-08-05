@@ -2,6 +2,7 @@ package com.academy.mudogroupware.attendance.presentation.api;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -37,6 +38,7 @@ public class AttendanceWifiIpController {
     private final DeleteWifiIpUseCase deleteWifiIpUseCase;
     private final ClientIpResolver clientIpResolver;
 
+    @PreAuthorize("hasAuthority('ATTENDANCE:WIFI_IP_MANAGE')")
     @GetMapping("/current")
     public GlobalApiResponse<CurrentClientIpResponse> getCurrentClientIp(
             HttpServletRequest servletRequest) {
@@ -47,6 +49,7 @@ public class AttendanceWifiIpController {
                 new CurrentClientIpResponse(clientIp));
     }
 
+    @PreAuthorize("hasAuthority('ATTENDANCE:WIFI_IP_MANAGE')")
     @PostMapping
     public ResponseEntity<GlobalApiResponse<AcademyWifiIpResponse>> register(
             @AuthenticationPrincipal AuthUser authUser,
@@ -62,6 +65,7 @@ public class AttendanceWifiIpController {
                         AcademyWifiIpResponse.from(result)));
     }
 
+    @PreAuthorize("hasAuthority('ATTENDANCE:WIFI_IP_MANAGE')")
     @DeleteMapping("/{wifiIpId}")
     public ResponseEntity<GlobalApiResponse<Void>> delete(
             @AuthenticationPrincipal AuthUser authUser,

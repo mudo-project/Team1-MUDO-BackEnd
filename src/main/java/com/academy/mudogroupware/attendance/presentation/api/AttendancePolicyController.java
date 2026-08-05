@@ -1,6 +1,7 @@
 package com.academy.mudogroupware.attendance.presentation.api;
 
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -30,6 +31,7 @@ public class AttendancePolicyController {
     @Operation(
             summary = "근무시간 정책 저장",
             description = "원장 소유 학원의 기본 근무시간과 요일별 예외 설정을 저장합니다.")
+    @PreAuthorize("hasAuthority('ATTENDANCE:POLICY_MANAGE')")
     @PutMapping
     public GlobalApiResponse<AttendancePolicyResponse> save(
             @AuthenticationPrincipal AuthUser authUser,
