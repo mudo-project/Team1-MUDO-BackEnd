@@ -58,16 +58,17 @@
 
 ### 허용
 
-- 대상 모듈이 공개한 UseCase, Port 또는 필요한 경우 Facade 호출
+- 요청 모듈이 정의한 조회 Port 호출
+- 대상 모듈이 해당 Port를 구현하는 Adapter 추가·수정(대상 모듈 담당자 사전 동의 필요)
 - 식별자, Projection 기반의 최소 데이터 전달
 - 대상 모듈의 공개 Event 소비
-- 대상 모듈 담당자에게 공개 계약 추가 요청
+- 대상 모듈 담당자에게 조회 Adapter 구현 요청
 
 ### 금지
 
 - 다른 모듈의 내부 Service 직접 호출
 - 다른 모듈의 JPA Entity 직접 참조·수정
-- 다른 모듈의 Repository 직접 호출
+- 요청 모듈에서 다른 모듈의 Repository 직접 호출
 - 다른 모듈의 Adapter 직접 호출
 - 다른 모듈의 내부 모델을 API 응답 또는 계약 객체에 노출
 - 도메인 간 Entity 연관관계 또는 공유 Repository 생성
@@ -75,16 +76,17 @@
 
 ## 공개 Application API
 
-- 기본 공개 단위: UseCase 또는 Port
+- 기본 공개 단위: UseCase 또는 요청 모듈이 정의한 조회 Port
 - Facade 사용: 여러 UseCase를 조합한 단일 진입점이 필요한 경우에만 사용
 - 공개 계약에는 내부 Entity와 구현 기술을 포함하지 않는다.
 - 공개 계약 변경 시 대상 모듈의 `docs/README.md`와 세부 문서를 함께 갱신한다.
 
-### 외부 Port 구현 정책
+### 도메인 간 조회 Port 구현 정책
 
-- 외부 도메인에서 사용하는 Port는 데이터를 소유한 대상 모듈이 소유하고 공개한다.
-- 공개 Port 확장 요청이 승인되면, 대상 모듈 담당자 또는 대상 모듈 변경 권한을 가진 해당 기능 구현자가 Port Adapter와 필요한 Repository 계약·영속성 Adapter·JPA Repository 조회를 구현한다.
-- 요청 모듈은 공개 Port만 호출하며, 대상 모듈의 Entity, Repository, 내부 Service, Adapter를 직접 참조하지 않는다.
+- 요청 모듈은 필요한 최소 조회 Port와 응답 DTO를 정의한다.
+- 대상 모듈 담당자의 사전 동의가 있으면, 데이터를 소유한 대상 모듈이 자기 Infrastructure에 Adapter를 두고 해당 Port를 구현한다.
+- 대상 모듈의 조회 Adapter는 자기 Domain Repository, Persistence Adapter, Spring Data JPA Repository와 최소 JPA 조회 코드만 사용하며, 대상 도메인의 Entity를 Port 응답에 노출하지 않는다. Persistence Adapter는 Domain Repository와 Spring Data JPA Repository를 연결하는 대상 도메인의 영속성 구현체다.
+- 요청 모듈은 Port만 호출하며, 대상 모듈의 Entity, Repository, 내부 Service, Adapter를 직접 참조하지 않는다.
 - Port Adapter 메서드에는 아래 정보를 주석으로 기록한다.
 
 ```java
@@ -95,8 +97,8 @@
  */
 ```
 
-- 기존에 같은 목적의 공개 Port 또는 조회 로직이 있으면 이를 우선 재사용한다.
-- 공개 Port 구현을 위해 필요한 계약·Adapter·Repository 조회 외의 도메인 로직은 수정하지 않는다.
+- 기존에 같은 목적의 조회 Port 또는 Adapter가 있으면 이를 우선 재사용한다.
+- 조회 Port 구현을 위해 필요한 계약·Adapter·Repository 조회 외의 도메인 로직은 수정하지 않는다.
 - 반환값은 요청 도메인에 필요한 식별자와 Projection으로 최소화하며, 내부 Entity를 노출하지 않는다.
 
 ## 타 모듈 변경 요청
@@ -108,7 +110,7 @@
 <변경이 필요한 도메인>
 
 [필요한 변경]
-<추가 / 수정 / 삭제가 필요한 공개 계약 또는 기능>
+<추가 / 수정 / 삭제가 필요한 조회 Port·응답 DTO 또는 Adapter>
 
 [입력]
 <필요한 입력값>
@@ -123,8 +125,8 @@
 <변경으로 영향을 받는 기능 또는 도메인>
 ```
 
-- 대상 모듈 담당자가 구현 여부와 공개 계약 형태를 결정한다.
-- 요청 모듈은 대상 모듈의 내부 구현 방식에 관여하지 않는다.
+- 대상 모듈 담당자가 Adapter 구현 여부와 조회 범위를 결정한다.
+- 요청 모듈은 대상 모듈의 Entity·Repository를 직접 참조하지 않는다.
 
 ## 새 모듈 추가 기준
 
