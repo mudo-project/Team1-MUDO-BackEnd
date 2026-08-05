@@ -10,10 +10,25 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import com.academy.mudogroupware.messenger.domain.model.ChatRoomType;
+
 public interface ChatRoomJpaRepository extends JpaRepository<ChatRoomEntity, Long> {
 
     @EntityGraph(attributePaths = "members")
     Optional<ChatRoomEntity> findById(Long id);
+
+    @Query("select distinct r from ChatRoomEntity r "
+            + "join r.members requester "
+            + "join r.members participant "
+            + "join fetch r.members "
+            + "where r.academyId = :academyId "
+            + "and r.type = :type "
+            + "and requester.userId = :userId "
+            + "and participant.userId = :otherUserId")
+    List<ChatRoomEntity> findDirectMessages(@Param("academyId") Long academyId,
+                                            @Param("type") ChatRoomType type,
+                                            @Param("userId") Long userId,
+                                            @Param("otherUserId") Long otherUserId);
 
     @Query("select distinct r from ChatRoomEntity r join r.members requester join fetch r.members "
             + "where r.academyId = :academyId and requester.userId = :userId")

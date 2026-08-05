@@ -55,3 +55,13 @@ BE6 메신저 담당
 - [REVISION.md](REVISION.md) — 설계 변경 이력과 배경
 - [API.md](API.md) — 현재 REST API 계약 요약
 - [CHANGELOG.md](CHANGELOG.md) — 사용자 관점 변경 요약
+# 2026-08-05 realtime/message-control update
+
+- Existing DM rooms are reused instead of creating duplicate 1:1 rooms.
+- Text messages can be edited by the original sender.
+- Messages can be soft-deleted by the original sender; deleted rows remain for cursor stability.
+- Message responses expose KakaoTalk-style `unreadCount` rather than reader names.
+- Messenger publishes `ChatMessageSentEvent` and `ChatRoomReadEvent`.
+- `MessengerWebSocketNotifier` broadcasts both events through the existing global STOMP endpoint `/ws`.
+- Room clients subscribe to `/topic/messenger/rooms/{roomId}` and branch on `eventType`.
+- No `notification` package was introduced.

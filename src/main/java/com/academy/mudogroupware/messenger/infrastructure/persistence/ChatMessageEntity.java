@@ -51,9 +51,16 @@ public class ChatMessageEntity {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "edited_at")
+    private LocalDateTime editedAt;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
     @Builder
     private ChatMessageEntity(Long id, Long chatRoomId, Long senderUserId, MessageType messageType, String content,
-                               String fileUrl, String fileName, LocalDateTime createdAt) {
+                               String fileUrl, String fileName, LocalDateTime createdAt, LocalDateTime editedAt,
+                               LocalDateTime deletedAt) {
         this.id = id;
         this.chatRoomId = chatRoomId;
         this.senderUserId = senderUserId;
@@ -62,5 +69,7 @@ public class ChatMessageEntity {
         this.fileUrl = fileUrl;
         this.fileName = fileName;
         this.createdAt = createdAt;
+        this.editedAt = editedAt;
+        this.deletedAt = deletedAt;
     }
 }

@@ -1,5 +1,24 @@
 # Messenger Revision
 
+## 2026-08-05 - Realtime and message controls
+
+### Background
+
+The messenger package needed the remaining product behavior after the initial review fixes: duplicate DM prevention, sender-only message edit/delete, KakaoTalk-style unread numbers, and realtime room updates through the existing WebSocket infrastructure.
+
+### Changes
+
+- Added existing DM lookup before creating a 1:1 room.
+- Added `edited_at` and `deleted_at` columns to `chat_message`.
+- Added sender-only edit and soft delete use cases.
+- Added `unreadCount` per message using `chat_room_member.last_read_at`.
+- Added `ChatMessageSentEvent` and `ChatRoomReadEvent`.
+- Added `MessengerWebSocketNotifier` using `/topic/messenger/rooms/{roomId}`.
+
+### Decision
+
+No `notification` package was created. Messenger realtime updates are handled inside messenger, while shared WebSocket infrastructure remains in `global`.
+
 > 작성일: 2026-08-05
 > 상태: 코드 리뷰 보완 완료
 

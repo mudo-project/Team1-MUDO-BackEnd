@@ -13,11 +13,17 @@ public record ChatMessageResponse(
         String content,
         String fileUrl,
         String fileName,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        LocalDateTime editedAt,
+        LocalDateTime deletedAt,
+        boolean deleted,
+        long unreadCount
 ) {
 
     public static ChatMessageResponse from(ChatMessageView view) {
+        boolean deleted = view.deletedAt() != null;
         return new ChatMessageResponse(view.id(), view.senderId(), view.senderName(), view.messageType(),
-                view.content(), view.fileUrl(), view.fileName(), view.createdAt());
+                deleted ? null : view.content(), deleted ? null : view.fileUrl(), deleted ? null : view.fileName(),
+                view.createdAt(), view.editedAt(), view.deletedAt(), deleted, view.unreadCount());
     }
 }

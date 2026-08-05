@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 
 import com.academy.mudogroupware.messenger.domain.model.ChatRoom;
 import com.academy.mudogroupware.messenger.domain.model.ChatRoomMember;
+import com.academy.mudogroupware.messenger.domain.model.ChatRoomType;
 import com.academy.mudogroupware.messenger.domain.repository.ChatRoomRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,13 @@ public class ChatRoomRepositoryImpl implements ChatRoomRepository {
     @Override
     public Optional<ChatRoom> findById(Long id) {
         return chatRoomJpaRepository.findById(id).map(this::toDomain);
+    }
+
+    @Override
+    public Optional<ChatRoom> findDirectMessage(Long academyId, Long userId, Long otherUserId) {
+        return chatRoomJpaRepository.findDirectMessages(academyId, ChatRoomType.DM, userId, otherUserId).stream()
+                .findFirst()
+                .map(this::toDomain);
     }
 
     @Override
