@@ -75,6 +75,10 @@ public enum AttendanceErrorCode implements ErrorCode {
             HttpStatus.BAD_REQUEST,
             "ATTENDANCE_400_8",
             "퇴근 시각은 출근 시각보다 빠를 수 없습니다."),
+    OVERTIME_NOTE_REQUIRED(
+            HttpStatus.BAD_REQUEST,
+            "ATTENDANCE_400_9",
+            "초과근무인 경우 퇴근 사유를 입력해야 합니다."),
     CHECK_IN_FORBIDDEN(
             HttpStatus.FORBIDDEN,
             "ATTENDANCE_403_2",

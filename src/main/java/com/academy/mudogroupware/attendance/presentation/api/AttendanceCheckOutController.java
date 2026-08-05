@@ -31,14 +31,11 @@ public class AttendanceCheckOutController {
     @PostMapping
     public ResponseEntity<GlobalApiResponse<CheckOutResponse>> checkOut(
             @AuthenticationPrincipal AuthUser authUser,
-            @Valid @RequestBody(required = false) CheckOutRequest request,
+            @Valid @RequestBody CheckOutRequest request,
             HttpServletRequest servletRequest) {
-        CheckOutRequest normalizedRequest = request == null
-                ? new CheckOutRequest(null)
-                : request;
         String clientIp = clientIpResolver.resolve(servletRequest);
         CheckOutResult result = checkOutUseCase.checkOut(
-                normalizedRequest.toCommand(
+                request.toCommand(
                         authUser.userId(), authUser.academyId(), clientIp));
 
         return ResponseEntity.ok(GlobalApiResponse.ok(

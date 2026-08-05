@@ -42,6 +42,7 @@ public class AttendanceRecordRepositoryImpl implements AttendanceRecordRepositor
                 .clockInNote(record.getClockInNote())
                 .clockOutAt(record.getClockOutAt())
                 .clockOutNote(record.getClockOutNote())
+                .clockOutType(record.getClockOutType())
                 .status(record.getStatus())
                 .createdAt(record.getCreatedAt())
                 .updatedAt(record.getUpdatedAt())
@@ -78,7 +79,8 @@ public class AttendanceRecordRepositoryImpl implements AttendanceRecordRepositor
         return AttendanceRecord.restore(
                 entity.getId(), entity.getAcademyId(), entity.getUserId(),
                 entity.getWorkDate(), entity.getClockInAt(), entity.getClockInNote(),
-                entity.getClockOutAt(), entity.getClockOutNote(), entity.getStatus(),
+                entity.getClockOutAt(), entity.getClockOutNote(),
+                entity.getClockOutType(), entity.getStatus(),
                 entity.getCreatedAt(), entity.getUpdatedAt());
     }
 

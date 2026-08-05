@@ -47,7 +47,8 @@ public class CheckOutService implements CheckOutUseCase {
                         command.academyId(), command.userId(), earliestWorkDate)
                 .orElseGet(() -> throwNoOpenRecord(command, now));
 
-        AttendanceRecord checkedOut = openRecord.checkOut(now, command.clockOutNote());
+        AttendanceRecord checkedOut = openRecord.checkOut(
+                now, command.clockOutType(), command.clockOutNote());
         return CheckOutResult.from(attendanceRecordRepository.save(checkedOut));
     }
 

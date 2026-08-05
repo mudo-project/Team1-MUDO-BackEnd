@@ -51,15 +51,17 @@ class AttendanceRecordTest {
         AttendanceRecord checkedIn = AttendanceRecord.restore(
                 5L, 1L, 10L, java.time.LocalDate.of(2026, 8, 5),
                 LocalDateTime.of(2026, 8, 5, 22, 0), null,
-                null, null, AttendanceStatus.NORMAL,
+                null, null, null, AttendanceStatus.NORMAL,
                 LocalDateTime.of(2026, 8, 5, 22, 0),
                 LocalDateTime.of(2026, 8, 5, 22, 0));
 
         AttendanceRecord checkedOut = checkedIn.checkOut(
-                LocalDateTime.of(2026, 8, 6, 2, 0), " 추가 근무 ");
+                LocalDateTime.of(2026, 8, 6, 2, 0),
+                ClockOutType.OVERTIME, " 추가 근무 ");
 
         assertEquals(LocalDateTime.of(2026, 8, 6, 2, 0), checkedOut.getClockOutAt());
         assertEquals("추가 근무", checkedOut.getClockOutNote());
+        assertEquals(ClockOutType.OVERTIME, checkedOut.getClockOutType());
         assertEquals(AttendanceStatus.NORMAL, checkedOut.getStatus());
     }
 
@@ -68,13 +70,33 @@ class AttendanceRecordTest {
         AttendanceRecord checkedIn = AttendanceRecord.restore(
                 5L, 1L, 10L, java.time.LocalDate.of(2026, 8, 5),
                 LocalDateTime.of(2026, 8, 5, 9, 0), null,
-                null, null, AttendanceStatus.NORMAL,
+                null, null, null, AttendanceStatus.NORMAL,
                 LocalDateTime.of(2026, 8, 5, 9, 0),
                 LocalDateTime.of(2026, 8, 5, 9, 0));
 
         AttendanceRecord checkedOut = checkedIn.checkOut(
-                LocalDateTime.of(2026, 8, 5, 18, 0), "   ");
+                LocalDateTime.of(2026, 8, 5, 18, 0),
+                ClockOutType.NORMAL, "   ");
 
         assertNull(checkedOut.getClockOutNote());
+    }
+
+    @Test
+    void requiresNoteForOvertimeCheckOut() {
+        AttendanceRecord checkedIn = AttendanceRecord.restore(
+                5L, 1L, 10L, java.time.LocalDate.of(2026, 8, 5),
+                LocalDateTime.of(2026, 8, 5, 9, 0), null,
+                null, null, null, AttendanceStatus.NORMAL,
+                LocalDateTime.of(2026, 8, 5, 9, 0),
+                LocalDateTime.of(2026, 8, 5, 9, 0));
+
+        AttendanceException exception = assertThrows(
+                AttendanceException.class,
+                () -> checkedIn.checkOut(
+                        LocalDateTime.of(2026, 8, 5, 19, 0),
+                        ClockOutType.OVERTIME, "   "));
+
+        assertSame(AttendanceErrorCode.OVERTIME_NOTE_REQUIRED,
+                exception.getErrorCode());
     }
 }

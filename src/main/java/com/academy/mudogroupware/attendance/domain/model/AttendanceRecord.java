@@ -17,6 +17,7 @@ public final class AttendanceRecord {
     private final String clockInNote;
     private final LocalDateTime clockOutAt;
     private final String clockOutNote;
+    private final ClockOutType clockOutType;
     private final AttendanceStatus status;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
@@ -24,6 +25,7 @@ public final class AttendanceRecord {
     private AttendanceRecord(Long id, Long academyId, Long userId, LocalDate workDate,
                              LocalDateTime clockInAt, String clockInNote,
                              LocalDateTime clockOutAt, String clockOutNote,
+                             ClockOutType clockOutType,
                              AttendanceStatus status, LocalDateTime createdAt,
                              LocalDateTime updatedAt) {
         this.id = id;
@@ -34,6 +36,7 @@ public final class AttendanceRecord {
         this.clockInNote = clockInNote;
         this.clockOutAt = clockOutAt;
         this.clockOutNote = clockOutNote;
+        this.clockOutType = clockOutType;
         this.status = status;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
@@ -62,21 +65,28 @@ public final class AttendanceRecord {
             throw new AttendanceException(AttendanceErrorCode.LATE_NOTE_REQUIRED);
         }
         return new AttendanceRecord(null, academyId, userId, workDate,
-                clockInAt, normalizedNote, null, null, status, clockInAt, clockInAt);
+                clockInAt, normalizedNote, null, null, null,
+                status, clockInAt, clockInAt);
     }
 
     public static AttendanceRecord restore(Long id, Long academyId, Long userId,
                                            LocalDate workDate, LocalDateTime clockInAt,
                                            String clockInNote, LocalDateTime clockOutAt,
-                                           String clockOutNote, AttendanceStatus status,
+                                           String clockOutNote, ClockOutType clockOutType,
+                                           AttendanceStatus status,
                                            LocalDateTime createdAt, LocalDateTime updatedAt) {
         return new AttendanceRecord(id, academyId, userId, workDate, clockInAt,
-                clockInNote, clockOutAt, clockOutNote, status, createdAt, updatedAt);
+                clockInNote, clockOutAt, clockOutNote, clockOutType,
+                status, createdAt, updatedAt);
     }
 
-    public AttendanceRecord checkOut(LocalDateTime checkedOutAt, String note) {
+    public AttendanceRecord checkOut(
+            LocalDateTime checkedOutAt, ClockOutType type, String note) {
         if (checkedOutAt == null || clockInAt == null || checkedOutAt.isBefore(clockInAt)) {
             throw new AttendanceException(AttendanceErrorCode.INVALID_CLOCK_OUT_TIME);
+        }
+        if (type == null) {
+            throw new AttendanceException(AttendanceErrorCode.INVALID_ATTENDANCE_RECORD);
         }
         if (clockOutAt != null) {
             throw new AttendanceException(AttendanceErrorCode.ATTENDANCE_ALREADY_CHECKED_OUT);
@@ -85,9 +95,12 @@ public final class AttendanceRecord {
         if (normalizedNote != null && normalizedNote.length() > 255) {
             throw new AttendanceException(AttendanceErrorCode.INVALID_CLOCK_OUT_NOTE);
         }
+        if (type == ClockOutType.OVERTIME && normalizedNote == null) {
+            throw new AttendanceException(AttendanceErrorCode.OVERTIME_NOTE_REQUIRED);
+        }
         return new AttendanceRecord(id, academyId, userId, workDate,
                 clockInAt, clockInNote, checkedOutAt, normalizedNote,
-                status, createdAt, checkedOutAt);
+                type, status, createdAt, checkedOutAt);
     }
 
     private static String normalizeNote(String note) {
@@ -106,6 +119,7 @@ public final class AttendanceRecord {
     public String getClockInNote() { return clockInNote; }
     public LocalDateTime getClockOutAt() { return clockOutAt; }
     public String getClockOutNote() { return clockOutNote; }
+    public ClockOutType getClockOutType() { return clockOutType; }
     public AttendanceStatus getStatus() { return status; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }

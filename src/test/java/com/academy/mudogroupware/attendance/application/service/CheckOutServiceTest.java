@@ -26,6 +26,7 @@ import com.academy.mudogroupware.attendance.domain.exception.AttendanceErrorCode
 import com.academy.mudogroupware.attendance.domain.exception.AttendanceException;
 import com.academy.mudogroupware.attendance.domain.model.AttendanceRecord;
 import com.academy.mudogroupware.attendance.domain.model.AttendanceStatus;
+import com.academy.mudogroupware.attendance.domain.model.ClockOutType;
 import com.academy.mudogroupware.attendance.domain.repository.AcademyWifiIpRepository;
 import com.academy.mudogroupware.attendance.domain.repository.AttendanceRecordRepository;
 
@@ -60,10 +61,11 @@ class CheckOutServiceTest {
         when(attendanceRecordRepository.save(any(AttendanceRecord.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        var result = service.checkOut(command(" 추가 근무 "));
+        var result = service.checkOut(command(ClockOutType.OVERTIME, " 추가 근무 "));
 
         assertEquals(5L, result.attendanceId());
         assertEquals(NOW, result.clockOutAt());
+        assertEquals(ClockOutType.OVERTIME, result.clockOutType());
         assertEquals("추가 근무", result.clockOutNote());
         verify(attendanceRecordRepository).save(any(AttendanceRecord.class));
     }
@@ -78,8 +80,9 @@ class CheckOutServiceTest {
         when(attendanceRecordRepository.save(any(AttendanceRecord.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        var result = service.checkOut(command(null));
+        var result = service.checkOut(command(ClockOutType.NORMAL, null));
 
+        assertEquals(ClockOutType.NORMAL, result.clockOutType());
         assertNull(result.clockOutNote());
     }
 
@@ -90,7 +93,7 @@ class CheckOutServiceTest {
 
         AttendanceException exception = assertThrows(
                 AttendanceException.class,
-                () -> service.checkOut(command(null)));
+                () -> service.checkOut(command(ClockOutType.NORMAL, null)));
 
         assertSame(AttendanceErrorCode.UNREGISTERED_CHECK_OUT_IP,
                 exception.getErrorCode());
@@ -106,7 +109,7 @@ class CheckOutServiceTest {
 
         AttendanceException exception = assertThrows(
                 AttendanceException.class,
-                () -> service.checkOut(command(null)));
+                () -> service.checkOut(command(ClockOutType.NORMAL, null)));
 
         assertSame(AttendanceErrorCode.ATTENDANCE_ALREADY_CHECKED_OUT,
                 exception.getErrorCode());
@@ -121,7 +124,7 @@ class CheckOutServiceTest {
 
         AttendanceException exception = assertThrows(
                 AttendanceException.class,
-                () -> service.checkOut(command(null)));
+                () -> service.checkOut(command(ClockOutType.NORMAL, null)));
 
         assertSame(AttendanceErrorCode.ATTENDANCE_CHECK_IN_NOT_FOUND,
                 exception.getErrorCode());
@@ -139,11 +142,11 @@ class CheckOutServiceTest {
         LocalDateTime clockInAt = LocalDateTime.of(2026, 8, 5, 22, 0);
         return AttendanceRecord.restore(
                 5L, 1L, 10L, clockInAt.toLocalDate(), clockInAt,
-                null, null, null, AttendanceStatus.NORMAL,
+                null, null, null, null, AttendanceStatus.NORMAL,
                 clockInAt, clockInAt);
     }
 
-    private CheckOutCommand command(String note) {
-        return new CheckOutCommand(10L, 1L, "203.0.113.10", note);
+    private CheckOutCommand command(ClockOutType type, String note) {
+        return new CheckOutCommand(10L, 1L, "203.0.113.10", type, note);
     }
 }
