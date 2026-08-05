@@ -85,7 +85,7 @@
 
 - 요청 모듈은 필요한 최소 조회 Port와 응답 DTO를 정의한다.
 - 대상 모듈 담당자의 사전 동의가 있으면, 데이터를 소유한 대상 모듈이 자기 Infrastructure에 Adapter를 두고 해당 Port를 구현한다.
-- 대상 모듈 Adapter는 자기 Repository만 호출하며, 대상 도메인의 Entity를 Port 응답에 노출하지 않는다.
+- 대상 모듈의 조회 Adapter는 자기 Domain Repository, Persistence Adapter, Spring Data JPA Repository와 최소 JPA 조회 코드만 사용하며, 대상 도메인의 Entity를 Port 응답에 노출하지 않는다. Persistence Adapter는 Domain Repository와 Spring Data JPA Repository를 연결하는 대상 도메인의 영속성 구현체다.
 - 요청 모듈은 Port만 호출하며, 대상 모듈의 Entity, Repository, 내부 Service, Adapter를 직접 참조하지 않는다.
 - Port Adapter 메서드에는 아래 정보를 주석으로 기록한다.
 

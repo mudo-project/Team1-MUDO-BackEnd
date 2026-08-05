@@ -17,7 +17,7 @@
 - 각 도메인은 자신의 패키지 내부 코드와 데이터 모델만 수정한다.
 - 다른 도메인의 내부 Service, JPA Entity, Repository, Adapter를 직접 수정하거나 참조하지 않는다.
 - 타 도메인 조회가 필요하면 요청 도메인이 필요한 최소 Port와 응답 DTO를 정의한다.
-- 데이터를 소유한 대상 도메인은 해당 Port를 구현하는 Adapter를 자기 Infrastructure에 두고, 자기 Repository로 필요한 값만 조회한다.
+- 데이터를 소유한 대상 도메인은 해당 Port를 구현하는 조회 Adapter를 자기 Infrastructure에 두고, 자기 Domain Repository와 Persistence Adapter, Spring Data JPA Repository를 통해 필요한 값만 조회한다.
 - 이 간소화 방식의 타 도메인 Adapter 추가·수정은 대상 도메인 담당자의 사전 동의가 있어야 한다.
 - 공통화가 필요하더라도 특정 도메인 규칙을 임의로 Global 영역으로 이동하지 않는다.
 
@@ -112,7 +112,7 @@ Application Service
 ## 도메인 간 연동
 
 - 요청 도메인은 필요한 최소 Port와 응답 DTO를 정의한다.
-- 데이터를 소유한 대상 도메인은 자기 Infrastructure Adapter에서 해당 Port를 구현하고, 자기 Repository를 호출한다.
+- 데이터를 소유한 대상 도메인은 자기 Infrastructure의 조회 Adapter에서 해당 Port를 구현하고, 자기 Domain Repository와 Persistence Adapter, Spring Data JPA Repository를 통해 조회한다.
 - 요청 도메인은 대상 도메인의 Entity, Repository, 내부 Service, Adapter를 직접 참조하지 않고 Port만 호출한다.
 - Port 응답은 식별자와 호출 도메인에 필요한 Projection만 포함하며, 대상 도메인의 Entity/Aggregate를 노출하지 않는다.
 - Adapter 메서드에는 소비 도메인과 용도를 주석으로 기록한다.
@@ -123,7 +123,9 @@ Application Service
 OrderApplicationService
 → MemberStatusPort                 // order가 정의
 → MemberStatusAdapter              // member가 구현
-→ MemberRepository                 // member 내부 Repository
+→ MemberRepository                 // member Domain Repository
+→ MemberPersistenceAdapter         // member Persistence Adapter
+→ MemberJpaRepository              // member Spring Data JPA Repository
 ```
 
 ## Domain Model과 JPA Entity
