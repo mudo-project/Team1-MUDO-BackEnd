@@ -15,6 +15,7 @@ import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -40,6 +41,15 @@ public class RoleEntity {
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
+
+    @Builder
+    private RoleEntity(Long id, Long academyId, String name, String description, LocalDateTime createdAt) {
+        this.id = id;
+        this.academyId = academyId;
+        this.name = name;
+        this.description = description;
+        this.createdAt = createdAt;
+    }
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
