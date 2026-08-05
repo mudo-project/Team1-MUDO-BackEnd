@@ -41,7 +41,8 @@ public final class ChatRoom {
         this.createdAt = createdAt;
     }
 
-    public static ChatRoom create(Long academyId, Long createdBy, List<Long> participantIds, String name) {
+    public static ChatRoom create(Long academyId, Long createdBy, List<Long> participantIds, String name,
+                                  LocalDateTime createdAt) {
         if (participantIds == null || participantIds.isEmpty()) {
             throw new MessengerException(MessengerErrorCode.INVITEE_REQUIRED);
         }
@@ -66,7 +67,7 @@ public final class ChatRoom {
         members.add(ChatRoomMember.create(createdBy));
         inviteeIds.forEach(userId -> members.add(ChatRoomMember.create(userId)));
 
-        return new ChatRoom(null, academyId, roomName, type, createdBy, members, LocalDateTime.now());
+        return new ChatRoom(null, academyId, roomName, type, createdBy, members, createdAt);
     }
 
     public static ChatRoom restore(Long id, Long academyId, String name, ChatRoomType type, Long createdBy,

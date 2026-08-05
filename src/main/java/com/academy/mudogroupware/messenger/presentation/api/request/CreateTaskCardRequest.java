@@ -7,11 +7,13 @@ import com.academy.mudogroupware.messenger.application.command.CreateTaskCardCom
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 
 public record CreateTaskCardRequest(
         @NotBlank String content,
         LocalDate dueDate,
-        @NotEmpty List<Long> assigneeIds
+        @NotEmpty List<@NotNull @Positive Long> assigneeIds
 ) {
 
     public CreateTaskCardCommand toCommand(Long chatRoomId, Long assignerId) {

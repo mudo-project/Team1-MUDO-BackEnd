@@ -24,6 +24,7 @@ public interface ChatMessageJpaRepository extends JpaRepository<ChatMessageEntit
             + "from chat_room_member crm "
             + "left join chat_message cm on cm.chat_room_id = crm.chat_room_id "
             + "and (crm.last_read_at is null or cm.created_at > crm.last_read_at) "
+            + "and cm.sender_user_id <> :userId "
             + "where crm.user_id = :userId and crm.chat_room_id in :chatRoomIds "
             + "group by crm.chat_room_id", nativeQuery = true)
     List<ChatRoomUnreadCountProjection> countUnreadByRequester(@Param("userId") Long userId,

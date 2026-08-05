@@ -1,5 +1,7 @@
 package com.academy.mudogroupware.messenger.application.service;
 
+import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -24,6 +26,7 @@ public class CreateChatRoomService implements CreateChatRoomUseCase {
 
     private final ChatRoomRepository chatRoomRepository;
     private final ChatMemberDirectoryPort chatMemberDirectoryPort;
+    private final Clock clock;
 
     @Override
     public Long createRoom(CreateChatRoomCommand command) {
@@ -41,7 +44,7 @@ public class CreateChatRoomService implements CreateChatRoomUseCase {
         }
 
         ChatRoom chatRoom = ChatRoom.create(requester.academyId(), requester.userId(), participantIds,
-                command.name());
+                command.name(), LocalDateTime.now(clock));
         return chatRoomRepository.save(chatRoom).getId();
     }
 }
