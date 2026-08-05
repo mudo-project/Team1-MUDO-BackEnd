@@ -8,7 +8,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-import com.academy.mudogroupware.global.domain.common.exception.BadRequestException;
+import com.academy.mudogroupware.messenger.domain.exception.MessengerErrorCode;
+import com.academy.mudogroupware.messenger.domain.exception.MessengerException;
 
 public final class ChatRoom {
 
@@ -29,7 +30,7 @@ public final class ChatRoom {
             throw new IllegalArgumentException("createdBy must not be null");
         }
         if (members == null || members.isEmpty()) {
-            throw new BadRequestException("참여자를 최소 1명 이상 지정해야 합니다.");
+            throw new MessengerException(MessengerErrorCode.PARTICIPANT_REQUIRED);
         }
         this.id = id;
         this.academyId = academyId;
@@ -40,22 +41,23 @@ public final class ChatRoom {
         this.createdAt = createdAt;
     }
 
-    public static ChatRoom create(Long academyId, Long createdBy, List<Long> participantIds, String name) {
+    public static ChatRoom create(Long academyId, Long createdBy, List<Long> participantIds, String name,
+                                  LocalDateTime createdAt) {
         if (participantIds == null || participantIds.isEmpty()) {
-            throw new BadRequestException("초대할 참여자를 최소 1명 이상 선택해야 합니다.");
+            throw new MessengerException(MessengerErrorCode.INVITEE_REQUIRED);
         }
 
         Set<Long> inviteeIds = new LinkedHashSet<>(participantIds);
         inviteeIds.remove(createdBy);
         if (inviteeIds.isEmpty()) {
-            throw new BadRequestException("본인 외에 최소 1명 이상 초대해야 합니다.");
+            throw new MessengerException(MessengerErrorCode.SELF_INVITE_ONLY);
         }
 
         ChatRoomType type = inviteeIds.size() == 1 ? ChatRoomType.DM : ChatRoomType.GROUP;
         String roomName = name;
         if (type == ChatRoomType.GROUP) {
             if (roomName == null || roomName.isBlank()) {
-                throw new BadRequestException("그룹 채팅방은 이름을 지정해야 합니다.");
+                throw new MessengerException(MessengerErrorCode.GROUP_NAME_REQUIRED);
             }
         } else {
             roomName = null;
@@ -65,7 +67,7 @@ public final class ChatRoom {
         members.add(ChatRoomMember.create(createdBy));
         inviteeIds.forEach(userId -> members.add(ChatRoomMember.create(userId)));
 
-        return new ChatRoom(null, academyId, roomName, type, createdBy, members, LocalDateTime.now());
+        return new ChatRoom(null, academyId, roomName, type, createdBy, members, createdAt);
     }
 
     public static ChatRoom restore(Long id, Long academyId, String name, ChatRoomType type, Long createdBy,
@@ -83,7 +85,7 @@ public final class ChatRoom {
 
     public void markRead(Long userId, LocalDateTime readAt) {
         ChatRoomMember member = findMember(userId)
-                .orElseThrow(() -> new BadRequestException("채팅방 참여자가 아닙니다."));
+                .orElseThrow(() -> new MessengerException(MessengerErrorCode.NOT_ROOM_MEMBER));
         member.markRead(readAt);
     }
 

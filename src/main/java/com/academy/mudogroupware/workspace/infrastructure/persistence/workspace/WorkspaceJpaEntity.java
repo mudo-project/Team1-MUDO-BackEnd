@@ -12,6 +12,7 @@ import jakarta.persistence.Table;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -38,6 +39,7 @@ public class WorkspaceJpaEntity extends SoftDeleteTimeEntity {
   @OneToMany(mappedBy = "workspace", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<WorkspaceMemberJpaEntity> members = new ArrayList<>();
 
+  @Builder
   private WorkspaceJpaEntity(Long academyId, String name, Long createdBy) {
     this.academyId = academyId;
     this.name = name;
@@ -45,7 +47,11 @@ public class WorkspaceJpaEntity extends SoftDeleteTimeEntity {
   }
 
   public static WorkspaceJpaEntity create(Long academyId, String name, Long createdBy) {
-    return new WorkspaceJpaEntity(academyId, name, createdBy);
+    return WorkspaceJpaEntity.builder()
+        .academyId(academyId)
+        .name(name)
+        .createdBy(createdBy)
+        .build();
   }
 
   public WorkspaceMemberJpaEntity addMember(Long userId) {

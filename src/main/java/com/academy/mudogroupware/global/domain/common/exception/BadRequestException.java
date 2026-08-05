@@ -8,4 +8,16 @@ public class BadRequestException extends BusinessException {
   public BadRequestException(String m) {
     super(CommonErrorCode.INVALID_INPUT, m);
   }
+
+  protected BadRequestException(ErrorCode errorCode) {
+    super(errorCode);
+  }
+
+  protected BadRequestException(ErrorCode errorCode, String message) {
+    super(errorCode, message);
+  }
+
+  protected BadRequestException(ErrorCode errorCode, String message, Throwable cause) {
+    super(errorCode, message, cause);
+  }
 }
