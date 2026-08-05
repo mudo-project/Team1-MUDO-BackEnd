@@ -7,4 +7,8 @@ public class AttendanceException extends BusinessException {
     public AttendanceException(AttendanceErrorCode errorCode) {
         super(errorCode);
     }
+
+    public AttendanceException(AttendanceErrorCode errorCode, Throwable cause) {
+        super(errorCode, errorCode.getMessage(), cause);
+    }
 }
