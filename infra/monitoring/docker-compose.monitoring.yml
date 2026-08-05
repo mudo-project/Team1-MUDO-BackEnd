@@ -1,0 +1,72 @@
+name: mudo-observability
+
+services:
+  grafana:
+    image: grafana/grafana:13.1.0
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SERVER_ROOT_URL: https://${MONITORING_DOMAIN:?Set MONITORING_DOMAIN in .env.monitoring}
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:?Set GRAFANA_ADMIN_USER in .env.monitoring}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Set GRAFANA_ADMIN_PASSWORD in .env.monitoring}
+      GF_SECURITY_COOKIE_SECURE: "true"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_AWS_ALLOWED_AUTH_PROVIDERS: default
+    volumes:
+      - ${OBSERVABILITY_DATA_DIR:-/opt/mudo-observability/data}/grafana:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+      - loki
+    networks:
+      - observability
+
+  prometheus:
+    image: prom/prometheus:v3.12.0
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-15d}
+      - --web.enable-remote-write-receiver
+    volumes:
+      - ./prometheus:/etc/prometheus:ro
+      - ${OBSERVABILITY_DATA_DIR:-/opt/mudo-observability/data}/prometheus:/prometheus
+    networks:
+      - observability
+
+  loki:
+    image: grafana/loki:3.7.2
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    command:
+      - -config.file=/etc/loki/loki-config.yml
+    volumes:
+      - ./loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - ${OBSERVABILITY_DATA_DIR:-/opt/mudo-observability/data}/loki:/loki
+    networks:
+      - observability
+
+  alertmanager:
+    image: prom/alertmanager:v0.32.1
+    restart: unless-stopped
+    ports:
+      - "9093:9093"
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ${OBSERVABILITY_DATA_DIR:-/opt/mudo-observability/data}/alertmanager:/alertmanager
+    networks:
+      - observability
+
+networks:
+  observability:
+    driver: bridge
