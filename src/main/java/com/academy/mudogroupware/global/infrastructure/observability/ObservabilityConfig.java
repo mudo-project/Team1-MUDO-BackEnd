@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.global.infrastructure.observability;
 
+import com.academy.mudogroupware.global.infrastructure.filter.TraceIdFilter;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.micrometer.metrics.autoconfigure.MeterRegistryCustomizer;
@@ -10,6 +11,11 @@ import org.springframework.core.env.Environment;
 @Configuration
 @EnableConfigurationProperties(InstanceMetadataProperties.class)
 public class ObservabilityConfig {
+
+  @Bean
+  TraceIdFilter traceIdFilter(InstanceMetadataProperties properties) {
+    return new TraceIdFilter(properties);
+  }
 
   @Bean
   MeterRegistryCustomizer<MeterRegistry> instanceCommonTags(

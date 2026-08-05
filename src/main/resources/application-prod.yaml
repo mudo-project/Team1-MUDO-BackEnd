@@ -28,8 +28,8 @@ app:
   instance:
     # 운영 Task에는 반드시 학원 식별자를 주입한다. 누락 시 애플리케이션 시작이 실패한다.
     tenant-id: ${TENANT_ID}
-    plan: ${TENANT_PLAN:unknown}
-    deployment-sha: ${DEPLOYMENT_SHA:unknown}
+    plan: ${TENANT_PLAN}
+    deployment-sha: ${DEPLOYMENT_SHA}
 
 management:
   endpoints:
