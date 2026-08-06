@@ -1,7 +1,10 @@
 package com.academy.mudogroupware.workspace.infrastructure.persistence.workspace;
 
+import jakarta.persistence.LockModeType;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -69,6 +72,32 @@ public interface WorkspaceJpaRepository extends JpaRepository<WorkspaceJpaEntity
       """)
   long countActiveWorkspace(
       @Param("workspaceId") Long workspaceId, @Param("academyId") Long academyId);
+
+  @Query(
+      """
+      select workspace.name
+      from WorkspaceJpaEntity workspace
+      where workspace.id = :workspaceId and workspace.deletedAt is null
+      """)
+  Optional<String> findActiveWorkspaceName(@Param("workspaceId") Long workspaceId);
+
+  @Query(
+      """
+      select member.id.userId
+      from WorkspaceMemberJpaEntity member
+      where member.workspace.id = :workspaceId
+      order by member.id.userId asc
+      """)
+  List<Long> findMemberUserIds(@Param("workspaceId") Long workspaceId);
+
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query(
+      """
+      select workspace
+      from WorkspaceJpaEntity workspace
+      where workspace.id = :workspaceId and workspace.deletedAt is null
+      """)
+  Optional<WorkspaceJpaEntity> findActiveByIdForUpdate(@Param("workspaceId") Long workspaceId);
 
   interface WorkspaceListRow {
 

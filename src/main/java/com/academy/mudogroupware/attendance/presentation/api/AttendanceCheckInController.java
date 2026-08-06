@@ -2,6 +2,7 @@ package com.academy.mudogroupware.attendance.presentation.api;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -17,10 +18,13 @@ import com.academy.mudogroupware.global.infrastructure.web.ClientIpResolver;
 import com.academy.mudogroupware.global.presentation.api.common.GlobalApiResponse;
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+@Tag(name = "근태", description = "근태 관리 API")
 @RestController
 @RequestMapping("/api/attendance/check-ins")
 @RequiredArgsConstructor
@@ -29,6 +33,10 @@ public class AttendanceCheckInController {
     private final CheckInUseCase checkInUseCase;
     private final ClientIpResolver clientIpResolver;
 
+    @PreAuthorize("hasAuthority('ATTENDANCE:CHECK_IN')")
+    @Operation(
+            summary = "출근 체크인",
+            description = "소속 학원에 등록된 허용 IP에서 출근을 기록합니다. 지각인 경우 사유가 필요합니다.")
     @PostMapping
     public ResponseEntity<GlobalApiResponse<CheckInResponse>> checkIn(
             @AuthenticationPrincipal AuthUser authUser,

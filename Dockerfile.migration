@@ -1,0 +1,26 @@
+# 애플리케이션과 같은 Gradle 의존성에서 MySQL Connector/J를 추출한다.
+FROM eclipse-temurin:17-jdk-jammy AS dependency-build
+
+WORKDIR /workspace
+COPY gradlew ./
+COPY gradle ./gradle
+COPY build.gradle settings.gradle ./
+COPY src ./src
+
+RUN chmod +x gradlew \
+    && ./gradlew bootJar -x test --no-daemon \
+    && mkdir -p /workspace/extracted \
+    && cd /workspace/extracted \
+    && jar -xf /workspace/build/libs/*.jar \
+        BOOT-INF/lib/mysql-connector-j-9.7.0.jar
+
+# Spring 애플리케이션 시작과 분리된 Flyway 전용 실행 이미지다.
+FROM flyway/flyway:12.4.0
+
+COPY --from=dependency-build \
+    /workspace/extracted/BOOT-INF/lib/mysql-connector-j-9.7.0.jar \
+    /flyway/drivers/mysql-connector-j-9.7.0.jar
+COPY src/main/resources/db/migration /flyway/sql
+
+ENTRYPOINT ["flyway"]
+CMD ["-locations=filesystem:/flyway/sql", "-baselineOnMigrate=true", "-outOfOrder=false", "-connectRetries=30", "migrate"]

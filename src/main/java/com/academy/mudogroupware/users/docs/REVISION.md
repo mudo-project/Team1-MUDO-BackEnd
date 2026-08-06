@@ -1,5 +1,5 @@
 > 작성일: 2026-08-04
-> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, 역할 생성 API 완료 · 역할 수정·삭제·권한 조립·목록/상세 조회, 계정 발급(회원가입) API 미착수
+> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, 역할 생성 + 권한 조립 API 완료 · 역할 수정·삭제·목록/상세 조회, 계정 발급(회원가입) API 미착수
 
 ## 🎯 변경 목적
 
@@ -191,6 +191,33 @@ Redis 도입이 확정되면서(WebSocket Pub/Sub 용도로 시작해 액세스 
 - [x] `./gradlew build` 통과
 - [x] `users/docs/{README,API,CHANGELOG,REVISION}.md` 갱신
 
+## ✅ 2026-08-05 · 권한 카탈로그 조회 + 역할 권한 조립 API 구현 (`GET /api/permissions`, `PUT /api/roles/{roleId}/permissions`, 이슈 #84)
+
+### 배경
+
+역할 생성 API(PR #76)만으로는 권한이 하나도 없는 역할만 만들 수 있어 사실상 못 쓰는 상태였다. `docs/superpowers/specs/2026-08-05-role-permission-assignment-api-design.md`에서 설계한 대로, 권한 카탈로그 조회와 역할 권한 조립을 함께 구현해 "역할다운 역할"을 완성했다.
+
+### 확정된 정책
+
+- **권한은 `id`가 아니라 `code`(`RESOURCE:ACTION` 형태)로 식별한다.** 요청/응답 모두 `permissionCodes`(문자열 Set)를 주고받는다 — `id`는 DB 내부 값이라 환경마다 달라질 수 있지만, `code`는 실제 `@PreAuthorize("hasAuthority(...)")`에 박히는 값과 그대로 대응해서 프론트/백엔드가 같은 문자열을 기준으로 얘기할 수 있다.
+- **`RoleRepository.updatePermissions()`를 `save()`와 분리했다.** `save()`는 "새 역할 생성"이라 매번 새 Entity를 빌더로 만드는 연산인데, 권한 조립은 "이미 있는 역할의 관계(`role_permission`)만 바꾸는" 다른 연산이다. `findWithPermissionsById()`로 관리 대상(managed) 엔티티를 로드하고 그 `permissions` Set을 직접 `clear()`+`addAll()`로 바꾸면, 트랜잭션 커밋 시점에 Hibernate dirty-checking이 자동으로 `role_permission` insert/delete를 반영한다 — **명시적 `save()` 호출이 없으므로, 이 메서드를 호출하는 서비스 계층에 반드시 `@Transactional`이 걸려있어야 한다**(`AssignRolePermissionsService`에 적용).
+- **역할이 존재하지 않는 경우와 다른 학원 소유인 경우를 동일하게 `RoleNotFoundException`(404)으로 처리한다.** 다른 학원의 역할 존재 여부가 노출되지 않도록 의도적으로 구분하지 않았다.
+- **`AssignRolePermissionsRequest.permissionCodes`는 `@NotNull`만 검증하고 `@NotEmpty`는 걸지 않는다.** 역할의 권한을 전부 비우는 요청(빈 배열)을 막을 이유가 없어 허용하기로 했다 — 전체 교체(replace) 방식이라 빈 배열을 보내면 기존 권한이 모두 제거된다.
+- **`permission.code` 컬럼 collation을 `utf8mb4_unicode_ci`(대소문자 구분 안 함) → `utf8mb4_bin`(구분함)으로 변경했다(`V4.1.4`).** 기존 collation이면 `notice:read`(소문자)가 실제 저장된 `NOTICE:READ`와 매칭돼 DB 검증(`findAllByCodeIn`)은 통과하지만, 실제 권한 체크(`hasAuthority()`)는 대소문자를 구분하므로 "검증은 통과했는데 실제로는 안 먹히는" 조용한 버그가 생길 수 있었다. 기존 데이터가 전부 대문자라 마이그레이션 자체는 안전하다.
+
+### 완료 기준
+
+- [x] `Permission`/`PermissionRepository`/`PermissionRepositoryImpl`/`PermissionJpaRepository` 구현
+- [x] `Role`에 `permissionCodes` 추가, `RoleRepositoryImpl.toDomain()`/`findById`/`updatePermissions` 구현
+- [x] `UserErrorCode` 2건(`INVALID_PERMISSION_CODE`, `ROLE_NOT_FOUND`) + `InvalidPermissionCodeException`/`RoleNotFoundException` 추가
+- [x] `V4.1.4__change_permission_code_collation.sql` 마이그레이션, 로컬 DB 적용 확인
+- [x] `PermissionController`(`GET /api/permissions`), `RoleController`에 `PUT .../permissions` 핸들러 추가
+- [x] `AssignRolePermissionsServiceTest`(4가지 분기), `RoleRepositoryImplDataJpaTest`(실제 DB) 작성 및 통과
+- [x] 로컬 curl/DB로 end-to-end 검증(카탈로그 조회, 권한 조립 성공/존재하지 않는 코드 400/남의 학원·없는 역할 404)
+- [x] `./gradlew build` 통과
+
+---
+
 ## 🧩 영향 범위
 
 | 계층 | 변경 내용 |
@@ -208,6 +235,11 @@ Redis 도입이 확정되면서(WebSocket Pub/Sub 용도로 시작해 액세스 
 | Application(추가) | `CreateRoleCommand`/`CreateRoleUseCase`/`CreateRoleService` 신규 |
 | Domain(추가) | `Role`(불변 객체), `RoleRepository`, `RoleNameDuplicateException` 신규. `UserErrorCode`에 `ROLE_NAME_DUPLICATE`(`USER_409_1`) 추가 |
 | Persistence(추가) | `RoleEntity`에 `@Builder` 생성자 추가, `RoleJpaRepository`에 `existsByAcademyIdAndName` 추가, `RoleRepositoryImpl` 신규(DB 유니크 제약 위반 → `RoleNameDuplicateException` 변환 포함) |
+| Presentation(추가) | `PermissionController`(`GET /api/permissions`) 신규, `RoleController`에 `PUT /{roleId}/permissions` 핸들러 추가 |
+| Application(추가) | `AssignRolePermissionsCommand`/`AssignRolePermissionsUseCase`/`AssignRolePermissionsService`, `PermissionQueryUseCase`/`PermissionQueryService` 신규 |
+| Domain(추가) | `Permission`(불변 레코드), `PermissionRepository` 신규. `Role`에 `permissionCodes` 필드 추가(`restore()` 시그니처 변경, `withPermissionCodes()` 추가). `UserErrorCode`에 `INVALID_PERMISSION_CODE`(`USER_400_1`)/`ROLE_NOT_FOUND`(`USER_404_2`) 추가, `InvalidPermissionCodeException`/`RoleNotFoundException` 신규 |
+| Persistence(추가) | `PermissionEntity`에 `@Builder` 생성자 추가, `PermissionJpaRepository`/`PermissionRepositoryImpl` 신규. `RoleRepositoryImpl`에 `findById`/`updatePermissions` 구현, `toDomain()` 갱신 |
+| Migration(추가) | `V4.1.4`(`permission.code` collation을 `utf8mb4_bin`으로 변경) |
 
 ## 🧪 완료 기준 (전체)
 
@@ -219,7 +251,9 @@ Redis 도입이 확정되면서(WebSocket Pub/Sub 용도로 시작해 액세스 
 - [ ] 계정 발급(회원가입, 원장이 하위 직원 계정 생성) API — 미착수
 - [x] 로그아웃 API — `POST /api/auth/logout` 추가, `TokenRevokerUseCase`로 refreshToken 삭제
 - [x] 역할 생성 API — `POST /api/roles` 추가, DB 유니크 제약 백스톱 포함
-- [ ] 역할 수정·삭제, 권한 조립, 목록/상세 조회 API — 미착수
+- [x] 권한 카탈로그 조회 API — `GET /api/permissions` 추가
+- [x] 역할 권한 조립 API — `PUT /api/roles/{roleId}/permissions` 추가(전체 교체 방식), 존재하지 않는 코드 400/역할 없음·다른 학원 404
+- [ ] 역할 수정·삭제, 목록/상세 조회 API — 미착수
 - [x] `academy` 테이블 생성됨(다른 팀원, `V2.1.2`~`V2.1.4`) — `role.academy_id`, `users.academy_id` 모두 FK 연결 완료(`V4.1.3`)
 
 ## 📌 후속 문서

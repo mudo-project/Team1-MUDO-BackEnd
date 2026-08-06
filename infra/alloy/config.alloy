@@ -1,0 +1,153 @@
+discovery.docker "local" {
+  host = "unix:///var/run/docker.sock"
+}
+
+discovery.relabel "mudo_metrics" {
+  targets = discovery.docker.local.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_label_prometheus_scrape"]
+    regex         = "true"
+    action        = "keep"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_port_private"]
+    regex         = "8080"
+    action        = "keep"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_network_ip", "__meta_docker_port_private"]
+    separator     = ":"
+    target_label  = "__address__"
+  }
+
+  rule {
+    target_label = "__metrics_path__"
+    replacement  = "/actuator/prometheus"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_label_mudo_tenant"]
+    target_label  = "tenant"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_label_mudo_service"]
+    target_label  = "service"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_label_mudo_environment"]
+    target_label  = "environment"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_label_mudo_plan"]
+    target_label  = "plan"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_label_mudo_deployment_sha"]
+    target_label  = "deployment"
+  }
+}
+
+prometheus.scrape "mudo_apps" {
+  targets         = discovery.relabel.mudo_metrics.output
+  scrape_interval = "30s"
+  scrape_timeout  = "10s"
+  forward_to      = [prometheus.remote_write.central.receiver]
+}
+
+prometheus.exporter.self "alloy" {}
+
+discovery.relabel "alloy_self" {
+  targets = prometheus.exporter.self.alloy.targets
+
+  rule {
+    target_label = "service"
+    replacement  = "alloy"
+  }
+
+  rule {
+    target_label = "environment"
+    replacement  = "prod"
+  }
+}
+
+prometheus.scrape "alloy_self" {
+  targets         = discovery.relabel.alloy_self.output
+  scrape_interval = "30s"
+  forward_to      = [prometheus.remote_write.central.receiver]
+}
+
+prometheus.remote_write "central" {
+  endpoint {
+    url = sys.env("PROMETHEUS_REMOTE_WRITE_URL")
+
+    queue_config {
+      retry_on_http_429 = true
+    }
+  }
+}
+
+discovery.relabel "mudo_logs" {
+  targets = discovery.docker.local.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_label_mudo_observe"]
+    regex         = "true"
+    action        = "keep"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_label_mudo_tenant"]
+    target_label  = "tenant"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_label_mudo_service"]
+    target_label  = "service"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_label_mudo_environment"]
+    target_label  = "environment"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_label_mudo_plan"]
+    target_label  = "plan"
+  }
+}
+
+loki.source.docker "mudo_apps" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.mudo_logs.output
+  labels     = {collector = "alloy"}
+  forward_to = [loki.process.mudo_json.receiver]
+}
+
+loki.process "mudo_json" {
+  stage.json {
+    expressions = {
+      level = "level",
+    }
+  }
+
+  stage.labels {
+    values = {
+      level = "",
+    }
+  }
+
+  forward_to = [loki.write.central.receiver]
+}
+
+loki.write "central" {
+  endpoint {
+    url = sys.env("LOKI_PUSH_URL")
+  }
+}

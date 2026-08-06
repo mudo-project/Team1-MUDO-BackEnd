@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.users.infrastructure.persistence;
 
+import java.util.List;
 import java.util.Set;
 import java.util.Optional;
 
@@ -32,6 +33,14 @@ public class UserRepositoryImpl implements UserRepository {
             return Set.of();
         }
         return userJpaRepository.findActiveIdsByAcademyIdAndIdIn(academyId, userIds);
+    }
+
+    @Override
+    public List<User> findAllById(Set<Long> ids) {
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+        return userJpaRepository.findAllById(ids).stream().map(this::toDomain).toList();
     }
 
     private User toDomain(UserEntity entity) {
