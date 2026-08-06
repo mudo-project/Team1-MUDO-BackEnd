@@ -15,8 +15,12 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import com.academy.mudogroupware.messenger.domain.event.ChatMessageSentEvent;
 import com.academy.mudogroupware.messenger.domain.event.ChatRoomReadEvent;
+import com.academy.mudogroupware.messenger.domain.event.MessageDeletedEvent;
+import com.academy.mudogroupware.messenger.domain.event.MessageEditedEvent;
 import com.academy.mudogroupware.messenger.domain.event.TaskCardCompletedEvent;
 import com.academy.mudogroupware.messenger.domain.event.TaskCardCreatedEvent;
+import com.academy.mudogroupware.messenger.domain.event.TaskCardDeletedEvent;
+import com.academy.mudogroupware.messenger.domain.event.TaskCardUpdatedEvent;
 import com.academy.mudogroupware.messenger.domain.model.MessageType;
 
 class MessengerWebSocketNotifierTest {
@@ -99,5 +103,66 @@ class MessengerWebSocketNotifierTest {
         assertThat(captor.getValue().completedCount()).isEqualTo(2L);
         assertThat(captor.getValue().assigneeCount()).isEqualTo(2);
         assertThat(captor.getValue().fullyCompleted()).isTrue();
+    }
+
+    @Test
+    void sendsMessageEditedEventToRoomTopic() {
+        LocalDateTime editedAt = LocalDateTime.of(2026, 8, 6, 14, 0);
+        MessageEditedEvent event = new MessageEditedEvent(1L, 5L, 2L, "after", editedAt);
+
+        notifier.handle(event);
+
+        ArgumentCaptor<MessageEditedSocketResponse> captor =
+                ArgumentCaptor.forClass(MessageEditedSocketResponse.class);
+        verify(messagingTemplate).convertAndSend(eq("/topic/messenger/rooms/1"), captor.capture());
+        assertThat(captor.getValue().eventType()).isEqualTo("MESSAGE_EDITED");
+        assertThat(captor.getValue().messageId()).isEqualTo(5L);
+        assertThat(captor.getValue().content()).isEqualTo("after");
+    }
+
+    @Test
+    void sendsMessageDeletedEventToRoomTopic() {
+        LocalDateTime deletedAt = LocalDateTime.of(2026, 8, 6, 14, 5);
+        MessageDeletedEvent event = new MessageDeletedEvent(1L, 5L, 2L, deletedAt);
+
+        notifier.handle(event);
+
+        ArgumentCaptor<MessageDeletedSocketResponse> captor =
+                ArgumentCaptor.forClass(MessageDeletedSocketResponse.class);
+        verify(messagingTemplate).convertAndSend(eq("/topic/messenger/rooms/1"), captor.capture());
+        assertThat(captor.getValue().eventType()).isEqualTo("MESSAGE_DELETED");
+        assertThat(captor.getValue().messageId()).isEqualTo(5L);
+        assertThat(captor.getValue().deleterUserId()).isEqualTo(2L);
+    }
+
+    @Test
+    void sendsTaskCardUpdatedEventToRoomTopic() {
+        TaskCardUpdatedEvent event = new TaskCardUpdatedEvent(
+                1L, 7L, "new content", LocalDate.of(2026, 8, 20), List.of(4L, 5L));
+
+        notifier.handle(event);
+
+        ArgumentCaptor<TaskCardUpdatedSocketResponse> captor =
+                ArgumentCaptor.forClass(TaskCardUpdatedSocketResponse.class);
+        verify(messagingTemplate).convertAndSend(eq("/topic/messenger/rooms/1"), captor.capture());
+        assertThat(captor.getValue().eventType()).isEqualTo("TASK_CARD_UPDATED");
+        assertThat(captor.getValue().cardId()).isEqualTo(7L);
+        assertThat(captor.getValue().content()).isEqualTo("new content");
+        assertThat(captor.getValue().assigneeIds()).containsExactly(4L, 5L);
+    }
+
+    @Test
+    void sendsTaskCardDeletedEventToRoomTopic() {
+        LocalDateTime deletedAt = LocalDateTime.of(2026, 8, 6, 15, 0);
+        TaskCardDeletedEvent event = new TaskCardDeletedEvent(1L, 7L, deletedAt);
+
+        notifier.handle(event);
+
+        ArgumentCaptor<TaskCardDeletedSocketResponse> captor =
+                ArgumentCaptor.forClass(TaskCardDeletedSocketResponse.class);
+        verify(messagingTemplate).convertAndSend(eq("/topic/messenger/rooms/1"), captor.capture());
+        assertThat(captor.getValue().eventType()).isEqualTo("TASK_CARD_DELETED");
+        assertThat(captor.getValue().cardId()).isEqualTo(7L);
+        assertThat(captor.getValue().deletedAt()).isEqualTo(deletedAt);
     }
 }

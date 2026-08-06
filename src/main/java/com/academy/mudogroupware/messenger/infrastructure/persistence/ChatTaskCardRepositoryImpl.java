@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.messenger.infrastructure.persistence;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -31,7 +32,8 @@ public class ChatTaskCardRepositoryImpl implements ChatTaskCardRepository {
 
     @Override
     public List<ChatTaskCard> findAllByChatRoomId(Long chatRoomId) {
-        return chatTaskCardJpaRepository.findAllByChatRoomIdOrderByCreatedAtDescIdDesc(chatRoomId).stream()
+        return chatTaskCardJpaRepository.findAllByChatRoomIdAndDeletedAtIsNullOrderByCreatedAtDescIdDesc(chatRoomId)
+                .stream()
                 .map(this::toDomain)
                 .toList();
     }
@@ -39,6 +41,24 @@ public class ChatTaskCardRepositoryImpl implements ChatTaskCardRepository {
     @Override
     public void markAssigneeCompleted(Long cardId, Long userId, LocalDateTime completedAt) {
         chatTaskCardJpaRepository.markCompleted(cardId, userId, completedAt);
+    }
+
+    @Override
+    public boolean updateContent(Long cardId, String content, LocalDate dueDate) {
+        return chatTaskCardJpaRepository.updateContent(cardId, content, dueDate) > 0;
+    }
+
+    @Override
+    public void replaceAssignees(Long cardId, List<Long> addedUserIds, List<Long> removedUserIds) {
+        if (!removedUserIds.isEmpty()) {
+            chatTaskCardJpaRepository.deleteAssignees(cardId, removedUserIds);
+        }
+        addedUserIds.forEach(userId -> chatTaskCardJpaRepository.insertAssignee(cardId, userId));
+    }
+
+    @Override
+    public void markDeleted(Long cardId, LocalDateTime deletedAt) {
+        chatTaskCardJpaRepository.markDeleted(cardId, deletedAt);
     }
 
     private ChatTaskCardEntity toEntity(ChatTaskCard chatTaskCard) {
@@ -56,6 +76,7 @@ public class ChatTaskCardRepositoryImpl implements ChatTaskCardRepository {
                 .content(chatTaskCard.getContent())
                 .dueDate(chatTaskCard.getDueDate())
                 .createdAt(chatTaskCard.getCreatedAt())
+                .deletedAt(chatTaskCard.getDeletedAt())
                 .assignees(assignees)
                 .build();
     }
@@ -66,6 +87,6 @@ public class ChatTaskCardRepositoryImpl implements ChatTaskCardRepository {
                 .toList();
 
         return ChatTaskCard.restore(entity.getId(), entity.getChatRoomId(), entity.getAssignerUserId(),
-                entity.getContent(), entity.getDueDate(), assignees, entity.getCreatedAt());
+                entity.getContent(), entity.getDueDate(), assignees, entity.getCreatedAt(), entity.getDeletedAt());
     }
 }
