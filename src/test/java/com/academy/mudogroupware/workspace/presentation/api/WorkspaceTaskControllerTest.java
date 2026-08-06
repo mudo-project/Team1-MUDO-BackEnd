@@ -17,6 +17,7 @@ import com.academy.mudogroupware.workspace.application.command.CreateTaskCommand
 import com.academy.mudogroupware.workspace.application.usecase.CreateTaskUseCase;
 import com.academy.mudogroupware.workspace.domain.exception.WorkspaceAccessDeniedException;
 import com.academy.mudogroupware.workspace.domain.exception.WorkspaceNotFoundException;
+import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -64,6 +65,41 @@ class WorkspaceTaskControllerTest {
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"title\":\"   \",\"dueAt\":\"2026-08-10\"}"))
+        .andExpect(status().isBadRequest());
+
+    verifyNoInteractions(createTaskUseCase);
+  }
+
+  @Test
+  void createTaskTrimsTitleAndAcceptsExactly200CharactersAfterTrim() throws Exception {
+    String title = "제".repeat(200);
+    CreateTaskCommand expectedCommand =
+        new CreateTaskCommand(1L, 10L, title, LocalDate.of(2026, 8, 10));
+    when(createTaskUseCase.createTask(expectedCommand)).thenReturn(101L);
+
+    mockMvc
+        .perform(
+            post("/api/workspaces/1/tasks")
+                .with(authentication(auth()))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"  " + title + "  \",\"dueAt\":\"2026-08-10\"}"))
+        .andExpect(status().isCreated());
+
+    verify(createTaskUseCase).createTask(expectedCommand);
+  }
+
+  @Test
+  void createTaskRejectsTitleLongerThan200CharactersAfterTrim() throws Exception {
+    String title = "제".repeat(201);
+
+    mockMvc
+        .perform(
+            post("/api/workspaces/1/tasks")
+                .with(authentication(auth()))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"" + title + "\",\"dueAt\":\"2026-08-10\"}"))
         .andExpect(status().isBadRequest());
 
     verifyNoInteractions(createTaskUseCase);
