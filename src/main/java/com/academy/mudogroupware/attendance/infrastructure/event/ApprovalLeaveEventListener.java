@@ -3,7 +3,6 @@ package com.academy.mudogroupware.attendance.infrastructure.event;
 import java.time.LocalDateTime;
 
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
@@ -28,7 +27,10 @@ public class ApprovalLeaveEventListener {
 
     private final LeaveRequestRepository leaveRequestRepository;
 
-    @Transactional
+    // Spring Data JPA 저장소 메서드(save/findById 등) 자체가 이미 자기 트랜잭션을 열기 때문에
+    // 여기에 별도 @Transactional을 얹지 않는다 - ApprovalWebSocketNotifier/MessengerWebSocketNotifier와
+    // 동일한 패턴. @TransactionalEventListener와 @Transactional을 함께 붙이면 컨텍스트 로딩 시점에
+    // RestrictedTransactionalEventListenerFactory가 IllegalStateException을 던진다.
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onLeaveRequestSubmitted(LeaveRequestSubmittedEvent event) {
         LeaveRequest leaveRequest = LeaveRequest.submit(event.academyId(), event.requesterId(), event.documentId(),
@@ -36,7 +38,6 @@ public class ApprovalLeaveEventListener {
         leaveRequestRepository.save(leaveRequest);
     }
 
-    @Transactional
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onApprovalDocumentDecided(ApprovalDocumentDecidedEvent event) {
         leaveRequestRepository.findByDocumentId(event.documentId()).ifPresent(leaveRequest -> {
