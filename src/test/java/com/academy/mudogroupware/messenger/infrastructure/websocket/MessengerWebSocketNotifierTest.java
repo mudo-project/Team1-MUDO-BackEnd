@@ -82,6 +82,22 @@ class MessengerWebSocketNotifierTest {
         assertThat(captor.getValue().eventType()).isEqualTo("TASK_CARD_COMPLETED");
         assertThat(captor.getValue().completedUserId()).isEqualTo(3L);
         assertThat(captor.getValue().completedCount()).isEqualTo(1L);
+        assertThat(captor.getValue().assigneeCount()).isEqualTo(2);
         assertThat(captor.getValue().fullyCompleted()).isFalse();
+    }
+
+    @Test
+    void sendsFullyCompletedTaskCardEventToRoomTopic() {
+        LocalDateTime completedAt = LocalDateTime.of(2026, 8, 6, 9, 40);
+        TaskCardCompletedEvent event = new TaskCardCompletedEvent(1L, 7L, 4L, completedAt, 2L, 2, true);
+
+        notifier.handle(event);
+
+        ArgumentCaptor<TaskCardCompletedSocketResponse> captor =
+                ArgumentCaptor.forClass(TaskCardCompletedSocketResponse.class);
+        verify(messagingTemplate).convertAndSend(eq("/topic/messenger/rooms/1"), captor.capture());
+        assertThat(captor.getValue().completedCount()).isEqualTo(2L);
+        assertThat(captor.getValue().assigneeCount()).isEqualTo(2);
+        assertThat(captor.getValue().fullyCompleted()).isTrue();
     }
 }

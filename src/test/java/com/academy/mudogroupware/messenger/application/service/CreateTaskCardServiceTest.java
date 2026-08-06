@@ -1,8 +1,10 @@
 package com.academy.mudogroupware.messenger.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -19,6 +21,8 @@ import org.springframework.context.ApplicationEventPublisher;
 
 import com.academy.mudogroupware.messenger.application.command.CreateTaskCardCommand;
 import com.academy.mudogroupware.messenger.domain.event.TaskCardCreatedEvent;
+import com.academy.mudogroupware.messenger.domain.exception.MessengerErrorCode;
+import com.academy.mudogroupware.messenger.domain.exception.MessengerException;
 import com.academy.mudogroupware.messenger.domain.model.ChatRoom;
 import com.academy.mudogroupware.messenger.domain.model.ChatRoomMember;
 import com.academy.mudogroupware.messenger.domain.model.ChatRoomType;
@@ -61,5 +65,21 @@ class CreateTaskCardServiceTest {
         assertThat(eventCaptor.getValue().cardId()).isEqualTo(7L);
         assertThat(eventCaptor.getValue().assigneeIds()).containsExactly(3L, 4L);
         assertThat(eventCaptor.getValue().createdAt()).isEqualTo(NOW);
+    }
+
+    @Test
+    void throwsAndPublishesNothingWhenAssigneeIsNotRoomMember() {
+        ChatRoom chatRoom = ChatRoom.restore(1L, 10L, null, ChatRoomType.GROUP, 2L,
+                List.of(ChatRoomMember.restore(2L, null), ChatRoomMember.restore(3L, null)), ROOM_CREATED_AT);
+        when(chatRoomRepository.findById(1L)).thenReturn(Optional.of(chatRoom));
+
+        assertThatThrownBy(() -> service.createTaskCard(new CreateTaskCardCommand(
+                1L, 2L, "과제 제출", LocalDate.of(2026, 8, 10), List.of(3L, 4L))))
+                .isInstanceOf(MessengerException.class)
+                .extracting(exception -> ((MessengerException) exception).getErrorCode())
+                .isEqualTo(MessengerErrorCode.NOT_ROOM_MEMBER);
+
+        verify(chatTaskCardRepository, never()).save(any(ChatTaskCard.class));
+        verify(eventPublisher, never()).publishEvent(any());
     }
 }

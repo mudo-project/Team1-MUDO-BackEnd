@@ -54,4 +54,21 @@ class CompleteTaskServiceTest {
         assertThat(event.assigneeCount()).isEqualTo(2);
         assertThat(event.fullyCompleted()).isFalse();
     }
+
+    @Test
+    void publishesFullyCompletedEventWhenLastAssigneeCompletes() {
+        ChatTaskCard chatTaskCard = ChatTaskCard.restore(7L, 1L, 2L, "과제 제출", LocalDate.of(2026, 8, 10),
+                List.of(ChatTaskAssignee.restore(3L, CARD_CREATED_AT), ChatTaskAssignee.restore(4L, null)),
+                CARD_CREATED_AT);
+        when(chatTaskCardRepository.findById(7L)).thenReturn(Optional.of(chatTaskCard));
+
+        service.complete(new CompleteTaskCommand(1L, 7L, 4L));
+
+        ArgumentCaptor<TaskCardCompletedEvent> eventCaptor = ArgumentCaptor.forClass(TaskCardCompletedEvent.class);
+        verify(eventPublisher).publishEvent(eventCaptor.capture());
+        TaskCardCompletedEvent event = eventCaptor.getValue();
+        assertThat(event.completedCount()).isEqualTo(2L);
+        assertThat(event.assigneeCount()).isEqualTo(2);
+        assertThat(event.fullyCompleted()).isTrue();
+    }
 }
