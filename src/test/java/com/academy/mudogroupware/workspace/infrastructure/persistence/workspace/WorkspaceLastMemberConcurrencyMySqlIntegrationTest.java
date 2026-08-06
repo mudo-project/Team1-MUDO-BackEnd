@@ -2,16 +2,22 @@ package com.academy.mudogroupware.workspace.infrastructure.persistence.workspace
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.academy.mudogroupware.global.infrastructure.config.TimeConfig;
+import com.academy.mudogroupware.workspace.application.command.RemoveWorkspaceMemberCommand;
+import com.academy.mudogroupware.workspace.application.service.RemoveWorkspaceMemberService;
+import com.academy.mudogroupware.workspace.domain.exception.WorkspaceLastMemberException;
 import java.time.LocalDateTime;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
+import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -26,10 +32,11 @@ import org.testcontainers.mysql.MySQLContainer;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @Testcontainers(disabledWithoutDocker = true)
-class WorkspaceRecentAccessMySqlIntegrationTest {
+@Import({TimeConfig.class, WorkspacePersistenceAdapter.class, WorkspacePersistenceMapperImpl.class,
+    RemoveWorkspaceMemberService.class})
+class WorkspaceLastMemberConcurrencyMySqlIntegrationTest {
 
-  @Container
-  static final MySQLContainer MYSQL = new MySQLContainer("mysql:8.0");
+  @Container static final MySQLContainer MYSQL = new MySQLContainer("mysql:8.0");
 
   @DynamicPropertySource
   static void configureDataSource(DynamicPropertyRegistry registry) {
@@ -40,22 +47,22 @@ class WorkspaceRecentAccessMySqlIntegrationTest {
     registry.add("spring.flyway.enabled", () -> false);
   }
 
-  @Autowired private WorkspaceRecentAccessJpaRepository workspaceRecentAccessJpaRepository;
-
+  @Autowired private RemoveWorkspaceMemberService removeWorkspaceMemberService;
   @Autowired private JdbcTemplate jdbcTemplate;
 
   @Test
   @Transactional(propagation = Propagation.NOT_SUPPORTED)
-  void upsertAllowsConcurrentFirstAccessForSameWorkspace() throws Exception {
-    insertWorkspace(100L);
-    LocalDateTime accessedAt = LocalDateTime.of(2026, 8, 5, 10, 0);
+  void onlyOneOfTwoConcurrentLastPairRemovalsSucceeds() throws Exception {
+    insertWorkspaceWithTwoMembers(200L, 10L, 20L);
     CountDownLatch ready = new CountDownLatch(2);
     CountDownLatch start = new CountDownLatch(1);
     ExecutorService executor = Executors.newFixedThreadPool(2);
+    AtomicInteger successCount = new AtomicInteger();
+    AtomicInteger lastMemberRejectionCount = new AtomicInteger();
 
     try {
-      Future<?> first = submitUpsert(executor, ready, start, accessedAt);
-      Future<?> second = submitUpsert(executor, ready, start, accessedAt);
+      Future<?> first = submitRemoval(executor, ready, start, 200L, 10L, successCount, lastMemberRejectionCount);
+      Future<?> second = submitRemoval(executor, ready, start, 200L, 20L, successCount, lastMemberRejectionCount);
 
       assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
       start.countDown();
@@ -65,69 +72,50 @@ class WorkspaceRecentAccessMySqlIntegrationTest {
       executor.shutdownNow();
     }
 
-    Integer count =
+    assertThat(successCount.get()).isEqualTo(1);
+    assertThat(lastMemberRejectionCount.get()).isEqualTo(1);
+    Integer remainingMembers =
         jdbcTemplate.queryForObject(
-            "select count(*) from workspace_recent_access where user_id = ? and workspace_id = ?",
-            Integer.class,
-            10L,
-            100L);
-    LocalDateTime lastAccessedAt =
-        jdbcTemplate.queryForObject(
-            "select last_accessed_at from workspace_recent_access where user_id = ? and workspace_id = ?",
-            LocalDateTime.class,
-            10L,
-            100L);
-
-    assertThat(count).isEqualTo(1);
-    assertThat(lastAccessedAt).isEqualTo(accessedAt);
+            "select count(*) from workspace_member where workspace_id = ?", Integer.class, 200L);
+    assertThat(remainingMembers).isEqualTo(1);
   }
 
-  @Test
-  @Transactional(propagation = Propagation.NOT_SUPPORTED)
-  void upsertPreservesNewerAccessTimeWhenOlderRequestArrivesLater() {
-    insertWorkspace(101L);
-    LocalDateTime newerAccessedAt = LocalDateTime.of(2026, 8, 5, 10, 1);
-    LocalDateTime olderAccessedAt = LocalDateTime.of(2026, 8, 5, 10, 0);
-
-    workspaceRecentAccessJpaRepository.upsert(10L, 101L, newerAccessedAt);
-    workspaceRecentAccessJpaRepository.upsert(10L, 101L, olderAccessedAt);
-
-    LocalDateTime lastAccessedAt =
-        jdbcTemplate.queryForObject(
-            "select last_accessed_at from workspace_recent_access where user_id = ? and workspace_id = ?",
-            LocalDateTime.class,
-            10L,
-            101L);
-
-    assertThat(lastAccessedAt).isEqualTo(newerAccessedAt);
-  }
-
-  private Future<?> submitUpsert(
+  private Future<?> submitRemoval(
       ExecutorService executor,
       CountDownLatch ready,
       CountDownLatch start,
-      LocalDateTime accessedAt) {
+      Long workspaceId,
+      Long targetUserId,
+      AtomicInteger successCount,
+      AtomicInteger lastMemberRejectionCount) {
     return executor.submit(
         () -> {
           ready.countDown();
           start.await();
-          workspaceRecentAccessJpaRepository.upsert(10L, 100L, accessedAt);
+          try {
+            removeWorkspaceMemberService.removeMember(
+                new RemoveWorkspaceMemberCommand(targetUserId, workspaceId, targetUserId));
+            successCount.incrementAndGet();
+          } catch (WorkspaceLastMemberException exception) {
+            lastMemberRejectionCount.incrementAndGet();
+          }
           return null;
         });
   }
 
-  private void insertWorkspace(long workspaceId) {
-    LocalDateTime createdAt = LocalDateTime.of(2026, 8, 5, 9, 0);
+  private void insertWorkspaceWithTwoMembers(long workspaceId, long userId1, long userId2) {
+    LocalDateTime createdAt = LocalDateTime.of(2026, 8, 6, 9, 0);
     jdbcTemplate.update(
         """
         insert into workspace (workspace_id, academy_id, name, created_by, created_at, updated_at)
         values (?, ?, ?, ?, ?, ?)
         """,
-        workspaceId,
-        1L,
-        "workspace-" + workspaceId,
-        10L,
-        createdAt,
-        createdAt);
+        workspaceId, 1L, "workspace", userId1, createdAt, createdAt);
+    jdbcTemplate.update(
+        "insert into workspace_member (workspace_id, user_id, created_at) values (?, ?, ?)",
+        workspaceId, userId1, createdAt);
+    jdbcTemplate.update(
+        "insert into workspace_member (workspace_id, user_id, created_at) values (?, ?, ?)",
+        workspaceId, userId2, createdAt);
   }
 }
