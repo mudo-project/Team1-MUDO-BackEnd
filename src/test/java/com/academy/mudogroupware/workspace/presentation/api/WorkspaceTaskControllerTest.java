@@ -1,0 +1,121 @@
+package com.academy.mudogroupware.workspace.presentation.api;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.academy.mudogroupware.global.infrastructure.security.jwt.JwtTokenProvider;
+import com.academy.mudogroupware.global.presentation.security.AuthUser;
+import com.academy.mudogroupware.global.presentation.security.JwtAuthenticationConverter;
+import com.academy.mudogroupware.workspace.application.command.CreateTaskCommand;
+import com.academy.mudogroupware.workspace.application.usecase.CreateTaskUseCase;
+import com.academy.mudogroupware.workspace.domain.exception.WorkspaceAccessDeniedException;
+import com.academy.mudogroupware.workspace.domain.exception.WorkspaceNotFoundException;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+
+@WebMvcTest(WorkspaceTaskController.class)
+class WorkspaceTaskControllerTest {
+
+  private static final AuthUser AUTH_USER = new AuthUser(10L, "user", 1L, 3L, "MEMBER");
+
+  @Autowired private MockMvc mockMvc;
+
+  @MockitoBean private CreateTaskUseCase createTaskUseCase;
+  @MockitoBean private JwtTokenProvider jwtTokenProvider;
+  @MockitoBean private JwtAuthenticationConverter jwtAuthenticationConverter;
+
+  @Test
+  void createTaskReturnsCreatedWithTaskId() throws Exception {
+    when(createTaskUseCase.createTask(any(CreateTaskCommand.class))).thenReturn(101L);
+
+    mockMvc
+        .perform(
+            post("/api/workspaces/1/tasks")
+                .with(authentication(auth()))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"8월 원생 청구서 발송\",\"dueAt\":\"2026-08-10\"}"))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.code").value("WORKSPACE_201_2"))
+        .andExpect(jsonPath("$.data.taskId").value(101));
+
+    verify(createTaskUseCase).createTask(any(CreateTaskCommand.class));
+  }
+
+  @Test
+  void createTaskRejectsBlankTitle() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/workspaces/1/tasks")
+                .with(authentication(auth()))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"   \",\"dueAt\":\"2026-08-10\"}"))
+        .andExpect(status().isBadRequest());
+
+    verifyNoInteractions(createTaskUseCase);
+  }
+
+  @Test
+  void createTaskRejectsMissingDueAt() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/workspaces/1/tasks")
+                .with(authentication(auth()))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"업무\"}"))
+        .andExpect(status().isBadRequest());
+
+    verifyNoInteractions(createTaskUseCase);
+  }
+
+  @Test
+  void createTaskPropagatesWorkspaceNotFound() throws Exception {
+    when(createTaskUseCase.createTask(any(CreateTaskCommand.class)))
+        .thenThrow(new WorkspaceNotFoundException());
+
+    mockMvc
+        .perform(
+            post("/api/workspaces/1/tasks")
+                .with(authentication(auth()))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"업무\",\"dueAt\":\"2026-08-10\"}"))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("WORKSPACE_404_1"));
+  }
+
+  @Test
+  void createTaskPropagatesAccessDenied() throws Exception {
+    when(createTaskUseCase.createTask(any(CreateTaskCommand.class)))
+        .thenThrow(new WorkspaceAccessDeniedException());
+
+    mockMvc
+        .perform(
+            post("/api/workspaces/1/tasks")
+                .with(authentication(auth()))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"업무\",\"dueAt\":\"2026-08-10\"}"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("WORKSPACE_403_1"));
+  }
+
+  private Authentication auth() {
+    return new UsernamePasswordAuthenticationToken(AUTH_USER, null, java.util.List.of());
+  }
+}
