@@ -12,6 +12,7 @@ import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
+import com.academy.mudogroupware.global.domain.auth.AccountType;
 import com.academy.mudogroupware.lecture.application.port.TeacherInfo;
 import com.academy.mudogroupware.users.domain.model.User;
 import com.academy.mudogroupware.users.domain.model.UserStatus;
@@ -44,6 +45,7 @@ class LectureTeacherDirectoryAdapterTest {
 
     private User user(Long id, Long academyId, String name, Long roleId, UserStatus status) {
         return User.restore(id, academyId, "user" + id, "pw", name, "010", "user" + id + "@example.com",
-                roleId, status, false, false, LocalDateTime.now(), LocalDateTime.now(), LocalDateTime.now());
+                roleId, status, false, AccountType.MEMBER, null, LocalDateTime.now(), LocalDateTime.now(),
+                LocalDateTime.now());
     }
 }
