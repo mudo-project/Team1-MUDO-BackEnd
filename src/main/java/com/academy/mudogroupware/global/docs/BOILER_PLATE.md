@@ -55,18 +55,19 @@ Global Scheduler
 
 ```text
 global
+├── infrastructure
+│   └── config
+│       └── SchedulingConfig.java        # 이미 존재 — 새로 만들지 않고 재사용
 └── scheduler
     ├── RetentionJob.java
     ├── RetentionJobResult.java
-    ├── GlobalRetentionScheduler.java
-    └── SchedulingConfig.java
+    └── GlobalRetentionScheduler.java
 {domain}
 ├── application
-│   └── retention
-│       ├── {Domain}RetentionJob.java
-│       ├── {Domain}RetentionService.java
-│       └── {Domain}RetentionProperties.java
-├── application
+│   ├── retention
+│   │   ├── {Domain}RetentionJob.java
+│   │   ├── {Domain}RetentionService.java
+│   │   └── {Domain}RetentionProperties.java
 │   └── port
 │       └── out
 │           └── {Domain}RetentionPort.java
@@ -176,7 +177,7 @@ public class GlobalRetentionScheduler {
 public class SchedulingConfig {}
 ```
 
-프로젝트 전체에서 한 번만 선언합니다(위 경고 참고).
+`src/main/java/com/academy/mudogroupware/global/infrastructure/config/SchedulingConfig.java`에 이미 존재합니다(업무 자동 지연 스케줄러가 최초 선언). 프로젝트 전체에서 한 번만 선언하므로 새로 만들지 말고 이 파일을 그대로 재사용합니다(위 경고 참고).
 
 ## 🏗️ 도메인별 구현 예시
 
