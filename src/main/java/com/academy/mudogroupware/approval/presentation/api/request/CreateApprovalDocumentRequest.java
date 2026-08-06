@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.approval.presentation.api.request;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import com.academy.mudogroupware.approval.application.command.CreateApprovalDocumentCommand;
@@ -14,10 +15,13 @@ public record CreateApprovalDocumentRequest(
         @NotNull ApprovalContentType contentType,
         String text,
         List<Long> fileIds,
-        List<Long> approverIds
+        List<Long> approverIds,
+        LocalDate leaveStartDate,
+        LocalDate leaveEndDate
 ) {
 
     public CreateApprovalDocumentCommand toCommand(Long creatorId) {
-        return new CreateApprovalDocumentCommand(templateId, title, contentType, text, fileIds, creatorId, approverIds);
+        return new CreateApprovalDocumentCommand(templateId, title, contentType, text, fileIds, creatorId,
+                approverIds, leaveStartDate, leaveEndDate);
     }
 }
