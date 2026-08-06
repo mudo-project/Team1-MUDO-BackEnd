@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import com.academy.mudogroupware.calendar.application.usecase.CreateCalendarEventUseCase;
+import com.academy.mudogroupware.calendar.application.usecase.GetCalendarEventUseCase;
 import com.academy.mudogroupware.calendar.application.usecase.GetCalendarEventsUseCase;
 import com.academy.mudogroupware.calendar.application.usecase.UpdateCalendarEventUseCase;
 import com.academy.mudogroupware.calendar.presentation.api.common.CalendarResponseCode;
@@ -43,6 +44,7 @@ public class CalendarController {
     private final CreateCalendarEventUseCase createCalendarEventUseCase;
     private final GetCalendarEventsUseCase getCalendarEventsUseCase;
     private final UpdateCalendarEventUseCase updateCalendarEventUseCase;
+    private final GetCalendarEventUseCase getCalendarEventUseCase;
 
     @Operation(summary = "일정 생성", description = "학원 공용 캘린더에 새 일정을 추가합니다.")
     @ApiResponses({
@@ -94,5 +96,17 @@ public class CalendarController {
             @Valid @RequestBody UpdateCalendarEventRequest request) {
         updateCalendarEventUseCase.updateEvent(request.toCommand(eventId, authUser));
         return ResponseEntity.noContent().build();
+    @Operation(summary = "일정 상세 조회", description = "일정 번호로 학원 공용 캘린더 일정 상세를 조회합니다.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "일정 상세 조회 성공"),
+        @ApiResponse(responseCode = "404", description = "일정이 존재하지 않거나 다른 학원 소속인 경우")
+    })
+    @GetMapping("/{eventId}")
+    public ResponseEntity<GlobalApiResponse<CalendarEventResponse>> getEvent(
+            @AuthenticationPrincipal AuthUser authUser,
+            @PathVariable Long eventId) {
+        CalendarEventResponse response = CalendarEventResponse.from(
+                getCalendarEventUseCase.getEvent(authUser.academyId(), eventId));
+        return ResponseEntity.ok(GlobalApiResponse.ok(CalendarResponseCode.EVENT_DETAIL_RETRIEVED, response));
     }
 }

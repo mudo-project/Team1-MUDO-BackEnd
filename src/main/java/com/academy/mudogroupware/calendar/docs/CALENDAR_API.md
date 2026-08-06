@@ -165,12 +165,18 @@ HTTP `200 OK`
 ### Endpoint
 
 `PATCH /api/calendars/{eventId}`
+## 일정 상세 조회
+
+### Endpoint
+
+`GET /api/calendars/{eventId}`
 
 ### 인증 및 권한
 
 - `Authorization: Bearer {accessToken}` 헤더가 필요하다.
 - 현재 구현은 인증된 사용자라면 호출할 수 있다.
 - 기능명세서상 "대표와 대표가 허용한 권한"은 `users.role` 값 체계 확정 후 `@PreAuthorize`로 적용 예정이며, 지금은 `CalendarController`에 TODO로 남긴다.
+- 같은 학원(`AuthUser.academyId()`) 소속으로 인증된 사용자라면 누구나 호출할 수 있다. 별도 권한 검사는 없다.
 
 ### Request Header
 

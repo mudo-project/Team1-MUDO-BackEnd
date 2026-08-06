@@ -29,6 +29,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import com.academy.mudogroupware.calendar.application.command.CreateCalendarEventCommand;
 import com.academy.mudogroupware.calendar.application.command.UpdateCalendarEventCommand;
 import com.academy.mudogroupware.calendar.application.usecase.CreateCalendarEventUseCase;
+import com.academy.mudogroupware.calendar.application.usecase.GetCalendarEventUseCase;
 import com.academy.mudogroupware.calendar.application.usecase.GetCalendarEventsUseCase;
 import com.academy.mudogroupware.calendar.application.usecase.UpdateCalendarEventUseCase;
 import com.academy.mudogroupware.calendar.domain.exception.CalendarEventNotFoundException;
@@ -48,6 +49,7 @@ class CalendarControllerTest {
     @MockitoBean private CreateCalendarEventUseCase createCalendarEventUseCase;
     @MockitoBean private GetCalendarEventsUseCase getCalendarEventsUseCase;
     @MockitoBean private UpdateCalendarEventUseCase updateCalendarEventUseCase;
+    @MockitoBean private GetCalendarEventUseCase getCalendarEventUseCase;
     @MockitoBean private JwtTokenProvider jwtTokenProvider;
     @MockitoBean private JwtAuthenticationConverter jwtAuthenticationConverter;
 

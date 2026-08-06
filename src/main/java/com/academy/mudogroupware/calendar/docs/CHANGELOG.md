@@ -8,6 +8,11 @@
 - `title`이 공백이거나 `eventEndAt`이 `eventStartAt`보다 이전이면 각각 `CALENDAR_400_1`, `CALENDAR_400_2`로 응답합니다.
 - 성공 시 응답 본문 없이 HTTP `204 No Content`를 반환합니다.
 - `updated_at`은 `BaseTimeEntity`(Spring Data JPA Auditing)가 자동으로 갱신합니다.
+## 2026-08-06 · 일정 상세 조회 API 추가 ✨
+
+- `GET /api/calendars/{eventId}`로 일정 상세를 조회할 수 있습니다.
+- 일정이 존재하지 않거나 다른 학원 소속이면 `CALENDAR_404_1`로 응답합니다(다른 학원에 존재 여부를 노출하지 않기 위해 두 경우를 구분하지 않음).
+- 성공 시 HTTP `200 OK`와 함께 `CalendarEventResponse`(목록조회와 동일한 응답 형태)를 반환합니다.
 
 ## 2026-08-06 · 일정 목록/일별 조회 API 추가 ✨
 
