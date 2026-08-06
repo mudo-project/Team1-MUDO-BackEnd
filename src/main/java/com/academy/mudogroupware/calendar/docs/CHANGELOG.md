@@ -1,5 +1,11 @@
 # 📚 Calendar Changelog
 
+## 2026-08-07 · 목록/일별 조회 쿼리를 date/yearMonth 기반으로 변경 🔧
+
+- `GET /api/calendars?from=&to=` 대신 `?date=`(일별) 또는 `?yearMonth=`(월간)로 호출합니다.
+- 프론트가 시각 경계를 직접 계산할 필요 없이, 서버가 한국 시간(Asia/Seoul) 기준으로 그날/그달의 시작~끝 구간을 계산합니다.
+- `date`와 `yearMonth`를 둘 다 지정하거나 둘 다 생략하면 `CALENDAR_400_3`으로 응답합니다.
+
 ## 2026-08-06 · 일정 목록/일별 조회 API 추가 ✨
 
 - `GET /api/calendars?from=&to=`로 학원 공용 캘린더 일정을 기간 조회할 수 있습니다. 목록조회와 일별조회를 겸용합니다.

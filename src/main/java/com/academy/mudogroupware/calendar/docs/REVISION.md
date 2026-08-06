@@ -1,5 +1,27 @@
 # 🔄 Calendar 도메인 리비전 로그
 
+## ✅ 2026-08-07 · 목록/일별 조회 쿼리를 date/yearMonth 기반으로 변경
+
+### 변경 목적
+
+프론트 UI가 일별/월별 단위로 캘린더를 탐색하는데, 기존 `from`/`to`(LocalDateTime) 방식은 프론트가 "그날 00:00:00~23:59:59", "그달 1일 00:00:00~말일 23:59:59"를 직접 계산해서 보내야 했습니다. 이 계산을 서버로 옮겨 계약을 단순화했습니다.
+
+### 구현 변경
+
+- `CalendarController.getEvents`가 `from`/`to` 대신 `date`(`LocalDate`, 일별) 또는 `yearMonth`(`YearMonth`, 월간, `@DateTimeFormat(pattern = "yyyy-MM")`)를 받습니다. 정확히 하나만 지정해야 하며, 위반 시 새로 추가한 `InvalidCalendarQueryException`(`CALENDAR_400_3`)을 던집니다.
+- 구간 계산(`date.atStartOfDay()` ~ `date.atTime(LocalTime.MAX)`, 또는 `yearMonth.atDay(1).atStartOfDay()` ~ `yearMonth.atEndOfMonth().atTime(LocalTime.MAX)`)은 Controller에서 수행합니다. 애플리케이션 전체가 이미 한국 시간(Asia/Seoul) 기준 `LocalDateTime`을 그대로 다룬다는 전제(`docs/DATABASE.md`)를 따르므로 별도의 타임존 변환 로직은 추가하지 않았습니다.
+- `GetCalendarEventsUseCase`/`GetCalendarEventsService`는 시그니처(`academyId`, `from`, `to`)를 그대로 유지합니다. 계약 단순화는 표현 계층(Controller)의 책임으로 한정하고, 애플리케이션 계층은 손대지 않았습니다.
+- `CalendarErrorCode.INVALID_QUERY_RANGE`(`CALENDAR_400_3`)를 추가했습니다.
+
+### 유예한 결정
+
+- `GetCalendarEventsService`의 `to.isBefore(from)` 방어 로직은 그대로 남겨뒀습니다. 이 API 경로에서는 Controller가 항상 유효한 구간을 계산해 넘기므로 사실상 도달하지 않지만, Service 자체의 불변식으로서는 여전히 유효합니다.
+
+### 검증
+
+- `CalendarControllerTest` — `date`만 지정, `yearMonth`만 지정, 둘 다 지정, 둘 다 생략, 미인증 각각의 응답을 검증했습니다. `LocalTime.MAX`(`23:59:59.999999999`) 기준으로 계산되는 정확한 종료 시각까지 확인했습니다.
+- `./gradlew test`(전체) — calendar 관련 테스트 전부 통과, 기존 도메인 회귀 없음을 확인했습니다.
+
 ## ✅ 2026-08-06 · 일정 목록/일별 조회 API 추가
 
 ### 변경 목적
