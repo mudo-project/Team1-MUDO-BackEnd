@@ -92,7 +92,9 @@ UNIQUE (academy_id, active_name)
 
 - 업무 상태는 `WAITING`, `IN_PROGRESS`, `COMPLETED`, `DELAYED`를 사용한다.
 - `due_at`은 nullable이다. 마감일이 없는 업무는 자동 지연 대상이 아니다.
-- 자동 지연 조건은 `due_at IS NOT NULL`, `due_at < 현재 시각`, `status != COMPLETED`이다.
+- 일반 업무의 자동 지연 조건은 `due_at IS NOT NULL`, `due_at < 오늘(KST)`, `status NOT IN (COMPLETED, DELAYED)`이다.
+- 반복 업무의 자동 지연 조건은 `DATE(scheduled_for) < 오늘(KST)`, `status NOT IN (COMPLETED, DELAYED)`이다. `due_at`은 사용하지 않는다.
+- 스케줄러는 매일 KST 00:00에 실행하며, 조건에 `status != DELAYED`를 포함해 재실행해도 이미 지연 처리된 업무의 상태 이력이 중복 저장되지 않는다.
 - 스케줄러가 자동으로 지연 처리할 때 `task_status_history.changed_by`는 `NULL`로 저장한다. `NULL`은 시스템 처리자를 의미한다.
 - 과거 마감일로 미완료 업무를 생성하면 최초 상태를 `DELAYED`로 저장한다.
 - 최초 상태 이력은 `previous_status = NULL`로 저장한다.
