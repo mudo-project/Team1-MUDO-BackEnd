@@ -125,7 +125,7 @@ class WorkspaceRecentAccessMySqlIntegrationTest {
         """,
         workspaceId,
         1L,
-        "workspace",
+        "workspace-" + workspaceId,
         10L,
         createdAt,
         createdAt);

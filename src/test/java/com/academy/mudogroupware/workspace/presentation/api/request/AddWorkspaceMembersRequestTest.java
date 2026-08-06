@@ -20,4 +20,13 @@ class AddWorkspaceMembersRequestTest {
         .extracting(violation -> violation.getMessage())
         .contains("참여자 번호는 필수입니다.");
   }
+
+  @Test
+  void rejectsNullMemberIdsList() {
+    AddWorkspaceMembersRequest request = new AddWorkspaceMembersRequest(null);
+
+    assertThat(validator.validate(request))
+        .extracting(violation -> violation.getMessage())
+        .contains("참여자 번호 목록은 필수입니다.");
+  }
 }
