@@ -27,4 +27,12 @@ class RenameWorkspaceRequestTest {
         .extracting(violation -> violation.getMessage())
         .contains("워크스페이스 이름은 100자 이하여야 합니다.");
   }
+
+  @Test
+  void allowsNameThatIsExactly100CharactersAfterTrim() {
+    RenameWorkspaceRequest request = new RenameWorkspaceRequest("  " + "가".repeat(100) + "  ");
+
+    assertThat(validator.validate(request)).isEmpty();
+    assertThat(request.name()).hasSize(100);
+  }
 }

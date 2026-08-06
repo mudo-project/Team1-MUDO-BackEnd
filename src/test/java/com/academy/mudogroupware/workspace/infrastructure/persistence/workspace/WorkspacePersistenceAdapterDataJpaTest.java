@@ -74,9 +74,6 @@ class WorkspacePersistenceAdapterDataJpaTest {
     assertThat(found.get().getName()).isEqualTo("\uc6b4\uc601\ud300");
   }
 
-  // 참고: H2(create-drop) 스키마는 운영 DB의 active_name 생성 컬럼을 그대로 재현하지 못해
-  // (academy_id, name) 리터럴 유니크 제약으로 대체함 — 소프트 삭제된 이름 재사용 시나리오까지
-  // 정확히 검증하려면 MySQL 컨테이너 기반 테스트가 필요하다.
   @Test
   void rejectsRenameToDuplicateActiveNameInSameAcademy() {
     workspaceRepository.save(Workspace.create(1L, "\uc6b4\uc601\ud300", 10L, Set.of()));
@@ -84,6 +81,21 @@ class WorkspacePersistenceAdapterDataJpaTest {
 
     assertThatThrownBy(() -> workspaceRepository.rename(saved.getId(), "\uc6b4\uc601\ud300"))
         .isInstanceOf(WorkspaceNameConflictException.class);
+  }
+
+  // active_name 생성 컬럼(deleted_at이 null일 때만 name 노출)을 H2 스키마에도 반영했으므로,
+  // 소프트 삭제된 워크스페이스의 이름은 유니크 제약에서 제외되어야 한다.
+  @Test
+  void allowsRenamingToNameOfSoftDeletedWorkspaceInSameAcademy() {
+    Workspace deleted = workspaceRepository.save(Workspace.create(1L, "운영팀", 10L, Set.of()));
+    workspaceRepository.delete(deleted.getId(), java.time.LocalDateTime.of(2026, 8, 6, 12, 0));
+    Workspace saved = workspaceRepository.save(Workspace.create(1L, "개발팀", 10L, Set.of()));
+
+    workspaceRepository.rename(saved.getId(), "운영팀");
+
+    Optional<Workspace> found = workspaceRepository.findByIdForUpdate(saved.getId());
+    assertThat(found).isPresent();
+    assertThat(found.get().getName()).isEqualTo("운영팀");
   }
 
   @Test

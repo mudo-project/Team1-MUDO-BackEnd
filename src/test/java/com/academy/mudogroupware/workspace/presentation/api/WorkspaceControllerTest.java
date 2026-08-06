@@ -37,6 +37,8 @@ import com.academy.mudogroupware.workspace.application.usecase.WorkspaceQueryUse
 import com.academy.mudogroupware.workspace.domain.exception.InvalidWorkspaceMemberException;
 import com.academy.mudogroupware.workspace.domain.exception.WorkspaceAccessDeniedException;
 import com.academy.mudogroupware.workspace.domain.exception.WorkspaceLastMemberException;
+import com.academy.mudogroupware.workspace.domain.exception.WorkspaceMemberNotFoundException;
+import com.academy.mudogroupware.workspace.domain.exception.WorkspaceNameConflictException;
 import com.academy.mudogroupware.workspace.domain.exception.WorkspaceNotFoundException;
 import java.time.Clock;
 import java.time.LocalDate;
@@ -295,6 +297,54 @@ class WorkspaceControllerTest {
   }
 
   @Test
+  void renamesWorkspaceWhenNameIsExactly100Characters() throws Exception {
+    String name = "가".repeat(100);
+    when(renameWorkspaceUseCase.rename(new RenameWorkspaceCommand(10L, 100L, name)))
+        .thenReturn(name);
+
+    mockMvc
+        .perform(
+            patch("/api/workspaces/{workspaceId}", 100L)
+                .with(authentication(authenticatedUser()))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"" + name + "\"}"))
+        .andExpect(status().isOk());
+  }
+
+  @Test
+  void returns400WhenRenameRequestHasNameLongerThan100Characters() throws Exception {
+    String name = "가".repeat(101);
+
+    mockMvc
+        .perform(
+            patch("/api/workspaces/{workspaceId}", 100L)
+                .with(authentication(authenticatedUser()))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"" + name + "\"}"))
+        .andExpect(status().isBadRequest());
+
+    verifyNoInteractions(renameWorkspaceUseCase);
+  }
+
+  @Test
+  void returns409WhenRenamingToDuplicateActiveNameInSameAcademy() throws Exception {
+    when(renameWorkspaceUseCase.rename(any(RenameWorkspaceCommand.class)))
+        .thenThrow(new WorkspaceNameConflictException());
+
+    mockMvc
+        .perform(
+            patch("/api/workspaces/{workspaceId}", 100L)
+                .with(authentication(authenticatedUser()))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"운영팀\"}"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("WORKSPACE_409_1"));
+  }
+
+  @Test
   void deletesWorkspaceAndReturns204() throws Exception {
     mockMvc
         .perform(
@@ -393,6 +443,21 @@ class WorkspaceControllerTest {
                 .with(csrf()))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("WORKSPACE_400_2"));
+  }
+
+  @Test
+  void returns404WhenRemovingUserWhoIsNotAMember() throws Exception {
+    org.mockito.Mockito.doThrow(new WorkspaceMemberNotFoundException())
+        .when(removeWorkspaceMemberUseCase)
+        .removeMember(any(RemoveWorkspaceMemberCommand.class));
+
+    mockMvc
+        .perform(
+            delete("/api/workspaces/{workspaceId}/members/{userId}", 100L, 99L)
+                .with(authentication(authenticatedUser()))
+                .with(csrf()))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("WORKSPACE_404_2"));
   }
 
   private Authentication authenticatedUser(String... authorities) {

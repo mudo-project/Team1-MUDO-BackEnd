@@ -13,6 +13,12 @@ public record RenameWorkspaceRequest(
         String name
 ) {
 
+  public RenameWorkspaceRequest {
+    // @Size가 trim 전 원본 길이를 검증하지 않도록, 검증 이전에 미리 trim한다.
+    // ("trim 후 최대 100자" 계약과 어긋나는 것을 방지)
+    name = name == null ? null : name.trim();
+  }
+
   public RenameWorkspaceCommand toCommand(AuthUser authUser, Long workspaceId) {
     return new RenameWorkspaceCommand(authUser.userId(), workspaceId, name);
   }
