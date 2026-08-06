@@ -17,7 +17,8 @@ class RoleRepositoryImplTest {
     @Test
     void convertsRoleNameUniqueConstraintViolationToRoleNameDuplicateException() {
         RoleJpaRepository jpaRepository = org.mockito.Mockito.mock(RoleJpaRepository.class);
-        RoleRepositoryImpl adapter = new RoleRepositoryImpl(jpaRepository);
+        PermissionJpaRepository permissionJpaRepository = org.mockito.Mockito.mock(PermissionJpaRepository.class);
+        RoleRepositoryImpl adapter = new RoleRepositoryImpl(jpaRepository, permissionJpaRepository);
         Role role = role();
         DataIntegrityViolationException violation =
                 new DataIntegrityViolationException("Duplicate entry for key 'uk_role_academy_name'");
@@ -31,7 +32,8 @@ class RoleRepositoryImplTest {
     @Test
     void preservesUnrelatedDataIntegrityViolation() {
         RoleJpaRepository jpaRepository = org.mockito.Mockito.mock(RoleJpaRepository.class);
-        RoleRepositoryImpl adapter = new RoleRepositoryImpl(jpaRepository);
+        PermissionJpaRepository permissionJpaRepository = org.mockito.Mockito.mock(PermissionJpaRepository.class);
+        RoleRepositoryImpl adapter = new RoleRepositoryImpl(jpaRepository, permissionJpaRepository);
         Role role = role();
         DataIntegrityViolationException violation = new DataIntegrityViolationException("foreign key violation");
         when(jpaRepository.saveAndFlush(any(RoleEntity.class))).thenThrow(violation);

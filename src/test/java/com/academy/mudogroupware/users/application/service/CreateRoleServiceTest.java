@@ -41,7 +41,8 @@ class CreateRoleServiceTest {
         when(roleRepository.existsByAcademyIdAndName(1L, "강사")).thenReturn(false);
         when(roleRepository.save(any(Role.class))).thenAnswer(invocation -> {
             Role role = invocation.getArgument(0);
-            return Role.restore(10L, role.getAcademyId(), role.getName(), role.getDescription(), role.getCreatedAt());
+            return Role.restore(10L, role.getAcademyId(), role.getName(), role.getDescription(), role.getCreatedAt(),
+                    role.getPermissionCodes());
         });
         CreateRoleService service = new CreateRoleService(roleRepository, clock);
 

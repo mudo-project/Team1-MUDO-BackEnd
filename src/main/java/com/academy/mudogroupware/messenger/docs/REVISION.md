@@ -1,5 +1,32 @@
 # Messenger Revision
 
+## 2026-08-06 · 업무지시 카드 실시간 반영 + echo/optimistic 최종 결정
+
+### 배경
+
+메시지 전송/읽음 처리는 이미 WebSocket으로 실시간이었지만, 업무지시 카드 등록·완료는 이벤트 발행이 없어 REST 재조회 없이는 실시간으로 반영되지 않았다. 또한 발신자 자신에게도 소켓 echo를 그대로 보내는 현재 방식(echo)이 프론트 UX·안정성 측면에서 맞는지 별도로 논의가 필요한 상태로 남아 있었다.
+
+### echo vs optimistic 결정
+
+**방식2(optimistic UI) + B안으로 확정.** 서버는 지금처럼 room topic에 발신자/행위자를 포함해 전체 브로드캐스트하고(서버 코드 변경 없음), 프론트가 자신의 행위는 REST 응답으로 즉시 반영하고 자기 자신에게 돌아온 소켓 echo(`senderUserId`/행위자 ID가 본인과 같은 경우)는 무시한다.
+
+- echo만 쓰는 방식은 REST 저장 → 커밋 → 소켓 push 사이에 연결이 잠깐 끊기면 이미 저장된 내 행위가 내 화면에는 반영되지 않는 신뢰성 문제가 있다. optimistic은 REST 응답만으로 내 상태를 확정해 이 문제를 구조적으로 없앤다.
+- 서버가 발신자를 실제로 제외하고 개별 전송하는 A안(`convertAndSendToUser` 기반)은 구조 변경이 크고, B안 대비 얻는 이득이 없어 채택하지 않았다.
+- `MessageSendResponse`에 서버 `createdAt`을 추가할지도 검토했으나, 메시지 목록 정렬은 시계 오차와 무관한 `messageId` 기준으로 하면 되므로 기각했다.
+
+### 업무지시 카드 실시간 반영
+
+- `TaskCardCreatedEvent`, `TaskCardCompletedEvent` 추가.
+- `CreateTaskCardService`/`CompleteTaskService`가 저장/완료 후 각각 이벤트를 발행하고, `MessengerWebSocketNotifier`가 메시지와 동일하게 `/topic/messenger/rooms/{roomId}`로 브로드캐스트한다.
+- 완료 이벤트는 `chatTaskCard.complete()` 호출 직후의 인메모리 값으로 `completedCount`/`assigneeCount`/`fullyCompleted`를 함께 담아, 프론트가 재조회 없이 progress bar를 갱신할 수 있게 했다.
+
+### Decision
+
+유저 단위 알림 채널(`/user/queue`)은 만들지 않았다. 업무 탭(받은업무/전달한업무) 알림이 방을 보고 있지 않을 때도 실시간으로 와야 하는지 확인한 결과, 이번 스코프에서는 불필요하다고 확정했다(방을 보고 있을 때만 실시간, 그 외엔 REST 재조회). 사이드바 안읽음 뱃지 등에서 다시 필요해질 수 있어 완전히 닫힌 결정은 아니다.
+
+> 작성일: 2026-08-06
+> 상태: 백엔드 구현 완료, 테스트 통과. 프론트 반영은 별도 진행 필요.
+
 ## 2026-08-05 - Realtime and message controls
 
 ### Background

@@ -1,9 +1,12 @@
 package com.academy.mudogroupware.workspace.infrastructure.persistence.workspace;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.academy.mudogroupware.global.infrastructure.config.TimeConfig;
+import com.academy.mudogroupware.workspace.domain.exception.WorkspaceNameConflictException;
 import com.academy.mudogroupware.workspace.domain.model.Workspace;
+import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,5 +43,79 @@ class WorkspacePersistenceAdapterDataJpaTest {
     assertThat(workspaceRepository.existsByAcademyIdAndName(1L, "\uac1c\ubc1c\ud300")).isTrue();
     assertThat(workspaceRepository.existsByAcademyIdAndName(2L, "\uac1c\ubc1c\ud300")).isFalse();
     assertThat(workspaceRepository.existsByAcademyIdAndName(1L, "\uc6b4\uc601\ud300")).isFalse();
+  }
+
+  @Test
+  void findsActiveWorkspaceForUpdateByIdIncludingMembers() {
+    Workspace saved =
+        workspaceRepository.save(Workspace.create(1L, "\uac1c\ubc1c\ud300", 10L, Set.of(20L)));
+
+    Optional<Workspace> found = workspaceRepository.findByIdForUpdate(saved.getId());
+
+    assertThat(found).isPresent();
+    assertThat(found.get().getMemberIds()).containsExactlyInAnyOrder(10L, 20L);
+  }
+
+  @Test
+  void returnsEmptyWhenFindingNonExistentWorkspaceForUpdate() {
+    Optional<Workspace> found = workspaceRepository.findByIdForUpdate(999L);
+
+    assertThat(found).isEmpty();
+  }
+
+  @Test
+  void renamesWorkspace() {
+    Workspace saved = workspaceRepository.save(Workspace.create(1L, "\uac1c\ubc1c\ud300", 10L, Set.of()));
+
+    workspaceRepository.rename(saved.getId(), "\uc6b4\uc601\ud300");
+
+    Optional<Workspace> found = workspaceRepository.findByIdForUpdate(saved.getId());
+    assertThat(found).isPresent();
+    assertThat(found.get().getName()).isEqualTo("\uc6b4\uc601\ud300");
+  }
+
+  @Test
+  void rejectsRenameToDuplicateActiveNameInSameAcademy() {
+    workspaceRepository.save(Workspace.create(1L, "\uc6b4\uc601\ud300", 10L, Set.of()));
+    Workspace saved = workspaceRepository.save(Workspace.create(1L, "\uac1c\ubc1c\ud300", 10L, Set.of()));
+
+    assertThatThrownBy(() -> workspaceRepository.rename(saved.getId(), "\uc6b4\uc601\ud300"))
+        .isInstanceOf(WorkspaceNameConflictException.class);
+  }
+
+  // active_name 생성 컬럼(deleted_at이 null일 때만 name 노출)을 H2 스키마에도 반영했으므로,
+  // 소프트 삭제된 워크스페이스의 이름은 유니크 제약에서 제외되어야 한다.
+  @Test
+  void allowsRenamingToNameOfSoftDeletedWorkspaceInSameAcademy() {
+    Workspace deleted = workspaceRepository.save(Workspace.create(1L, "운영팀", 10L, Set.of()));
+    workspaceRepository.delete(deleted.getId(), java.time.LocalDateTime.of(2026, 8, 6, 12, 0));
+    Workspace saved = workspaceRepository.save(Workspace.create(1L, "개발팀", 10L, Set.of()));
+
+    workspaceRepository.rename(saved.getId(), "운영팀");
+
+    Optional<Workspace> found = workspaceRepository.findByIdForUpdate(saved.getId());
+    assertThat(found).isPresent();
+    assertThat(found.get().getName()).isEqualTo("운영팀");
+  }
+
+  @Test
+  void addsAndRemovesMembersToMatchTargetSet() {
+    Workspace saved =
+        workspaceRepository.save(Workspace.create(1L, "\uac1c\ubc1c\ud300", 10L, Set.of(20L, 30L)));
+
+    workspaceRepository.updateMembers(saved.getId(), Set.of(10L, 40L));
+
+    Optional<Workspace> found = workspaceRepository.findByIdForUpdate(saved.getId());
+    assertThat(found).isPresent();
+    assertThat(found.get().getMemberIds()).containsExactlyInAnyOrder(10L, 40L);
+  }
+
+  @Test
+  void marksWorkspaceDeletedAndExcludesItFromActiveLookup() {
+    Workspace saved = workspaceRepository.save(Workspace.create(1L, "\uac1c\ubc1c\ud300", 10L, Set.of()));
+
+    workspaceRepository.delete(saved.getId(), java.time.LocalDateTime.of(2026, 8, 6, 12, 0));
+
+    assertThat(workspaceRepository.findByIdForUpdate(saved.getId())).isEmpty();
   }
 }

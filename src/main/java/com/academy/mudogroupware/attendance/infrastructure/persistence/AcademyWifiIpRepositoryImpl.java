@@ -1,6 +1,7 @@
 package com.academy.mudogroupware.attendance.infrastructure.persistence;
 
 import java.util.Locale;
+import java.util.List;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Repository;
@@ -44,18 +45,31 @@ public class AcademyWifiIpRepositoryImpl implements AcademyWifiIpRepository {
             }
             throw e;
         }
-        return AcademyWifiIp.restore(
-                saved.getId(),
-                saved.getAcademyId(),
-                saved.getIpAddress(),
-                saved.getNote(),
-                saved.getCreatedAt(),
-                saved.getUpdatedAt());
+        return toDomain(saved);
+    }
+
+    @Override
+    public List<AcademyWifiIp> findAllByAcademyId(Long academyId) {
+        return academyWifiIpJpaRepository
+                .findAllByAcademyIdOrderByCreatedAtAscIdAsc(academyId)
+                .stream()
+                .map(this::toDomain)
+                .toList();
     }
 
     @Override
     public boolean deleteByIdAndAcademyId(Long wifiIpId, Long academyId) {
         return academyWifiIpJpaRepository.deleteByIdAndAcademyId(wifiIpId, academyId) > 0;
+    }
+
+    private AcademyWifiIp toDomain(AcademyWifiIpJpaEntity entity) {
+        return AcademyWifiIp.restore(
+                entity.getId(),
+                entity.getAcademyId(),
+                entity.getIpAddress(),
+                entity.getNote(),
+                entity.getCreatedAt(),
+                entity.getUpdatedAt());
     }
 
     private boolean isWifiIpUniqueConstraintViolation(Throwable throwable) {

@@ -7,6 +7,8 @@ import org.springframework.transaction.event.TransactionalEventListener;
 
 import com.academy.mudogroupware.messenger.domain.event.ChatMessageSentEvent;
 import com.academy.mudogroupware.messenger.domain.event.ChatRoomReadEvent;
+import com.academy.mudogroupware.messenger.domain.event.TaskCardCompletedEvent;
+import com.academy.mudogroupware.messenger.domain.event.TaskCardCreatedEvent;
 
 import lombok.RequiredArgsConstructor;
 
@@ -28,5 +30,19 @@ public class MessengerWebSocketNotifier {
         messagingTemplate.convertAndSend(
                 "/topic/messenger/rooms/" + event.chatRoomId(),
                 ChatRoomReadSocketResponse.from(event));
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handle(TaskCardCreatedEvent event) {
+        messagingTemplate.convertAndSend(
+                "/topic/messenger/rooms/" + event.chatRoomId(),
+                TaskCardCreatedSocketResponse.from(event));
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handle(TaskCardCompletedEvent event) {
+        messagingTemplate.convertAndSend(
+                "/topic/messenger/rooms/" + event.chatRoomId(),
+                TaskCardCompletedSocketResponse.from(event));
     }
 }

@@ -35,6 +35,8 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-flyway'
     implementation 'org.flywaydb:flyway-mysql'
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3'
+    // 출결부 엑셀 다운로드(rollcall)에 필요
+    implementation 'org.apache.poi:poi-ooxml:5.5.1'
     compileOnly 'org.projectlombok:lombok'
     runtimeOnly 'com.mysql:mysql-connector-j'
     annotationProcessor 'org.projectlombok:lombok'

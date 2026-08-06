@@ -1,5 +1,27 @@
 # 🔄 워크스페이스 생성 이름 중복 정책 단순화
 
+## ✅ 2026-08-05 · 워크스페이스 상세 조회 코드 리뷰 반영
+
+### 변경 목적
+
+워크스페이스 상세 조회 API에 대한 코드 리뷰(CodeRabbit) 지적사항 중 재현 가능성·정보 일관성에 영향을 주는 항목을 반영합니다. 성능 최적화 방향은 맞지만 지금 데이터량에서 급하지 않은 항목(중첩 서브쿼리 재작성, projection 도입)과, 이미 의도적으로 분리한 설계(`findActiveWorkspaceName`의 존재 확인·접근 권한 확인 분리)는 이번 범위에서 제외했습니다.
+
+### 구현 변경
+
+- `WorkspaceDetailQueryService.TASK_ORDER`에 업무 번호(`taskId`)를 마지막 tie-break로 추가했습니다. 상태·기한·생성 시각이 모두 같은 업무가 있어도 항상 같은 순서를 반환합니다.
+- 참여자·업무 생성자의 표시 이름을 조회하지 못하면 `null` 대신 `"알 수 없음"`으로 대체하도록 `resolveName`을 추가했습니다. 목록에서 제외하지 않으므로 `memberCount`/`taskCount`와 실제 배열 길이가 항상 일치합니다.
+- `TaskJpaRepository.findVisibleRegularTasks`/`findVisibleRecurringTasks`의 날짜 비교를 `cast(... as date) = :date`에서 `>= startOfDay and < endOfDay` 범위 비교로 변경했습니다. 컬럼에 함수를 적용하지 않아 인덱스를 탈 수 있습니다. 두 메서드는 `LocalDate` 대신 `LocalDateTime` 시작·끝 두 개를 파라미터로 받도록 시그니처를 바꿨고, `LocalDate` → 시작/끝 시각 변환은 `WorkspaceDetailQueryAdapter`가 담당합니다.
+- `WorkspaceJpaRepository.findMemberUserIds`에 `order by member.id.userId asc`를 추가해 참여자 목록 순서를 고정했습니다.
+
+### 검증
+
+- `WorkspaceDetailQueryServiceTest`에 tie-break 정렬, 이름 조회 실패 fallback 테스트를 추가했습니다.
+- `TaskJpaRepositoryDataJpaTest`를 새 시그니처(`LocalDateTime` 시작/끝)에 맞게 갱신했고, 기존 표시 규칙 검증(당일 완료 업무만 노출, 재완료 시 최신 이력만 사용, 반복 업무 당일 회차만 노출)이 그대로 통과하는 것으로 회귀가 없음을 확인했습니다.
+- `WorkspaceJpaRepositoryDetailQueryDataJpaTest`의 참여자 조회 검증을 `containsExactlyInAnyOrder`에서 `containsExactly`로 강화했습니다.
+- 전체 `./gradlew test`를 통과했습니다.
+
+> 외부 API 계약에 영향을 주는 변경(참여자 표시 이름의 `"알 수 없음"` fallback, 업무 카드 정렬의 `taskId` tie-break)은 [WORKSPACE_API.md](WORKSPACE_API.md), [WORKSPACE_API_FLOW.md](WORKSPACE_API_FLOW.md)에도 반영했습니다. 📚
+
 ## ✅ 2026-08-05 · 워크스페이스 목록·최근 접속 조회 추가
 
 ### 변경 목적

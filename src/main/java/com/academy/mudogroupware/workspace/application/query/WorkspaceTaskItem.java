@@ -10,4 +10,5 @@ public record WorkspaceTaskItem(
     WorkspaceMemberInfo creator,
     LocalDate dueAt,
     Long completedCommentCount,
-    Long commentCount) {}
+    Long commentCount
+) {}
