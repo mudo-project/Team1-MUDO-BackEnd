@@ -1,7 +1,9 @@
 package com.academy.mudogroupware.calendar.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -15,6 +17,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.academy.mudogroupware.calendar.application.command.CreateCalendarEventCommand;
+import com.academy.mudogroupware.calendar.domain.exception.CalendarTitleRequiredException;
+import com.academy.mudogroupware.calendar.domain.exception.InvalidCalendarPeriodException;
 import com.academy.mudogroupware.calendar.domain.model.CalendarEvent;
 import com.academy.mudogroupware.calendar.domain.repository.CalendarEventRepository;
 
@@ -55,5 +59,25 @@ class CreateCalendarEventServiceTest {
         assertThat(saved.isAllDay()).isFalse();
         assertThat(saved.getColor()).isEqualTo("green");
         assertThat(saved.getCreatedBy()).isEqualTo(7L);
+    }
+
+    @Test
+    void createEvent_blankTitle_throwsExceptionWithoutSaving() {
+        CreateCalendarEventCommand command = new CreateCalendarEventCommand(
+                1L, "   ", null, START, END, false, null, 7L);
+
+        assertThatThrownBy(() -> createCalendarEventService.createEvent(command))
+                .isInstanceOf(CalendarTitleRequiredException.class);
+        verify(calendarEventRepository, never()).save(any());
+    }
+
+    @Test
+    void createEvent_endBeforeStart_throwsExceptionWithoutSaving() {
+        CreateCalendarEventCommand command = new CreateCalendarEventCommand(
+                1L, "회의", null, START, START.minusMinutes(1), false, null, 7L);
+
+        assertThatThrownBy(() -> createCalendarEventService.createEvent(command))
+                .isInstanceOf(InvalidCalendarPeriodException.class);
+        verify(calendarEventRepository, never()).save(any());
     }
 }
