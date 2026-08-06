@@ -49,6 +49,23 @@
   `switchAccount=true`면 구글 계정 선택 화면을 강제로 띄운다(`prompt=select_account consent`).
 - 재연결/계정 교체 성공 시 기존 리프레시 토큰은 구글에 폐기(revoke) 요청한 뒤 기존 행을 삭제하고 새 행을 만든다(교체이지 갱신이 아님).
 
+## 다음 단계(템플릿 기능)를 위한 참고
+
+이번 범위에는 없지만, 나중에 템플릿 카테고리·업로드·생성·수정·임베딩을 구현할 담당자를 위해 어떤 구글 API를 쓰게 될지 미리 정리해둔다.
+
+| 기능 | API | 대표 엔드포인트 |
+| --- | --- | --- |
+| 파일 목록/검색 | Drive API v3 | `GET https://www.googleapis.com/drive/v3/files?q='{폴더ID}' in parents` |
+| 폴더(카테고리) 생성 | Drive API v3 | `POST https://www.googleapis.com/drive/v3/files` (`mimeType: application/vnd.google-apps.folder`) |
+| 기존 파일 업로드+변환 | Drive API v3 | `POST https://www.googleapis.com/upload/drive/v3/files` (multipart, docx/xlsx → 구글 형식 변환) |
+| 새 문서 생성 | Docs API v1 | `POST https://docs.googleapis.com/v1/documents` |
+| 새 스프레드시트 생성 | Sheets API v4 | `POST https://sheets.googleapis.com/v4/spreadsheets` |
+
+- **미리보기·수정은 별도 API 호출이 아니다.** `https://docs.google.com/document/d/{fileId}/edit?embedded=true` (스프레드시트는 `spreadsheets/d/...`) URL을 프론트가 `<iframe>`으로 띄우면, 편집 내용은 구글 서버로 직접 저장된다. 우리 백엔드는 이 URL만 내려주면 된다.
+- 지금 요청해 둔 scope(`drive.file`, `documents`, `spreadsheets`)가 위 API를 전부 커버하므로 추가 동의는 필요 없다.
+- 다만 `GoogleOAuthPort.refreshAccessToken(...)`은 현재 "유효성 검증" 용도로만 액세스 토큰을 발급받고 버린다. 템플릿 기능에서는 이 액세스 토큰 자체를 반환받아 Drive/Docs/Sheets 호출에 재사용하도록 확장해야 한다(액세스 토큰은 1시간짜리라 매 요청마다 새로 발급받는 흐름이 될 가능성이 높다).
+- 이 기능은 `google` 도메인의 리프레시 토큰을 그대로 갖다 쓰는 게 아니라, `MODULES.md`의 도메인 간 조회 Port 정책에 따라 `template`(가칭) 도메인이 필요한 Port를 정의하고 `google` 도메인 담당자 동의하에 Adapter로 구현하는 방식을 검토한다.
+
 ## 세부 문서
 
 - [GOOGLE_API.md](GOOGLE_API.md): 요청·응답 형식
