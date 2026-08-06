@@ -1,0 +1,16 @@
+# 📚 Calendar Changelog
+
+## 2026-08-06 · 캘린더 도메인 신설 및 일정 생성 API 추가 ✨
+
+- 학원 공용 캘린더를 담당하는 `calendar` top-level 도메인 모듈을 신설했습니다.
+- `POST /api/calendars`로 학원 공용 캘린더에 일정을 등록할 수 있습니다.
+- 요청 본문에는 제목·내용·시작/종료 일시·종일 여부·색상을 담고, 학원 번호와 작성자는 Access Token의 인증 정보로 채웁니다.
+- `title`이 공백이거나 `eventEndAt`이 `eventStartAt`보다 이전이면 각각 `CALENDAR_400_1`, `CALENDAR_400_2`로 응답합니다.
+- 성공 시 HTTP `201 Created`와 함께 생성된 일정 번호(`eventId`)를 반환합니다.
+- 도메인 규칙 위반은 `CalendarErrorCode` + 에러별 이름이 드러나는 개별 예외 클래스로 표현합니다(`docs/ERROR_HANDLING.md` 표준 패턴, `workspace`와 동일한 방식).
+- 영속성 구현체 이름은 헥사고날 용어를 충실히 따라 `CalendarEventPersistenceAdapter`를 사용합니다.
+- `created_at`, `updated_at`은 `BaseTimeEntity`(Spring Data JPA Auditing)로 자동 관리합니다.
+- `be5/V5.1.1__create_calendar_events_table.sql` 마이그레이션과 도메인/서비스/컨트롤러 단위 테스트를 추가했습니다.
+- 작성 권한(대표 및 대표가 허용한 권한) 실제 검사는 `users.role` 값 체계가 확정된 뒤 반영하며, 현재는 `CalendarController`에 TODO 주석으로만 남깁니다(`notice` 도메인과 동일한 결정).
+
+자세한 요청·응답 형식은 [CALENDAR_API.md](CALENDAR_API.md), 처리 흐름은 [CALENDAR_API_FLOW.md](CALENDAR_API_FLOW.md), 정책은 [BUSINESS_RULES.md](BUSINESS_RULES.md)를 참고해주세요. 📚

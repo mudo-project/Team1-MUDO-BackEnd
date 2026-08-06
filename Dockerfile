@@ -27,6 +27,9 @@ RUN apt-get update \
 
 WORKDIR /app
 
+# Logback이 ./logs/mudo-groupware.log를 쓸 수 있도록 미리 만들어둔다.
+RUN mkdir -p /app/logs && chown app:app /app/logs
+
 # 빌드 단계에서 생성한 JAR만 복사하여 소스와 빌드 도구가 실행 이미지에 남지 않게 한다.
 COPY --from=build --chown=app:app /workspace/build/libs/*.jar app.jar
 
