@@ -96,6 +96,8 @@ public class CalendarController {
             @Valid @RequestBody UpdateCalendarEventRequest request) {
         updateCalendarEventUseCase.updateEvent(request.toCommand(eventId, authUser));
         return ResponseEntity.noContent().build();
+    }
+
     @Operation(summary = "일정 상세 조회", description = "일정 번호로 학원 공용 캘린더 일정 상세를 조회합니다.")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "일정 상세 조회 성공"),
