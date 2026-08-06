@@ -1,11 +1,13 @@
 package com.academy.mudogroupware.calendar.presentation.api;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -25,8 +27,11 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.academy.mudogroupware.calendar.application.command.CreateCalendarEventCommand;
+import com.academy.mudogroupware.calendar.application.command.DeleteCalendarEventCommand;
 import com.academy.mudogroupware.calendar.application.usecase.CreateCalendarEventUseCase;
+import com.academy.mudogroupware.calendar.application.usecase.DeleteCalendarEventUseCase;
 import com.academy.mudogroupware.calendar.application.usecase.GetCalendarEventsUseCase;
+import com.academy.mudogroupware.calendar.domain.exception.CalendarEventNotFoundException;
 import com.academy.mudogroupware.calendar.domain.exception.InvalidCalendarPeriodException;
 import com.academy.mudogroupware.calendar.domain.model.CalendarEvent;
 import com.academy.mudogroupware.global.infrastructure.security.jwt.JwtTokenProvider;
@@ -42,6 +47,7 @@ class CalendarControllerTest {
 
     @MockitoBean private CreateCalendarEventUseCase createCalendarEventUseCase;
     @MockitoBean private GetCalendarEventsUseCase getCalendarEventsUseCase;
+    @MockitoBean private DeleteCalendarEventUseCase deleteCalendarEventUseCase;
     @MockitoBean private JwtTokenProvider jwtTokenProvider;
     @MockitoBean private JwtAuthenticationConverter jwtAuthenticationConverter;
 
@@ -162,6 +168,40 @@ class CalendarControllerTest {
                 .andExpect(status().isUnauthorized());
 
         verifyNoInteractions(getCalendarEventsUseCase);
+    }
+
+    @Test
+    void deleteEventReturns204() throws Exception {
+        mockMvc
+                .perform(delete("/api/calendars/101")
+                        .with(authentication(authenticatedUser()))
+                        .with(csrf()))
+                .andExpect(status().isNoContent());
+
+        verify(deleteCalendarEventUseCase).deleteEvent(new DeleteCalendarEventCommand(101L, 1L));
+    }
+
+    @Test
+    void deleteEventReturns404WhenEventNotFound() throws Exception {
+        doThrow(new CalendarEventNotFoundException(999L))
+                .when(deleteCalendarEventUseCase).deleteEvent(any(DeleteCalendarEventCommand.class));
+
+        mockMvc
+                .perform(delete("/api/calendars/999")
+                        .with(authentication(authenticatedUser()))
+                        .with(csrf()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("CALENDAR_404_1"));
+    }
+
+    @Test
+    void deleteEventReturns401WhenUnauthenticated() throws Exception {
+        mockMvc
+                .perform(delete("/api/calendars/101")
+                        .with(csrf()))
+                .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(deleteCalendarEventUseCase);
     }
 
     private Authentication authenticatedUser(String... authorities) {

@@ -159,3 +159,44 @@ HTTP `200 OK`
 - 조회 대상은 요청자의 `academyId` 소속 일정으로 한정한다. 다른 학원의 일정은 조회되지 않는다.
 - 현재 조회 조건은 `event_start_at`이 `[from, to]` 구간에 포함되는 일정만 반환한다(종료 시각이 구간 밖까지 걸치는 일정은 포함하지 않음).
 - 목록/일별/상세 조회는 모두 `CalendarEventResponse`를 공용으로 사용한다.
+
+## 일정 삭제
+
+### Endpoint
+
+`DELETE /api/calendars/{eventId}`
+
+### 인증 및 권한
+
+- `Authorization: Bearer {accessToken}` 헤더가 필요하다.
+- 현재 구현은 인증된 사용자라면 호출할 수 있다.
+- 기능명세서상 "대표와 대표가 허용한 권한"은 `users.role` 값 체계 확정 후 `@PreAuthorize`로 적용 예정이며, 지금은 `CalendarController`에 TODO로 남긴다.
+
+### Request Header
+
+| name | description |
+| --- | --- |
+| `Authorization` | `Bearer {accessToken}` 형식의 Access Token |
+
+### Path Variable
+
+| name | type | required | description |
+| --- | --- | --- | --- |
+| `eventId` | Long | true | 삭제할 일정 번호 |
+
+### Success Response
+
+HTTP `204 No Content` (응답 본문 없음)
+
+### Error Response
+
+| HTTP 상태 | code | 발생 조건 |
+| --- | --- | --- |
+| `401 Unauthorized` | `COMMON_401_1` | Access Token이 없거나 유효하지 않은 경우 |
+| `404 Not Found` | `CALENDAR_404_1` | 일정이 존재하지 않거나 다른 학원 소속인 경우 |
+| `500 Internal Server Error` | `COMMON_500_1` | 처리되지 않은 서버 오류 |
+
+### Business Rules
+
+- 다른 학원 소속 일정을 삭제하려고 하면 존재 여부를 노출하지 않기 위해 "존재하지 않음"과 동일하게 `CALENDAR_404_1`로 응답한다(별도의 403 응답을 두지 않음, 상세조회·수정과 동일한 결정).
+- 삭제는 하드 삭제(물리 삭제)다. 소프트 삭제(삭제 플래그)는 사용하지 않는다.

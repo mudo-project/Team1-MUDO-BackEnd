@@ -94,3 +94,34 @@ GET /api/calendars?from=&to=
 ### 4. 응답
 
 Controller가 반환된 `CalendarEvent` 목록을 `CalendarEventResponse::from`으로 매핑하고, `GlobalApiResponse.ok(CalendarResponseCode.EVENT_LIST_RETRIEVED, ...)`로 감싸 HTTP `200 OK`를 반환한다.
+
+## 일정 삭제 API 흐름
+
+```text
+DELETE /api/calendars/{eventId}
+  → Security Filter
+  → AuthUser
+  → CalendarController
+  → DeleteCalendarEventCommand
+  → DeleteCalendarEventUseCase
+  → DeleteCalendarEventService
+  → CalendarEventRepository
+  → CalendarEventPersistenceAdapter
+  → CalendarEventJpaRepository
+  → GlobalApiResponse 없이 204
+```
+
+### 1. 조회 및 소속 학원 검증
+
+`DeleteCalendarEventService`는 `CalendarEventRepository.findById(eventId)`로 대상을 조회한다.
+
+- 일정이 존재하지 않으면 `CalendarEventNotFoundException`을 던져 `CALENDAR_404_1`로 응답한다.
+- 일정은 존재하지만 `academyId`가 요청자의 `AuthUser.academyId()`와 다르면, 다른 학원에 존재 여부를 노출하지 않기 위해 동일하게 `CalendarEventNotFoundException`(`CALENDAR_404_1`)을 던진다. 상세조회·수정과 동일한 결정이다.
+
+### 2. 삭제
+
+검증을 통과하면 `CalendarEventRepository.deleteById(eventId)`를 호출한다. 소프트 삭제 플래그 없이 하드 삭제한다.
+
+### 3. 응답
+
+성공하면 Controller가 응답 본문 없이 HTTP `204 No Content`를 반환한다.
