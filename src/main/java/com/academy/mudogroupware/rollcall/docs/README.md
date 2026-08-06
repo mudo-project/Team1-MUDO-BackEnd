@@ -1,89 +1,90 @@
 # rollcall 모듈
 
-> ⚠️ **설계 단계 문서**: 아직 코드·마이그레이션이 없다. 팀 리뷰를 위한 설계 초안이며, 구현 시작 전 이 문서 기준으로 실제 코드를 채워나간다.
+> 강의별 출결부와 출결 상태별 문자 템플릿 관리 백엔드 구현 기준 문서다. 현재 실제 SMS 외부 발송은 구현되어 있지 않으며, 템플릿 관리와 발송 대상 후보 조회까지만 제공한다.
 
 ## 책임과 범위
 
-강의별 학생 출결 기록과, 결석/지각 등 상황을 학부모에게 문자로 안내하기 위한 준비(템플릿 관리)를 담당한다.
-
-- **이름 주의**: 기존 `attendance` 모듈은 **직원 근태(WiFi 기반 출퇴근 체크, 상태값 `NORMAL`/`LATE`)** 를 다루는 완전히 다른 도메인이다. 이름이 겹치지 않도록 이 모듈은 `rollcall`(출석부)로 부른다. `attendance` 모듈의 코드는 건드리지 않는다.
-- **AttendanceEntry(출결 기록)**: 특정 강의(`lectureId`)의 특정 수업 날짜(`date`)에, 특정 학생(`studentId`)이 어떤 상태(출석/결석/지각/인강/기타)였는지 기록한다. 강의가 요일마다 반복되므로 같은 학생이라도 날짜별로 기록이 따로 쌓인다. 상태를 아직 선택하지 않은 학생은 기록 자체가 없는 상태로 둔다(엑셀 추출 시 빈칸으로 표시하기 위함).
-- **MessageTemplate(문자 템플릿)**: 학원 단위로 저장해두고 재사용하는 문자 템플릿(이름 + 내용). 이번 범위에서는 템플릿 CRUD까지만 제공하고, 실제 문자 발송(외부 SMS API 연동)은 포함하지 않는다.
+- **AttendanceEntry(출결 기록)**: 특정 강의, 특정 날짜, 특정 학생의 출결 상태와 비고를 저장한다.
+- **AttendanceStatus(출결 상태)**: `PRESENT`, `ABSENT`, `LATE`, `ONLINE`, `ETC`.
+- **MessageTemplate(문자 템플릿)**: 출결 상태별 학부모 안내 문자 템플릿이다. 학원 단위로 상태 1개당 1개만 만들 수 있다.
+- **출결부 조회**: lecture/student 연동 Port로 강의와 수강생을 가져와 출결 기록과 합쳐 보여준다.
+- **문자 발송 대상 후보 조회**: 출결 상태에 맞는 템플릿이 있는 학생을 `eligible=true`로 표시한다.
 
 ## 담당자
 
-(팀 확인 필요 — 설계 초안 작성: minseopark0327)
+(팀 확인 필요)
 
-## 소유하는 주요 데이터와 상태 (설계안)
+## 소유하는 주요 데이터와 상태
 
 | 엔티티 | 주요 필드 | 비고 |
 |---|---|---|
-| `AttendanceEntry` | `academyId`, `lectureId`(lecture FK), `studentId`(lecture FK), `date`, `status`(enum: `PRESENT`/`ABSENT`/`LATE`/`ONLINE`/`ETC`), `note` | `note`는 `status=ETC`일 때만 의미 있는 자유 텍스트(기타 사유). `(lectureId, studentId, date)` 유니크 |
-| `MessageTemplate` | `academyId`, `name`, `content`, `createdBy`(users FK) | 발송 기능 없이 저장/조회/수정/삭제만 |
+| `AttendanceEntry` | `academyId`, `lectureId`, `studentId`, `date`, `status`, `note` | 강의·학생·날짜 단위 출결 기록. |
+| `MessageTemplate` | `academyId`, `name`, `status`, `content`, `createdBy`, `createdAt`, `updatedAt` | 출결 상태별 템플릿. |
 
-`AttendanceEntry`가 없는 (lectureId, studentId, date) 조합은 "아직 체크 안 함" 상태로 취급한다 — 별도의 `UNSET` enum 값을 두지 않고 로우 자체의 부재로 표현한다.
+## 외부에 공개하는 Application API
 
-### 출결 상태 값 (확정)
-
-`PRESENT`(출석) / `ABSENT`(결석) / `LATE`(지각) / `ONLINE`(인강) / `ETC`(기타, `note` 필수)
-
-## 외부에 공개하는 Application API (설계안)
-
-출결:
-- `GetLectureRosterUseCase` — 강의 + 날짜를 지정해 그 강의의 전체 수강생(lecture 모듈의 `Enrollment` 기준) 목록과, 각 학생의 그 날짜 `AttendanceEntry`(없으면 미체크)를 함께 조회. 하단 요약(총원/출석/결석/지각/인강/기타 인원수)도 함께 계산해 반환
-- `SaveAttendanceEntriesUseCase` — 강의 + 날짜 + `{studentId, status, note}` 목록을 받아 일괄 저장(upsert). 부분 입력도 허용(전원 체크 강제 안 함)
-- `ExportAttendanceSheetUseCase` — 강의 + 날짜를 지정해 위 로스터를 엑셀(.xlsx)로 생성. 출결 상태 미입력 상태에서도 다운로드 가능(빈칸으로 표시)
-
-문자 템플릿:
-- `CreateMessageTemplateUseCase` / `MessageTemplateQueryUseCase` / `UpdateMessageTemplateUseCase` / `DeleteMessageTemplateUseCase` — 학원 범위 CRUD
+- `GetLectureRosterUseCase` — 강의 출결부 조회.
+- `SaveAttendanceEntriesUseCase` — 학생별 출결 상태 일괄 저장.
+- `ExportAttendanceSheetUseCase` — 출결부 엑셀 다운로드.
+- `GetMessageSendCandidatesUseCase` — 문자 발송 후보 조회.
+- `CreateMessageTemplateUseCase` / `MessageTemplateQueryUseCase` / `UpdateMessageTemplateUseCase` / `DeleteMessageTemplateUseCase` — 문자 템플릿 CRUD.
 
 ## 다른 모듈 또는 외부 시스템에 요청하는 의존성
 
-- **강의·수강생·학부모 연락처 조회 — `lecture` 모듈에 요청 필요**: 특정 강의의 수강생 목록(학생 이름/학년/학부모 전화번호)을 조회해야 한다. `lecture` 모듈이 공개하는 Port를 통해서만 조회하고, `Student`/`Enrollment` 엔티티를 직접 참조하지 않는다. (참고: `lecture` 모듈도 아직 설계 단계라 이 Port 자체가 없다 — `lecture` 구현이 먼저 진행돼야 rollcall 구현을 시작할 수 있다)
-- **엑셀 생성**: Apache POI(`org.apache.poi:poi-ooxml`) 신규 의존성 추가가 필요하다. 현재 `build.gradle`에 엑셀 관련 라이브러리가 없다.
-- **인증 사용자 정보**: `global.presentation.security.AuthUser` 사용.
-- **문자 발송(SMS)**: 코드베이스에 SMS 연동이 전혀 없다. 이번 범위는 템플릿 관리 + 발송 대상 선택까지만이고, 실제 외부 SMS API(알리고/NHN Cloud 등) 연동은 제공자·키 발급이 결정된 뒤 별도 범위로 진행한다 (approval의 Web Push와 동일한 패턴 — 저장/준비까지만 하고 실제 전송은 후속 작업).
-- **권한**: 학생 개인정보(학부모 연락처)와 문자 발송 대상 지정을 다루므로, approval/notice처럼 나중에 붙이지 않고 처음부터 `ROLLCALL:MANAGE` 같은 권한 코드를 정의하고 `@PreAuthorize`를 적용한다.
+### lecture/student 연동
+
+- rollcall은 `LectureEnrollmentPort`를 통해 강의 정보와 수강생 목록을 조회한다.
+- 출결 기록은 rollcall이 소유하지만, 강의와 수강생의 원천 데이터는 lecture/student 쪽에 있다.
+
+### SMS 외부 공급자
+
+실제 문자 발송은 아직 구현하지 않는다. 외부 SMS 공급자, API 키, 발신번호, 과금 정책, 실패 재시도 정책이 확정되어야 한다.
+
+```text
+[대상]
+SMS 공급자 또는 추후 notification/sms 연동 범위
+
+[필요한 변경]
+문자 발송 Port 및 외부 API Adapter 추가
+
+[입력]
+academyId, senderUserId, lectureId, date, 수신자 전화번호 목록, 템플릿 내용
+
+[출력]
+발송 요청 ID, 성공/실패 결과, 실패 사유
+
+[필요한 이유]
+출결 체크 후 선택한 학부모에게 결석/지각/인강/기타 안내 문자를 실제 발송해야 함
+
+[영향 범위]
+rollcall 문자 발송 화면, 발송 이력/실패 재시도/과금 정책
+```
 
 ## 발행·소비하는 Event
 
-- 아직 없음.
+- 현재 발행하는 Event는 없다.
+- 실제 SMS 발송을 비동기로 처리하게 되면 `AttendanceMessageSendRequestedEvent` 같은 이벤트를 검토할 수 있다.
 
-## 변경 시 주의 사항 / 설계 결정 배경
+## 변경 시 주의 사항
 
-- **`attendance`(직원 근태) 모듈과 이름·도메인이 다르다.** 혼동 방지를 위해 모듈명을 `rollcall`로 분리했고, `attendance` 코드는 참조·수정하지 않는다.
-- **날짜별로 기록한다.** 강의는 요일마다 반복되므로, 같은 강의라도 날짜가 다르면 별개의 출결 기록이다. 대상 강의를 먼저 찾아 들어간 뒤(강의 출결부 목록 → 상세), 그 안에서 날짜를 선택해야 로스터가 나온다 — 강의 선택 없이 날짜만으로 학생이 먼저 뜨는 구조가 아니다.
-- **사이드바는 "강의·교실"/"출결" 두 그룹으로만 묶인다.** 강의 관리·교실 관리, 강의 출결부·문자 템플릿을 각각 최상위 탭으로 따로 두지 않고 같은 섹션 아래 메뉴로 묶어 사이드바가 산만해지지 않게 한다. `lecture`의 "강의·교실" 그룹핑과 동일한 패턴이다.
-- **엑셀 다운로드는 미완성 상태에서도 가능하다.** 출결 상태를 전부 체크해야만 추출 가능한 제약을 두지 않는다 — 빈 칸인 채로도 다운로드해서 오프라인으로 마저 체크할 수 있어야 한다는 요구사항 반영.
-- **문자 발송 자체는 이번 범위가 아니다.** SMS 공급자·키가 정해지지 않은 상태라, 템플릿 CRUD와 (프론트 단의) 발송 대상 선택 UI까지만 준비한다.
+- `ETC` 상태는 비고가 필수다.
+- 같은 출결 상태의 문자 템플릿은 학원당 1개만 허용한다.
+- 현재는 외부 SMS 호출이 없으므로 “문자 발송 대상 조회”를 “실제 발송 완료”로 오해하면 안 된다.
+- `ROLLCALL:MANAGE` 권한은 출결 저장과 템플릿 생성/수정/삭제에 적용되어 있다.
 
-## 화면 구성 (Figma 참고용)
-
-왼쪽 네비게이션에 **"출결" 섹션 하나로 묶고, 그 아래 "강의 출결부"/"문자 템플릿" 메뉴 2개를 나란히 둔다** (lecture 모듈의 "강의·교실" 섹션과 같은 그룹핑 방식).
+## 화면 구성 참고
 
 ```text
 출결
-├─ 강의 출결부   (기본 진입 화면)
+├─ 강의 출결부
 └─ 문자 템플릿
 ```
 
-### 1. 강의 출결부
-
-**목록 → 상세 2단 구조다.** 강의+날짜를 드롭다운으로 바로 골라 로스터를 띄우는 방식이 아니라, "강의 관리"와 동일하게 **먼저 대상 강의를 찾아 들어간 뒤** 그 강의 안에서 체크한다.
-
-| 페이지 | 내용 |
-|---|---|
-| 강의 출결부 목록 | 강의 관리 목록과 같은 필터(시즌/학년/과목/선생님/교실/요일)를 가진 강의 리스트. 각 행 클릭 시 해당 강의의 출결부 상세로 이동 |
-| 강의 출결부 상세 | 상단에서 날짜 선택(기본값: 오늘) → 그 강의 수강생이 행으로 나열. 각 행: 학생명/학년/출결상태 선택(출석·결석·지각·인강·기타)/기타 선택 시 사유 입력란/학부모 연락처 + 체크박스. 맨 아래 총원/출석/결석/지각/인강/기타 인원수 요약. 화면 안에 **"문자 템플릿" 버튼(또는 탭)** 을 눈에 잘 띄게 둬서, 체크박스로 선택한 학부모 대상으로 바로 템플릿을 골라 연결할 수 있게 한다. 우측 상단 "엑셀 다운로드" 버튼 |
-
-### 2. 문자 템플릿
-
-사이드바에서 "강의 출결부" 바로 아래 메뉴로 둔다. 템플릿 목록/생성/수정/삭제. 강의 출결부 상세 화면의 "문자 템플릿" 버튼으로도 바로 진입 가능해야 한다(발송 대상이 이미 선택된 채로 넘어오는 흐름 — 실제 발송 API는 이번 범위 아님).
-
-### 엑셀 다운로드
-
-강의 출결부 상세 화면의 다운로드 버튼 → 번호/학생명/학년/출결상태/비고(기타사유) 행 + 맨 아래 총원/출석/결석/지각/인강/기타 인원수 요약 줄이 포함된 .xlsx 다운로드. 출결 상태 미입력 상태에서도 다운로드 가능.
+강의 출결부 페이지에서는 날짜/요일 필터 근처에 문자 템플릿 탭 또는 버튼을 둔다. 체크한 학생을 기준으로 발송 대상 후보를 조회하고, 실제 SMS 발송은 공급자 확정 후 별도 작업으로 연결한다.
 
 ## 세부 문서
 
-- (구현 시작 후 추가 예정) API.md / API_FLOW.md / REVISION.md / CHANGELOG.md
+- [API.md](API.md)
+- [API_FLOW.md](API_FLOW.md)
+- [REVISION.md](REVISION.md)
+- [CHANGELOG.md](CHANGELOG.md)

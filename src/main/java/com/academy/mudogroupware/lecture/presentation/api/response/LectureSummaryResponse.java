@@ -12,6 +12,7 @@ public record LectureSummaryResponse(
         String termName,
         String subjectName,
         Long teacherId,
+        String teacherName,
         String classroomName,
         List<ScheduleResponse> schedules,
         int studentCount
@@ -20,6 +21,6 @@ public record LectureSummaryResponse(
     public static LectureSummaryResponse from(LectureSummaryView view) {
         List<ScheduleResponse> schedules = view.schedules().stream().map(ScheduleResponse::from).toList();
         return new LectureSummaryResponse(view.id(), view.name(), view.grade(), view.termName(), view.subjectName(),
-                view.teacherId(), view.classroomName(), schedules, view.studentCount());
+                view.teacherId(), view.teacherName(), view.classroomName(), schedules, view.studentCount());
     }
 }
