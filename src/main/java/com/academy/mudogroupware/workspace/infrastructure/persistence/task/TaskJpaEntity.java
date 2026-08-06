@@ -89,4 +89,8 @@ public class TaskJpaEntity extends BaseTimeEntity {
     return new TaskJpaEntity(
         workspace, recurringTemplate, title, createdBy, status, dueAt, scheduledFor);
   }
+
+  public void markDelayed() {
+    this.status = TaskStatus.DELAYED;
+  }
 }
