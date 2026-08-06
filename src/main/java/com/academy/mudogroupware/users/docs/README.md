@@ -38,6 +38,8 @@
 - 다른 모듈은 users Entity/Repository/JPA를 직접 참조하지 않는다.
 - 필요한 조회는 소비 모듈이 Port를 정의하고 users infrastructure Adapter가 구현한다.
 - notice에는 아직 users 직접 조회 shim이 남아 있을 수 있으며 별도 notice 범위에서 교체한다.
+- `account_type=ADMIN`+`admin_scope=PLATFORM` 계정은 역할 없이도 모든 권한 카탈로그를 authority로 부여받는다.
+- `admin_scope=ACADEMY`(학원 관리자)는 컬럼만 존재하고 아직 미사용(subproject 2에서 도입 예정).
 
 ## 문서
 
