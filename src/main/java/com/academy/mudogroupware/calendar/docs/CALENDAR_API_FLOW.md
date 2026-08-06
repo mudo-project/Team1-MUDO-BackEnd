@@ -95,29 +95,44 @@ GET /api/calendars?from=&to=
 
 Controller가 반환된 `CalendarEvent` 목록을 `CalendarEventResponse::from`으로 매핑하고, `GlobalApiResponse.ok(CalendarResponseCode.EVENT_LIST_RETRIEVED, ...)`로 감싸 HTTP `200 OK`를 반환한다.
 
-## 일정 상세 조회 API 흐름
+## 일정 수정 API 흐름
 
 ```text
-GET /api/calendars/{eventId}
+PATCH /api/calendars/{eventId}
   → Security Filter
   → AuthUser
   → CalendarController
-  → GetCalendarEventUseCase
-  → GetCalendarEventService
+  → UpdateCalendarEventRequest
+  → UpdateCalendarEventCommand
+  → UpdateCalendarEventUseCase
+  → UpdateCalendarEventService
+  → CalendarEvent (도메인, update(...))
   → CalendarEventRepository
   → CalendarEventPersistenceAdapter
   → CalendarEventJpaRepository
-  → CalendarEventResponse (단건)
-  → GlobalApiResponse
+  → GlobalApiResponse 없이 204
 ```
 
-### 1. 조회 및 소속 학원 검증
+### 1. 요청 검증과 조회
 
-`GetCalendarEventService`는 `CalendarEventRepository.findById(eventId)`로 조회한다.
+`UpdateCalendarEventRequest`는 `CreateCalendarEventRequest`와 동일한 Bean Validation 제약을 검증한다. 통과하면 `request.toCommand(eventId, authUser)`가 `UpdateCalendarEventCommand`를 만든다.
+
+`UpdateCalendarEventService`는 `CalendarEventRepository.findById(eventId)`로 대상을 조회한다.
 
 - 일정이 존재하지 않으면 `CalendarEventNotFoundException`을 던져 `CALENDAR_404_1`로 응답한다.
-- 일정은 존재하지만 `academyId`가 요청자의 `AuthUser.academyId()`와 다르면, 다른 학원에 그 일정의 존재 여부 자체를 노출하지 않기 위해 동일하게 `CalendarEventNotFoundException`(`CALENDAR_404_1`)을 던진다. 별도의 403 응답을 두지 않는다.
+- 일정은 존재하지만 `academyId`가 요청자와 다르면, 다른 학원에 존재 여부를 노출하지 않기 위해 동일하게 `CalendarEventNotFoundException`(`CALENDAR_404_1`)을 던진다.
 
-### 2. 응답
+### 2. 도메인 검증과 반영
 
-Controller가 반환된 `CalendarEvent`를 `CalendarEventResponse::from`으로 매핑하고, `GlobalApiResponse.ok(CalendarResponseCode.EVENT_DETAIL_RETRIEVED, ...)`로 감싸 HTTP `200 OK`를 반환한다.
+`CalendarEvent.update(...)`가 불변식을 재검증한다.
+
+- `title`이 공백이면 `CalendarTitleRequiredException`을 던져 `CALENDAR_400_1`로 응답한다.
+- `eventEndAt`이 `eventStartAt`보다 이전이면 `InvalidCalendarPeriodException`을 던져 `CALENDAR_400_2`로 응답한다.
+
+### 3. 영속화
+
+`CalendarEventRepository.save(event)`를 호출한다. `CalendarEventPersistenceAdapter`는 `id`가 있으면(`updateExisting`) `CalendarEventJpaRepository.getReferenceById(...)`로 관리 상태의 Entity를 가져와 `entity.update(...)`로 필드만 갱신한다. `toEntity`로 새 Entity를 만들어 저장하지 않는 이유는, 새로 만든 Entity는 `createdAt`이 비어 있어 그대로 저장하면 JPA가 기존 `created_at`을 `NULL`로 덮어써 제약 위반이 발생하기 때문이다. `updated_at`은 `BaseTimeEntity`(Spring Data JPA Auditing)가 자동으로 갱신한다.
+
+### 4. 응답
+
+성공하면 Controller가 응답 본문 없이 HTTP `204 No Content`를 반환한다.

@@ -3,6 +3,7 @@ package com.academy.mudogroupware.attendance.infrastructure.persistence;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -20,4 +21,22 @@ public interface LeaveRequestJpaRepository extends JpaRepository<LeaveRequestJpa
     List<Long> findUserIdsByAcademyIdAndStatusAndDateBetween(@Param("academyId") Long academyId,
                                                               @Param("status") LeaveRequestStatus status,
                                                               @Param("date") LocalDate date);
+
+    @Query("select (count(l) > 0) from LeaveRequestJpaEntity l "
+            + "where l.academyId = :academyId and l.userId = :userId and l.status in :statuses "
+            + "and l.startDate <= :endDate and l.endDate >= :startDate")
+    boolean existsOverlapping(@Param("academyId") Long academyId,
+                              @Param("userId") Long userId,
+                              @Param("statuses") Set<LeaveRequestStatus> statuses,
+                              @Param("startDate") LocalDate startDate,
+                              @Param("endDate") LocalDate endDate);
+
+    @Query("select coalesce(sum(l.usedDays), 0) from LeaveRequestJpaEntity l "
+            + "where l.academyId = :academyId and l.userId = :userId and l.status in :statuses "
+            + "and l.startDate >= :periodStart and l.endDate <= :periodEnd")
+    int sumUsedDays(@Param("academyId") Long academyId,
+                    @Param("userId") Long userId,
+                    @Param("statuses") Set<LeaveRequestStatus> statuses,
+                    @Param("periodStart") LocalDate periodStart,
+                    @Param("periodEnd") LocalDate periodEnd);
 }

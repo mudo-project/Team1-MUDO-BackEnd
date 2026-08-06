@@ -53,7 +53,7 @@ public class TodayTeamAttendanceQueryService implements GetTodayTeamAttendanceUs
         LocalDate today = LocalDate.now(clock);
         WorkSchedule schedule = resolveSchedule(policy, today);
         // 직원별로 반복 조회하지 않도록 오늘 승인된 휴가자 userId를 한 번만 모아서 조회한다.
-        Set<Long> onLeaveUserIds = leaveRequestRepository.findConfirmedUserIds(academy.id(), today);
+        Set<Long> onLeaveUserIds = leaveRequestRepository.findApprovedUserIds(academy.id(), today);
         List<TodayTeamAttendanceView.Employee> employees = teamAttendanceQueryPort
                 .findEmployeesWithAttendance(academy.id(), academy.ownerUserId(), today)
                 .stream()
