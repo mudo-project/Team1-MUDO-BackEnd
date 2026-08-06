@@ -2,8 +2,15 @@ package com.academy.mudogroupware.workspace.infrastructure.persistence.workspace
 
 import com.academy.mudogroupware.workspace.domain.model.Workspace;
 import com.academy.mudogroupware.workspace.domain.repository.WorkspaceRepository;
+import com.academy.mudogroupware.workspace.domain.exception.WorkspaceAlreadyActiveException;
 import com.academy.mudogroupware.workspace.domain.exception.WorkspaceNameConflictException;
+import com.academy.mudogroupware.workspace.domain.exception.WorkspaceNotFoundException;
+import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
 import java.util.Locale;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Repository;
@@ -37,6 +44,77 @@ public class WorkspacePersistenceAdapter implements WorkspaceRepository {
   @Override
   public boolean existsByAcademyIdAndName(Long academyId, String name) {
     return workspaceJpaRepository.existsByAcademyIdAndNameAndDeletedAtIsNull(academyId, name);
+  }
+
+  @Override
+  public Optional<Workspace> findByIdForUpdate(Long workspaceId) {
+    return workspaceJpaRepository.findActiveByIdForUpdate(workspaceId)
+        .map(workspacePersistenceMapper::toDomain);
+  }
+
+  @Override
+  public void rename(Long workspaceId, String newName) {
+    WorkspaceJpaEntity entity =
+        workspaceJpaRepository.findById(workspaceId).orElseThrow(WorkspaceNotFoundException::new);
+    entity.rename(newName);
+    try {
+      workspaceJpaRepository.saveAndFlush(entity);
+    } catch (DataIntegrityViolationException exception) {
+      if (isActiveNameConflict(exception)) {
+        throw new WorkspaceNameConflictException(exception);
+      }
+      throw exception;
+    }
+  }
+
+  @Override
+  public void updateMembers(Long workspaceId, Set<Long> memberIds) {
+    WorkspaceJpaEntity entity =
+        workspaceJpaRepository.findById(workspaceId).orElseThrow(WorkspaceNotFoundException::new);
+    Set<Long> currentIds =
+        entity.getMembers().stream()
+            .map(WorkspaceMemberJpaEntity::getUserId)
+            .collect(Collectors.toCollection(LinkedHashSet::new));
+    memberIds.stream().filter(id -> !currentIds.contains(id)).forEach(entity::addMember);
+    currentIds.stream().filter(id -> !memberIds.contains(id)).forEach(entity::removeMember);
+    workspaceJpaRepository.saveAndFlush(entity);
+  }
+
+  @Override
+  public void delete(Long workspaceId, LocalDateTime deletedAt) {
+    WorkspaceJpaEntity entity =
+        workspaceJpaRepository.findById(workspaceId).orElseThrow(WorkspaceNotFoundException::new);
+    entity.markDeleted(deletedAt);
+    workspaceJpaRepository.saveAndFlush(entity);
+  }
+
+  @Override
+  public Optional<Workspace> findDeletedByIdForUpdate(Long workspaceId) {
+    Optional<WorkspaceJpaEntity> deletedEntity =
+        workspaceJpaRepository.findDeletedByIdForUpdate(workspaceId);
+    if (deletedEntity.isPresent()) {
+      return deletedEntity.map(workspacePersistenceMapper::toDomain);
+    }
+    if (workspaceJpaRepository.existsById(workspaceId)) {
+      throw new WorkspaceAlreadyActiveException();
+    }
+    return Optional.empty();
+  }
+
+  @Override
+  public void recover(Long workspaceId, String finalName) {
+    WorkspaceJpaEntity entity =
+        workspaceJpaRepository.findById(workspaceId).orElseThrow(WorkspaceNotFoundException::new);
+    entity.clearDeletedAt();
+    entity.rename(finalName);
+    try {
+      workspaceJpaRepository.saveAndFlush(entity);
+    } catch (DataIntegrityViolationException exception) {
+      if (isActiveNameConflict(exception)) {
+        throw new WorkspaceNameConflictException(exception);
+      }
+      throw exception;
+    }
   }
 
   private boolean isActiveNameConflict(Throwable throwable) {

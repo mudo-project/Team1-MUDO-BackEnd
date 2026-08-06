@@ -1,0 +1,37 @@
+package com.academy.mudogroupware.workspace.application.service;
+
+import com.academy.mudogroupware.workspace.application.command.RemoveWorkspaceMemberCommand;
+import com.academy.mudogroupware.workspace.application.usecase.RemoveWorkspaceMemberUseCase;
+import com.academy.mudogroupware.workspace.domain.exception.WorkspaceAccessDeniedException;
+import com.academy.mudogroupware.workspace.domain.exception.WorkspaceNotFoundException;
+import com.academy.mudogroupware.workspace.domain.model.Workspace;
+import com.academy.mudogroupware.workspace.domain.repository.WorkspaceRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+public class RemoveWorkspaceMemberService implements RemoveWorkspaceMemberUseCase {
+
+  private final WorkspaceRepository workspaceRepository;
+
+  @Override
+  @Transactional
+  public void removeMember(RemoveWorkspaceMemberCommand command) {
+    Workspace workspace =
+        workspaceRepository
+            .findByIdForUpdate(command.workspaceId())
+            .orElseThrow(WorkspaceNotFoundException::new);
+
+    // 자진 탈퇴(requesterId == targetUserId)는 참여자이기만 하면 항상 허용.
+    // 타인 제거는 TODO: 권한 모듈의 WORKSPACE:CREATE 권한이 준비되면 참여자 조건에 추가한다.
+    if (!workspace.getMemberIds().contains(command.requesterId())) {
+      throw new WorkspaceAccessDeniedException();
+    }
+
+    // 마지막 1인 제거·탈퇴 거부와 대상 미참여자 404는 도메인 모델이 판단한다.
+    Workspace updated = workspace.removeMember(command.targetUserId());
+    workspaceRepository.updateMembers(command.workspaceId(), updated.getMemberIds());
+  }
+}

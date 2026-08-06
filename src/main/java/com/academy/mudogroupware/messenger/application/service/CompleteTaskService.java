@@ -3,11 +3,13 @@ package com.academy.mudogroupware.messenger.application.service;
 import java.time.Clock;
 import java.time.LocalDateTime;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.academy.mudogroupware.messenger.application.command.CompleteTaskCommand;
 import com.academy.mudogroupware.messenger.application.usecase.CompleteTaskUseCase;
+import com.academy.mudogroupware.messenger.domain.event.TaskCardCompletedEvent;
 import com.academy.mudogroupware.messenger.domain.exception.MessengerErrorCode;
 import com.academy.mudogroupware.messenger.domain.exception.MessengerException;
 import com.academy.mudogroupware.messenger.domain.model.ChatTaskCard;
@@ -21,6 +23,7 @@ import lombok.RequiredArgsConstructor;
 public class CompleteTaskService implements CompleteTaskUseCase {
 
     private final ChatTaskCardRepository chatTaskCardRepository;
+    private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
 
     @Override
@@ -34,5 +37,8 @@ public class CompleteTaskService implements CompleteTaskUseCase {
         LocalDateTime completedAt = LocalDateTime.now(clock);
         chatTaskCard.complete(command.userId(), completedAt);
         chatTaskCardRepository.markAssigneeCompleted(command.cardId(), command.userId(), completedAt);
+        eventPublisher.publishEvent(new TaskCardCompletedEvent(chatTaskCard.getChatRoomId(), chatTaskCard.getId(),
+                command.userId(), completedAt, chatTaskCard.getCompletedCount(), chatTaskCard.getAssigneeCount(),
+                chatTaskCard.isFullyCompleted()));
     }
 }
