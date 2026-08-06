@@ -20,6 +20,14 @@
 - `POST /api/approvals/{documentId}/decisions`
 - `POST /api/approvals/{documentId}/resubmit`
 
+### 휴가 기간 선택 입력 (`POST /api/approvals`)
+
+템플릿에 카테고리를 두지 않고, 결재 신청 요청 자체에 `leaveStartDate`/`leaveEndDate`(둘 다 `LocalDate`, 선택)를 추가로 받을 수 있다.
+
+- 둘 다 비어 있으면 일반 결재로 처리한다.
+- 둘 중 하나만 있거나 `leaveEndDate`가 `leaveStartDate`보다 빠르면 `400 APPROVAL_400_5`.
+- 둘 다 있으면 approval DB에는 저장하지 않고, 신청 시점에 `LeaveRequestSubmittedEvent`로 attendance에 전달한다. 결재가 최종 승인/반려 확정되면 `ApprovalDocumentDecidedEvent`가 발행돼 attendance가 팀 근태 조회에 반영한다(상세: `attendance/docs/LEAVE_INTEGRATION_PROPOSAL.md`).
+
 ## 첨부파일 AI 요약
 
 `POST /api/approvals/{documentId}/attachments/{fileId}/summarize`
