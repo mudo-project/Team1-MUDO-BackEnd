@@ -55,6 +55,7 @@ public interface TaskJpaRepository extends JpaRepository<TaskJpaEntity, Long> {
       select t
       from TaskJpaEntity t
       where t.recurringTemplate is null
+          and t.workspace.deletedAt is null
           and t.dueAt < :today
           and t.status not in (:completed, :delayed)
       """)
@@ -68,11 +69,12 @@ public interface TaskJpaRepository extends JpaRepository<TaskJpaEntity, Long> {
       select t
       from TaskJpaEntity t
       where t.recurringTemplate is not null
-          and function('DATE', t.scheduledFor) < :today
+          and t.workspace.deletedAt is null
+          and t.scheduledFor < :startOfToday
           and t.status not in (:completed, :delayed)
       """)
   List<TaskJpaEntity> findOverdueRecurringTasks(
-      @Param("today") LocalDate today,
+      @Param("startOfToday") LocalDateTime startOfToday,
       @Param("completed") TaskStatus completed,
       @Param("delayed") TaskStatus delayed);
 }
