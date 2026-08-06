@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import com.academy.mudogroupware.messenger.application.command.UpdateMessageCommand;
+import com.academy.mudogroupware.messenger.domain.exception.MessengerErrorCode;
 import com.academy.mudogroupware.messenger.domain.exception.MessengerException;
 import com.academy.mudogroupware.messenger.domain.model.ChatMessage;
 import com.academy.mudogroupware.messenger.domain.model.MessageType;
@@ -54,5 +55,29 @@ class UpdateMessageServiceTest {
 
         assertThatThrownBy(() -> service.update(new UpdateMessageCommand(1L, 10L, 3L, "after")))
                 .isInstanceOf(MessengerException.class);
+    }
+
+    @Test
+    void rejectsEditOfAlreadyDeletedMessage() {
+        ChatMessage message = ChatMessage.restore(10L, 1L, 2L, MessageType.TEXT,
+                "before", null, null, CREATED_AT, null, NOW);
+        when(chatMessageRepository.findById(10L)).thenReturn(Optional.of(message));
+
+        assertThatThrownBy(() -> service.update(new UpdateMessageCommand(1L, 10L, 2L, "after")))
+                .isInstanceOf(MessengerException.class)
+                .extracting(exception -> ((MessengerException) exception).getErrorCode())
+                .isEqualTo(MessengerErrorCode.MESSAGE_ALREADY_DELETED);
+    }
+
+    @Test
+    void rejectsEditOfNonTextMessage() {
+        ChatMessage message = ChatMessage.restore(10L, 1L, 2L, MessageType.IMAGE,
+                null, "https://example.com/a.png", "a.png", CREATED_AT, null, null);
+        when(chatMessageRepository.findById(10L)).thenReturn(Optional.of(message));
+
+        assertThatThrownBy(() -> service.update(new UpdateMessageCommand(1L, 10L, 2L, "after")))
+                .isInstanceOf(MessengerException.class)
+                .extracting(exception -> ((MessengerException) exception).getErrorCode())
+                .isEqualTo(MessengerErrorCode.NOT_TEXT_MESSAGE);
     }
 }
