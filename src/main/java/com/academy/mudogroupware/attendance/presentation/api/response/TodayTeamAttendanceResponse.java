@@ -33,7 +33,8 @@ public record TodayTeamAttendanceResponse(
                 new Summary(
                         view.summary().presentCount(),
                         view.summary().absentCount(),
-                        view.summary().offCount()),
+                        view.summary().offCount(),
+                        view.summary().leaveCount()),
                 view.employees().stream().map(Employee::from).toList());
     }
 
@@ -43,7 +44,9 @@ public record TodayTeamAttendanceResponse(
             @Schema(description = "미출근 인원", example = "1")
             int absentCount,
             @Schema(description = "휴무 인원", example = "0")
-            int offCount
+            int offCount,
+            @Schema(description = "휴가 인원", example = "0")
+            int leaveCount
     ) {
     }
 

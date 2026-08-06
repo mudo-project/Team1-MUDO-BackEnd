@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +21,7 @@ import com.academy.mudogroupware.attendance.domain.model.OwnedAcademy;
 import com.academy.mudogroupware.attendance.domain.model.TeamAttendanceStatus;
 import com.academy.mudogroupware.attendance.domain.repository.AcademyRepository;
 import com.academy.mudogroupware.attendance.domain.repository.AttendancePolicyRepository;
+import com.academy.mudogroupware.attendance.domain.repository.LeaveRequestRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -35,6 +37,7 @@ public class TodayTeamAttendanceQueryService implements GetTodayTeamAttendanceUs
     private final AcademyRepository academyRepository;
     private final AttendancePolicyRepository attendancePolicyRepository;
     private final TeamAttendanceQueryPort teamAttendanceQueryPort;
+    private final LeaveRequestRepository leaveRequestRepository;
     private final Clock clock;
 
     @Override
@@ -49,10 +52,12 @@ public class TodayTeamAttendanceQueryService implements GetTodayTeamAttendanceUs
 
         LocalDate today = LocalDate.now(clock);
         WorkSchedule schedule = resolveSchedule(policy, today);
+        // 직원별로 반복 조회하지 않도록 오늘 승인된 휴가자 userId를 한 번만 모아서 조회한다.
+        Set<Long> onLeaveUserIds = leaveRequestRepository.findConfirmedUserIds(academy.id(), today);
         List<TodayTeamAttendanceView.Employee> employees = teamAttendanceQueryPort
                 .findEmployeesWithAttendance(academy.id(), academy.ownerUserId(), today)
                 .stream()
-                .map(employee -> toEmployee(employee, schedule.workday()))
+                .map(employee -> toEmployee(employee, schedule.workday(), onLeaveUserIds))
                 .toList();
 
         int presentCount = (int) employees.stream()
@@ -64,23 +69,28 @@ public class TodayTeamAttendanceQueryService implements GetTodayTeamAttendanceUs
         int offCount = (int) employees.stream()
                 .filter(employee -> employee.status() == TeamAttendanceStatus.OFF)
                 .count();
+        int leaveCount = (int) employees.stream()
+                .filter(employee -> employee.status() == TeamAttendanceStatus.LEAVE)
+                .count();
 
         return new TodayTeamAttendanceView(
                 today,
                 KOREAN_DAY_NAMES[today.getDayOfWeek().getValue() - 1],
                 schedule.startTime(),
                 schedule.endTime(),
-                new TodayTeamAttendanceView.Summary(presentCount, absentCount, offCount),
+                new TodayTeamAttendanceView.Summary(presentCount, absentCount, offCount, leaveCount),
                 employees);
     }
 
     private TodayTeamAttendanceView.Employee toEmployee(
-            TeamAttendanceEmployee employee, boolean workday) {
+            TeamAttendanceEmployee employee, boolean workday, Set<Long> onLeaveUserIds) {
         TeamAttendanceStatus status = !workday
                 ? TeamAttendanceStatus.OFF
-                : employee.clockInAt() == null
-                        ? TeamAttendanceStatus.ABSENT
-                        : TeamAttendanceStatus.PRESENT;
+                : employee.clockInAt() != null
+                        ? TeamAttendanceStatus.PRESENT
+                        : onLeaveUserIds.contains(employee.userId())
+                                ? TeamAttendanceStatus.LEAVE
+                                : TeamAttendanceStatus.ABSENT;
         LocalTime checkInTime = status == TeamAttendanceStatus.PRESENT
                 ? employee.clockInAt().toLocalTime()
                 : null;

@@ -30,7 +30,7 @@ class AttendanceTeamControllerTest {
                 "수",
                 LocalTime.of(9, 0),
                 LocalTime.of(18, 0),
-                new TodayTeamAttendanceView.Summary(1, 0, 0),
+                new TodayTeamAttendanceView.Summary(1, 0, 0, 0),
                 List.of(new TodayTeamAttendanceView.Employee(
                         2L, "김지수", TeamAttendanceStatus.PRESENT, LocalTime.of(8, 52))));
         when(useCase.getToday(1L, 10L)).thenReturn(view);
