@@ -103,3 +103,55 @@ KST 00:00 매일 실행
 - [CHANGELOG.md](CHANGELOG.md) — 기능 추가 알림
 - GitHub [PR #136](https://github.com/mudo-project/Team1-MUDO-BackEnd/pull/136) — 전체 구현 코드
 - GitHub [Issue #138](https://github.com/mudo-project/Team1-MUDO-BackEnd/issues/138) — 다중 인스턴스 동시 실행 대응 (미해결)
+
+## 🆕 업무 생성 API 흐름
+
+```text
+POST /api/workspaces/{workspaceId}/tasks
+  → Security Filter
+  → AuthUser
+  → WorkspaceTaskController
+  → CreateTaskRequest
+  → CreateTaskCommand
+  → CreateTaskUseCase
+  → CreateTaskService
+  → WorkspaceRepository.findById (락 없음)
+  → WorkspacePersistenceAdapter
+  → Task.create (Domain Model)
+  → TaskRepository.save
+  → TaskPersistenceAdapter
+  → TaskJpaRepository
+  → TaskStatusHistoryRepository.append
+  → TaskStatusHistoryPersistenceAdapter
+  → TaskStatusHistoryJpaRepository
+```
+
+### 1. 인증 정보 추출
+
+`Security Filter`가 Access Token을 검증하고 `AuthUser`를 만든다. `WorkspaceTaskController`는 경로의 `workspaceId`와 `AuthUser`의 `userId`를 받아 요청 본문에는 없는 워크스페이스·생성자 정보를 결정한다.
+
+### 2. 요청 검증과 Command 변환
+
+`CreateTaskRequest`는 제목의 필수 여부와 trim 후 최대 200자, 마감일의 필수 여부를 Bean Validation으로 검증한다. Compact Constructor에서 검증 이전에 미리 `title`을 trim해, `@Size`가 trim 전 원본 길이를 검증하는 것을 방지한다("trim 후 최대 200자" 계약 준수). 검증을 통과하면 `CreateTaskCommand`로 변환한다.
+
+### 3. 워크스페이스 존재 확인과 참여자 검증
+
+`CreateTaskService`는 존재 확인을 권한 확인보다 먼저 한다(기존 워크스페이스 API와 동일한 순서).
+
+- `WorkspaceRepository.findById`(락 없음, 활성 워크스페이스만)로 조회한다. 없으면 `WorkspaceNotFoundException` → `WORKSPACE_404_1`.
+- 요청자가 `workspace.getMemberIds()`에 포함되지 않으면 `WorkspaceAccessDeniedException` → `WORKSPACE_403_1`.
+- `WORKSPACE:CREATE` 권한 검사는 `permission` 테이블에 코드가 아직 시드되지 않아 TODO 주석으로 남겨져 있다.
+
+### 4. 초기 상태 결정과 저장
+
+`Task.create(workspaceId, title, dueAt, requesterId, today)`가 마감일과 오늘 날짜를 비교해 초기 상태를 결정한다. `dueAt`이 `today`보다 이전이면 `DELAYED`, 그 외(오늘 포함)에는 `WAITING`이다. `today`는 `CreateTaskService`가 소유한 `Clock`으로 계산해 도메인 정적 팩토리에 파라미터로 넘긴다 — 도메인은 `Clock`을 직접 주입받지 않는다.
+
+`TaskRepository.save`는 `TaskPersistenceAdapter`가 구현한다. `id`가 없는 신규 업무이므로 `WorkspaceJpaRepository.getReferenceById`로 워크스페이스 참조를 해결한 뒤 `TaskPersistenceMapper.toEntity`로 엔티티를 조립하고 `saveAndFlush`로 저장해 생성된 `taskId`를 확보한다.
+
+### 5. 상태 이력 기록
+
+저장 직후 `TaskStatusHistoryRepository.append(TaskStatusHistory.userChanged(taskId, null, status, requesterId))`를 호출해 최초 이력을 남긴다. `previousStatus = null`, `changedBy = 요청자 ID`.
+
+### 6. 응답
+
+성공하면 Controller가 `GlobalApiResponse.created(WorkspaceResponseCode.TASK_CREATED, ...)`로 HTTP `201 Created`와 `taskId`를 반환한다.
