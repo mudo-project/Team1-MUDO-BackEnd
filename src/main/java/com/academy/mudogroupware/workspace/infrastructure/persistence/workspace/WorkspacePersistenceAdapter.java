@@ -47,6 +47,12 @@ public class WorkspacePersistenceAdapter implements WorkspaceRepository {
   }
 
   @Override
+  public Optional<Workspace> findById(Long workspaceId) {
+    return workspaceJpaRepository.findActiveById(workspaceId)
+        .map(workspacePersistenceMapper::toDomain);
+  }
+
+  @Override
   public Optional<Workspace> findByIdForUpdate(Long workspaceId) {
     return workspaceJpaRepository.findActiveByIdForUpdate(workspaceId)
         .map(workspacePersistenceMapper::toDomain);
