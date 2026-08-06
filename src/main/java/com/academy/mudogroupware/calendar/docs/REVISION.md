@@ -1,5 +1,54 @@
 # 🔄 Calendar 도메인 리비전 로그
 
+## ✅ 2026-08-06 · 일정 상세 조회 API 추가
+
+### 변경 목적
+
+목록/일별 조회 다음으로, 일정 번호로 단건 상세를 조회하는 API를 추가했습니다.
+
+### 구현 변경
+
+- `GET /api/calendars/{eventId}`를 추가했습니다.
+- `GetCalendarEventService`는 `CalendarEventRepository.findById(eventId)`로 조회 후, 존재하지 않거나 요청자의 `academyId`와 다르면 동일하게 `CalendarEventNotFoundException`(`CALENDAR_404_1`)을 던집니다. 다른 학원 소속 일정에 대해 "존재하지 않음"과 "권한 없음"을 구분해 응답하면 다른 학원에 그 일정의 존재 여부가 노출되므로, 별도의 403을 두지 않고 404로 통일했습니다.
+- 응답은 목록조회와 동일한 `CalendarEventResponse`를 그대로 재사용합니다(계획 문서의 "과설계 방지" 원칙 유지).
+- `CalendarResponseCode.EVENT_DETAIL_RETRIEVED`(`CALENDAR_200_2`)를 추가했습니다.
+
+### 유예한 결정
+
+- 수정(`PATCH`), 삭제(`DELETE`)는 다음 이슈에서 진행합니다.
+
+### 검증
+
+- `GetCalendarEventServiceTest` — 정상 조회, 존재하지 않는 일정, 다른 학원 소속 일정 각각에서 예상대로 동작/예외가 발생하는지 검증했습니다.
+- `CalendarControllerTest` — `GET /api/calendars/{eventId}`의 `200`/`404`/`401` 응답 형식을 검증했습니다.
+- `./gradlew test`(전체) — calendar 관련 테스트 전부 통과, 기존 도메인 회귀 없음을 확인했습니다.
+
+## ✅ 2026-08-06 · 일정 목록/일별 조회 API 추가
+
+### 변경 목적
+
+일정 생성 다음으로, 학원 구성원이 등록된 일정을 기간 단위(월간 목록/일별)로 조회할 수 있는 API를 추가했습니다.
+
+### 구현 변경
+
+- `GET /api/calendars?from=&to=`를 추가했습니다. 목록조회와 일별조회를 하나의 엔드포인트로 겸용합니다(일별조회는 `from`/`to`에 같은 날의 00:00:00~23:59:59를 넣어 호출).
+- 조회는 Command 객체 없이 `academyId`, `from`, `to`를 그대로 UseCase에 전달합니다. `memo` 도메인의 조회 패턴(Domain Model을 그대로 반환, 별도 View 불필요)을 따랐습니다.
+- `GetCalendarEventsService`는 `@Transactional(readOnly = true)`로 선언했습니다.
+- `to`가 `from`보다 이전이면 리포지토리를 조회하지 않고 기존 `InvalidCalendarPeriodException`(`CALENDAR_400_2`)을 재사용합니다. 조회 전용 새 에러 코드를 추가하지 않았습니다(의미가 동일하기 때문).
+- `CalendarEventResponse`를 새로 추가해 목록/일별/상세 조회에서 공용으로 재사용하도록 설계했습니다(계획 문서의 "과설계 방지" 원칙).
+- 조회 대상은 `AuthUser.academyId()`로 한정하며, 다른 학원의 일정은 응답에 포함되지 않습니다.
+
+### 유예한 결정
+
+- 상세조회(`GET /api/calendars/{eventId}`), 수정(`PATCH`), 삭제(`DELETE`)는 다음 이슈에서 진행합니다.
+- 현재 조회 조건은 `event_start_at`이 구간에 포함되는 일정만 반환합니다. 시작은 구간 밖이지만 종료가 구간에 걸치는 일정(예: 여러 날짜에 걸친 장기 일정)까지 포함하는 진정한 기간-겹침(overlap) 조회는 상세 스펙이 확정되면 반영합니다.
+
+### 검증
+
+- `GetCalendarEventsServiceTest` — 정상 조회 흐름과, `to < from`일 때 리포지토리 호출 없이 예외가 발생하는지 검증했습니다.
+- `CalendarControllerTest` — `GET /api/calendars`의 `200`/`400`/`401` 응답 형식을 검증했습니다.
+- `./gradlew test`(전체) — calendar 관련 테스트 전부 통과. `attendance` 도메인의 `ApprovalLeaveEventListener` 관련 기존 컨텍스트 로딩 실패 4건은 이번 변경과 무관한 사전 존재 이슈로 확인했습니다(별도 공유).
+
 ## ✅ 2026-08-06 · 캘린더 도메인 신설 및 일정 생성 API 추가
 
 ### 변경 목적

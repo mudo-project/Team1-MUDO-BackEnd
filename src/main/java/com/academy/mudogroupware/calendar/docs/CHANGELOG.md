@@ -1,5 +1,19 @@
 # 📚 Calendar Changelog
 
+## 2026-08-06 · 일정 상세 조회 API 추가 ✨
+
+- `GET /api/calendars/{eventId}`로 일정 상세를 조회할 수 있습니다.
+- 일정이 존재하지 않거나 다른 학원 소속이면 `CALENDAR_404_1`로 응답합니다(다른 학원에 존재 여부를 노출하지 않기 위해 두 경우를 구분하지 않음).
+- 성공 시 HTTP `200 OK`와 함께 `CalendarEventResponse`(목록조회와 동일한 응답 형태)를 반환합니다.
+
+## 2026-08-06 · 일정 목록/일별 조회 API 추가 ✨
+
+- `GET /api/calendars?from=&to=`로 학원 공용 캘린더 일정을 기간 조회할 수 있습니다. 목록조회와 일별조회를 겸용합니다.
+- 조회 대상은 요청자의 `academyId` 소속 일정으로 한정합니다.
+- `to`가 `from`보다 이전이면 `CALENDAR_400_2`로 응답합니다.
+- 성공 시 HTTP `200 OK`와 함께 일정 목록(`CalendarEventResponse[]`)을 반환합니다.
+- `CalendarEventResponse`는 목록/일별/상세 조회에서 공용으로 재사용합니다.
+
 ## 2026-08-06 · 캘린더 도메인 신설 및 일정 생성 API 추가 ✨
 
 - 학원 공용 캘린더를 담당하는 `calendar` top-level 도메인 모듈을 신설했습니다.
