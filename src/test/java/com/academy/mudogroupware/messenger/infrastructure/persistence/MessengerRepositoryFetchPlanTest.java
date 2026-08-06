@@ -27,7 +27,7 @@ class MessengerRepositoryFetchPlanTest {
     @Test
     void taskCardQueriesFetchAssignees() throws NoSuchMethodException {
         EntityGraph findAllGraph = ChatTaskCardJpaRepository.class
-                .getMethod("findAllByChatRoomIdOrderByCreatedAtDescIdDesc", Long.class)
+                .getMethod("findAllByChatRoomIdAndDeletedAtIsNullOrderByCreatedAtDescIdDesc", Long.class)
                 .getAnnotation(EntityGraph.class);
         EntityGraph findByIdGraph = ChatTaskCardJpaRepository.class
                 .getMethod("findById", Long.class)

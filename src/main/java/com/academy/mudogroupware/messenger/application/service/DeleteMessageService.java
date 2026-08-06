@@ -3,10 +3,12 @@ package com.academy.mudogroupware.messenger.application.service;
 import java.time.Clock;
 import java.time.LocalDateTime;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.academy.mudogroupware.messenger.application.usecase.DeleteMessageUseCase;
+import com.academy.mudogroupware.messenger.domain.event.MessageDeletedEvent;
 import com.academy.mudogroupware.messenger.domain.exception.MessengerErrorCode;
 import com.academy.mudogroupware.messenger.domain.exception.MessengerException;
 import com.academy.mudogroupware.messenger.domain.model.ChatMessage;
@@ -20,6 +22,7 @@ import lombok.RequiredArgsConstructor;
 public class DeleteMessageService implements DeleteMessageUseCase {
 
     private final ChatMessageRepository chatMessageRepository;
+    private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
 
     @Override
@@ -32,5 +35,7 @@ public class DeleteMessageService implements DeleteMessageUseCase {
 
         message.delete(requesterId, LocalDateTime.now(clock));
         chatMessageRepository.save(message);
+        eventPublisher.publishEvent(new MessageDeletedEvent(message.getChatRoomId(), message.getId(),
+                requesterId, message.getDeletedAt()));
     }
 }

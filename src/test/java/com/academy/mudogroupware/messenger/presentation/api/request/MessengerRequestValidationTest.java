@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import com.academy.mudogroupware.messenger.application.command.CreateChatRoomCommand;
 import com.academy.mudogroupware.messenger.application.command.CreateTaskCardCommand;
+import com.academy.mudogroupware.messenger.application.command.UpdateTaskCardCommand;
 import com.academy.mudogroupware.messenger.domain.exception.MessengerException;
 
 import jakarta.validation.Validation;
@@ -49,6 +50,20 @@ class MessengerRequestValidationTest {
     @Test
     void commandRejectsNullAssigneeIdAsDomainException() {
         assertThatThrownBy(() -> new CreateTaskCardCommand(1L, 1L, "task", null, Collections.singletonList(null)))
+                .isInstanceOf(MessengerException.class);
+    }
+
+    @Test
+    void rejectsNonPositiveAssigneeIdOnUpdate() {
+        UpdateTaskCardRequest request = new UpdateTaskCardRequest("task", null, List.of(0L));
+
+        assertThat(validator.validate(request)).isNotEmpty();
+    }
+
+    @Test
+    void updateCommandRejectsNullAssigneeIdAsDomainException() {
+        assertThatThrownBy(() -> new UpdateTaskCardCommand(1L, 1L, 1L, "task", null,
+                Collections.singletonList(null)))
                 .isInstanceOf(MessengerException.class);
     }
 }

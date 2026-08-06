@@ -16,9 +16,11 @@ import com.academy.mudogroupware.messenger.application.usecase.CompleteTaskUseCa
 import com.academy.mudogroupware.messenger.application.usecase.CreateChatRoomUseCase;
 import com.academy.mudogroupware.messenger.application.usecase.CreateTaskCardUseCase;
 import com.academy.mudogroupware.messenger.application.usecase.DeleteMessageUseCase;
+import com.academy.mudogroupware.messenger.application.usecase.DeleteTaskCardUseCase;
 import com.academy.mudogroupware.messenger.application.usecase.SendMessageUseCase;
 import com.academy.mudogroupware.messenger.application.usecase.TaskCardQueryUseCase;
 import com.academy.mudogroupware.messenger.application.usecase.UpdateMessageUseCase;
+import com.academy.mudogroupware.messenger.application.usecase.UpdateTaskCardUseCase;
 
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
@@ -40,7 +42,9 @@ class MessengerControllerValidationTest {
                 mock(ChatMessageQueryUseCase.class),
                 mock(CreateTaskCardUseCase.class),
                 mock(TaskCardQueryUseCase.class),
-                mock(CompleteTaskUseCase.class));
+                mock(CompleteTaskUseCase.class),
+                mock(UpdateTaskCardUseCase.class),
+                mock(DeleteTaskCardUseCase.class));
         Method method = MessengerController.class.getMethod(
                 "getMessages", AuthUser.class, Long.class, java.time.LocalDateTime.class, Long.class, int.class);
 
