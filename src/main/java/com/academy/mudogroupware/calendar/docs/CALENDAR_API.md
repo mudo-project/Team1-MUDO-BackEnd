@@ -80,7 +80,7 @@ HTTP `201 Created`
 - 도메인 검증은 `CalendarEvent.create(...)` 내부에서 수행하며, 위반 시 `CalendarTitleRequiredException`(`CALENDAR_400_1`) 또는 `InvalidCalendarPeriodException`(`CALENDAR_400_2`)이 발생한다.
 - 자세한 처리 흐름은 [CALENDAR_API_FLOW.md](CALENDAR_API_FLOW.md), 도메인 규칙은 [BUSINESS_RULES.md](BUSINESS_RULES.md)를 참고한다.
 
-## 일정 목록/일별 조회
+## 일정 목록/일별/월간 조회
 
 ### Endpoint
 

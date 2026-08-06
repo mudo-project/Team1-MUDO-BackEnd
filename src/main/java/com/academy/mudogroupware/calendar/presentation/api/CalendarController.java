@@ -60,7 +60,7 @@ public class CalendarController {
                         CreateCalendarEventResponse.from(eventId)));
     }
 
-    @Operation(summary = "일정 목록/일별 조회",
+    @Operation(summary = "일정 목록/일별/월간 조회",
             description = "한국 시간(Asia/Seoul) 기준으로 date(하루) 또는 yearMonth(한 달) 중 정확히 하나를 지정해 "
                     + "해당 기간에 시작하는 학원 공용 캘린더 일정을 모두 조회합니다.")
     @ApiResponses({

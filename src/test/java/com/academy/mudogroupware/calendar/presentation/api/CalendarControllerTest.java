@@ -184,6 +184,49 @@ class CalendarControllerTest {
     }
 
     @Test
+    void getEventsReturns400WhenDateIsMalformed() throws Exception {
+        mockMvc
+                .perform(get("/api/calendars")
+                        .with(authentication(authenticatedUser()))
+                        .param("date", "2026-02-30"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_400_1"));
+
+        verifyNoInteractions(getCalendarEventsUseCase);
+    }
+
+    @Test
+    void getEventsReturns400WhenYearMonthIsMalformed() throws Exception {
+        mockMvc
+                .perform(get("/api/calendars")
+                        .with(authentication(authenticatedUser()))
+                        .param("yearMonth", "2026-13"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_400_1"));
+
+        verifyNoInteractions(getCalendarEventsUseCase);
+    }
+
+    @Test
+    void getEventsReturns200ForLeapYearFebruaryMonthQuery() throws Exception {
+        when(getCalendarEventsUseCase.getEvents(1L,
+                LocalDateTime.of(2024, 2, 1, 0, 0),
+                LocalDateTime.of(2024, 2, 29, 23, 59, 59, 999_999_999)))
+                .thenReturn(List.of());
+
+        mockMvc
+                .perform(get("/api/calendars")
+                        .with(authentication(authenticatedUser()))
+                        .param("yearMonth", "2024-02"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").isEmpty());
+
+        verify(getCalendarEventsUseCase).getEvents(1L,
+                LocalDateTime.of(2024, 2, 1, 0, 0),
+                LocalDateTime.of(2024, 2, 29, 23, 59, 59, 999_999_999));
+    }
+
+    @Test
     void getEventsReturns401WhenUnauthenticated() throws Exception {
         mockMvc
                 .perform(get("/api/calendars")

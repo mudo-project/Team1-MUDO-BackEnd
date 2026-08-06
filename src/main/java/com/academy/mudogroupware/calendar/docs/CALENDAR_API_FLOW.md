@@ -60,7 +60,7 @@ POST /api/calendars
 
 성공하면 Controller가 `CreateCalendarEventResponse.from(eventId)`로 응답 데이터를 만들고, `GlobalApiResponse.created(CalendarResponseCode.EVENT_CREATED, ...)`로 감싸 HTTP `201 Created`를 반환한다.
 
-## 일정 목록/일별 조회 API 흐름
+## 일정 목록/일별/월간 조회 API 흐름
 
 ```text
 GET /api/calendars?date= 또는 ?yearMonth=
