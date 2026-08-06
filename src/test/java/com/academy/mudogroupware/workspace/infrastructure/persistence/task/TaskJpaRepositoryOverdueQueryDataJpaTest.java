@@ -58,6 +58,8 @@ class TaskJpaRepositoryOverdueQueryDataJpaTest {
     insertRecurringTask(2L, 1L, 100L, TaskStatus.COMPLETED, LocalDateTime.of(2026, 8, 3, 10, 0));
     insertRecurringTask(3L, 1L, 100L, TaskStatus.DELAYED, LocalDateTime.of(2026, 8, 3, 11, 0));
     insertRecurringTask(4L, 1L, 100L, TaskStatus.WAITING, at(2026, 8, 5));
+    // 자정 정각 경계: startOfToday와 정확히 같은 값은 "< startOfToday"에 포함되지 않아야 한다(<=로 회귀하면 이 케이스가 실패한다)
+    insertRecurringTask(5L, 1L, 100L, TaskStatus.WAITING, TODAY.atStartOfDay());
 
     List<TaskJpaEntity> result =
         taskJpaRepository.findOverdueRecurringTasks(

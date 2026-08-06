@@ -8,7 +8,9 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.academy.mudogroupware.workspace.domain.model.RecurrenceType;
 import com.academy.mudogroupware.workspace.domain.model.TaskStatus;
+import com.academy.mudogroupware.workspace.infrastructure.persistence.task.RecurringTaskTemplateJpaEntity;
 import com.academy.mudogroupware.workspace.infrastructure.persistence.task.TaskJpaEntity;
 import com.academy.mudogroupware.workspace.infrastructure.persistence.task.TaskJpaRepository;
 import com.academy.mudogroupware.workspace.infrastructure.persistence.task.TaskStatusHistoryJpaEntity;
@@ -18,6 +20,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -51,8 +54,12 @@ class DelayOverdueTasksServiceTest {
 
     TaskJpaEntity regular =
         TaskJpaEntity.create(null, null, "정기", 10L, TaskStatus.IN_PROGRESS, today.minusDays(1), null);
+    // 실제 반복 업무 계약(recurringTemplate != null, 과거 scheduledFor)을 그대로 갖춘 fixture
+    RecurringTaskTemplateJpaEntity template =
+        RecurringTaskTemplateJpaEntity.create(null, "daily", RecurrenceType.DAILY, Map.of(), 10L);
     TaskJpaEntity recurring =
-        TaskJpaEntity.create(null, null, "반복", 10L, TaskStatus.WAITING, null, null);
+        TaskJpaEntity.create(
+            null, template, "반복", 10L, TaskStatus.WAITING, null, today.minusDays(1).atTime(9, 0));
     when(taskJpaRepository.findOverdueRegularTasks(eq(today), eq(TaskStatus.COMPLETED), eq(TaskStatus.DELAYED)))
         .thenReturn(List.of(regular));
     when(taskJpaRepository.findOverdueRecurringTasks(
