@@ -15,6 +15,11 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 @DataJpaTest(properties = "spring.jpa.hibernate.ddl-auto=create-drop")
+// Replace.NONE keeps the H2 MySQL-compatibility-mode datasource configured in
+// src/test/resources/application.yaml (jdbc:h2:mem:...;MODE=MySQL) instead of letting
+// @DataJpaTest swap in a plain embedded H2, so that function('DATE', ...) resolves.
+// This is still H2 (MySQL emulation), not a real MySQL instance -- unlike the
+// Testcontainers-backed *MySqlIntegrationTest classes, which run against genuine MySQL.
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Import(TimeConfig.class)
 class TaskJpaRepositoryOverdueQueryDataJpaTest {
