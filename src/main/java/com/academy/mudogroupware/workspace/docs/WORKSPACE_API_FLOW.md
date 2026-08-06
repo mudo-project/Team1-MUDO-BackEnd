@@ -1,4 +1,4 @@
-# 워크스페이스 생성 API 흐름
+# 🆕 워크스페이스 생성 API 흐름
 
 ## 호출 흐름
 
@@ -56,7 +56,7 @@ POST /api/workspaces
 
 성공하면 Controller가 `GlobalApiResponse.created`로 HTTP `201 Created`와 `workspaceId`를 반환한다.
 
-## 워크스페이스 목록 조회 API 흐름
+## 📋 워크스페이스 목록 조회 API 흐름
 
 ```text
 GET /api/workspaces?scope=MINE|ALL
@@ -91,7 +91,7 @@ GET /api/workspaces?scope=MINE|ALL
 
 Controller는 `WorkspaceListItem`을 `workspaceId`, `name`, `memberCount` 필드의 `WorkspaceListResponse`로 변환한다. 조회 결과가 없으면 HTTP `200 OK`의 `data`에 빈 배열을 반환한다.
 
-## 워크스페이스 최근 접속 API 흐름
+## 🕒 워크스페이스 최근 접속 API 흐름
 
 ```text
 PUT /api/workspaces/{workspaceId}/recent-access
@@ -124,7 +124,7 @@ Controller는 `AuthUser`에서 `academyId`, `userId`를 추출한다. 인증 객
 
 접근 가능하면 서버의 `Clock` 기준 현재 시각을 저장한다. Repository는 MySQL의 `INSERT ... ON DUPLICATE KEY UPDATE` 단일 쿼리로 `(userId, workspaceId)` 기록을 생성하거나 갱신한다. 동일한 최초 요청이 동시에 들어와도 복합 PK 충돌로 실패하지 않으며, 갱신 시에는 더 최신 접속 시각을 유지한다. 성공 응답은 본문 없는 HTTP `204 No Content`이다.
 
-## 워크스페이스 상세 조회 API 흐름
+## 🔍 워크스페이스 상세 조회 API 흐름
 
 ```text
 GET /api/workspaces/{workspaceId}?date=yyyy-MM-dd
@@ -173,3 +173,199 @@ Controller는 `AuthUser`에서 `academyId`, `userId`를 추출하고, 인증 객
 ### 6. 응답 변환
 
 Controller는 `WorkspaceDetail`을 `WorkspaceDetailResponse`로 변환해 `GlobalApiResponse.ok`로 HTTP `200 OK`를 반환한다. `completedCommentCount`, `commentCount`가 `null`인 업무는 `@JsonInclude(NON_NULL)`에 의해 응답 JSON에서 해당 필드 자체가 생략된다.
+
+## ✏️ 워크스페이스 이름 수정 API 흐름
+
+```text
+PATCH /api/workspaces/{workspaceId}
+  → Security Filter
+  → AuthUser
+  → WorkspaceController
+  → RenameWorkspaceRequest
+  → RenameWorkspaceCommand
+  → RenameWorkspaceUseCase
+  → RenameWorkspaceService
+  → WorkspaceRepository.findByIdForUpdate
+  → WorkspacePersistenceAdapter
+  → WorkspaceJpaRepository
+  → Workspace.rename
+  → WorkspaceRepository.rename
+  → WorkspacePersistenceAdapter
+  → WorkspaceRenameResponse
+  → GlobalApiResponse
+```
+
+### 1. 요청 검증과 trim
+
+`RenameWorkspaceRequest`의 compact 생성자가 Bean Validation이 실행되기 전에 이름을 먼저 `trim()`한다. `@NotBlank`/`@Size(max = 100)`은 trim된 값을 검증하므로, 앞뒤 공백을 포함해 100자를 넘는 이름도 trim 후 100자 이하면 통과한다.
+
+### 2. 잠금 조회와 참여자 검증
+
+`RenameWorkspaceService`는 `WorkspaceRepository.findByIdForUpdate`(비관적 락)로 활성 워크스페이스를 조회한다. 없으면 `WorkspaceNotFoundException`을 발생시켜 `WORKSPACE_404_1`로 응답한다. 요청자가 현재 참여자가 아니면 `WorkspaceAccessDeniedException`을 발생시켜 `WORKSPACE_403_1`로 응답한다.
+
+`WORKSPACE:CREATE` 권한은 아직 시드되지 않아, 이번 라운드는 참여자 여부만 검증하고 `@PreAuthorize` 자리에 TODO 주석만 남긴다.
+
+### 3. 이름 반영과 저장
+
+`Workspace.rename(newName)` 도메인 메서드가 새 이름을 반영한 새 인스턴스를 반환한다. `WorkspaceRepository.rename`이 실제 저장을 담당하며, DB의 `(academy_id, active_name)` unique 제약이 충돌하면 Adapter가 `WorkspaceNameConflictException`으로 변환해 `WORKSPACE_409_1`로 응답한다. 사전 중복 조회 없이 이 예외 변환에만 의존하므로, 동시에 같은 이름으로 변경을 시도해도 정확히 하나만 성공한다.
+
+### 4. 응답
+
+Controller가 `WorkspaceRenameResponse.from(workspaceId, name)`을 `GlobalApiResponse.ok`로 감싸 HTTP `200 OK`를 반환한다.
+
+## 🗑️ 워크스페이스 삭제 API 흐름
+
+```text
+DELETE /api/workspaces/{workspaceId}
+  → Security Filter
+  → AuthUser
+  → WorkspaceController
+  → DeleteWorkspaceCommand
+  → DeleteWorkspaceUseCase
+  → DeleteWorkspaceService
+  → WorkspaceRepository.findByIdForUpdate
+  → WorkspacePersistenceAdapter
+  → WorkspaceJpaRepository
+  → WorkspaceRepository.delete
+  → WorkspacePersistenceAdapter
+```
+
+### 1. 잠금 조회와 참여자 검증
+
+`DeleteWorkspaceService`는 `findByIdForUpdate`로 활성 워크스페이스를 조회한다. 없으면 `WorkspaceNotFoundException`(`WORKSPACE_404_1`), 요청자가 참여자가 아니면 `WorkspaceAccessDeniedException`(`WORKSPACE_403_1`)으로 응답한다.
+
+`WORKSPACE:DELETE` 권한 시드 전까지는 참여자 수와 무관하게 참여자 여부만 검증한다. 본인이 유일한 참여자인 상태의 삭제는 자진 탈퇴의 대체 행위이므로, 권한 연동 이후에도 계속 권한 없이 허용할 예정이다.
+
+### 2. 소프트 삭제
+
+서버에 주입된 `Clock` 기준 현재 시각으로 `WorkspaceRepository.delete(workspaceId, deletedAt)`을 호출한다. Adapter는 `SoftDeleteTimeEntity.markDeleted(deletedAt)`으로 `deleted_at`을 세팅하고 `saveAndFlush`한다. 물리 삭제는 하지 않는다.
+
+### 3. 응답
+
+성공하면 응답 본문 없이 HTTP `204 No Content`를 반환한다.
+
+## ➕ 워크스페이스 참여자 추가 API 흐름
+
+```text
+POST /api/workspaces/{workspaceId}/members
+  → Security Filter
+  → AuthUser
+  → WorkspaceController
+  → AddWorkspaceMembersRequest
+  → AddWorkspaceMembersCommand
+  → AddWorkspaceMembersUseCase
+  → AddWorkspaceMembersService
+  → WorkspaceRepository.findByIdForUpdate
+  → WorkspacePersistenceAdapter
+  → Workspace.newlyAddedMemberIds / addMembers
+  → WorkspaceMemberDirectoryPort
+  → WorkspaceMemberDirectoryAdapter
+  → UserDirectoryUseCase
+  → WorkspaceRepository.updateMembers
+  → WorkspacePersistenceAdapter
+  → WorkspaceMemberAddResponse
+  → GlobalApiResponse
+```
+
+### 1. 요청 검증
+
+`AddWorkspaceMembersRequest.memberIds`는 `@NotEmpty`(목록 자체)와 각 원소의 `@NotNull`/`@Positive`로 검증한다. 빈 목록·null·양수가 아닌 값은 `COMMON_400_1`로 거부된다.
+
+### 2. 잠금 조회와 참여자 검증
+
+`findByIdForUpdate`로 활성 워크스페이스를 조회하고, 요청자가 현재 참여자인지 확인한다(아니면 `WORKSPACE_403_1`).
+
+### 3. 신규 후보만 골라 학원 소속 검증
+
+`Workspace.newlyAddedMemberIds`로 이미 참여 중인 사용자를 제외한 신규 후보만 추린다. 신규 후보가 없으면(전원 이미 참여 중) `WorkspaceMemberDirectoryPort` 호출과 저장소 갱신을 모두 건너뛰고 빈 목록을 반환한다 — 멱등 처리.
+
+신규 후보가 있으면 `WorkspaceMemberDirectoryPort.findActiveUserIds(academyId, candidateIds)`로 같은 학원의 `ACTIVE` 사용자인지 확인한다(내부적으로 users의 `UserDirectoryUseCase` 호출). 하나라도 아니면 `InvalidWorkspaceMemberException`을 발생시켜 `WORKSPACE_400_1`로 응답하고, 저장소는 갱신하지 않는다.
+
+### 4. 참여자 갱신과 응답
+
+`Workspace.addMembers(newIds)`로 참여자 집합을 갱신한 뒤 `WorkspaceRepository.updateMembers`로 반영한다. Controller는 신규로 추가된 사용자 ID만(이미 참여 중이던 사용자는 제외) `WorkspaceMemberAddResponse`에 담아 HTTP `200 OK`로 반환한다.
+
+## ➖ 워크스페이스 참여자 제거(자진 탈퇴 겸용) API 흐름
+
+```text
+DELETE /api/workspaces/{workspaceId}/members/{userId}
+  → Security Filter
+  → AuthUser
+  → WorkspaceController
+  → RemoveWorkspaceMemberCommand
+  → RemoveWorkspaceMemberUseCase
+  → RemoveWorkspaceMemberService
+  → WorkspaceRepository.findByIdForUpdate
+  → WorkspacePersistenceAdapter
+  → Workspace.removeMember
+  → WorkspaceRepository.updateMembers
+  → WorkspacePersistenceAdapter
+```
+
+### 1. 잠금 조회와 참여자 검증
+
+`findByIdForUpdate`로 활성 워크스페이스를 조회한다. 요청자(`authUser.userId()`)가 현재 참여자가 아니면 `WorkspaceAccessDeniedException`(`WORKSPACE_403_1`)으로 응답한다 — 대상 `userId`가 요청자 자신이면 자진 탈퇴이므로 이 체크만 통과하면 항상 허용된다. 타인 제거는 `WORKSPACE:CREATE` 권한 시드 후 이 체크에 조건이 추가될 예정이다.
+
+### 2. 도메인 모델의 불변식 판정
+
+실제 제거 판단은 `RemoveWorkspaceMemberService`가 아니라 `Workspace.removeMember(targetUserId)` 도메인 메서드가 한다:
+
+1. 대상이 참여자가 아니면 `WorkspaceMemberNotFoundException`(`WORKSPACE_404_2`) — 먼저 판정.
+2. 제거 후 참여자가 0명이 되면(마지막 1인) `WorkspaceLastMemberException`(`WORKSPACE_400_2`) — 그다음 판정.
+
+순서가 고정되어 있어, 참여자가 1명뿐인 워크스페이스에서 참여자가 아닌 대상을 지정하면 400이 아니라 404가 반환된다.
+
+### 3. 참여자 갱신과 동시성
+
+통과하면 `WorkspaceRepository.updateMembers`로 참여자 집합을 갱신한다. `findByIdForUpdate`의 비관적 락 덕분에, 마지막 두 참여자가 동시에 자진 탈퇴를 시도해도 정확히 한 명만 성공한다 — Testcontainers MySQL 기반 동시성 테스트로 실제 검증됨(락 제거 시 재현되는 실패, 복원 시 정상 동작 확인).
+
+### 4. 응답
+
+성공하면 응답 본문 없이 HTTP `204 No Content`를 반환한다.
+
+## ♻️ 워크스페이스 복구 API 흐름
+
+```text
+POST /api/workspaces/{workspaceId}/recover
+  → Security Filter
+  → AuthUser
+  → WorkspaceController
+  → RecoverWorkspaceCommand
+  → RecoverWorkspaceUseCase
+  → RecoverWorkspaceService
+  → WorkspaceRepository.findDeletedByIdForUpdate
+  → WorkspacePersistenceAdapter
+  → WorkspaceJpaRepository
+  → WorkspaceRepository.existsByAcademyIdAndName
+  → Workspace.recover
+  → WorkspaceRepository.recover
+  → WorkspacePersistenceAdapter
+  → WorkspaceRecoverResponse
+  → GlobalApiResponse
+```
+
+### 1. 삭제된 워크스페이스 잠금 조회 (세 갈래 분기)
+
+`WorkspaceRepository.findDeletedByIdForUpdate`는 다른 워크스페이스 API들의 `findByIdForUpdate`(활성 워크스페이스만 대상)와 반대로 **삭제된** 워크스페이스만 비관적 락으로 조회한다.
+
+- 워크스페이스가 아예 없으면 `Optional.empty()` → `WorkspaceNotFoundException`(`WORKSPACE_404_1`)
+- 워크스페이스는 있는데 삭제된 적 없이 활성 상태면 Adapter가 `existsById`로 이를 감지해 `WorkspaceAlreadyActiveException`(`WORKSPACE_409_2`)을 즉시 던진다 — **이 판정은 참여자 여부 확인보다 먼저 일어난다.**
+- 삭제된 상태면 도메인 객체를 반환한다.
+
+### 2. 삭제 당시 참여자 검증
+
+소프트 삭제는 `deleted_at`만 세팅하고 `workspace_member` 테이블은 건드리지 않으므로, 삭제된 워크스페이스에 대해서도 "삭제 당시 참여자였는가"를 그대로 조회할 수 있다. `RecoverWorkspaceService`는 요청자가 이 멤버 목록에 없으면 `WorkspaceAccessDeniedException`(`WORKSPACE_403_1`)으로 응답한다.
+
+### 3. 이름 충돌 확인과 타임스탬프 접미사
+
+`WorkspaceRepository.existsByAcademyIdAndName`(기존 생성 API가 쓰는 것과 동일한 포트)으로 원래 이름이 이미 다른 활성 워크스페이스와 충돌하는지 **한 번만** 확인한다. 충돌하면 서버 `Clock` 기준 초 단위 시각으로 `"이름(yyyyMMddHHmmss)"` 접미사를 붙인다. 접미사는 항상 16자로 고정이라 원본 이름을 84자로 잘라 100자 제한을 항상 보장한다. 순번(`(1)`, `(2)`...) 방식은 검토했으나, 몇 번까지 재시도할지 몰라 같은 트랜잭션 안에서 쓰기를 반복해야 하는 위험 때문에 채택하지 않았다 — 타임스탬프는 재시도 없이 존재 확인 1회 + 쓰기 1회로 끝난다.
+
+### 4. 복구와 저장
+
+`Workspace.recover(finalName)` 도메인 메서드로 새 인스턴스를 만든 뒤 `WorkspaceRepository.recover(workspaceId, finalName)`을 호출한다. Adapter는 `SoftDeleteTimeEntity.clearDeletedAt()`(`markDeleted()`의 반대 동작)과 `rename()`을 함께 반영해 저장한다.
+
+`findDeletedByIdForUpdate`와 `recover` 호출은 **하나의 `@Transactional` 메서드 안에서** 실행되어야 한다 — `recover()`의 내부 구현이 잠금 없는 `findById` 재조회에 의존하는데, 같은 트랜잭션이면 Hibernate 1차 캐시가 이미 잠긴 엔티티 인스턴스를 그대로 돌려주므로 안전하다. 극히 드물게 존재 확인과 실제 쓰기 사이에 다른 요청이 같은 이름을 선점하면 DB unique 제약 위반이 `WorkspaceNameConflictException`(`WORKSPACE_409_1`)으로 변환되어 재시도 없이 그대로 반환된다.
+
+### 5. 응답
+
+Controller가 `WorkspaceRecoverResponse.from(workspaceId, finalName)`을 `GlobalApiResponse.ok`로 감싸 HTTP `200 OK`를 반환한다.

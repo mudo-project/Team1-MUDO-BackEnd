@@ -99,6 +99,15 @@ public interface WorkspaceJpaRepository extends JpaRepository<WorkspaceJpaEntity
       """)
   Optional<WorkspaceJpaEntity> findActiveByIdForUpdate(@Param("workspaceId") Long workspaceId);
 
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query(
+      """
+      select workspace
+      from WorkspaceJpaEntity workspace
+      where workspace.id = :workspaceId and workspace.deletedAt is not null
+      """)
+  Optional<WorkspaceJpaEntity> findDeletedByIdForUpdate(@Param("workspaceId") Long workspaceId);
+
   interface WorkspaceListRow {
 
     Long getWorkspaceId();

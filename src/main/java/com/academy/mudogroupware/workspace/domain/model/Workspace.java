@@ -64,4 +64,8 @@ public class Workspace {
     updated.remove(targetUserId);
     return new Workspace(id, academyId, name, createdBy, updated);
   }
+
+  public Workspace recover(String finalName) {
+    return new Workspace(id, academyId, finalName, createdBy, memberIds);
+  }
 }
