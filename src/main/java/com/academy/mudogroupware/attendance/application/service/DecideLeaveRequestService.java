@@ -3,6 +3,7 @@ package com.academy.mudogroupware.attendance.application.service;
 import java.time.LocalDateTime;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.academy.mudogroupware.attendance.application.usecase.DecideLeaveRequestUseCase;
@@ -17,7 +18,7 @@ public class DecideLeaveRequestService implements DecideLeaveRequestUseCase {
     private final LeaveRequestRepository leaveRequestRepository;
 
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void decide(Long documentId, boolean approved, LocalDateTime decidedAt) {
         leaveRequestRepository.findByDocumentId(documentId).ifPresent(leaveRequest -> {
             if (approved) {
