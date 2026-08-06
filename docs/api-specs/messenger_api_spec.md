@@ -1,0 +1,722 @@
+# 메신저(Messenger) API 명세서
+
+> REST 섹션(1~10)의 각 `## `이 Notion 하위 페이지 1개(엔드포인트 1개)에 대응합니다. WebSocket 섹션(11)은 이벤트 4종이 destination 하나로 멀티플렉스되어 하위 페이지 1개로 관리합니다.
+> 공통 성공 응답 포맷: `{ "status", "code", "message", "data" }` (`GlobalApiResponse`). `204 No Content`는 본문 없음.
+> 공통 실패 응답 포맷: `{ "timestamp", "status", "code", "message", "traceId", "details" }`
+> 모든 API는 `Authorization: Bearer {AccessToken}` 헤더가 필요합니다 (미인증 시 `401 COMMON_401_1`).
+> `{roomId}`가 경로에 있는 API는 요청자가 해당 채팅방 멤버여야 합니다(아니면 `403 MESSENGER_403_1`), 방 자체가 없으면 `404 MESSENGER_404_1`.
+
+---
+
+## 1. 채팅방 생성
+
+`POST /api/messenger/rooms`
+
+# **[request]**
+
+Request Header
+
+| name | description |
+| --- | --- |
+| `Authorization` | `Bearer {AccessToken}` 형식의 사용자 인증 토큰입니다. |
+
+Request Body
+```json
+{
+  "participantIds": [3, 4],
+  "name": null
+}
+```
+| name | type | required | 설명 |
+| --- | --- | --- | --- |
+| `participantIds` | `List<Long>` | `true` | 초대할 사용자 ID 목록(본인 포함 여부 무관, 서버가 본인은 제외 처리). 최소 1개 이상, 각 값은 양수. |
+| `name` | `String` | `false` | 채팅방 이름. 참여자가 본인 제외 2명 이상(그룹)이면 필수. |
+
+# **[response]**
+
+### 성공코드
+
+| HTTP 상태 | 설명 |
+| --- | --- |
+| `201 Created` | 채팅방 생성 성공 |
+
+Response Body
+```json
+{
+  "status": 201,
+  "code": "MESSENGER_201_1",
+  "message": "채팅방 생성에 성공했습니다.",
+  "data": { "chatRoomId": 1 }
+}
+```
+### Response Field
+
+| name | 설명 |
+| --- | --- |
+| `data.chatRoomId` | 생성되었거나(또는 이미 존재해서 재사용된) 채팅방 ID입니다. |
+
+> 참고: 참여자가 본인 제외 1명(DM)이고 이미 그 상대와 만든 DM방이 있으면, 새로 만들지 않고 기존 `chatRoomId`를 그대로 반환합니다. 이때도 HTTP 상태는 `201`로 고정됩니다.
+
+### 실패 코드
+
+| HTTP 상태 | code | message | 설명 |
+| --- | --- | --- | --- |
+| `400 Bad Request` | `COMMON_400_1` | 입력값이 올바르지 않습니다. | `participantIds` 비어있음/null 원소/0 이하 값 (Bean Validation) |
+| `400 Bad Request` | `MESSENGER_400_3` | 본인 외에 최소 1명 이상 초대해야 합니다. | `participantIds`에서 본인을 제외하면 초대 대상이 없음 |
+| `400 Bad Request` | `MESSENGER_400_4` | 그룹 채팅방은 이름을 지정해야 합니다. | 본인 제외 참여자가 2명 이상인데 `name`이 비어있음 |
+| `400 Bad Request` | `MESSENGER_400_7` | 존재하지 않는 참여자가 포함되어 있습니다. | `participantIds`에 존재하지 않는 사용자 ID 포함 |
+| `400 Bad Request` | `MESSENGER_400_8` | 다른 학원 소속 사용자는 초대할 수 없습니다. | 초대 대상 중 요청자와 다른 학원 소속 사용자 포함 |
+| `401 Unauthorized` | `COMMON_401_1` | 인증이 필요합니다. | 토큰 누락/만료 |
+| `404 Not Found` | `MESSENGER_404_2` | 사용자를 찾을 수 없습니다. | 요청자 본인 정보를 사용자 디렉토리에서 찾을 수 없음(비정상 상황) |
+
+---
+
+## 2. 채팅방 목록조회
+
+`GET /api/messenger/rooms`
+
+# **[request]**
+
+Request Header
+
+| name | description |
+| --- | --- |
+| `Authorization` | `Bearer {AccessToken}` 형식의 사용자 인증 토큰입니다. |
+
+# **[response]**
+
+### 성공코드
+
+| HTTP 상태 | 설명 |
+| --- | --- |
+| `200 OK` | 목록 조회 성공 |
+
+Response Body
+```json
+{
+  "status": 200,
+  "code": "MESSENGER_200_1",
+  "message": "채팅방 목록 조회에 성공했습니다.",
+  "data": [
+    {
+      "id": 1,
+      "name": "김민수",
+      "type": "DM",
+      "unreadCount": 2,
+      "lastMessagePreview": "네 알겠습니다",
+      "lastMessageAt": "2026-08-06T09:10:00",
+      "createdAt": "2026-08-01T10:00:00"
+    }
+  ]
+}
+```
+### Response Field
+
+| name | 설명 |
+| --- | --- |
+| `data[].id` | 채팅방 ID입니다. |
+| `data[].name` | 채팅방 이름입니다. DM이면 상대방 이름, 그룹이면 방 이름입니다. |
+| `data[].type` | `DM` 또는 `GROUP`입니다. |
+| `data[].unreadCount` | 요청자 기준 안읽은 메시지 수입니다. |
+| `data[].lastMessagePreview` | 최근 메시지 미리보기입니다. TEXT는 내용, IMAGE/FILE은 "사진을 보냈습니다."/"파일을 보냈습니다.", 메시지가 없으면 `null`입니다. |
+| `data[].lastMessageAt` | 최근 메시지 시각입니다. 메시지가 없으면 `null`입니다. |
+| `data[].createdAt` | 채팅방 생성 시각입니다. |
+
+> 정렬: `lastMessageAt`(없으면 `createdAt`) 내림차순입니다. 페이지네이션 없이 전체 목록을 반환합니다.
+
+### 실패 코드
+
+| HTTP 상태 | code | message | 설명 |
+| --- | --- | --- | --- |
+| `401 Unauthorized` | `COMMON_401_1` | 인증이 필요합니다. | 토큰 누락/만료 |
+| `404 Not Found` | `MESSENGER_404_2` | 사용자를 찾을 수 없습니다. | 요청자 본인 정보를 사용자 디렉토리에서 찾을 수 없음(비정상 상황) |
+
+---
+
+## 3. 채팅방 참여자 목록조회
+
+`GET /api/messenger/rooms/{roomId}/members`
+
+# **[request]**
+
+Request Header
+
+| name | description |
+| --- | --- |
+| `Authorization` | `Bearer {AccessToken}` 형식의 사용자 인증 토큰입니다. |
+
+Request Parameter
+
+| name | description |
+| --- | --- |
+| `roomId` | 조회할 채팅방의 ID입니다. |
+
+# **[response]**
+
+### 성공코드
+
+| HTTP 상태 | 설명 |
+| --- | --- |
+| `200 OK` | 참여자 목록 조회 성공 |
+
+Response Body
+```json
+{
+  "status": 200,
+  "code": "MESSENGER_200_2",
+  "message": "채팅방 참여자 조회에 성공했습니다.",
+  "data": [
+    { "userId": 2, "name": "이지훈", "lastReadAt": "2026-08-06T09:00:00" }
+  ]
+}
+```
+### Response Field
+
+| name | 설명 |
+| --- | --- |
+| `data[].userId` | 참여자 사용자 ID입니다. |
+| `data[].name` | 참여자 이름입니다. |
+| `data[].lastReadAt` | 해당 참여자가 마지막으로 읽음 처리한 시각입니다. 아직 읽은 적 없으면 `null`입니다. |
+
+### 실패 코드
+
+| HTTP 상태 | code | message | 설명 |
+| --- | --- | --- | --- |
+| `401 Unauthorized` | `COMMON_401_1` | 인증이 필요합니다. | 토큰 누락/만료 |
+| `403 Forbidden` | `MESSENGER_403_1` | 채팅방 참여자가 아닙니다. | 요청자가 해당 방 멤버가 아님 |
+| `404 Not Found` | `MESSENGER_404_1` | 채팅방을 찾을 수 없습니다. | `roomId`에 해당하는 방이 없음 |
+
+---
+
+## 4. 메시지 전송
+
+`POST /api/messenger/rooms/{roomId}/messages`
+
+# **[request]**
+
+Request Header
+
+| name | description |
+| --- | --- |
+| `Authorization` | `Bearer {AccessToken}` 형식의 사용자 인증 토큰입니다. |
+
+Request Parameter
+
+| name | description |
+| --- | --- |
+| `roomId` | 메시지를 보낼 채팅방의 ID입니다. |
+
+Request Body
+```json
+{
+  "messageType": "TEXT",
+  "content": "안녕하세요",
+  "fileUrl": null,
+  "fileName": null
+}
+```
+| name | type | required | 설명 |
+| --- | --- | --- | --- |
+| `messageType` | `String` | `true` | `TEXT`, `IMAGE`, `FILE` 중 하나. |
+| `content` | `String` | `messageType=TEXT`일 때 `true` | 메시지 내용. |
+| `fileUrl` | `String` | `messageType=IMAGE/FILE`일 때 `true` | 파일 모듈에서 발급받은 presigned URL. |
+| `fileName` | `String` | `false` | 원본 파일명. |
+
+# **[response]**
+
+### 성공코드
+
+| HTTP 상태 | 설명 |
+| --- | --- |
+| `201 Created` | 메시지 전송 성공 |
+
+Response Body
+```json
+{
+  "status": 201,
+  "code": "MESSENGER_201_2",
+  "message": "메시지 전송에 성공했습니다.",
+  "data": { "messageId": 10 }
+}
+```
+### Response Field
+
+| name | 설명 |
+| --- | --- |
+| `data.messageId` | 생성된 메시지 ID입니다. |
+
+> 전송 성공 시 room topic(`/topic/messenger/rooms/{roomId}`)에 `MESSAGE_SENT` 이벤트가 실시간 브로드캐스트됩니다(발신자 본인 포함). 상세 페이로드는 11번 WebSocket 섹션 참고.
+
+### 실패 코드
+
+| HTTP 상태 | code | message | 설명 |
+| --- | --- | --- | --- |
+| `400 Bad Request` | `COMMON_400_1` | 입력값이 올바르지 않습니다. | `messageType` 누락/유효하지 않은 값 (Bean Validation) |
+| `400 Bad Request` | `MESSENGER_400_5` | 메시지 내용은 비어 있을 수 없습니다. | `messageType=TEXT`인데 `content`가 비어있음 |
+| `400 Bad Request` | `MESSENGER_400_6` | 파일 URL은 비어 있을 수 없습니다. | `messageType=IMAGE/FILE`인데 `fileUrl`이 비어있음 |
+| `401 Unauthorized` | `COMMON_401_1` | 인증이 필요합니다. | 토큰 누락/만료 |
+| `403 Forbidden` | `MESSENGER_403_1` | 채팅방 참여자가 아닙니다. | 요청자가 해당 방 멤버가 아님 |
+| `404 Not Found` | `MESSENGER_404_1` | 채팅방을 찾을 수 없습니다. | `roomId`에 해당하는 방이 없음 |
+
+---
+
+## 5. 메시지 목록조회
+
+`GET /api/messenger/rooms/{roomId}/messages`
+
+# **[request]**
+
+Request Header
+
+| name | description |
+| --- | --- |
+| `Authorization` | `Bearer {AccessToken}` 형식의 사용자 인증 토큰입니다. |
+
+Request Parameter
+
+| name | description |
+| --- | --- |
+| `roomId` | 조회할 채팅방의 ID입니다. |
+
+Request Query Parameter
+
+| name | type | required | description |
+| --- | --- | --- | --- |
+| `cursorCreatedAt` | `LocalDateTime` | `false` | 이전 페이지 마지막 메시지의 생성 시각. `cursorMessageId`와 함께 전달. |
+| `cursorMessageId` | `Long` | `false` | 이전 페이지 마지막 메시지 ID. `cursorCreatedAt`과 함께 전달. |
+| `size` | `Integer` | `false` | 페이지 크기(1~100, 기본값 20). |
+
+# **[response]**
+
+### 성공코드
+
+| HTTP 상태 | 설명 |
+| --- | --- |
+| `200 OK` | 목록 조회 성공 |
+
+Response Body
+```json
+{
+  "status": 200,
+  "code": "MESSENGER_200_3",
+  "message": "메시지 목록 조회에 성공했습니다.",
+  "data": {
+    "content": [
+      {
+        "id": 10,
+        "senderId": 2,
+        "senderName": "이지훈",
+        "messageType": "TEXT",
+        "content": "안녕하세요",
+        "fileUrl": null,
+        "fileName": null,
+        "createdAt": "2026-08-06T09:00:00",
+        "editedAt": null,
+        "deletedAt": null,
+        "deleted": false,
+        "unreadCount": 1
+      }
+    ],
+    "hasNext": false,
+    "nextCursorCreatedAt": null,
+    "nextCursorMessageId": null
+  }
+}
+```
+### Response Field
+
+| name | 설명 |
+| --- | --- |
+| `data.content[].id` | 메시지 ID입니다. |
+| `data.content[].senderId` / `senderName` | 발신자 정보입니다. |
+| `data.content[].messageType` | `TEXT`/`IMAGE`/`FILE`입니다. |
+| `data.content[].content` / `fileUrl` / `fileName` | 삭제된 메시지면 전부 `null`로 내려갑니다. |
+| `data.content[].createdAt` / `editedAt` / `deletedAt` | 생성/수정/삭제 시각입니다. |
+| `data.content[].deleted` | 삭제 여부입니다. |
+| `data.content[].unreadCount` | 해당 메시지를 아직 안 읽은 방 멤버 수입니다(카톡 스타일 숫자). |
+| `data.hasNext` | 다음 페이지 존재 여부입니다. |
+| `data.nextCursorCreatedAt` / `nextCursorMessageId` | 다음 페이지 조회 시 넘길 cursor 값입니다. `hasNext=false`면 `null`입니다. |
+
+> `cursor`가 없는 첫 페이지 조회일 때만 요청자의 읽음 처리(`lastReadAt` 갱신)가 함께 일어나고, room topic에 `MESSAGE_READ` 이벤트가 브로드캐스트됩니다. 과거 페이지 스크롤(cursor 있음)은 읽음 처리하지 않습니다.
+
+### 실패 코드
+
+| HTTP 상태 | code | message | 설명 |
+| --- | --- | --- | --- |
+| `400 Bad Request` | `MESSENGER_400_11` | cursorCreatedAt과 cursorMessageId는 함께 전달하거나 함께 생략해야 합니다. | 둘 중 하나만 전달됨 |
+| `400 Bad Request` | `MESSENGER_400_12` | 메시지 조회 size는 1 이상 100 이하여야 합니다. | `size`가 범위를 벗어남(주로 Bean Validation `COMMON_400_1`이 먼저 걸리며, 이 코드는 서비스 레이어 방어용) |
+| `401 Unauthorized` | `COMMON_401_1` | 인증이 필요합니다. | 토큰 누락/만료 |
+| `403 Forbidden` | `MESSENGER_403_1` | 채팅방 참여자가 아닙니다. | 요청자가 해당 방 멤버가 아님 |
+| `404 Not Found` | `MESSENGER_404_1` | 채팅방을 찾을 수 없습니다. | `roomId`에 해당하는 방이 없음 |
+
+---
+
+## 6. 메시지 수정
+
+`PATCH /api/messenger/rooms/{roomId}/messages/{messageId}`
+
+# **[request]**
+
+Request Header
+
+| name | description |
+| --- | --- |
+| `Authorization` | `Bearer {AccessToken}` 형식의 사용자 인증 토큰입니다. |
+
+Request Parameter
+
+| name | description |
+| --- | --- |
+| `roomId` | 채팅방 ID입니다. |
+| `messageId` | 수정할 메시지 ID입니다. |
+
+Request Body
+```json
+{
+  "content": "수정된 내용입니다"
+}
+```
+| name | type | required | 설명 |
+| --- | --- | --- | --- |
+| `content` | `String` | `true` | 수정할 내용. 공백 불가. |
+
+# **[response]**
+
+### 성공코드
+
+| HTTP 상태 | 설명 |
+| --- | --- |
+| `204 No Content` | 수정 성공 (응답 본문 없음) |
+
+### 실패 코드
+
+| HTTP 상태 | code | message | 설명 |
+| --- | --- | --- | --- |
+| `400 Bad Request` | `COMMON_400_1` | 입력값이 올바르지 않습니다. | `content` 공백/누락 (Bean Validation) |
+| `400 Bad Request` | `MESSENGER_400_14` | TEXT 메시지만 수정할 수 있습니다. | IMAGE/FILE 메시지를 수정하려는 경우 |
+| `400 Bad Request` | `MESSENGER_400_15` | 이미 삭제된 메시지입니다. | 이미 삭제된 메시지를 수정하려는 경우 |
+| `401 Unauthorized` | `COMMON_401_1` | 인증이 필요합니다. | 토큰 누락/만료 |
+| `403 Forbidden` | `MESSENGER_403_1` | 채팅방 참여자가 아닙니다. | 본인이 보낸 메시지가 아닌 경우 |
+| `404 Not Found` | `MESSENGER_404_1` | 채팅방을 찾을 수 없습니다. | `messageId`가 없거나, 있어도 `roomId`와 다른 방의 메시지인 경우 |
+
+---
+
+## 7. 메시지 삭제
+
+`DELETE /api/messenger/rooms/{roomId}/messages/{messageId}`
+
+# **[request]**
+
+Request Header
+
+| name | description |
+| --- | --- |
+| `Authorization` | `Bearer {AccessToken}` 형식의 사용자 인증 토큰입니다. |
+
+Request Parameter
+
+| name | description |
+| --- | --- |
+| `roomId` | 채팅방 ID입니다. |
+| `messageId` | 삭제할 메시지 ID입니다. |
+
+# **[response]**
+
+### 성공코드
+
+| HTTP 상태 | 설명 |
+| --- | --- |
+| `204 No Content` | 삭제 성공 (응답 본문 없음, 소프트 삭제) |
+
+### 실패 코드
+
+| HTTP 상태 | code | message | 설명 |
+| --- | --- | --- | --- |
+| `401 Unauthorized` | `COMMON_401_1` | 인증이 필요합니다. | 토큰 누락/만료 |
+| `403 Forbidden` | `MESSENGER_403_1` | 채팅방 참여자가 아닙니다. | 본인이 보낸 메시지가 아닌 경우 |
+| `404 Not Found` | `MESSENGER_404_1` | 채팅방을 찾을 수 없습니다. | `messageId`가 없거나, 있어도 `roomId`와 다른 방의 메시지인 경우 |
+
+> 이미 삭제된 메시지를 다시 삭제 요청하면 에러 없이 조용히 성공(204) 처리됩니다(삭제 시각이 덮어써지지 않는 단조성 보장).
+
+---
+
+## 8. 업무지시 카드 등록
+
+`POST /api/messenger/rooms/{roomId}/task-cards`
+
+# **[request]**
+
+Request Header
+
+| name | description |
+| --- | --- |
+| `Authorization` | `Bearer {AccessToken}` 형식의 사용자 인증 토큰입니다. |
+
+Request Parameter
+
+| name | description |
+| --- | --- |
+| `roomId` | 카드를 등록할 채팅방 ID입니다. |
+
+Request Body
+```json
+{
+  "content": "과제 제출",
+  "dueDate": "2026-08-10",
+  "assigneeIds": [3, 4]
+}
+```
+| name | type | required | 설명 |
+| --- | --- | --- | --- |
+| `content` | `String` | `true` | 업무지시 내용. 공백 불가. |
+| `dueDate` | `LocalDate` | `false` | 마감일. |
+| `assigneeIds` | `List<Long>` | `true` | 담당자 ID 목록. 최소 1개 이상, 각 값은 양수, 반드시 해당 채팅방 멤버여야 함. |
+
+# **[response]**
+
+### 성공코드
+
+| HTTP 상태 | 설명 |
+| --- | --- |
+| `201 Created` | 카드 등록 성공 |
+
+Response Body
+```json
+{
+  "status": 201,
+  "code": "MESSENGER_201_3",
+  "message": "업무지시 카드 등록에 성공했습니다.",
+  "data": { "cardId": 7 }
+}
+```
+### Response Field
+
+| name | 설명 |
+| --- | --- |
+| `data.cardId` | 생성된 업무지시 카드 ID입니다. |
+
+> 등록 성공 시 room topic에 `TASK_CARD_CREATED` 이벤트가 실시간 브로드캐스트됩니다(등록자 본인 포함).
+
+### 실패 코드
+
+| HTTP 상태 | code | message | 설명 |
+| --- | --- | --- | --- |
+| `400 Bad Request` | `COMMON_400_1` | 입력값이 올바르지 않습니다. | `content` 공백/누락, `assigneeIds` 비어있음/null 원소/0 이하 값 (Bean Validation) |
+| `400 Bad Request` | `MESSENGER_400_13` | 유효하지 않은 담당자가 포함되어 있습니다. | `assigneeIds`에 존재하지 않는 사용자 포함 |
+| `401 Unauthorized` | `COMMON_401_1` | 인증이 필요합니다. | 토큰 누락/만료 |
+| `403 Forbidden` | `MESSENGER_403_1` | 채팅방 참여자가 아닙니다. | 요청자 또는 담당자 중 해당 방 멤버가 아닌 사람이 있음 |
+| `404 Not Found` | `MESSENGER_404_1` | 채팅방을 찾을 수 없습니다. | `roomId`에 해당하는 방이 없음 |
+
+---
+
+## 9. 업무지시 카드 목록조회
+
+`GET /api/messenger/rooms/{roomId}/task-cards`
+
+# **[request]**
+
+Request Header
+
+| name | description |
+| --- | --- |
+| `Authorization` | `Bearer {AccessToken}` 형식의 사용자 인증 토큰입니다. |
+
+Request Parameter
+
+| name | description |
+| --- | --- |
+| `roomId` | 조회할 채팅방 ID입니다. |
+
+# **[response]**
+
+### 성공코드
+
+| HTTP 상태 | 설명 |
+| --- | --- |
+| `200 OK` | 목록 조회 성공 |
+
+Response Body
+```json
+{
+  "status": 200,
+  "code": "MESSENGER_200_4",
+  "message": "업무지시 카드 목록 조회에 성공했습니다.",
+  "data": [
+    {
+      "id": 7,
+      "assignerId": 2,
+      "assignerName": "이지훈",
+      "content": "과제 제출",
+      "dueDate": "2026-08-10",
+      "assignees": [
+        { "userId": 3, "name": "박서연", "completedAt": null },
+        { "userId": 4, "name": "김도윤", "completedAt": "2026-08-06T09:30:00" }
+      ],
+      "completedCount": 1,
+      "assigneeCount": 2,
+      "fullyCompleted": false,
+      "createdAt": "2026-08-06T09:00:00"
+    }
+  ]
+}
+```
+### Response Field
+
+| name | 설명 |
+| --- | --- |
+| `data[].id` | 업무지시 카드 ID입니다. |
+| `data[].assignerId` / `assignerName` | 등록자 정보입니다. |
+| `data[].content` / `dueDate` | 업무지시 내용/마감일입니다. |
+| `data[].assignees[].userId` / `name` / `completedAt` | 담당자별 완료 시각입니다. 미완료면 `null`입니다. |
+| `data[].completedCount` / `assigneeCount` | 완료 인원 / 전체 담당자 수입니다. |
+| `data[].fullyCompleted` | 담당자 전원 완료 여부입니다. |
+| `data[].createdAt` | 카드 등록 시각입니다. |
+
+> 정렬: 등록 시각(`createdAt`) 내림차순(최신순, 동일 시각이면 ID 내림차순)입니다.
+
+### 실패 코드
+
+| HTTP 상태 | code | message | 설명 |
+| --- | --- | --- | --- |
+| `401 Unauthorized` | `COMMON_401_1` | 인증이 필요합니다. | 토큰 누락/만료 |
+| `403 Forbidden` | `MESSENGER_403_1` | 채팅방 참여자가 아닙니다. | 요청자가 해당 방 멤버가 아님 |
+| `404 Not Found` | `MESSENGER_404_1` | 채팅방을 찾을 수 없습니다. | `roomId`에 해당하는 방이 없음 |
+
+---
+
+## 10. 업무지시 완료 처리
+
+`PATCH /api/messenger/rooms/{roomId}/task-cards/{cardId}/complete`
+
+# **[request]**
+
+Request Header
+
+| name | description |
+| --- | --- |
+| `Authorization` | `Bearer {AccessToken}` 형식의 사용자 인증 토큰입니다. |
+
+Request Parameter
+
+| name | description |
+| --- | --- |
+| `roomId` | 채팅방 ID입니다. |
+| `cardId` | 완료 처리할 업무지시 카드 ID입니다. |
+
+# **[response]**
+
+### 성공코드
+
+| HTTP 상태 | 설명 |
+| --- | --- |
+| `204 No Content` | 완료 처리 성공 (응답 본문 없음) |
+
+> 성공 시 room topic에 `TASK_CARD_COMPLETED` 이벤트가 실시간 브로드캐스트됩니다(완료 처리자 본인 포함). 이벤트에는 `completedCount`/`assigneeCount`/`fullyCompleted`가 포함되어 프론트가 재조회 없이 progress bar를 갱신할 수 있습니다.
+
+### 실패 코드
+
+| HTTP 상태 | code | message | 설명 |
+| --- | --- | --- | --- |
+| `401 Unauthorized` | `COMMON_401_1` | 인증이 필요합니다. | 토큰 누락/만료 |
+| `403 Forbidden` | `MESSENGER_403_2` | 해당 업무지시의 담당자가 아닙니다. | 요청자가 그 카드의 담당자로 지정되지 않음 |
+| `404 Not Found` | `MESSENGER_404_3` | 업무지시 카드를 찾을 수 없습니다. | `cardId`가 없거나, 있어도 `roomId`와 다른 방의 카드인 경우 |
+
+> 이미 완료 처리한 담당자가 다시 호출해도 에러 없이 성공(204) 처리됩니다(완료 시각이 덮어써지지 않는 단조성 보장).
+
+---
+
+## 11. 실시간 이벤트 수신 (WebSocket)
+
+REST와 달리 클라이언트가 요청을 보내는 게 아니라 서버가 이벤트를 밀어주는 방식입니다. 이벤트 4종이 destination 하나로 멀티플렉스되어 하위 페이지 1개로 관리합니다.
+
+### WebSocket 연결
+
+| 항목 | 값 |
+| --- | --- |
+| 연결 엔드포인트 | `/ws` |
+| 프로토콜 | STOMP over WebSocket (SockJS fallback) |
+| 인증 | STOMP `CONNECT` 프레임에 JWT를 담아 인증(`JwtHandshakeInterceptor`/`JwtChannelInterceptor`). 인증 실패 시 연결은 되지만 이후 구독 권한이 없음. |
+
+### 구독 경로
+
+| 항목 | 값 |
+| --- | --- |
+| 채팅방 이벤트 구독 | `/topic/messenger/rooms/{roomId}` |
+
+> 이 경로 하나로 이벤트 4종류가 다 옵니다. 페이로드의 `eventType` 필드로 분기해서 처리해야 합니다.
+> `[publish]` 섹션 없음 — 메시지 전송/업무지시 등록/완료는 전부 REST API(1~10번)로 처리합니다. 소켓은 "받기 전용"이며, 발신자/행위자 본인도 자신이 보낸 이벤트를 그대로 수신합니다(echo 방식, 2026-08-06 optimistic UI 결정에 따라 프론트는 자기 자신 echo를 무시하고 REST 응답으로 먼저 반영).
+> 유저 단위 알림 채널(`/user/queue/...`)은 없습니다. 방을 구독 중일 때만 실시간 수신됩니다.
+
+### [subscribe] 메시지 전송
+
+**Destination:** `/topic/messenger/rooms/{roomId}`
+
+**Response**
+```json
+{
+  "eventType": "MESSAGE_SENT",
+  "chatRoomId": 1,
+  "messageId": 10,
+  "senderUserId": 2,
+  "messageType": "TEXT",
+  "content": "안녕하세요",
+  "fileUrl": null,
+  "fileName": null,
+  "createdAt": "2026-08-06T09:00:00",
+  "unreadCount": 1
+}
+```
+
+### [subscribe] 읽음 처리
+
+**Destination:** `/topic/messenger/rooms/{roomId}`
+
+**Response**
+```json
+{
+  "eventType": "MESSAGE_READ",
+  "chatRoomId": 1,
+  "readerUserId": 2,
+  "readAt": "2026-08-06T09:05:00"
+}
+```
+
+### [subscribe] 업무지시 카드 등록
+
+**Destination:** `/topic/messenger/rooms/{roomId}`
+
+**Response**
+```json
+{
+  "eventType": "TASK_CARD_CREATED",
+  "chatRoomId": 1,
+  "cardId": 7,
+  "assignerId": 2,
+  "content": "과제 제출",
+  "dueDate": "2026-08-10",
+  "assigneeIds": [3, 4],
+  "createdAt": "2026-08-06T09:00:00"
+}
+```
+
+### [subscribe] 업무지시 완료 처리
+
+**Destination:** `/topic/messenger/rooms/{roomId}`
+
+**Response**
+```json
+{
+  "eventType": "TASK_CARD_COMPLETED",
+  "chatRoomId": 1,
+  "cardId": 7,
+  "completedUserId": 3,
+  "completedAt": "2026-08-06T09:30:00",
+  "completedCount": 1,
+  "assigneeCount": 2,
+  "fullyCompleted": false
+}
+```
+
+### 에러 수신
+
+별도 에러 채널 없음. 소켓으로 클라이언트가 요청을 보내는 동작이 없어서(모든 쓰기는 REST), 에러는 각 REST API 호출의 HTTP 응답으로만 옵니다 — 위 1~10번의 "실패 코드" 표를 참고하세요.
