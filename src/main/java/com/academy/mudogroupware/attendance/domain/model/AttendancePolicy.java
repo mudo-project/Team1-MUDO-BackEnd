@@ -72,6 +72,17 @@ public final class AttendancePolicy {
                 graceMinutes, exceptionEnabled, nextWeekdays, createdAt, LocalDateTime.now());
     }
 
+    public boolean isWorkday(int dayOfWeek) {
+        if (!weekdayExceptionEnabled) {
+            return true;
+        }
+        return weekdays.stream()
+                .filter(weekday -> weekday.dayOfWeek() == dayOfWeek)
+                .findFirst()
+                .map(AttendancePolicyWeekday::workday)
+                .orElse(true);
+    }
+
     private static void validate(Long academyId, LocalTime startTime, LocalTime endTime,
                                  int graceMinutes, List<AttendancePolicyWeekday> weekdays) {
         if (academyId == null || startTime == null || endTime == null

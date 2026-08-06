@@ -1,12 +1,14 @@
 package com.academy.mudogroupware.calendar.presentation.api;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -26,8 +28,12 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.academy.mudogroupware.calendar.application.command.CreateCalendarEventCommand;
+import com.academy.mudogroupware.calendar.application.command.UpdateCalendarEventCommand;
 import com.academy.mudogroupware.calendar.application.usecase.CreateCalendarEventUseCase;
+import com.academy.mudogroupware.calendar.application.usecase.GetCalendarEventUseCase;
 import com.academy.mudogroupware.calendar.application.usecase.GetCalendarEventsUseCase;
+import com.academy.mudogroupware.calendar.application.usecase.UpdateCalendarEventUseCase;
+import com.academy.mudogroupware.calendar.domain.exception.CalendarEventNotFoundException;
 import com.academy.mudogroupware.calendar.domain.model.CalendarEvent;
 import com.academy.mudogroupware.global.infrastructure.security.jwt.JwtTokenProvider;
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
@@ -42,6 +48,8 @@ class CalendarControllerTest {
 
     @MockitoBean private CreateCalendarEventUseCase createCalendarEventUseCase;
     @MockitoBean private GetCalendarEventsUseCase getCalendarEventsUseCase;
+    @MockitoBean private UpdateCalendarEventUseCase updateCalendarEventUseCase;
+    @MockitoBean private GetCalendarEventUseCase getCalendarEventUseCase;
     @MockitoBean private JwtTokenProvider jwtTokenProvider;
     @MockitoBean private JwtAuthenticationConverter jwtAuthenticationConverter;
 
@@ -234,6 +242,94 @@ class CalendarControllerTest {
                 .andExpect(status().isUnauthorized());
 
         verifyNoInteractions(getCalendarEventsUseCase);
+    }
+
+    @Test
+    void updateEventReturns204() throws Exception {
+        String body = """
+                {
+                  "title": "새 제목",
+                  "content": "새 내용",
+                  "eventStartAt": "2026-08-04T12:30:00",
+                  "eventEndAt": "2026-08-04T15:30:00",
+                  "allDay": true,
+                  "color": "orange"
+                }
+                """;
+
+        mockMvc
+                .perform(patch("/api/calendars/101")
+                        .with(authentication(authenticatedUser()))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isNoContent());
+
+        verify(updateCalendarEventUseCase).updateEvent(any(UpdateCalendarEventCommand.class));
+    }
+
+    @Test
+    void updateEventReturns400WhenTitleIsBlank() throws Exception {
+        String body = """
+                {
+                  "title": "  ",
+                  "eventStartAt": "2026-08-04T12:30:00",
+                  "allDay": false
+                }
+                """;
+
+        mockMvc
+                .perform(patch("/api/calendars/101")
+                        .with(authentication(authenticatedUser()))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_400_1"));
+
+        verifyNoInteractions(updateCalendarEventUseCase);
+    }
+
+    @Test
+    void updateEventReturns404WhenEventNotFound() throws Exception {
+        doThrow(new CalendarEventNotFoundException(999L))
+                .when(updateCalendarEventUseCase).updateEvent(any(UpdateCalendarEventCommand.class));
+        String body = """
+                {
+                  "title": "제목",
+                  "eventStartAt": "2026-08-04T12:30:00",
+                  "allDay": false
+                }
+                """;
+
+        mockMvc
+                .perform(patch("/api/calendars/999")
+                        .with(authentication(authenticatedUser()))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("CALENDAR_404_1"));
+    }
+
+    @Test
+    void updateEventReturns401WhenUnauthenticated() throws Exception {
+        String body = """
+                {
+                  "title": "제목",
+                  "eventStartAt": "2026-08-04T12:30:00",
+                  "allDay": false
+                }
+                """;
+
+        mockMvc
+                .perform(patch("/api/calendars/101")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(updateCalendarEventUseCase);
     }
 
     private Authentication authenticatedUser(String... authorities) {
