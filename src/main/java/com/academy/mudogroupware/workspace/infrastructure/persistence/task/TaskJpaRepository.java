@@ -1,6 +1,7 @@
 package com.academy.mudogroupware.workspace.infrastructure.persistence.task;
 
 import com.academy.mudogroupware.workspace.domain.model.TaskStatus;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -48,4 +49,32 @@ public interface TaskJpaRepository extends JpaRepository<TaskJpaEntity, Long> {
       @Param("workspaceId") Long workspaceId,
       @Param("startOfDay") LocalDateTime startOfDay,
       @Param("endOfDay") LocalDateTime endOfDay);
+
+  @Query(
+      """
+      select t
+      from TaskJpaEntity t
+      where t.recurringTemplate is null
+          and t.workspace.deletedAt is null
+          and t.dueAt < :today
+          and t.status not in (:completed, :delayed)
+      """)
+  List<TaskJpaEntity> findOverdueRegularTasks(
+      @Param("today") LocalDate today,
+      @Param("completed") TaskStatus completed,
+      @Param("delayed") TaskStatus delayed);
+
+  @Query(
+      """
+      select t
+      from TaskJpaEntity t
+      where t.recurringTemplate is not null
+          and t.workspace.deletedAt is null
+          and t.scheduledFor < :startOfToday
+          and t.status not in (:completed, :delayed)
+      """)
+  List<TaskJpaEntity> findOverdueRecurringTasks(
+      @Param("startOfToday") LocalDateTime startOfToday,
+      @Param("completed") TaskStatus completed,
+      @Param("delayed") TaskStatus delayed);
 }

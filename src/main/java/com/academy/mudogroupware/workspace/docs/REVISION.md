@@ -1,5 +1,28 @@
 # 🔄 워크스페이스 생성 이름 중복 정책 단순화
 
+## ✅ 2026-08-06 · 업무 자동 지연 스케줄러 최종 리뷰 반영
+
+### 변경 목적
+
+업무 자동 지연 처리 스케줄러(`WorkspaceTaskDelayScheduler`) 구현 완료 후 진행한 전체 브랜치 코드 리뷰에서 나온 지적사항 중, 정확성·성능·테스트 커버리지에 영향을 주는 항목을 반영합니다. Application 계층이 JPA Repository/Entity에 직접 의존하는 계층 위반은 이번 범위에서 제외했습니다 — `Task`는 아직 도메인 모델·Repository 인터페이스가 없어(다른 워크스페이스 하위 Aggregate와 달리 JPA Entity로만 존재), 지금 Port 하나만 임시로 만들면 향후 Task 도메인 모델을 정식으로 만들 때 다시 갈아엎어야 합니다. Task 도메인을 만드는 라운드(예: 업무 CRUD 구현)로 미룹니다.
+
+### 구현 변경
+
+- `TaskJpaRepository.findOverdueRecurringTasks`의 `function('DATE', t.scheduledFor) < :today` 술어를 `t.scheduledFor < :startOfToday`(`LocalDateTime`) 비교로 변경했습니다. 컬럼에 함수를 적용하지 않아 인덱스를 탈 수 있고, MySQL 전용 `DATE()` 함수 의존이 사라져 방언 이식성 문제도 함께 해소됩니다. `DelayOverdueTasksService`는 `today.atStartOfDay()`를 계산해 넘깁니다.
+- `findOverdueRegularTasks`/`findOverdueRecurringTasks` 두 쿼리 모두에 `t.workspace.deletedAt is null` 조건을 추가했습니다. 소프트 삭제된 워크스페이스의 업무는 자동 지연 대상에서 제외합니다(정책 확정: 삭제 기간 중 지연 이력이 쌓인 채로 워크스페이스가 복구되는 시나리오를 방지).
+- `DelayOverdueTasksService`에 `@Slf4j`를 추가하고, 지연 전환 완료 후 처리 건수(일반/반복)를 INFO 레벨로 한 줄 로그합니다. 이 프로젝트의 첫 `@Scheduled` 배치 잡이라 실패해도 아무도 모르는 상태를 막기 위한 최소 관측성입니다. 청크 처리·분산 락 등 운영 성숙도 항목은 실제 데이터량·인스턴스 수가 확인될 때로 미뤘습니다.
+- `DelayOverdueTasksService`에 Task 도메인 모델 부재로 JPA Repository에 직접 의존한다는 사실과, Task 도메인 모델을 만들 때 Port/Adapter로 전환한다는 `TODO` 주석을 남겼습니다.
+- `TaskJpaRepositoryOverdueQueryDataJpaTest`에서 DATE() 함수 제거에 따라 불필요해진 `@AutoConfigureTestDatabase(replace = Replace.NONE)`(H2를 MySQL 호환 모드로 유지하던 임시 조치)를 제거했습니다. 기본 `@DataJpaTest` 격리 H2로 돌아가, 다른 `@SpringBootTest`와 이름 있는 인메모리 DB를 공유하던 잠재적 테스트 오염 위험도 함께 해소됩니다.
+
+### 검증
+
+- `TaskJpaRepositoryOverdueQueryDataJpaTest`에 소프트 삭제된 워크스페이스의 업무가 일반/반복 쿼리 각각에서 제외되는지 검증하는 테스트를 추가했습니다.
+- `DelayOverdueTasksServiceTest`의 고정 `Clock`을 KST 날짜 경계를 실제로 넘는 시각(UTC 전날 15:00)으로 바꾸고, `LocalDate.now(clock)`이 의도한 KST 날짜로 계산되는지 단언을 추가했습니다. 기존 값은 UTC와 KST 날짜가 우연히 같아 시간대 버그가 있어도 테스트를 통과시켰습니다.
+- 같은 테스트에서 `ArgumentCaptor`로 저장된 이력 행을 캡처해 `previousStatus`(전환 전 상태)·`currentStatus`(`DELAYED`)·`changedBy`(`NULL`)를 직접 단언하도록 강화했습니다. 기존에는 `save()` 호출 횟수만 검증해 이력 내용 자체는 검증하지 못했습니다.
+- 전체 `./gradlew test`를 통과했습니다(389/389).
+
+> 자동 지연 조건에 워크스페이스 소프트 삭제 제외 규칙을 추가한 내용은 [BUSINESS_RULES.md](BUSINESS_RULES.md)에도 반영했습니다. 📚
+
 ## ✅ 2026-08-05 · 워크스페이스 상세 조회 코드 리뷰 반영
 
 ### 변경 목적
