@@ -69,7 +69,7 @@ class TodayTeamAttendanceQueryServiceTest {
                 .thenReturn(Optional.of(new OwnedAcademy(ACADEMY_ID, OWNER_ID)));
         when(attendancePolicyRepository.findByAcademyId(ACADEMY_ID))
                 .thenReturn(Optional.of(policy));
-        when(leaveRequestRepository.findConfirmedUserIds(ACADEMY_ID, TODAY))
+        when(leaveRequestRepository.findApprovedUserIds(ACADEMY_ID, TODAY))
                 .thenReturn(Set.of());
         when(teamAttendanceQueryPort.findEmployeesWithAttendance(
                 ACADEMY_ID, OWNER_ID, TODAY))
@@ -95,13 +95,13 @@ class TodayTeamAttendanceQueryServiceTest {
     }
 
     @Test
-    void returnsLeaveForEmployeeWithConfirmedLeaveRequestToday() {
+    void returnsLeaveForEmployeeWithApprovedLeaveRequestToday() {
         AttendancePolicy policy = policy(false, List.of());
         when(academyRepository.findByOwnerUserId(OWNER_ID))
                 .thenReturn(Optional.of(new OwnedAcademy(ACADEMY_ID, OWNER_ID)));
         when(attendancePolicyRepository.findByAcademyId(ACADEMY_ID))
                 .thenReturn(Optional.of(policy));
-        when(leaveRequestRepository.findConfirmedUserIds(ACADEMY_ID, TODAY))
+        when(leaveRequestRepository.findApprovedUserIds(ACADEMY_ID, TODAY))
                 .thenReturn(Set.of(3L));
         when(teamAttendanceQueryPort.findEmployeesWithAttendance(
                 ACADEMY_ID, OWNER_ID, TODAY))
@@ -123,7 +123,7 @@ class TodayTeamAttendanceQueryServiceTest {
                 .thenReturn(Optional.of(new OwnedAcademy(ACADEMY_ID, OWNER_ID)));
         when(attendancePolicyRepository.findByAcademyId(ACADEMY_ID))
                 .thenReturn(Optional.of(policy));
-        when(leaveRequestRepository.findConfirmedUserIds(ACADEMY_ID, TODAY))
+        when(leaveRequestRepository.findApprovedUserIds(ACADEMY_ID, TODAY))
                 .thenReturn(Set.of());
         when(teamAttendanceQueryPort.findEmployeesWithAttendance(
                 ACADEMY_ID, OWNER_ID, TODAY))
@@ -151,7 +151,7 @@ class TodayTeamAttendanceQueryServiceTest {
                 .thenReturn(Optional.of(new OwnedAcademy(ACADEMY_ID, OWNER_ID)));
         when(attendancePolicyRepository.findByAcademyId(ACADEMY_ID))
                 .thenReturn(Optional.of(policy));
-        when(leaveRequestRepository.findConfirmedUserIds(ACADEMY_ID, TODAY))
+        when(leaveRequestRepository.findApprovedUserIds(ACADEMY_ID, TODAY))
                 .thenReturn(Set.of());
         when(teamAttendanceQueryPort.findEmployeesWithAttendance(
                 ACADEMY_ID, OWNER_ID, TODAY)).thenReturn(List.of());

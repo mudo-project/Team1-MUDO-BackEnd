@@ -28,6 +28,7 @@ public class LeaveRequestRepositoryImpl implements LeaveRequestRepository {
                 .documentId(leaveRequest.getDocumentId())
                 .startDate(leaveRequest.getStartDate())
                 .endDate(leaveRequest.getEndDate())
+                .usedDays(leaveRequest.getUsedDays())
                 .status(leaveRequest.getStatus())
                 .createdAt(leaveRequest.getCreatedAt())
                 .updatedAt(leaveRequest.getUpdatedAt())
@@ -41,14 +42,26 @@ public class LeaveRequestRepositoryImpl implements LeaveRequestRepository {
     }
 
     @Override
-    public Set<Long> findConfirmedUserIds(Long academyId, LocalDate date) {
+    public Set<Long> findApprovedUserIds(Long academyId, LocalDate date) {
         return new HashSet<>(leaveRequestJpaRepository
-                .findUserIdsByAcademyIdAndStatusAndDateBetween(academyId, LeaveRequestStatus.CONFIRMED, date));
+                .findUserIdsByAcademyIdAndStatusAndDateBetween(academyId, LeaveRequestStatus.APPROVED, date));
+    }
+
+    @Override
+    public boolean existsOverlapping(Long academyId, Long userId, LocalDate startDate, LocalDate endDate) {
+        return leaveRequestJpaRepository.existsOverlapping(academyId, userId,
+                Set.of(LeaveRequestStatus.PENDING, LeaveRequestStatus.APPROVED), startDate, endDate);
+    }
+
+    @Override
+    public int sumReservedDays(Long academyId, Long userId, LocalDate periodStart, LocalDate periodEnd) {
+        return leaveRequestJpaRepository.sumUsedDays(academyId, userId,
+                Set.of(LeaveRequestStatus.PENDING, LeaveRequestStatus.APPROVED), periodStart, periodEnd);
     }
 
     private LeaveRequest toDomain(LeaveRequestJpaEntity entity) {
         return LeaveRequest.restore(entity.getId(), entity.getAcademyId(), entity.getUserId(),
-                entity.getDocumentId(), entity.getStartDate(), entity.getEndDate(), entity.getStatus(),
+                entity.getDocumentId(), entity.getStartDate(), entity.getEndDate(), entity.getUsedDays(), entity.getStatus(),
                 entity.getCreatedAt(), entity.getUpdatedAt());
     }
 }
