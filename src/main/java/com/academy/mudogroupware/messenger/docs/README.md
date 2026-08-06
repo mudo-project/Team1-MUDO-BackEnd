@@ -32,12 +32,16 @@ BE6 메신저 담당
 
 - **참여자·발신자 이름 조회 및 활성 사용자 검증**: `ChatMemberDirectoryPort`(application/port)로 추상화한다. 활성 사용자 여부는 users 모듈의 공개 계약인 `UserDirectoryUseCase.findActiveUserIds()`로 확인한다. 다만 이름·소속 학원 조회는 아직 users 쪽 공개 조회 계약이 부족해, `ChatMemberInfoEntity`가 `users` 테이블을 읽기 전용으로 직접 매핑하는 임시 shim으로 남아 있다.
 - **파일 업로드**: 이미지·파일 메시지는 `file` 모듈의 presigned URL 방식을 그대로 참조한다. 메시지 전송 API가 파일 업로드를 직접 처리하지 않고 `fileUrl`/`fileName`만 받는다(approval 컨벤션을 따르기로 사용자가 명시적으로 결정).
-- **실시간 전송**: `global` 모듈에 추가된 WebSocket(STOMP, `/ws`) 인프라를 메시지 전송·업무지시 완료 성공 후 이벤트 기반으로 브로드캐스트하는 데 사용할 계획이다(미착수, 팀과 최종 확정 필요). 지금은 REST 재조회로만 새 메시지/완료 상태를 확인할 수 있다.
+- **실시간 전송**: `global` 모듈에 추가된 WebSocket(STOMP, `/ws`) 인프라를 사용해, 메시지 전송·읽음 처리·업무지시 등록·업무지시 완료를 이벤트 기반으로 room topic에 브로드캐스트한다. 발신자/행위자를 제외하지 않고 room 전체를 대상으로 보낸다(echo 방식) — 프론트가 optimistic UI로 자기 행위는 즉시 그리고, 자신에게 돌아온 echo는 무시하는 방식을 채택하기로 확정했다(2026-08-06). 유저 단위 알림 채널(`/user/queue` 등, 방을 보고 있지 않아도 오는 알림)은 이번 스코프에서 필요 없다고 확인되어 만들지 않았다 — room topic 구독 중일 때만 실시간이고, 안 보고 있으면 REST 재조회로 확인한다.
 
 ## 발행·소비하는 Event
 
-- 현재 없음.
-- 메시지 전송·업무지시 완료 후 실시간 브로드캐스트용 이벤트 발행이 필요할 것으로 예상된다(미착수). ARCHITECTURE.md의 "상태 변경 이벤트는 트랜잭션 완료 후 발행" 원칙을 따를 계획.
+모두 `AFTER_COMMIT` 시점에 `MessengerWebSocketNotifier`가 `/topic/messenger/rooms/{roomId}`로 브로드캐스트한다(ARCHITECTURE.md의 "상태 변경 이벤트는 트랜잭션 완료 후 발행" 원칙).
+
+- `ChatMessageSentEvent` (`eventType: MESSAGE_SENT`) — 메시지 전송 시.
+- `ChatRoomReadEvent` (`eventType: MESSAGE_READ`) — 읽음 처리 시.
+- `TaskCardCreatedEvent` (`eventType: TASK_CARD_CREATED`) — 업무지시 카드 등록 시.
+- `TaskCardCompletedEvent` (`eventType: TASK_CARD_COMPLETED`) — 담당자 완료 처리 시, `completedCount`/`assigneeCount`/`fullyCompleted`를 함께 담아 progress bar 갱신에 필요한 값을 재조회 없이 전달한다.
 
 ## 변경 시 주의 사항
 
