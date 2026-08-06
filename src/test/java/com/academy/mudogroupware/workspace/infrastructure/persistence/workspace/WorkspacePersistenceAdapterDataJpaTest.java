@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.academy.mudogroupware.global.infrastructure.config.TimeConfig;
+import com.academy.mudogroupware.workspace.domain.exception.WorkspaceAlreadyActiveException;
 import com.academy.mudogroupware.workspace.domain.exception.WorkspaceNameConflictException;
 import com.academy.mudogroupware.workspace.domain.model.Workspace;
 import java.util.Optional;
@@ -117,5 +118,54 @@ class WorkspacePersistenceAdapterDataJpaTest {
     workspaceRepository.delete(saved.getId(), java.time.LocalDateTime.of(2026, 8, 6, 12, 0));
 
     assertThat(workspaceRepository.findByIdForUpdate(saved.getId())).isEmpty();
+  }
+
+  @Test
+  void returnsEmptyWhenFindingNonExistentWorkspaceForDeletedLookup() {
+    Optional<Workspace> found = workspaceRepository.findDeletedByIdForUpdate(999L);
+
+    assertThat(found).isEmpty();
+  }
+
+  @Test
+  void rejectsFindingDeletedWorkspaceWhenItIsStillActive() {
+    Workspace saved = workspaceRepository.save(Workspace.create(1L, "개발팀", 10L, Set.of()));
+
+    assertThatThrownBy(() -> workspaceRepository.findDeletedByIdForUpdate(saved.getId()))
+        .isInstanceOf(WorkspaceAlreadyActiveException.class);
+  }
+
+  @Test
+  void findsDeletedWorkspaceForUpdate() {
+    Workspace saved = workspaceRepository.save(Workspace.create(1L, "개발팀", 10L, Set.of(20L)));
+    workspaceRepository.delete(saved.getId(), java.time.LocalDateTime.of(2026, 8, 6, 12, 0));
+
+    Optional<Workspace> found = workspaceRepository.findDeletedByIdForUpdate(saved.getId());
+
+    assertThat(found).isPresent();
+    assertThat(found.get().getName()).isEqualTo("개발팀");
+    assertThat(found.get().getMemberIds()).containsExactlyInAnyOrder(10L, 20L);
+  }
+
+  @Test
+  void recoversDeletedWorkspaceWithNewName() {
+    Workspace saved = workspaceRepository.save(Workspace.create(1L, "개발팀", 10L, Set.of()));
+    workspaceRepository.delete(saved.getId(), java.time.LocalDateTime.of(2026, 8, 6, 12, 0));
+
+    workspaceRepository.recover(saved.getId(), "개발팀(20260806153012)");
+
+    Optional<Workspace> found = workspaceRepository.findByIdForUpdate(saved.getId());
+    assertThat(found).isPresent();
+    assertThat(found.get().getName()).isEqualTo("개발팀(20260806153012)");
+  }
+
+  @Test
+  void rejectsRecoverWhenNameConflictsWithActiveWorkspace() {
+    workspaceRepository.save(Workspace.create(1L, "운영팀", 10L, Set.of()));
+    Workspace saved = workspaceRepository.save(Workspace.create(1L, "개발팀", 10L, Set.of()));
+    workspaceRepository.delete(saved.getId(), java.time.LocalDateTime.of(2026, 8, 6, 12, 0));
+
+    assertThatThrownBy(() -> workspaceRepository.recover(saved.getId(), "운영팀"))
+        .isInstanceOf(WorkspaceNameConflictException.class);
   }
 }

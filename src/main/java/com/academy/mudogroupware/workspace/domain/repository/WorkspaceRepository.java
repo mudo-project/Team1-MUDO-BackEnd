@@ -20,4 +20,12 @@ public interface WorkspaceRepository {
   void updateMembers(Long workspaceId, Set<Long> memberIds);
 
   void delete(Long workspaceId, LocalDateTime deletedAt);
+
+  // 삭제된 워크스페이스만 비관적 락으로 조회. 워크스페이스가 아예 없으면 empty, 있지만
+  // 활성 상태면 WorkspaceAlreadyActiveException을 던진다.
+  Optional<Workspace> findDeletedByIdForUpdate(Long workspaceId);
+
+  // deletedAt을 초기화하고 이름을 finalName으로 반영한다. 활성 이름과 충돌하면
+  // WorkspaceNameConflictException을 던진다.
+  void recover(Long workspaceId, String finalName);
 }
