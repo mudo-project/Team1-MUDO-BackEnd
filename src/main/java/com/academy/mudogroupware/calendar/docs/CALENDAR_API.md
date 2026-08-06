@@ -159,3 +159,64 @@ HTTP `200 OK`
 - 조회 대상은 요청자의 `academyId` 소속 일정으로 한정한다. 다른 학원의 일정은 조회되지 않는다.
 - 현재 조회 조건은 `event_start_at`이 `[from, to]` 구간에 포함되는 일정만 반환한다(종료 시각이 구간 밖까지 걸치는 일정은 포함하지 않음).
 - 목록/일별/상세 조회는 모두 `CalendarEventResponse`를 공용으로 사용한다.
+
+## 일정 상세 조회
+
+### Endpoint
+
+`GET /api/calendars/{eventId}`
+
+### 인증 및 권한
+
+- `Authorization: Bearer {accessToken}` 헤더가 필요하다.
+- 같은 학원(`AuthUser.academyId()`) 소속으로 인증된 사용자라면 누구나 호출할 수 있다. 별도 권한 검사는 없다.
+
+### Request Header
+
+| name | description |
+| --- | --- |
+| `Authorization` | `Bearer {accessToken}` 형식의 Access Token |
+
+### Path Variable
+
+| name | type | required | description |
+| --- | --- | --- | --- |
+| `eventId` | Long | true | 조회할 일정 번호 |
+
+### Success Response
+
+HTTP `200 OK`
+
+```json
+{
+  "status": 200,
+  "code": "CALENDAR_200_2",
+  "message": "일정 상세 조회에 성공했습니다.",
+  "data": {
+    "eventId": 1,
+    "title": "2학기 수업 준비 회의",
+    "content": "2학기 수업 계획 논의 및 교재 배분",
+    "eventStartAt": "2026-08-03T10:00:00",
+    "eventEndAt": "2026-08-03T11:30:00",
+    "allDay": false,
+    "color": "green",
+    "createdBy": 7,
+    "createdAt": "2026-08-03T09:00:00",
+    "updatedAt": "2026-08-03T09:00:00"
+  }
+}
+```
+
+응답 필드는 목록조회와 동일한 `CalendarEventResponse`를 사용한다.
+
+### Error Response
+
+| HTTP 상태 | code | 발생 조건 |
+| --- | --- | --- |
+| `401 Unauthorized` | `COMMON_401_1` | Access Token이 없거나 유효하지 않은 경우 |
+| `404 Not Found` | `CALENDAR_404_1` | 일정이 존재하지 않거나, 존재하지만 다른 학원 소속인 경우 |
+| `500 Internal Server Error` | `COMMON_500_1` | 처리되지 않은 서버 오류 |
+
+### Business Rules
+
+- 다른 학원 소속 일정을 조회하면 존재 여부를 노출하지 않기 위해 "존재하지 않음"과 동일하게 `CALENDAR_404_1`로 응답한다(별도의 403 응답을 두지 않음).
