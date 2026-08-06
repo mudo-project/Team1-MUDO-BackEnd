@@ -253,3 +253,6 @@ infra/monitoring/runtime/
 # Superpowers implementation plans
 /docs/superpowers/
 /.claude/
+
+# bkit plugin local state
+/.bkit/
