@@ -22,6 +22,30 @@
 
 - `DeleteCalendarEventServiceTest` — 정상 삭제 흐름, 존재하지 않는 일정, 다른 학원 소속 일정 각각에서 예상대로 동작/예외가 발생하고 `deleteById`가 호출/미호출되는지 검증했습니다.
 - `CalendarControllerTest` — `DELETE /api/calendars/{eventId}`의 `204`/`404`/`401` 응답 형식을 검증했습니다.
+
+## ✅ 2026-08-06 · 일정 수정 API 추가
+
+### 변경 목적
+
+목록/일별 조회 다음으로, 등록된 일정의 필드를 수정하는 API를 추가했습니다.
+
+### 구현 변경
+
+- `PATCH /api/calendars/{eventId}`를 추가했습니다. 요청 필드는 생성 API와 동일하며, 부분 필드가 아니라 전체 필드를 매번 새 값으로 교체합니다(PATCH의 일반적 부분수정 의미가 아님을 문서에 명시).
+- `UpdateCalendarEventService`는 `findById` 후 요청자의 `academyId`와 다르면(또는 존재하지 않으면) 동일하게 `CalendarEventNotFoundException`(`CALENDAR_404_1`)을 던집니다. 상세조회와 같은 결정입니다.
+- 조회한 도메인 객체의 `update(...)`를 호출해 불변식을 재검증한 뒤 `save(event)`로 저장합니다.
+- **`CalendarEventPersistenceAdapter.save(...)`를 수정했습니다.** 기존에는 항상 `toEntity(...)`로 새 Entity를 만들어 저장했는데, update 시 이 방식을 그대로 쓰면 새 Entity의 `createdAt`이 비어 있어 JPA가 기존 `created_at`을 `NULL`로 덮어써 `NOT NULL` 제약을 위반합니다. `rollcall`의 `MessageTemplateRepositoryImpl` 선례를 따라, `calendarEvent.getId() != null`이면 `CalendarEventJpaRepository.getReferenceById(...)`로 관리 상태의 Entity를 가져와 새로 추가한 `CalendarEventEntity.update(...)` mutator로 필드만 갱신하도록 분기했습니다. 생성 흐름(`id == null`)은 기존 `toEntity(...)` 경로 그대로라 영향이 없습니다.
+- `CalendarEventEntity`에 `update(title, content, eventStartAt, eventEndAt, allDay, color)` mutator를 추가했습니다(entity는 Builder 생성자만 갖던 기존 구조에 update만 추가, setter 전체 노출은 하지 않음).
+- 응답은 `memo`의 PATCH 엔드포인트들과 동일하게 본문 없이 `204 No Content`를 반환합니다. 새 `ResponseCode`를 추가하지 않았습니다.
+
+### 유예한 결정
+
+- 상세조회(`GET /api/calendars/{eventId}`)는 별도 브랜치(`feature/calendar-detail-query`)에서 진행 중이며, 삭제(`DELETE`)는 다음 이슈에서 진행합니다.
+
+### 검증
+
+- `UpdateCalendarEventServiceTest` — 정상 수정 흐름(필드 반영 확인), 존재하지 않는 일정, 다른 학원 소속 일정, 도메인 검증 실패(공백 제목) 각각에서 예상대로 동작/예외가 발생하고 `save`가 호출되지 않는지 검증했습니다.
+- `CalendarControllerTest` — `PATCH /api/calendars/{eventId}`의 `204`/`400`/`404`/`401` 응답 형식을 검증했습니다. 검증 과정에서 요청 본문에 `allDay`가 없으면 Bean Validation이 아니라 Jackson 역직렬화 실패(`HttpMessageNotReadableException`)로 400이 나는 것을 발견해, 테스트 본문에 `allDay`를 명시적으로 포함시켰습니다(같은 패턴이 기존 생성 API 테스트에도 있어 별도 점검 작업으로 분리했습니다).
 - `./gradlew test`(전체) — calendar 관련 테스트 전부 통과, 기존 도메인 회귀 없음을 확인했습니다.
 
 ## ✅ 2026-08-06 · 일정 목록/일별 조회 API 추가
