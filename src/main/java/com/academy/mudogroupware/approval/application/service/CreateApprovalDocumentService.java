@@ -5,7 +5,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,7 +12,7 @@ import com.academy.mudogroupware.approval.application.command.CreateApprovalDocu
 import com.academy.mudogroupware.approval.application.port.ApproverDirectoryPort;
 import com.academy.mudogroupware.approval.application.port.ApproverInfo;
 import com.academy.mudogroupware.approval.application.usecase.CreateApprovalDocumentUseCase;
-import com.academy.mudogroupware.approval.domain.event.LeaveRequestSubmittedEvent;
+import com.academy.mudogroupware.approval.application.port.LeaveRequestSubmissionPort;
 import com.academy.mudogroupware.approval.domain.model.ApprovalContent;
 import com.academy.mudogroupware.approval.domain.model.ApprovalDocument;
 import com.academy.mudogroupware.approval.domain.model.ApprovalTemplate;
@@ -33,7 +32,7 @@ public class CreateApprovalDocumentService implements CreateApprovalDocumentUseC
     private final ApprovalDocumentRepository approvalDocumentRepository;
     private final ApproverDirectoryPort approverDirectoryPort;
     private final ApproverValidator approverValidator;
-    private final ApplicationEventPublisher eventPublisher;
+    private final LeaveRequestSubmissionPort leaveRequestSubmissionPort;
     private final Clock clock;
 
     @Override
@@ -62,15 +61,15 @@ public class CreateApprovalDocumentService implements CreateApprovalDocumentUseC
         Long documentId = approvalDocumentRepository.save(approvalDocument).getId();
 
         if (command.leaveStartDate() != null) {
-            eventPublisher.publishEvent(new LeaveRequestSubmittedEvent(documentId, approvalTemplate.getAcademyId(),
-                    command.creatorId(), command.leaveStartDate(), command.leaveEndDate(), now));
+            leaveRequestSubmissionPort.submit(documentId, approvalTemplate.getAcademyId(), command.creatorId(),
+                    command.leaveStartDate(), command.leaveEndDate(), now);
         }
 
         return documentId;
     }
 
     // 휴가 기간은 approval이 영구 저장하지 않는 선택 입력값이라, 둘 다 없거나(일반 결재) 둘 다
-    // 있는(휴가 연동) 경우만 허용한다 - attendance는 LeaveRequestSubmittedEvent로만 이 값을 받는다.
+    // 있는(휴가 연동) 경우만 허용한다. 휴가 기간은 attendance의 동기 Port로 전달한다.
     private void validateLeavePeriod(LocalDate startDate, LocalDate endDate) {
         if (startDate == null && endDate == null) {
             return;

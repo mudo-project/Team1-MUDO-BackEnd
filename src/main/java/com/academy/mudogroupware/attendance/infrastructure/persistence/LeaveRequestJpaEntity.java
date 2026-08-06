@@ -44,6 +44,9 @@ public class LeaveRequestJpaEntity {
     @Column(name = "end_date", nullable = false)
     private LocalDate endDate;
 
+    @Column(name = "used_days", nullable = false)
+    private int usedDays;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     private LeaveRequestStatus status;
@@ -56,7 +59,7 @@ public class LeaveRequestJpaEntity {
 
     @Builder
     private LeaveRequestJpaEntity(Long id, Long academyId, Long userId, Long documentId, LocalDate startDate,
-                                  LocalDate endDate, LeaveRequestStatus status, LocalDateTime createdAt,
+                                  LocalDate endDate, int usedDays, LeaveRequestStatus status, LocalDateTime createdAt,
                                   LocalDateTime updatedAt) {
         this.id = id;
         this.academyId = academyId;
@@ -64,6 +67,7 @@ public class LeaveRequestJpaEntity {
         this.documentId = documentId;
         this.startDate = startDate;
         this.endDate = endDate;
+        this.usedDays = usedDays;
         this.status = status;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
