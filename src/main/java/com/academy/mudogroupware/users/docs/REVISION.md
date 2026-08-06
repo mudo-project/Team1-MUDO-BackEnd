@@ -203,16 +203,16 @@ Redis 도입이 확정되면서(WebSocket Pub/Sub 용도로 시작해 액세스 
 
 - **`PlatformAdminPermissionPort`를 별도로 만들지 않고 기존 `RolePermissionLookupPort`를 확장하지 않은 이유**: `RolePermissionLookupPort`는 이미 `notice` 모듈이 의존하고 있어서, 이 인터페이스 시그니처를 바꾸면 `notice` 코드가 컴파일 오류가 난다. 따라서 새로운 포트 `PlatformAdminPermissionPort`를 만들어 `JwtAuthenticationConverter`에서 `accountType==ADMIN && adminScope==PLATFORM`일 때만 이 포트를 호출하고, 나머지(`MEMBER` 또는 `ADMIN+ACADEMY`)는 기존 `RolePermissionLookupPort`를 호출하는 방식으로 두 코드 경로를 분리했다 — 이미 있는 인터페이스를 건드리지 않으므로 `notice` 모듈 영향 없다.
 
-- **기존 call site들(`AuthUser`, `User.restore(...)`)의 시그니처를 유지한 방법**: `AuthUser`와 `User.restore()` 생성자에 `accountType`/`adminScope` 두 필드를 추가했으나, 다른 도메인(`workspace`, `attendance`, `calendar`, `memo`, `lecture`, `approval`)의 test/코드가 이미 이 생성자를 호출하고 있어서 컴파일 오류가 날 가능성이 있었다. Java record/class의 delegating constructor(또는 overload) 패턴을 사용해, 기존 생성자는 `accountType=MEMBER`, `adminScope=null`로 기본값을 채우고, 새로운 full 생성자는 모든 필드를 받도록 하여 **이미 있는 호출 사이트는 수정 없이 그대로 동작**하고 새로운 코드(users 도메인의 JWT 발급/파싱)만 새 생성자를 쓰도록 했다.
+- **기존 call site들(`AuthUser`, `User.restore(...)`)의 시그니처를 유지한 방법**: 두 곳의 사정이 달라 서로 다른 방식을 썼다. `AuthUser`(record)는 `workspace`/`attendance`/`calendar`/`memo` 도메인의 컨트롤러 테스트 10곳이 기존 5-인자 생성자를 그대로 호출하고 있어, 7-인자 정규 생성자에 `accountType=MEMBER`, `adminScope=null`을 기본값으로 채우는 5-인자 delegating constructor를 남겨서 그 10곳을 전혀 수정하지 않았다. 반면 `User.restore(...)`는 delegating constructor 없이 15-인자 시그니처 하나뿐이다 — 이 메서드를 직접 호출하는 곳은 `users` 모듈 내부(`UserRepositoryImpl.toDomain()`)와, `users.infrastructure.persistence` 패키지에 있는 테스트 3개(`WorkspaceUserInfoAdapterTest`/`LectureTeacherDirectoryAdapterTest`/`ApprovalApproverDirectoryAdapterTest` — 이름은 다른 도메인을 가리키지만 실제로는 `users`가 그 도메인들에 제공하는 조회 어댑터를 `users` 자신이 테스트하는 파일)뿐이라, 다른 도메인 소유 코드를 건드릴 필요 없이 이 3개 테스트만 새 시그니처로 같이 갱신했다.
 
 - **관리자 조직(academy) 및 슈퍼 어드민 계정을 schema migration이 아닌 실제 academy 행 + 수동 SQL INSERT로 만든 이유**: "MUDO 관리자 조직"을 별도 엔티티로 만드는 건 다른 도메인들의 실제 academy 데이터를 건드린다는 뜻이다. migration이면 모든 개발자/배포 환경의 DB에 이 "fake" 행이 생기게 된다 — 로컬에선 테스트 및 수동 검증에 쓰겠지만, staging/production에도 의도치 않게 생긴다. 대신 "실제로 필요한 환경의 DBA가 필요할 때 수동으로 INSERT한다"는 정책으로, schema는 그대로 두고 로컬 개발 편의상 수동 스크립트로 제공했다. 또한 `admin_scope=ACADEMY`는 아직 권한 로직이 미연동 상태라서, 지금 당장 필요하지 않은 컬럼값에 대한 데이터를 환경 전체에 배포할 필요가 없다는 판단도 있었다.
 
 ### 완료 기준
 
-- [x] `users.account_type`/`admin_scope` 컬럼 추가(`V5.1.1`)
+- [x] `users.account_type`/`admin_scope` 컬럼 추가(`V4.1.1`)
 - [x] JWT 발급(`TokenService.issue/issueAccessToken`) 및 파싱(`JwtTokenProvider.parseAccessToken`) 메서드에 `accountType`/`adminScope` 매개변수 전파
 - [x] `JwtAuthenticationConverter.toAuthentication()`에서 `accountType==ADMIN && adminScope==PLATFORM`인 경우, `RolePermissionLookupPort` 대신 `PlatformAdminPermissionPort.allPermissionCodes()` 호출해 `roleName="SUPER_ADMIN"` 고정으로 전체 권한 부여
-- [x] `AuthUser`, `User.restore()` 생성자에 새 필드 추가(delegating constructor 패턴으로 기존 호출 사이트 호환성 유지)
+- [x] `AuthUser`(delegating constructor로 기존 5-인자 호출 사이트 유지), `User.restore()`(호출부 3곳 직접 갱신) 시그니처 확장
 - [x] 로컬 DB에 슈퍼 어드민 계정 수동 시드(username=superadmin, account_type=ADMIN, admin_scope=PLATFORM, role_id=NULL)
 - [x] 로컬 e2e 검증: 슈퍼 어드민으로 로그인 → JWT가 accountType/adminScope 포함 → 모든 권한이 authorities로 부여됨 확인
 - [x] `./gradlew test` 통과
@@ -222,12 +222,12 @@ Redis 도입이 확정되면서(WebSocket Pub/Sub 용도로 시작해 액세스 
 | 계층 | 변경 내용 |
 | --- | --- |
 | Domain | `AccountType` enum (ADMIN/MEMBER) 추가, `AdminScope` enum (PLATFORM/ACADEMY) 추가. `AuthUser` record에 `accountType`/`adminScope` 필드 추가 |
-| Persistence | `users.account_type`/`admin_scope` 컬럼 추가(`V5.1.1`), `UserEntity`에 두 필드 추가 |
+| Persistence | `users.account_type`/`admin_scope` 컬럼 추가(`V4.1.1`), `UserEntity`에 두 필드 추가 |
 | Infrastructure | `PlatformAdminPermissionAdapter`/`PlatformAdminPermissionPort` 신규 구현 |
 | Security(global) | `JwtClaims`에 `accountType`/`adminScope` 필드 추가, `JwtTokenProvider.createAccessToken/parseAccessToken`에 두 매개변수 추가. `JwtAuthenticationConverter`에 platform admin 체크 로직 추가(`RolePermissionLookupPort` vs `PlatformAdminPermissionPort` 분기) |
 | Application(auth) | `TokenService.issue/issueAccessToken` 메서드 시그니처에 두 매개변수 추가 |
 | Application(users) | `LoginService`/`RefreshService`에서 `TokenIssuerUseCase` 호출 시 `accountType`/`adminScope` 전달 로직 추가 |
-| Domain(users) | `User.restore()` 생성자 확장(delegating constructor 패턴) |
+| Domain(users) | `User.restore()` 생성자 확장(delegating constructor 없이 15-인자 단일 시그니처, 호출부 3곳 직접 갱신) |
 
 ---
 
