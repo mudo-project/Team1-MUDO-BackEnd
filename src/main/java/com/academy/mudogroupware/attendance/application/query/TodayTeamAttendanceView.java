@@ -17,7 +17,8 @@ public record TodayTeamAttendanceView(
     public record Summary(
             int presentCount,
             int absentCount,
-            int offCount
+            int offCount,
+            int leaveCount
     ) {
     }
 

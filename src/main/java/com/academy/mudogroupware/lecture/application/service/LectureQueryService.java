@@ -11,6 +11,8 @@ import org.springframework.transaction.annotation.Transactional;
 import com.academy.mudogroupware.global.domain.common.page.PageResult;
 import com.academy.mudogroupware.lecture.application.port.EnrolledStudentInfo;
 import com.academy.mudogroupware.lecture.application.port.EnrolledStudentsPort;
+import com.academy.mudogroupware.lecture.application.port.TeacherDirectoryPort;
+import com.academy.mudogroupware.lecture.application.port.TeacherInfo;
 import com.academy.mudogroupware.lecture.application.query.LectureDetailView;
 import com.academy.mudogroupware.lecture.application.query.LectureSummaryView;
 import com.academy.mudogroupware.lecture.application.query.ScheduleView;
@@ -40,6 +42,7 @@ public class LectureQueryService implements LectureQueryUseCase {
     private final SubjectRepository subjectRepository;
     private final ClassroomRepository classroomRepository;
     private final EnrolledStudentsPort enrolledStudentsPort;
+    private final TeacherDirectoryPort teacherDirectoryPort;
 
     @Override
     public PageResult<LectureSummaryView> getLectures(Long academyId, LectureFilter filter, int page, int size) {
@@ -55,6 +58,8 @@ public class LectureQueryService implements LectureQueryUseCase {
         Map<Long, String> classroomNames = idToName(
                 classroomRepository.findAllById(distinctIds(lectures, Lecture::getClassroomId)),
                 Classroom::getId, Classroom::getName);
+        Map<Long, TeacherInfo> teachers = teacherDirectoryPort.findTeachers(
+                academyId, distinctIds(lectures, Lecture::getTeacherId));
         Map<Long, Integer> studentCounts = lectures.stream()
                 .collect(Collectors.toMap(Lecture::getId,
                         l -> enrolledStudentsPort.findByLectureId(academyId, l.getId()).size()));
@@ -66,6 +71,7 @@ public class LectureQueryService implements LectureQueryUseCase {
                 termNames.get(lecture.getTermId()),
                 subjectNames.get(lecture.getSubjectId()),
                 lecture.getTeacherId(),
+                teacherName(teachers, lecture.getTeacherId()),
                 classroomNames.get(lecture.getClassroomId()),
                 toScheduleViews(lecture),
                 studentCounts.getOrDefault(lecture.getId(), 0)));
@@ -83,6 +89,7 @@ public class LectureQueryService implements LectureQueryUseCase {
                 Subject::getName);
         String classroomName = singleName(classroomRepository.findAllById(List.of(lecture.getClassroomId())),
                 Classroom::getName);
+        Map<Long, TeacherInfo> teachers = teacherDirectoryPort.findTeachers(academyId, List.of(lecture.getTeacherId()));
 
         List<EnrolledStudentInfo> enrolledStudents = enrolledStudentsPort.findByLectureId(academyId, lectureId);
         List<StudentSummaryView> studentViews = enrolledStudents.stream()
@@ -90,7 +97,8 @@ public class LectureQueryService implements LectureQueryUseCase {
                 .toList();
 
         return new LectureDetailView(lecture.getId(), lecture.getName(), lecture.getGrade(), termName, subjectName,
-                lecture.getTeacherId(), classroomName, lecture.getFeeType(), lecture.getFeeAmount(),
+                lecture.getTeacherId(), teacherName(teachers, lecture.getTeacherId()), classroomName,
+                lecture.getFeeType(), lecture.getFeeAmount(),
                 toScheduleViews(lecture), studentViews, lecture.getCreatedAt());
     }
 
@@ -110,5 +118,10 @@ public class LectureQueryService implements LectureQueryUseCase {
 
     private <T> String singleName(List<T> items, Function<T, String> nameFn) {
         return items.stream().findFirst().map(nameFn).orElse(null);
+    }
+
+    private String teacherName(Map<Long, TeacherInfo> teachers, Long teacherId) {
+        TeacherInfo teacher = teachers.get(teacherId);
+        return teacher != null ? teacher.name() : null;
     }
 }
