@@ -54,6 +54,7 @@ class UpdateTaskCardServiceTest {
                 CARD_CREATED_AT);
         when(chatRoomRepository.findById(1L)).thenReturn(Optional.of(chatRoom));
         when(chatTaskCardRepository.findById(7L)).thenReturn(Optional.of(chatTaskCard));
+        when(chatTaskCardRepository.updateContent(any(), any(), any())).thenReturn(true);
 
         service.update(new UpdateTaskCardCommand(1L, 7L, 2L, "new", LocalDate.of(2026, 8, 20), List.of(4L, 5L)));
 
@@ -85,6 +86,27 @@ class UpdateTaskCardServiceTest {
                 .isEqualTo(MessengerErrorCode.NOT_TASK_CARD_OWNER);
 
         verify(chatTaskCardRepository, never()).updateContent(any(), any(), any());
+        verify(chatTaskCardRepository, never()).replaceAssignees(any(), any(), any());
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void throwsAlreadyDeletedAndSkipsAssigneesAndEventWhenConcurrentlyDeleted() {
+        ChatRoom chatRoom = roomWithMembers(2L, 3L, 4L);
+        ChatTaskCard chatTaskCard = ChatTaskCard.restore(7L, 1L, 2L, "old", null,
+                List.of(ChatTaskAssignee.restore(3L, null)), CARD_CREATED_AT);
+        when(chatRoomRepository.findById(1L)).thenReturn(Optional.of(chatRoom));
+        when(chatTaskCardRepository.findById(7L)).thenReturn(Optional.of(chatTaskCard));
+        // deleted_at is null 조건의 UPDATE가 0건 반영됐다는 뜻 — 이 트랜잭션이 읽은 뒤 다른 트랜잭션이
+        // 먼저 삭제를 커밋한 상황을 흉내낸다.
+        when(chatTaskCardRepository.updateContent(any(), any(), any())).thenReturn(false);
+
+        assertThatThrownBy(() -> service.update(
+                new UpdateTaskCardCommand(1L, 7L, 2L, "new", null, List.of(3L, 4L))))
+                .isInstanceOf(MessengerException.class)
+                .extracting(exception -> ((MessengerException) exception).getErrorCode())
+                .isEqualTo(MessengerErrorCode.TASK_CARD_ALREADY_DELETED);
+
         verify(chatTaskCardRepository, never()).replaceAssignees(any(), any(), any());
         verify(eventPublisher, never()).publishEvent(any());
     }

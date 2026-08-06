@@ -44,8 +44,8 @@ public class ChatTaskCardRepositoryImpl implements ChatTaskCardRepository {
     }
 
     @Override
-    public void updateContent(Long cardId, String content, LocalDate dueDate) {
-        chatTaskCardJpaRepository.updateContent(cardId, content, dueDate);
+    public boolean updateContent(Long cardId, String content, LocalDate dueDate) {
+        return chatTaskCardJpaRepository.updateContent(cardId, content, dueDate) > 0;
     }
 
     @Override

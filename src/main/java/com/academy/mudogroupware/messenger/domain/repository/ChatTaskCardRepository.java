@@ -21,7 +21,8 @@ public interface ChatTaskCardRepository {
     // 담당자 완료 행만 원자적으로 갱신한다(카드 전체를 다시 저장하는 방식은 동시 완료 처리 시 유실 위험이 있어 대신 사용).
     void markAssigneeCompleted(Long cardId, Long userId, LocalDateTime completedAt);
 
-    void updateContent(Long cardId, String content, LocalDate dueDate);
+    // 삭제된 카드는 갱신하지 않는다(deleted_at is null 조건). 반환값이 false면 이미 삭제된 카드라는 뜻이다.
+    boolean updateContent(Long cardId, String content, LocalDate dueDate);
 
     // addedUserIds만 삽입, removedUserIds만 삭제 — 유지되는 담당자 row는 건드리지 않는다.
     void replaceAssignees(Long cardId, List<Long> addedUserIds, List<Long> removedUserIds);

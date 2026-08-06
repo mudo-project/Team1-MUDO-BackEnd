@@ -1,6 +1,6 @@
 # 메신저(Messenger) API 명세서
 
-> REST 섹션(1~10)의 각 `## `이 Notion 하위 페이지 1개(엔드포인트 1개)에 대응합니다. WebSocket 섹션(11)은 이벤트 4종이 destination 하나로 멀티플렉스되어 하위 페이지 1개로 관리합니다.
+> REST 섹션(1~12)의 각 `## `이 Notion 하위 페이지 1개(엔드포인트 1개)에 대응합니다. WebSocket 섹션(13)은 이벤트 6종이 destination 하나로 멀티플렉스되어 하위 페이지 1개로 관리합니다.
 > 공통 성공 응답 포맷: `{ "status", "code", "message", "data" }` (`GlobalApiResponse`). `204 No Content`는 본문 없음.
 > 공통 실패 응답 포맷: `{ "timestamp", "status", "code", "message", "traceId", "details" }`
 > 모든 API는 `Authorization: Bearer {AccessToken}` 헤더가 필요합니다 (미인증 시 `401 COMMON_401_1`).
@@ -625,9 +625,107 @@ Request Parameter
 
 ---
 
-## 11. 실시간 이벤트 수신 (WebSocket)
+## 11. 업무지시 카드 수정
 
-REST와 달리 클라이언트가 요청을 보내는 게 아니라 서버가 이벤트를 밀어주는 방식입니다. 이벤트 4종이 destination 하나로 멀티플렉스되어 하위 페이지 1개로 관리합니다.
+`PATCH /api/messenger/rooms/{roomId}/task-cards/{cardId}`
+
+# **[request]**
+
+Request Header
+
+| name | description |
+| --- | --- |
+| `Authorization` | `Bearer {AccessToken}` 형식의 사용자 인증 토큰입니다. |
+
+Request Parameter
+
+| name | description |
+| --- | --- |
+| `roomId` | 채팅방 ID입니다. |
+| `cardId` | 수정할 업무지시 카드 ID입니다. |
+
+Request Body
+```json
+{
+  "content": "과제 제출(마감 연장)",
+  "dueDate": "2026-08-20",
+  "assigneeIds": [4, 5]
+}
+```
+| name | type | required | 설명 |
+| --- | --- | --- | --- |
+| `content` | `String` | `true` | 업무지시 내용. 공백 불가. |
+| `dueDate` | `LocalDate` | `false` | 마감일. |
+| `assigneeIds` | `List<Long>` | `true` | 담당자 ID 목록(전체 교체). 최소 1개, 각 값 양수, 반드시 방 멤버여야 함. 유지되는 담당자의 완료 기록은 그대로 보존됩니다. |
+
+# **[response]**
+
+### 성공코드
+
+| HTTP 상태 | 설명 |
+| --- | --- |
+| `204 No Content` | 수정 성공 (응답 본문 없음) |
+
+> 성공 시 room topic에 `TASK_CARD_UPDATED` 이벤트가 실시간 브로드캐스트됩니다(등록자 본인 포함).
+
+### 실패 코드
+
+| HTTP 상태 | code | message | 설명 |
+| --- | --- | --- | --- |
+| `400 Bad Request` | `COMMON_400_1` | 입력값이 올바르지 않습니다. | `content` 공백/누락, `assigneeIds` 비어있음/null/0 이하 (Bean Validation) |
+| `400 Bad Request` | `MESSENGER_400_13` | 유효하지 않은 담당자가 포함되어 있습니다. | `assigneeIds`에 존재하지 않는 사용자 포함 |
+| `400 Bad Request` | `MESSENGER_400_16` | 이미 삭제된 업무지시입니다. | 삭제된 카드를 수정하려는 경우 |
+| `401 Unauthorized` | `COMMON_401_1` | 인증이 필요합니다. | 토큰 누락/만료 |
+| `403 Forbidden` | `MESSENGER_403_1` | 채팅방 참여자가 아닙니다. | 새로 지정한 담당자 중 방 멤버가 아닌 사람이 있음 |
+| `403 Forbidden` | `MESSENGER_403_3` | 본인이 등록한 업무지시만 수정/삭제할 수 있습니다. | 등록자가 아닌 사람이 수정하려는 경우 |
+| `404 Not Found` | `MESSENGER_404_3` | 업무지시 카드를 찾을 수 없습니다. | `cardId`가 없거나, 있어도 `roomId`와 다른 방의 카드인 경우 |
+
+---
+
+## 12. 업무지시 카드 삭제
+
+`DELETE /api/messenger/rooms/{roomId}/task-cards/{cardId}`
+
+# **[request]**
+
+Request Header
+
+| name | description |
+| --- | --- |
+| `Authorization` | `Bearer {AccessToken}` 형식의 사용자 인증 토큰입니다. |
+
+Request Parameter
+
+| name | description |
+| --- | --- |
+| `roomId` | 채팅방 ID입니다. |
+| `cardId` | 삭제할 업무지시 카드 ID입니다. |
+
+# **[response]**
+
+### 성공코드
+
+| HTTP 상태 | 설명 |
+| --- | --- |
+| `204 No Content` | 삭제 성공 (응답 본문 없음, 소프트 삭제) |
+
+> 성공 시 room topic에 `TASK_CARD_DELETED` 이벤트가 실시간 브로드캐스트됩니다(등록자 본인 포함).
+
+### 실패 코드
+
+| HTTP 상태 | code | message | 설명 |
+| --- | --- | --- | --- |
+| `401 Unauthorized` | `COMMON_401_1` | 인증이 필요합니다. | 토큰 누락/만료 |
+| `403 Forbidden` | `MESSENGER_403_3` | 본인이 등록한 업무지시만 수정/삭제할 수 있습니다. | 등록자가 아닌 사람이 삭제하려는 경우 |
+| `404 Not Found` | `MESSENGER_404_3` | 업무지시 카드를 찾을 수 없습니다. | `cardId`가 없거나, 있어도 `roomId`와 다른 방의 카드인 경우 |
+
+> 이미 삭제된 카드를 다시 삭제 요청해도 에러 없이 204 처리됩니다(삭제 시각 덮어쓰기 없음, 중복 브로드캐스트도 안 나감).
+
+---
+
+## 13. 실시간 이벤트 수신 (WebSocket)
+
+REST와 달리 클라이언트가 요청을 보내는 게 아니라 서버가 이벤트를 밀어주는 방식입니다. 이벤트 6종이 destination 하나로 멀티플렉스되어 하위 페이지 1개로 관리합니다.
 
 ### WebSocket 연결
 
@@ -643,8 +741,8 @@ REST와 달리 클라이언트가 요청을 보내는 게 아니라 서버가 �
 | --- | --- |
 | 채팅방 이벤트 구독 | `/topic/messenger/rooms/{roomId}` |
 
-> 이 경로 하나로 이벤트 4종류가 다 옵니다. 페이로드의 `eventType` 필드로 분기해서 처리해야 합니다.
-> `[publish]` 섹션 없음 — 메시지 전송/업무지시 등록/완료는 전부 REST API(1~10번)로 처리합니다. 소켓은 "받기 전용"이며, 발신자/행위자 본인도 자신이 보낸 이벤트를 그대로 수신합니다(echo 방식, 2026-08-06 optimistic UI 결정에 따라 프론트는 자기 자신 echo를 무시하고 REST 응답으로 먼저 반영).
+> 이 경로 하나로 이벤트 6종류가 다 옵니다. 페이로드의 `eventType` 필드로 분기해서 처리해야 합니다.
+> `[publish]` 섹션 없음 — 메시지/업무지시 카드 관련 쓰기는 전부 REST API(1~12번)로 처리합니다. 소켓은 "받기 전용"이며, 발신자/행위자 본인도 자신이 보낸 이벤트를 그대로 수신합니다(echo 방식, 2026-08-06 optimistic UI 결정에 따라 프론트는 자기 자신 echo를 무시하고 REST 응답으로 먼저 반영).
 > 유저 단위 알림 채널(`/user/queue/...`)은 없습니다. 방을 구독 중일 때만 실시간 수신됩니다.
 
 ### [subscribe] 메시지 전송
@@ -717,6 +815,36 @@ REST와 달리 클라이언트가 요청을 보내는 게 아니라 서버가 �
 }
 ```
 
+### [subscribe] 업무지시 카드 수정
+
+**Destination:** `/topic/messenger/rooms/{roomId}`
+
+**Response**
+```json
+{
+  "eventType": "TASK_CARD_UPDATED",
+  "chatRoomId": 1,
+  "cardId": 7,
+  "content": "과제 제출(마감 연장)",
+  "dueDate": "2026-08-20",
+  "assigneeIds": [4, 5]
+}
+```
+
+### [subscribe] 업무지시 카드 삭제
+
+**Destination:** `/topic/messenger/rooms/{roomId}`
+
+**Response**
+```json
+{
+  "eventType": "TASK_CARD_DELETED",
+  "chatRoomId": 1,
+  "cardId": 7,
+  "deletedAt": "2026-08-06T15:00:00"
+}
+```
+
 ### 에러 수신
 
-별도 에러 채널 없음. 소켓으로 클라이언트가 요청을 보내는 동작이 없어서(모든 쓰기는 REST), 에러는 각 REST API 호출의 HTTP 응답으로만 옵니다 — 위 1~10번의 "실패 코드" 표를 참고하세요.
+별도 에러 채널 없음. 소켓으로 클라이언트가 요청을 보내는 동작이 없어서(모든 쓰기는 REST), 에러는 각 REST API 호출의 HTTP 응답으로만 옵니다 — 위 1~12번의 "실패 코드" 표를 참고하세요.

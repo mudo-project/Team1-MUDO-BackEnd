@@ -56,8 +56,13 @@ public class UpdateTaskCardService implements UpdateTaskCardUseCase {
         List<Long> addedUserIds = afterAssigneeIds.stream().filter(id -> !beforeSet.contains(id)).toList();
         List<Long> removedUserIds = beforeAssigneeIds.stream().filter(id -> !afterSet.contains(id)).toList();
 
-        chatTaskCardRepository.updateContent(chatTaskCard.getId(), chatTaskCard.getContent(),
+        // updateContent는 deleted_at is null 조건의 UPDATE라 행을 잠근다. 0건이면 이 트랜잭션이 카드를
+        // 읽은 뒤 다른 트랜잭션이 먼저 삭제를 커밋했다는 뜻이므로, 담당자 변경/이벤트 발행 없이 여기서 중단한다.
+        boolean updated = chatTaskCardRepository.updateContent(chatTaskCard.getId(), chatTaskCard.getContent(),
                 chatTaskCard.getDueDate());
+        if (!updated) {
+            throw new MessengerException(MessengerErrorCode.TASK_CARD_ALREADY_DELETED);
+        }
         chatTaskCardRepository.replaceAssignees(chatTaskCard.getId(), addedUserIds, removedUserIds);
 
         eventPublisher.publishEvent(new TaskCardUpdatedEvent(chatTaskCard.getChatRoomId(), chatTaskCard.getId(),

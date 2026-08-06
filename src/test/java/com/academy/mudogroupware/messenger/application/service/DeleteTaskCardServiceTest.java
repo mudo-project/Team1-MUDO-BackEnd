@@ -68,4 +68,17 @@ class DeleteTaskCardServiceTest {
         verify(chatTaskCardRepository, never()).markDeleted(any(), any());
         verify(eventPublisher, never()).publishEvent(any());
     }
+
+    @Test
+    void reDeleteByOwnerSucceedsSilentlyWithoutDuplicateWriteOrEvent() {
+        LocalDateTime firstDeletedAt = LocalDateTime.of(2026, 8, 5, 12, 0);
+        ChatTaskCard chatTaskCard = ChatTaskCard.restore(7L, 1L, 2L, "과제 제출", null,
+                List.of(ChatTaskAssignee.restore(3L, null)), CARD_CREATED_AT, firstDeletedAt);
+        when(chatTaskCardRepository.findById(7L)).thenReturn(Optional.of(chatTaskCard));
+
+        service.delete(new DeleteTaskCardCommand(1L, 7L, 2L));
+
+        verify(chatTaskCardRepository, never()).markDeleted(any(), any());
+        verify(eventPublisher, never()).publishEvent(any());
+    }
 }
