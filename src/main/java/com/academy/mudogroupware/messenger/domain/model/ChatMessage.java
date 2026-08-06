@@ -70,10 +70,10 @@ public final class ChatMessage {
     public void editText(Long requesterId, String content, LocalDateTime editedAt) {
         validateSender(requesterId);
         if (isDeleted()) {
-            throw new MessengerException(MessengerErrorCode.INVALID_CURSOR);
+            throw new MessengerException(MessengerErrorCode.MESSAGE_ALREADY_DELETED);
         }
         if (messageType != MessageType.TEXT) {
-            throw new MessengerException(MessengerErrorCode.FILE_URL_REQUIRED);
+            throw new MessengerException(MessengerErrorCode.NOT_TEXT_MESSAGE);
         }
         if (content == null || content.isBlank()) {
             throw new MessengerException(MessengerErrorCode.MESSAGE_CONTENT_REQUIRED);
