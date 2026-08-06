@@ -7,8 +7,12 @@ import org.springframework.transaction.event.TransactionalEventListener;
 
 import com.academy.mudogroupware.messenger.domain.event.ChatMessageSentEvent;
 import com.academy.mudogroupware.messenger.domain.event.ChatRoomReadEvent;
+import com.academy.mudogroupware.messenger.domain.event.MessageDeletedEvent;
+import com.academy.mudogroupware.messenger.domain.event.MessageEditedEvent;
 import com.academy.mudogroupware.messenger.domain.event.TaskCardCompletedEvent;
 import com.academy.mudogroupware.messenger.domain.event.TaskCardCreatedEvent;
+import com.academy.mudogroupware.messenger.domain.event.TaskCardDeletedEvent;
+import com.academy.mudogroupware.messenger.domain.event.TaskCardUpdatedEvent;
 
 import lombok.RequiredArgsConstructor;
 
@@ -44,5 +48,33 @@ public class MessengerWebSocketNotifier {
         messagingTemplate.convertAndSend(
                 "/topic/messenger/rooms/" + event.chatRoomId(),
                 TaskCardCompletedSocketResponse.from(event));
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handle(MessageEditedEvent event) {
+        messagingTemplate.convertAndSend(
+                "/topic/messenger/rooms/" + event.chatRoomId(),
+                MessageEditedSocketResponse.from(event));
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handle(MessageDeletedEvent event) {
+        messagingTemplate.convertAndSend(
+                "/topic/messenger/rooms/" + event.chatRoomId(),
+                MessageDeletedSocketResponse.from(event));
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handle(TaskCardUpdatedEvent event) {
+        messagingTemplate.convertAndSend(
+                "/topic/messenger/rooms/" + event.chatRoomId(),
+                TaskCardUpdatedSocketResponse.from(event));
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handle(TaskCardDeletedEvent event) {
+        messagingTemplate.convertAndSend(
+                "/topic/messenger/rooms/" + event.chatRoomId(),
+                TaskCardDeletedSocketResponse.from(event));
     }
 }

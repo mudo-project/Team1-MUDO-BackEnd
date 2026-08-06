@@ -46,19 +46,24 @@ public class ChatTaskCardEntity {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
     @ElementCollection
     @CollectionTable(name = "chat_task_assignee", joinColumns = @JoinColumn(name = "card_id"))
     private List<ChatTaskAssigneeEmbeddable> assignees = new ArrayList<>();
 
     @Builder
     private ChatTaskCardEntity(Long id, Long chatRoomId, Long assignerUserId, String content, LocalDate dueDate,
-                                LocalDateTime createdAt, List<ChatTaskAssigneeEmbeddable> assignees) {
+                                LocalDateTime createdAt, LocalDateTime deletedAt,
+                                List<ChatTaskAssigneeEmbeddable> assignees) {
         this.id = id;
         this.chatRoomId = chatRoomId;
         this.assignerUserId = assignerUserId;
         this.content = content;
         this.dueDate = dueDate;
         this.createdAt = createdAt;
+        this.deletedAt = deletedAt;
         if (assignees != null) {
             this.assignees = new ArrayList<>(assignees);
         }

@@ -50,18 +50,18 @@
 
 ## 의도적으로 제외한 것
 
-- 결제/POS/환불/영수증/미납 관리
+- **결제/POS/환불/영수증/미납 관리 — 이번 범위에서 영구 제외 확정(2026-08-06).** "결제하기" 버튼은 앞으로도 수강 등록 확정 동작만 수행한다. 필요해지면 별도 모듈(payment 등)로 완전히 분리해 새로 설계한다.
 - 학생 로그인 계정 생성
-- 강의 검색 API의 실제 lecture 모듈 연결
-- rollcall/lecture에서 사용할 student 공개 Port의 실제 코드
-- users 권한 시드 변경 및 `@PreAuthorize` 적용
+
+## 완료된 연동 (갱신: 2026-08-06)
+
+- ~~강의 검색 API의 실제 lecture 모듈 연결~~ → PR #116에서 완료. `LectureCatalogPortAdapter`(lecture)가 `LectureCatalogPort`(student 정의)를 구현.
+- ~~rollcall/lecture에서 사용할 student 공개 Port의 실제 코드~~ → `EnrolledStudentsPortAdapter`(student)가 `EnrolledStudentsPort`(lecture 정의)를 구현, rollcall의 `LectureEnrollmentPort`도 이를 재사용.
+- ~~users 권한 시드 변경 및 `@PreAuthorize` 적용~~ → `V1.4.6__seed_student_permissions.sql`로 `STUDENT:READ`/`STUDENT:MANAGE`/`ENROLLMENT:MANAGE` 시드, `StudentController`에 `@PreAuthorize` 적용 완료. lecture/rollcall과 동일하게 permission 코드만 시드하고, 실제 role 매핑(`role_permission`)은 admin이 role 관리 화면에서 처리한다.
 
 ## 남은 연동 작업
 
-- lecture 모듈에서 강의 검색/기본 정보 조회용 공개 Port 제공
-- student 모듈의 `LectureCatalogPort`를 lecture 실제 구현에 연결
-- rollcall 모듈에서 출결부 수강생 조회가 필요할 때 student 공개 Port 추가
-- users 권한 정책이 확정되면 `STUDENT:READ`, `STUDENT:MANAGE`, `ENROLLMENT:MANAGE` 권한 적용
+- 없음. (담당 선생님 이름 등 users 모듈 직원 검색 Port가 필요한 항목은 student 모듈 범위 밖 — lecture 모듈 문서 참고)
 
 ## 검증 기준
 

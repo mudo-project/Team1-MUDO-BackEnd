@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -19,13 +20,14 @@ public final class ChatTaskCard {
     private final Long id;
     private final Long chatRoomId;
     private final Long assignerUserId;
-    private final String content;
-    private final LocalDate dueDate;
+    private String content;
+    private LocalDate dueDate;
     private final List<ChatTaskAssignee> assignees;
     private final LocalDateTime createdAt;
+    private LocalDateTime deletedAt;
 
     private ChatTaskCard(Long id, Long chatRoomId, Long assignerUserId, String content, LocalDate dueDate,
-                          List<ChatTaskAssignee> assignees, LocalDateTime createdAt) {
+                          List<ChatTaskAssignee> assignees, LocalDateTime createdAt, LocalDateTime deletedAt) {
         if (chatRoomId == null) {
             throw new IllegalArgumentException("chatRoomId must not be null");
         }
@@ -45,10 +47,28 @@ public final class ChatTaskCard {
         this.dueDate = dueDate;
         this.assignees = new ArrayList<>(assignees);
         this.createdAt = createdAt;
+        this.deletedAt = deletedAt;
     }
 
     public static ChatTaskCard create(Long chatRoomId, Long assignerUserId, String content, LocalDate dueDate,
                                        List<Long> assigneeUserIds, LocalDateTime createdAt) {
+        List<ChatTaskAssignee> assignees = toDistinctAssignees(assigneeUserIds);
+        return new ChatTaskCard(null, chatRoomId, assignerUserId, content, dueDate, assignees, createdAt, null);
+    }
+
+    public static ChatTaskCard restore(Long id, Long chatRoomId, Long assignerUserId, String content,
+                                        LocalDate dueDate, List<ChatTaskAssignee> assignees,
+                                        LocalDateTime createdAt) {
+        return restore(id, chatRoomId, assignerUserId, content, dueDate, assignees, createdAt, null);
+    }
+
+    public static ChatTaskCard restore(Long id, Long chatRoomId, Long assignerUserId, String content,
+                                        LocalDate dueDate, List<ChatTaskAssignee> assignees,
+                                        LocalDateTime createdAt, LocalDateTime deletedAt) {
+        return new ChatTaskCard(id, chatRoomId, assignerUserId, content, dueDate, assignees, createdAt, deletedAt);
+    }
+
+    private static List<ChatTaskAssignee> toDistinctAssignees(List<Long> assigneeUserIds) {
         Set<Long> distinctAssigneeIds = assigneeUserIds == null
                 ? Set.of()
                 : assigneeUserIds.stream()
@@ -57,21 +77,59 @@ public final class ChatTaskCard {
         if (distinctAssigneeIds.isEmpty()) {
             throw new MessengerException(MessengerErrorCode.ASSIGNEE_REQUIRED);
         }
-        List<ChatTaskAssignee> assignees = distinctAssigneeIds.stream().map(ChatTaskAssignee::create).toList();
-
-        return new ChatTaskCard(null, chatRoomId, assignerUserId, content, dueDate, assignees, createdAt);
-    }
-
-    public static ChatTaskCard restore(Long id, Long chatRoomId, Long assignerUserId, String content,
-                                        LocalDate dueDate, List<ChatTaskAssignee> assignees,
-                                        LocalDateTime createdAt) {
-        return new ChatTaskCard(id, chatRoomId, assignerUserId, content, dueDate, assignees, createdAt);
+        return distinctAssigneeIds.stream().map(ChatTaskAssignee::create).toList();
     }
 
     public void complete(Long userId, LocalDateTime completedAt) {
         ChatTaskAssignee assignee = findAssignee(userId)
                 .orElseThrow(() -> new MessengerException(MessengerErrorCode.NOT_TASK_ASSIGNEE));
         assignee.complete(completedAt);
+    }
+
+    /**
+     * 내용/마감일/담당자 전체를 새 값으로 교체한다. 유지되는 담당자는 완료 기록을 그대로 보존한다
+     * (Repository가 이 결과를 반영할 때 유지되는 담당자 row는 건드리지 않고, 빠진 담당자만 삭제·추가된
+     * 담당자만 삽입하는 방식으로 동시 완료 처리와의 유실을 방지한다).
+     */
+    public void update(Long requesterId, String content, LocalDate dueDate, List<Long> assigneeUserIds) {
+        validateOwner(requesterId);
+        validateNotDeleted();
+        if (content == null || content.isBlank()) {
+            throw new MessengerException(MessengerErrorCode.TASK_CONTENT_REQUIRED);
+        }
+        List<ChatTaskAssignee> newAssignees = toDistinctAssignees(assigneeUserIds);
+        Map<Long, ChatTaskAssignee> existingByUserId = this.assignees.stream()
+                .collect(Collectors.toMap(ChatTaskAssignee::getUserId, assignee -> assignee));
+
+        this.content = content;
+        this.dueDate = dueDate;
+        this.assignees.clear();
+        for (ChatTaskAssignee newAssignee : newAssignees) {
+            this.assignees.add(existingByUserId.getOrDefault(newAssignee.getUserId(), newAssignee));
+        }
+    }
+
+    public void delete(Long requesterId, LocalDateTime deletedAt) {
+        validateOwner(requesterId);
+        if (this.deletedAt == null) {
+            this.deletedAt = deletedAt;
+        }
+    }
+
+    private void validateOwner(Long requesterId) {
+        if (!assignerUserId.equals(requesterId)) {
+            throw new MessengerException(MessengerErrorCode.NOT_TASK_CARD_OWNER);
+        }
+    }
+
+    private void validateNotDeleted() {
+        if (isDeleted()) {
+            throw new MessengerException(MessengerErrorCode.TASK_CARD_ALREADY_DELETED);
+        }
+    }
+
+    public boolean isDeleted() {
+        return deletedAt != null;
     }
 
     public boolean isAssignee(Long userId) {
@@ -120,5 +178,9 @@ public final class ChatTaskCard {
 
     public LocalDateTime getCreatedAt() {
         return createdAt;
+    }
+
+    public LocalDateTime getDeletedAt() {
+        return deletedAt;
     }
 }

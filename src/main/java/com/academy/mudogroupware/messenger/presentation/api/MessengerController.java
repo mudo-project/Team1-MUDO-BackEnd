@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.academy.mudogroupware.global.presentation.api.common.GlobalApiResponse;
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
 import com.academy.mudogroupware.messenger.application.command.CompleteTaskCommand;
+import com.academy.mudogroupware.messenger.application.command.DeleteTaskCardCommand;
 import com.academy.mudogroupware.messenger.application.usecase.ChatMessageQueryUseCase;
 import com.academy.mudogroupware.messenger.application.usecase.ChatRoomMemberQueryUseCase;
 import com.academy.mudogroupware.messenger.application.usecase.ChatRoomQueryUseCase;
@@ -27,14 +28,17 @@ import com.academy.mudogroupware.messenger.application.usecase.CompleteTaskUseCa
 import com.academy.mudogroupware.messenger.application.usecase.CreateChatRoomUseCase;
 import com.academy.mudogroupware.messenger.application.usecase.CreateTaskCardUseCase;
 import com.academy.mudogroupware.messenger.application.usecase.DeleteMessageUseCase;
+import com.academy.mudogroupware.messenger.application.usecase.DeleteTaskCardUseCase;
 import com.academy.mudogroupware.messenger.application.usecase.SendMessageUseCase;
 import com.academy.mudogroupware.messenger.application.usecase.TaskCardQueryUseCase;
 import com.academy.mudogroupware.messenger.application.usecase.UpdateMessageUseCase;
+import com.academy.mudogroupware.messenger.application.usecase.UpdateTaskCardUseCase;
 import com.academy.mudogroupware.messenger.presentation.api.common.MessengerResponseCode;
 import com.academy.mudogroupware.messenger.presentation.api.request.CreateChatRoomRequest;
 import com.academy.mudogroupware.messenger.presentation.api.request.CreateTaskCardRequest;
 import com.academy.mudogroupware.messenger.presentation.api.request.SendMessageRequest;
 import com.academy.mudogroupware.messenger.presentation.api.request.UpdateMessageRequest;
+import com.academy.mudogroupware.messenger.presentation.api.request.UpdateTaskCardRequest;
 import com.academy.mudogroupware.messenger.presentation.api.response.ChatMessagePageResponse;
 import com.academy.mudogroupware.messenger.presentation.api.response.ChatRoomCreateResponse;
 import com.academy.mudogroupware.messenger.presentation.api.response.ChatRoomMemberResponse;
@@ -67,6 +71,8 @@ public class MessengerController {
     private final CreateTaskCardUseCase createTaskCardUseCase;
     private final TaskCardQueryUseCase taskCardQueryUseCase;
     private final CompleteTaskUseCase completeTaskUseCase;
+    private final UpdateTaskCardUseCase updateTaskCardUseCase;
+    private final DeleteTaskCardUseCase deleteTaskCardUseCase;
 
     @Operation(summary = "채팅방 생성", description = "참여자 1명이면 1:1(DM), 2명 이상이면 그룹 생성. 그룹일 때만 name 필수.")
     @PostMapping
@@ -176,6 +182,25 @@ public class MessengerController {
                                                   @PathVariable Long roomId,
                                                   @PathVariable Long cardId) {
         completeTaskUseCase.complete(new CompleteTaskCommand(roomId, cardId, authUser.userId()));
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "업무지시 카드 수정", description = "등록자 본인만 내용/마감일/담당자를 수정할 수 있습니다.")
+    @PatchMapping("/{roomId}/task-cards/{cardId}")
+    public ResponseEntity<Void> updateTaskCard(@AuthenticationPrincipal AuthUser authUser,
+                                                @PathVariable Long roomId,
+                                                @PathVariable Long cardId,
+                                                @Valid @RequestBody UpdateTaskCardRequest request) {
+        updateTaskCardUseCase.update(request.toCommand(roomId, cardId, authUser.userId()));
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "업무지시 카드 삭제", description = "등록자 본인만 삭제할 수 있습니다(소프트 삭제).")
+    @DeleteMapping("/{roomId}/task-cards/{cardId}")
+    public ResponseEntity<Void> deleteTaskCard(@AuthenticationPrincipal AuthUser authUser,
+                                                @PathVariable Long roomId,
+                                                @PathVariable Long cardId) {
+        deleteTaskCardUseCase.delete(new DeleteTaskCardCommand(roomId, cardId, authUser.userId()));
         return ResponseEntity.noContent().build();
     }
 }

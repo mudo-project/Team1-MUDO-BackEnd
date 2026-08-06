@@ -1,5 +1,10 @@
 # 학생 관리 Changelog
 
+## 2026-08-06 - 권한 적용 및 결제 기능 범위 확정
+
+- `STUDENT:READ`/`STUDENT:MANAGE`/`ENROLLMENT:MANAGE` 권한 코드를 시드하고(`V1.4.6`) `StudentController`의 모든 엔드포인트에 `@PreAuthorize`를 적용했다.
+- 결제/POS/환불/영수증/미납 관리는 이번 범위에서 영구 제외로 확정했다(추가 구현 없음).
+
 ## 2026-08-05 - 학생 관리 백엔드 초기 구현
 
 - 학생 기본 정보 등록/수정/목록/상세 조회 API를 추가했다.

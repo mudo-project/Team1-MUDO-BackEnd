@@ -11,6 +11,7 @@ public record LectureSummaryView(
         String termName,
         String subjectName,
         Long teacherId,
+        String teacherName,
         String classroomName,
         List<ScheduleView> schedules,
         int studentCount
