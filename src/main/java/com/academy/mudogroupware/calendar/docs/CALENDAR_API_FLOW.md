@@ -59,3 +59,38 @@ POST /api/calendars
 ## 5. 응답
 
 성공하면 Controller가 `CreateCalendarEventResponse.from(eventId)`로 응답 데이터를 만들고, `GlobalApiResponse.created(CalendarResponseCode.EVENT_CREATED, ...)`로 감싸 HTTP `201 Created`를 반환한다.
+
+## 일정 목록/일별 조회 API 흐름
+
+```text
+GET /api/calendars?from=&to=
+  → Security Filter
+  → AuthUser
+  → CalendarController
+  → GetCalendarEventsUseCase
+  → GetCalendarEventsService
+  → CalendarEventRepository
+  → CalendarEventPersistenceAdapter
+  → CalendarEventJpaRepository
+  → CalendarEventResponse (목록)
+  → GlobalApiResponse
+```
+
+### 1. 쿼리 파라미터 검증
+
+`CalendarController`는 `@RequestParam`으로 `from`, `to`(둘 다 필수 `LocalDateTime`)를 받는다. 형식이 유효하지 않으면 Spring이 자체적으로 `COMMON_400_1`로 응답한다.
+
+### 2. 조회 조건 검증과 조회
+
+`GetCalendarEventsService`는 별도 Command 없이 `academyId`, `from`, `to`를 그대로 받아 처리한다(`memo` 도메인의 조회 패턴과 동일하게 Domain Model을 그대로 반환).
+
+- `to`가 `from`보다 이전이면 리포지토리를 조회하지 않고 `InvalidCalendarPeriodException`을 던져 `CALENDAR_400_2`로 응답한다.
+- 통과하면 `CalendarEventRepository.findAllByAcademyIdAndPeriod(academyId, from, to)`를 호출한다. `academyId`는 요청 본문/쿼리가 아니라 `AuthUser.academyId()`에서 가져와, 다른 학원의 일정은 조회되지 않는다.
+
+### 3. 조회 및 변환
+
+`CalendarEventPersistenceAdapter`가 `CalendarEventJpaRepository.findAllByAcademyIdAndEventStartAtBetween(...)`을 호출해 `event_start_at`이 구간에 포함되는 일정만 가져오고, 각 Entity를 Domain Model로 변환한다.
+
+### 4. 응답
+
+Controller가 반환된 `CalendarEvent` 목록을 `CalendarEventResponse::from`으로 매핑하고, `GlobalApiResponse.ok(CalendarResponseCode.EVENT_LIST_RETRIEVED, ...)`로 감싸 HTTP `200 OK`를 반환한다.
