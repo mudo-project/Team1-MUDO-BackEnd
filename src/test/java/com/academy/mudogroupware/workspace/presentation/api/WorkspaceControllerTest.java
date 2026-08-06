@@ -24,11 +24,13 @@ import com.academy.mudogroupware.workspace.application.query.WorkspaceListItem;
 import com.academy.mudogroupware.workspace.application.query.WorkspaceListScope;
 import com.academy.mudogroupware.workspace.application.command.AddWorkspaceMembersCommand;
 import com.academy.mudogroupware.workspace.application.command.DeleteWorkspaceCommand;
+import com.academy.mudogroupware.workspace.application.command.RecoverWorkspaceCommand;
 import com.academy.mudogroupware.workspace.application.command.RemoveWorkspaceMemberCommand;
 import com.academy.mudogroupware.workspace.application.command.RenameWorkspaceCommand;
 import com.academy.mudogroupware.workspace.application.usecase.AddWorkspaceMembersUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.CreateWorkspaceUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.DeleteWorkspaceUseCase;
+import com.academy.mudogroupware.workspace.application.usecase.RecoverWorkspaceUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.RemoveWorkspaceMemberUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.RecordWorkspaceRecentAccessUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.RenameWorkspaceUseCase;
@@ -36,6 +38,7 @@ import com.academy.mudogroupware.workspace.application.usecase.WorkspaceDetailQu
 import com.academy.mudogroupware.workspace.application.usecase.WorkspaceQueryUseCase;
 import com.academy.mudogroupware.workspace.domain.exception.InvalidWorkspaceMemberException;
 import com.academy.mudogroupware.workspace.domain.exception.WorkspaceAccessDeniedException;
+import com.academy.mudogroupware.workspace.domain.exception.WorkspaceAlreadyActiveException;
 import com.academy.mudogroupware.workspace.domain.exception.WorkspaceLastMemberException;
 import com.academy.mudogroupware.workspace.domain.exception.WorkspaceMemberNotFoundException;
 import com.academy.mudogroupware.workspace.domain.exception.WorkspaceNameConflictException;
@@ -75,6 +78,7 @@ class WorkspaceControllerTest {
   @MockitoBean private DeleteWorkspaceUseCase deleteWorkspaceUseCase;
   @MockitoBean private AddWorkspaceMembersUseCase addWorkspaceMembersUseCase;
   @MockitoBean private RemoveWorkspaceMemberUseCase removeWorkspaceMemberUseCase;
+  @MockitoBean private RecoverWorkspaceUseCase recoverWorkspaceUseCase;
   @MockitoBean private Clock clock;
 
   @Test
@@ -458,6 +462,64 @@ class WorkspaceControllerTest {
                 .with(csrf()))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.code").value("WORKSPACE_404_2"));
+  }
+
+  @Test
+  void recoversWorkspaceAndReturns200() throws Exception {
+    when(recoverWorkspaceUseCase.recover(new RecoverWorkspaceCommand(10L, 100L)))
+        .thenReturn("개발팀(20260806153012)");
+
+    mockMvc
+        .perform(
+            post("/api/workspaces/{workspaceId}/recover", 100L)
+                .with(authentication(authenticatedUser()))
+                .with(csrf()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.code").value("WORKSPACE_200_5"))
+        .andExpect(jsonPath("$.data.workspaceId").value(100))
+        .andExpect(jsonPath("$.data.name").value("개발팀(20260806153012)"));
+  }
+
+  @Test
+  void returns403WhenRecoveringWorkspaceRequesterWasNotAMember() throws Exception {
+    when(recoverWorkspaceUseCase.recover(any(RecoverWorkspaceCommand.class)))
+        .thenThrow(new WorkspaceAccessDeniedException());
+
+    mockMvc
+        .perform(
+            post("/api/workspaces/{workspaceId}/recover", 100L)
+                .with(authentication(authenticatedUser()))
+                .with(csrf()))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("WORKSPACE_403_1"));
+  }
+
+  @Test
+  void returns404WhenRecoveringNonExistentWorkspace() throws Exception {
+    when(recoverWorkspaceUseCase.recover(any(RecoverWorkspaceCommand.class)))
+        .thenThrow(new WorkspaceNotFoundException());
+
+    mockMvc
+        .perform(
+            post("/api/workspaces/{workspaceId}/recover", 100L)
+                .with(authentication(authenticatedUser()))
+                .with(csrf()))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("WORKSPACE_404_1"));
+  }
+
+  @Test
+  void returns409WhenRecoveringAlreadyActiveWorkspace() throws Exception {
+    when(recoverWorkspaceUseCase.recover(any(RecoverWorkspaceCommand.class)))
+        .thenThrow(new WorkspaceAlreadyActiveException());
+
+    mockMvc
+        .perform(
+            post("/api/workspaces/{workspaceId}/recover", 100L)
+                .with(authentication(authenticatedUser()))
+                .with(csrf()))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("WORKSPACE_409_2"));
   }
 
   private Authentication authenticatedUser(String... authorities) {

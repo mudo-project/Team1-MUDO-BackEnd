@@ -4,11 +4,13 @@ import com.academy.mudogroupware.global.presentation.api.common.GlobalApiRespons
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
 import com.academy.mudogroupware.workspace.application.query.WorkspaceListScope;
 import com.academy.mudogroupware.workspace.application.command.DeleteWorkspaceCommand;
+import com.academy.mudogroupware.workspace.application.command.RecoverWorkspaceCommand;
 import com.academy.mudogroupware.workspace.application.command.RemoveWorkspaceMemberCommand;
 import com.academy.mudogroupware.workspace.application.usecase.CreateWorkspaceUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.DeleteWorkspaceUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.RecordWorkspaceRecentAccessUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.AddWorkspaceMembersUseCase;
+import com.academy.mudogroupware.workspace.application.usecase.RecoverWorkspaceUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.RemoveWorkspaceMemberUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.RenameWorkspaceUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.WorkspaceDetailQueryUseCase;
@@ -21,6 +23,7 @@ import com.academy.mudogroupware.workspace.presentation.api.response.CreateWorks
 import com.academy.mudogroupware.workspace.presentation.api.response.WorkspaceDetailResponse;
 import com.academy.mudogroupware.workspace.presentation.api.response.WorkspaceListResponse;
 import com.academy.mudogroupware.workspace.presentation.api.response.WorkspaceMemberAddResponse;
+import com.academy.mudogroupware.workspace.presentation.api.response.WorkspaceRecoverResponse;
 import com.academy.mudogroupware.workspace.presentation.api.response.WorkspaceRenameResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -65,6 +68,7 @@ public class WorkspaceController {
   private final DeleteWorkspaceUseCase deleteWorkspaceUseCase;
   private final AddWorkspaceMembersUseCase addWorkspaceMembersUseCase;
   private final RemoveWorkspaceMemberUseCase removeWorkspaceMemberUseCase;
+  private final RecoverWorkspaceUseCase recoverWorkspaceUseCase;
   private final Clock clock;
 
   @Operation(
@@ -237,5 +241,26 @@ public class WorkspaceController {
     removeWorkspaceMemberUseCase.removeMember(
         new RemoveWorkspaceMemberCommand(authUser.userId(), workspaceId, userId));
     return ResponseEntity.noContent().build();
+  }
+
+  @Operation(
+      summary = "워크스페이스 복구",
+      description = "소프트 삭제된 워크스페이스를 다시 활성 상태로 되돌립니다. 삭제 당시 참여자만 복구할 수 있습니다.")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "복구 성공"),
+    @ApiResponse(responseCode = "403", description = "삭제 당시 참여자가 아님"),
+    @ApiResponse(responseCode = "404", description = "워크스페이스가 존재하지 않음"),
+    @ApiResponse(responseCode = "409", description = "이미 활성 상태이거나 이름 충돌")
+  })
+  // TODO: 권한 모듈의 WORKSPACE:CREATE 권한이 준비되면 @PreAuthorize를 추가한다.
+  @PostMapping("/{workspaceId}/recover")
+  public ResponseEntity<GlobalApiResponse<WorkspaceRecoverResponse>> recoverWorkspace(
+      @AuthenticationPrincipal AuthUser authUser, @PathVariable Long workspaceId) {
+    String name =
+        recoverWorkspaceUseCase.recover(new RecoverWorkspaceCommand(authUser.userId(), workspaceId));
+    return ResponseEntity.ok(
+        GlobalApiResponse.ok(
+            WorkspaceResponseCode.WORKSPACE_RECOVERED,
+            WorkspaceRecoverResponse.from(workspaceId, name)));
   }
 }

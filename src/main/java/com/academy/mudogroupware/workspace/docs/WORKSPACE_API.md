@@ -331,3 +331,19 @@ HTTP `200 OK`
 | `400 Bad Request` | `WORKSPACE_400_2` | 마지막 남은 참여자의 탈퇴/제거 시도 |
 | `403 Forbidden` | `WORKSPACE_403_1` | 요청자가 참여자가 아님 |
 | `404 Not Found` | `WORKSPACE_404_1` / `WORKSPACE_404_2` | 워크스페이스가 없음 / 대상이 참여자가 아님 |
+
+## 워크스페이스 복구
+
+`POST /api/workspaces/{workspaceId}/recover`
+
+- 요청 본문 없음.
+- 삭제 당시 참여자만 호출할 수 있다.
+- 복구하려는 이름이 이미 다른 활성 워크스페이스에 있으면 서버 시각(초 단위) 접미사 `"(yyyyMMddHHmmss)"`를 붙여 복구한다.
+
+| 응답 | 코드 | 설명 |
+| --- | --- | --- |
+| `200 OK` | `WORKSPACE_200_5` | 복구 성공 (최종 반영된 이름 반환) |
+| `403 Forbidden` | `WORKSPACE_403_1` | 삭제 당시 참여자가 아님 |
+| `404 Not Found` | `WORKSPACE_404_1` | 워크스페이스가 존재하지 않음 |
+| `409 Conflict` | `WORKSPACE_409_2` | 워크스페이스가 이미 활성 상태(삭제된 적 없거나 이미 복구됨) |
+| `409 Conflict` | `WORKSPACE_409_1` | 극히 드문 동시성 경합으로 타임스탬프 접미사까지 붙였는데도 이름이 충돌한 경우 |
