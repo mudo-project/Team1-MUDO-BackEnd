@@ -24,4 +24,11 @@ public abstract class SoftDeleteTimeEntity extends BaseTimeEntity {
   public boolean isDeleted() {
     return deletedAt != null;
   }
+
+  public void clearDeletedAt() {
+    if (this.deletedAt == null) {
+      throw new IllegalStateException("삭제되지 않은 엔티티입니다.");
+    }
+    this.deletedAt = null;
+  }
 }

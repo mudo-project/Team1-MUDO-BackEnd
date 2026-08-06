@@ -2,6 +2,7 @@ package com.academy.mudogroupware.workspace.infrastructure.persistence.workspace
 
 import com.academy.mudogroupware.workspace.domain.model.Workspace;
 import com.academy.mudogroupware.workspace.domain.repository.WorkspaceRepository;
+import com.academy.mudogroupware.workspace.domain.exception.WorkspaceAlreadyActiveException;
 import com.academy.mudogroupware.workspace.domain.exception.WorkspaceNameConflictException;
 import com.academy.mudogroupware.workspace.domain.exception.WorkspaceNotFoundException;
 import java.time.LocalDateTime;
@@ -85,6 +86,35 @@ public class WorkspacePersistenceAdapter implements WorkspaceRepository {
         workspaceJpaRepository.findById(workspaceId).orElseThrow(WorkspaceNotFoundException::new);
     entity.markDeleted(deletedAt);
     workspaceJpaRepository.saveAndFlush(entity);
+  }
+
+  @Override
+  public Optional<Workspace> findDeletedByIdForUpdate(Long workspaceId) {
+    Optional<WorkspaceJpaEntity> deletedEntity =
+        workspaceJpaRepository.findDeletedByIdForUpdate(workspaceId);
+    if (deletedEntity.isPresent()) {
+      return deletedEntity.map(workspacePersistenceMapper::toDomain);
+    }
+    if (workspaceJpaRepository.existsById(workspaceId)) {
+      throw new WorkspaceAlreadyActiveException();
+    }
+    return Optional.empty();
+  }
+
+  @Override
+  public void recover(Long workspaceId, String finalName) {
+    WorkspaceJpaEntity entity =
+        workspaceJpaRepository.findById(workspaceId).orElseThrow(WorkspaceNotFoundException::new);
+    entity.clearDeletedAt();
+    entity.rename(finalName);
+    try {
+      workspaceJpaRepository.saveAndFlush(entity);
+    } catch (DataIntegrityViolationException exception) {
+      if (isActiveNameConflict(exception)) {
+        throw new WorkspaceNameConflictException(exception);
+      }
+      throw exception;
+    }
   }
 
   private boolean isActiveNameConflict(Throwable throwable) {

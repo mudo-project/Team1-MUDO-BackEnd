@@ -7,6 +7,7 @@
 - 워크스페이스는 소유자가 없는 동등한 참여자 모델로 정리되었습니다. 생성자 특별 취급은 없어지고, 마지막 남은 참여자만 탈퇴·제거가 제한됩니다.
 - 워크스페이스 참여자 추가 API(`POST /api/workspaces/{workspaceId}/members`)를 추가했습니다.
 - 워크스페이스 참여자 제거·자진탈퇴 API(`DELETE /api/workspaces/{workspaceId}/members/{userId}`)를 추가했습니다.
+- 워크스페이스 복구 API(`POST /api/workspaces/{workspaceId}/recover`)를 추가했습니다. 삭제 당시 참여자만 복구할 수 있고, 이름이 충돌하면 시각 접미사를 붙입니다.
 
 ## 2026-08-05 · 업무 기한을 날짜 단위로 변경 ✨
 

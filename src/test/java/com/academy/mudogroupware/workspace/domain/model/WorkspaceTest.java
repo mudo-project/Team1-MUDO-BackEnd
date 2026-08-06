@@ -100,4 +100,17 @@ class WorkspaceTest {
         .extracting("errorCode")
         .isEqualTo(WorkspaceErrorCode.MEMBER_NOT_FOUND);
   }
+
+  @Test
+  void recoversWithGivenFinalName() {
+    Workspace workspace = Workspace.restore(1L, 1L, "개발팀", 10L, Set.of(10L, 20L));
+
+    Workspace recovered = workspace.recover("개발팀(20260806153012)");
+
+    assertThat(recovered.getName()).isEqualTo("개발팀(20260806153012)");
+    assertThat(recovered.getId()).isEqualTo(1L);
+    assertThat(recovered.getAcademyId()).isEqualTo(1L);
+    assertThat(recovered.getCreatedBy()).isEqualTo(10L);
+    assertThat(recovered.getMemberIds()).containsExactlyInAnyOrder(10L, 20L);
+  }
 }
