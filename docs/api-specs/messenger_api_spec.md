@@ -1,6 +1,6 @@
 # 메신저(Messenger) API 명세서
 
-> REST 섹션(1~12)의 각 `## `이 Notion 하위 페이지 1개(엔드포인트 1개)에 대응합니다. WebSocket 섹션(13)은 이벤트 6종이 destination 하나로 멀티플렉스되어 하위 페이지 1개로 관리합니다.
+> REST 섹션(1~12)의 각 `## `이 Notion 하위 페이지 1개(엔드포인트 1개)에 대응합니다. WebSocket 섹션(13)은 이벤트 8종이 destination 하나로 멀티플렉스되어 하위 페이지 1개로 관리합니다.
 > 공통 성공 응답 포맷: `{ "status", "code", "message", "data" }` (`GlobalApiResponse`). `204 No Content`는 본문 없음.
 > 공통 실패 응답 포맷: `{ "timestamp", "status", "code", "message", "traceId", "details" }`
 > 모든 API는 `Authorization: Bearer {AccessToken}` 헤더가 필요합니다 (미인증 시 `401 COMMON_401_1`).
@@ -388,6 +388,8 @@ Request Body
 | --- | --- |
 | `204 No Content` | 수정 성공 (응답 본문 없음) |
 
+> 성공 시 room topic에 `MESSAGE_EDITED` 이벤트가 실시간 브로드캐스트됩니다(발신자 본인 포함). 상세 페이로드는 13번 WebSocket 섹션 참고.
+
 ### 실패 코드
 
 | HTTP 상태 | code | message | 설명 |
@@ -427,6 +429,8 @@ Request Parameter
 | HTTP 상태 | 설명 |
 | --- | --- |
 | `204 No Content` | 삭제 성공 (응답 본문 없음, 소프트 삭제) |
+
+> 성공 시 room topic에 `MESSAGE_DELETED` 이벤트가 실시간 브로드캐스트됩니다(발신자 본인 포함). 상세 페이로드는 13번 WebSocket 섹션 참고.
 
 ### 실패 코드
 
@@ -725,7 +729,7 @@ Request Parameter
 
 ## 13. 실시간 이벤트 수신 (WebSocket)
 
-REST와 달리 클라이언트가 요청을 보내는 게 아니라 서버가 이벤트를 밀어주는 방식입니다. 이벤트 6종이 destination 하나로 멀티플렉스되어 하위 페이지 1개로 관리합니다.
+REST와 달리 클라이언트가 요청을 보내는 게 아니라 서버가 이벤트를 밀어주는 방식입니다. 이벤트 8종이 destination 하나로 멀티플렉스되어 하위 페이지 1개로 관리합니다.
 
 ### WebSocket 연결
 
@@ -741,7 +745,7 @@ REST와 달리 클라이언트가 요청을 보내는 게 아니라 서버가 �
 | --- | --- |
 | 채팅방 이벤트 구독 | `/topic/messenger/rooms/{roomId}` |
 
-> 이 경로 하나로 이벤트 6종류가 다 옵니다. 페이로드의 `eventType` 필드로 분기해서 처리해야 합니다.
+> 이 경로 하나로 이벤트 8종류가 다 옵니다. 페이로드의 `eventType` 필드로 분기해서 처리해야 합니다.
 > `[publish]` 섹션 없음 — 메시지/업무지시 카드 관련 쓰기는 전부 REST API(1~12번)로 처리합니다. 소켓은 "받기 전용"이며, 발신자/행위자 본인도 자신이 보낸 이벤트를 그대로 수신합니다(echo 방식, 2026-08-06 optimistic UI 결정에 따라 프론트는 자기 자신 echo를 무시하고 REST 응답으로 먼저 반영).
 > 유저 단위 알림 채널(`/user/queue/...`)은 없습니다. 방을 구독 중일 때만 실시간 수신됩니다.
 
@@ -776,6 +780,37 @@ REST와 달리 클라이언트가 요청을 보내는 게 아니라 서버가 �
   "chatRoomId": 1,
   "readerUserId": 2,
   "readAt": "2026-08-06T09:05:00"
+}
+```
+
+### [subscribe] 메시지 수정
+
+**Destination:** `/topic/messenger/rooms/{roomId}`
+
+**Response**
+```json
+{
+  "eventType": "MESSAGE_EDITED",
+  "chatRoomId": 1,
+  "messageId": 10,
+  "senderUserId": 2,
+  "content": "수정된 내용입니다",
+  "editedAt": "2026-08-06T14:00:00"
+}
+```
+
+### [subscribe] 메시지 삭제
+
+**Destination:** `/topic/messenger/rooms/{roomId}`
+
+**Response**
+```json
+{
+  "eventType": "MESSAGE_DELETED",
+  "chatRoomId": 1,
+  "messageId": 10,
+  "deleterUserId": 2,
+  "deletedAt": "2026-08-06T14:05:00"
 }
 ```
 
