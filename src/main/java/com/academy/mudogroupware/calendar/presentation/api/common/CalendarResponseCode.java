@@ -1,0 +1,16 @@
+package com.academy.mudogroupware.calendar.presentation.api.common;
+
+import com.academy.mudogroupware.global.presentation.api.common.ResponseCode;
+
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+
+@Getter
+@RequiredArgsConstructor
+public enum CalendarResponseCode implements ResponseCode {
+
+    EVENT_CREATED("CALENDAR_201_1", "일정 생성에 성공했습니다.");
+
+    private final String code;
+    private final String message;
+}
