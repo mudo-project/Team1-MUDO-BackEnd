@@ -1,5 +1,14 @@
 # 📚 Calendar Changelog
 
+## 2026-08-06 · 일정 수정 API 추가 ✨
+
+- `PATCH /api/calendars/{eventId}`로 학원 공용 캘린더 일정을 수정할 수 있습니다.
+- 요청 필드는 생성 API와 동일하며, 부분 필드가 아니라 수정 가능한 필드 전체를 매번 새 값으로 교체합니다.
+- 일정이 존재하지 않거나 다른 학원 소속이면 `CALENDAR_404_1`로 응답합니다.
+- `title`이 공백이거나 `eventEndAt`이 `eventStartAt`보다 이전이면 각각 `CALENDAR_400_1`, `CALENDAR_400_2`로 응답합니다.
+- 성공 시 응답 본문 없이 HTTP `204 No Content`를 반환합니다.
+- `updated_at`은 `BaseTimeEntity`(Spring Data JPA Auditing)가 자동으로 갱신합니다.
+
 ## 2026-08-06 · 일정 목록/일별 조회 API 추가 ✨
 
 - `GET /api/calendars?from=&to=`로 학원 공용 캘린더 일정을 기간 조회할 수 있습니다. 목록조회와 일별조회를 겸용합니다.

@@ -159,3 +159,73 @@ HTTP `200 OK`
 - 조회 대상은 요청자의 `academyId` 소속 일정으로 한정한다. 다른 학원의 일정은 조회되지 않는다.
 - 현재 조회 조건은 `event_start_at`이 `[from, to]` 구간에 포함되는 일정만 반환한다(종료 시각이 구간 밖까지 걸치는 일정은 포함하지 않음).
 - 목록/일별/상세 조회는 모두 `CalendarEventResponse`를 공용으로 사용한다.
+
+## 일정 수정
+
+### Endpoint
+
+`PATCH /api/calendars/{eventId}`
+
+### 인증 및 권한
+
+- `Authorization: Bearer {accessToken}` 헤더가 필요하다.
+- 현재 구현은 인증된 사용자라면 호출할 수 있다.
+- 기능명세서상 "대표와 대표가 허용한 권한"은 `users.role` 값 체계 확정 후 `@PreAuthorize`로 적용 예정이며, 지금은 `CalendarController`에 TODO로 남긴다.
+
+### Request Header
+
+| name | description |
+| --- | --- |
+| `Authorization` | `Bearer {accessToken}` 형식의 Access Token |
+| `Content-Type` | `application/json` |
+
+### Path Variable
+
+| name | type | required | description |
+| --- | --- | --- | --- |
+| `eventId` | Long | true | 수정할 일정 번호 |
+
+### Request Body
+
+```json
+{
+  "title": "2학기 수업 준비 회의 (변경)",
+  "content": "회의실 변경 안내 추가",
+  "eventStartAt": "2026-08-04T12:30:00",
+  "eventEndAt": "2026-08-04T15:30:00",
+  "allDay": true,
+  "color": "orange"
+}
+```
+
+생성 API와 동일한 필드 구성이다. 부분 필드만 보내는 방식(PATCH의 일반적 의미)이 아니라, 수정 가능한 필드 전체를 매번 새 값으로 통째로 교체한다.
+
+| name | type | required | description |
+| --- | --- | --- | --- |
+| `title` | String | true | 일정 제목. 공백만 입력할 수 없고 최대 200자 |
+| `content` | String | false | 일정 내용 |
+| `eventStartAt` | LocalDateTime | true | 일정 시작 일시 |
+| `eventEndAt` | LocalDateTime | false | 일정 종료 일시. 값이 있으면 `eventStartAt` 이후여야 함 |
+| `allDay` | boolean | false | 종일 일정 여부. 생략 시 `false` |
+| `color` | String | false | 표시 색상 코드. 최대 20자 |
+
+### Success Response
+
+HTTP `204 No Content` (응답 본문 없음)
+
+### Error Response
+
+| HTTP 상태 | code | 발생 조건 |
+| --- | --- | --- |
+| `400 Bad Request` | `COMMON_400_1` | `title` 누락·공백·200자 초과, `eventStartAt` 누락, `color` 20자 초과 등 Bean Validation 위반 |
+| `400 Bad Request` | `CALENDAR_400_1` | 도메인 검증에서 `title`이 공백으로 판정된 경우 |
+| `400 Bad Request` | `CALENDAR_400_2` | `eventEndAt`이 `eventStartAt`보다 이전인 경우 |
+| `401 Unauthorized` | `COMMON_401_1` | Access Token이 없거나 유효하지 않은 경우 |
+| `404 Not Found` | `CALENDAR_404_1` | 일정이 존재하지 않거나 다른 학원 소속인 경우 |
+| `500 Internal Server Error` | `COMMON_500_1` | 처리되지 않은 서버 오류 |
+
+### Business Rules
+
+- 다른 학원 소속 일정을 수정하려고 하면 존재 여부를 노출하지 않기 위해 "존재하지 않음"과 동일하게 `CALENDAR_404_1`로 응답한다(별도의 403 응답을 두지 않음).
+- `academyId`, `createdBy`, `createdAt`은 수정 대상이 아니다. `updatedAt`은 `BaseTimeEntity`(Spring Data JPA Auditing)가 수정 시 자동으로 갱신한다.
+- 도메인 검증은 `CalendarEvent.update(...)` 내부에서 수행하며, 위반 시 `CalendarTitleRequiredException`(`CALENDAR_400_1`) 또는 `InvalidCalendarPeriodException`(`CALENDAR_400_2`)이 발생한다.

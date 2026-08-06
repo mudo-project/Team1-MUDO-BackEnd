@@ -64,4 +64,14 @@ public class CalendarEventEntity extends BaseTimeEntity {
         this.color = color;
         this.createdBy = createdBy;
     }
+
+    public void update(String title, String content, LocalDateTime eventStartAt, LocalDateTime eventEndAt,
+                        boolean allDay, String color) {
+        this.title = title;
+        this.content = content;
+        this.eventStartAt = eventStartAt;
+        this.eventEndAt = eventEndAt;
+        this.allDay = allDay;
+        this.color = color;
+    }
 }
