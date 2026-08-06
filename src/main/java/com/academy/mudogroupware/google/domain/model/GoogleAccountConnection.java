@@ -5,7 +5,7 @@ import java.time.LocalDateTime;
 public final class GoogleAccountConnection {
 
     private static final long TOKEN_VALID_DAYS = 60;
-    private static final long EXPIRING_WARNING_DAYS = 7;
+    private static final long EXPIRING_WARNING_DAYS = 3;
 
     private final Long id;
     private final Long academyId;

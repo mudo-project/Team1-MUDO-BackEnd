@@ -106,7 +106,7 @@ HTTP `200 OK`
 
 연동된 계정이 없으면 `data`가 `null`이다(별도 404를 두지 않는다 — "연동 안 됨"은 정상적으로 있을 수 있는 상태다).
 
-`status`는 `CONNECTED` / `EXPIRING`(만료 7일 전부터) / `EXPIRED` / `FAILED` 중 하나다.
+`status`는 `CONNECTED` / `EXPIRING`(만료 3일 전부터) / `EXPIRED` / `FAILED` 중 하나다.
 
 ### Error Response
 

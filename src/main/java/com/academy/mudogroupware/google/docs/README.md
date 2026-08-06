@@ -12,7 +12,7 @@
 ## 주요 데이터와 상태
 
 - `GoogleAccountConnection`: 학원(`academyId`)당 1건. 구글 이메일, 연결한 관리자, 부여받은 scope, 암호화된 리프레시 토큰, 연결 일시, 토큰 만료 예정 일시(연결일 + 60일), 마지막 확인 일시, 실패 여부를 가진다.
-- 상태(`GoogleConnectionStatus`)는 저장하지 않고 조회 시점에 계산한다: `CONNECTED` / `EXPIRING`(만료 7일 전부터) / `EXPIRED` / `FAILED`. 행이 없으면 "연동 안 됨"이다.
+- 상태(`GoogleConnectionStatus`)는 저장하지 않고 조회 시점에 계산한다: `CONNECTED` / `EXPIRING`(만료 3일 전부터) / `EXPIRED` / `FAILED`. 행이 없으면 "연동 안 됨"이다.
 - 리프레시 토큰은 평문으로 저장하지 않는다. `GoogleTokenCipher`(AES-GCM, 키는 `JWT_SECRET` 재사용)로 암호화해 저장하고, 조회 시 복호화한다.
 
 ## 외부에 공개하는 Application API
