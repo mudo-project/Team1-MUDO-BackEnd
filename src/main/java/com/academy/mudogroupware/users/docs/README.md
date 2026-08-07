@@ -19,6 +19,7 @@
 - `CreateRoleUseCase`
 - `AssignRolePermissionsUseCase`
 - `PermissionQueryUseCase`
+- `ListRolesUseCase`
 - `ListAcademyApplicationsUseCase`
 - `GetAcademyApplicationUseCase`
 - `ApproveAcademyApplicationUseCase`
