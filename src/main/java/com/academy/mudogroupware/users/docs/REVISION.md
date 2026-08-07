@@ -1,5 +1,5 @@
 > 작성일: 2026-08-04
-> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, 역할 생성 + 권한 조립 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청 목록/상세 조회(PR 1·2/3) 완료 · 역할 수정·삭제·목록/상세 조회, 학원 신청 승인/반려(PR 3/3), 학원 관리자의 직원 계정 발급(계정 발급 체계 3단계) 미착수
+> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, 역할 생성 + 권한 조립 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청/승인 워크플로우(PR 1·2·3/3, "계정 발급 체계" 2단계) 완료 · 역할 수정·삭제·목록/상세 조회, 학원 관리자의 직원 계정 발급(계정 발급 체계 3단계) 미착수
 
 ## 🎯 변경 목적
 
@@ -304,6 +304,50 @@ PR 1(목록 조회)이 develop에 머지된 뒤 그 위에서 이어가는 두 �
 | Application(users) | `GetAcademyApplicationUseCase`/`GetAcademyApplicationService` 신규 |
 | Presentation(users) | `AcademyApplicationController`에 `GET /{applicationId}` 핸들러 추가, `AcademyApplicationResponseCode.ACADEMY_APPLICATION_200_2` 추가 |
 | Security(global) | `SecurityConfig` GET 규칙에 `/api/academy-applications/*` 패턴 추가 |
+
+---
+
+## ✅ 2026-08-07 · 학원 신청 승인/반려 API 구현 (`POST .../approve`, `POST .../reject`, 이슈 #165, PR 3/3)
+
+### 배경
+
+PR 1(목록)·PR 2(상세)에 이어지는 세 번째이자 마지막 PR. 승인 시점에 academy와 최초 관리자 계정을 함께 발급하는 핵심 트랜잭션을 구현한다. "계정 발급 체계" 2단계(학원 신청/승인 워크플로우)가 이 PR로 완료된다.
+
+### 확정된 정책
+
+- **academy↔user 순환참조는 "academy를 `user_id=NULL`로 먼저 만들고 나중에 채우는" 순서로 푼다.** `users.academy_id`가 `NOT NULL`이라 user를 academy보다 먼저 만들 수 없다 — SUPER ADMIN 인증 연결(PR #156) 때 수동 시드로 이미 검증한 것과 동일한 원리를 승인 트랜잭션에 그대로 적용했다.
+- **`AcademyRepository.save()`는 생성 전용, `assignUser()`/`AcademyApplicationRepository`의 `markApproved()`/`markRejected()`는 관리 엔티티 직접 mutate.** `academy`/`academy_application` 둘 다 `updated_at`이 `ON UPDATE CURRENT_TIMESTAMP`인데, detached 도메인 객체를 다시 `save()`(merge)하면 Hibernate가 로드 시점의 `updated_at` 값을 그대로 UPDATE문에 실어보내 MySQL의 자동 갱신을 덮어써버린다. 기존 `RoleRepository.save()`(생성 전용)/`updatePermissions()`(관리 엔티티 직접 mutate) 분리 패턴을 그대로 따라 이 문제를 피했다.
+- **임시 비밀번호는 승인 응답에 평문으로 한 번만 내려준다.** 이메일 발송 인프라가 없어 SUPER ADMIN이 신청자에게 수동으로 전달해야 한다 — 이메일 발송이 생기면 이 응답 필드는 제거될 예정.
+- **`ensurePending()` 가드**로 이미 검토된(승인/반려) 신청서의 재승인/재반려를 막는다(`AcademyApplicationAlreadyReviewedException`, `USER_409_5`).
+- SecurityConfig의 approve/reject 경로는 목록/상세와 동일하게 `PLATFORM:SUPER_ADMIN` 필터체인 인가를 재사용한다.
+
+### 완료 기준
+
+- [x] `AcademyStatus` enum, `Academy` 도메인 모델(`create`/`restore`)
+- [x] `User.create(...)` 팩토리 추가(최초의 사용자 생성 경로)
+- [x] `AcademyRepository`(신규) + `AcademyManagementJpaRepository`/`AcademyManagementRepositoryImpl`(빈 이름 충돌 회피 명명), `AcademyManagementRepositoryImplDataJpaTest`(더티체킹 검증)
+- [x] `UserRepository.save(User)` 추가 + 구현
+- [x] `AcademyApplication.ensurePending()`, `AcademyApplicationRepository.markApproved`/`markRejected` + 구현
+- [x] `AcademyApplicationAlreadyReviewedException` + `UserErrorCode.ACADEMY_APPLICATION_ALREADY_REVIEWED`(`USER_409_5`)
+- [x] `ApproveAcademyApplicationService`(TDD, 핵심 순환참조 트랜잭션)/`RejectAcademyApplicationService`(TDD)
+- [x] `AcademyApplicationController` approve/reject 엔드포인트
+- [x] `SecurityConfig`에 approve/reject 경로 규칙 추가
+- [x] `AcademyApplicationApprovedEvent` 정의 및 발행
+- [x] 서비스 단위 테스트 2세트 + `AcademyApplicationSecurityIntegrationTest`에 approve/reject 401/403/200(204) 케이스 추가
+- [x] 로컬 curl end-to-end 검증(승인 → 임시 비밀번호로 로그인 성공 → 그 계정으로 SUPER ADMIN 전용 엔드포인트 호출 시 403 → 반려 플로우까지 확인)
+- [x] `./gradlew build` 통과
+
+### 🧩 영향 범위
+
+| 계층 | 변경 내용 |
+| --- | --- |
+| Domain(users) | `AcademyStatus` enum, `Academy` 도메인 모델 신규. `User.create()` 팩토리 추가. `AcademyApplication.ensurePending()` 추가. `AcademyApplicationAlreadyReviewedException` 신규, `UserErrorCode.ACADEMY_APPLICATION_ALREADY_REVIEWED`(`USER_409_5`) 추가 |
+| Domain(users) | `AcademyRepository` 인터페이스 신규(`save`/`assignUser`). `AcademyApplicationRepository`에 `markApproved`/`markRejected` 추가. `UserRepository`에 `save` 추가 |
+| Persistence(users) | `AcademyEntity`/`AcademyManagementJpaRepository`/`AcademyManagementRepositoryImpl` 신규. `AcademyApplicationEntity`에 `markApproved`/`markRejected` mutator 추가. `UserRepositoryImpl.save` 구현 |
+| Application(users) | `ApproveAcademyApplicationService`/`RejectAcademyApplicationService` 및 대응 Command/UseCase/Result 신규 |
+| Presentation(users) | `AcademyApplicationController`에 approve/reject 핸들러 추가, `AcademyApplicationResponseCode.ACADEMY_APPLICATION_200_3`, `RejectAcademyApplicationRequest`/`AcademyApplicationApproveResponse` 신규 |
+| Domain event(users) | `AcademyApplicationApprovedEvent` 신규(리스너 없음, 알림 발송 인프라 부재) |
+| Security(global) | `SecurityConfig`에 approve/reject 경로 접근 규칙 추가 |
 
 ---
 
