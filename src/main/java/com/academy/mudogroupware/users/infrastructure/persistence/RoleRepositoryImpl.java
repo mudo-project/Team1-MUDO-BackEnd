@@ -75,6 +75,18 @@ public class RoleRepositoryImpl implements RoleRepository {
                 .toList();
     }
 
+    @Override
+    public boolean existsByAcademyIdAndNameAndIdNot(Long academyId, String name, Long excludedRoleId) {
+        return roleJpaRepository.existsByAcademyIdAndNameAndIdNot(academyId, name, excludedRoleId);
+    }
+
+    @Override
+    public void updateNameAndDescription(Long roleId, String name, String description) {
+        RoleEntity entity = roleJpaRepository.findWithPermissionsById(roleId)
+                .orElseThrow(RoleNotFoundException::new);
+        entity.update(name, description);
+    }
+
     private Role toDomainWithoutPermissions(RoleEntity entity) {
         return Role.restore(
                 entity.getId(), entity.getAcademyId(), entity.getName(), entity.getDescription(),
