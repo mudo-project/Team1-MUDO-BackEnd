@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.academy.mudogroupware.approval.application.command.DecideApprovalLineCommand;
 import com.academy.mudogroupware.approval.application.usecase.DecideApprovalLineUseCase;
+import com.academy.mudogroupware.approval.domain.event.ApprovalDocumentDecidedEvent;
 import com.academy.mudogroupware.approval.domain.event.ApprovalLineActivatedEvent;
 import com.academy.mudogroupware.approval.domain.exception.ApprovalErrorCode;
 import com.academy.mudogroupware.approval.domain.exception.ApprovalException;
@@ -43,6 +44,13 @@ public class DecideApprovalLineService implements DecideApprovalLineUseCase {
             approvalDocument.currentPendingApproverId().ifPresent(nextApproverId -> eventPublisher.publishEvent(
                     new ApprovalLineActivatedEvent(approvalDocument.getId(), approvalDocument.getTitle(),
                             nextApproverId, now)));
+        }
+
+        if (approvalDocument.getStatus() == ApprovalStatus.APPROVED
+                || approvalDocument.getStatus() == ApprovalStatus.REJECTED) {
+            eventPublisher.publishEvent(new ApprovalDocumentDecidedEvent(approvalDocument.getId(),
+                    approvalDocument.getAcademyId(), approvalDocument.getCreatorId(),
+                    approvalDocument.getStatus() == ApprovalStatus.APPROVED, now));
         }
     }
 }

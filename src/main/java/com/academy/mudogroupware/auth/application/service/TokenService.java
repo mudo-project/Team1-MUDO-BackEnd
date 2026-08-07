@@ -20,8 +20,9 @@ public class TokenService
 
   @Override
   @Transactional
-  public TokenPair issue(Long id, String username, Long roleId, Long academyId) {
-    String a = provider.createAccessToken(id, username, roleId, academyId),
+  public TokenPair issue(Long id, String username, Long roleId, Long academyId, AccountType accountType,
+                          AdminScope adminScope) {
+    String a = provider.createAccessToken(id, username, roleId, academyId, accountType, adminScope),
         r = provider.createRefreshToken(id, username);
     repository
         .findByUserId(id)
@@ -31,8 +32,9 @@ public class TokenService
   }
 
   @Override
-  public String issueAccessToken(Long id, String username, Long roleId, Long academyId) {
-    return provider.createAccessToken(id, username, roleId, academyId);
+  public String issueAccessToken(Long id, String username, Long roleId, Long academyId, AccountType accountType,
+                                  AdminScope adminScope) {
+    return provider.createAccessToken(id, username, roleId, academyId, accountType, adminScope);
   }
 
   @Override

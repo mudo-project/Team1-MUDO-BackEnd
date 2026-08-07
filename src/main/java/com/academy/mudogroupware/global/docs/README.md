@@ -46,3 +46,4 @@
 ## 📚 세부 문서
 
 - [API.md](API.md) — `global`이 제공하는 공통 컴포넌트 목록과 사용 방법
+- [BOILER_PLATE.md](BOILER_PLATE.md) — Global Retention Scheduler 설계 가이드(미구현). 여러 도메인의 삭제·정리 배치가 필요해질 때 이 문서를 그대로 따라 구현합니다.

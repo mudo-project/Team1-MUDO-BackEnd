@@ -18,13 +18,16 @@ public class JwtTokenProvider {
     this.key = Keys.hmacShaKeyFor(p.getSecret().getBytes(StandardCharsets.UTF_8));
   }
 
-  public String createAccessToken(Long id, String username, Long roleId, Long academyId) {
+  public String createAccessToken(Long id, String username, Long roleId, Long academyId, AccountType accountType,
+                                   AdminScope adminScope) {
     Date n = new Date();
     return Jwts.builder()
         .subject(String.valueOf(id))
         .claim("username", username)
         .claim("roleId", roleId)
         .claim("academyId", academyId)
+        .claim("accountType", accountType.name())
+        .claim("adminScope", adminScope == null ? null : adminScope.name())
         .issuedAt(n)
         .expiration(new Date(n.getTime() + p.getAccessTokenExpiration()))
         .signWith(key, Jwts.SIG.HS256)
@@ -57,7 +60,11 @@ public class JwtTokenProvider {
     if (u == null || u.isBlank()) throw new AuthException(AuthErrorCode.USERNAME_CLAIM_MISSING);
     Long roleId = c.get("roleId", Long.class);
     Long academyId = c.get("academyId", Long.class);
-    return new JwtClaims(id(c), u, roleId, academyId);
+    String accountTypeRaw = c.get("accountType", String.class);
+    AccountType accountType = accountTypeRaw == null ? AccountType.MEMBER : AccountType.valueOf(accountTypeRaw);
+    String adminScopeRaw = c.get("adminScope", String.class);
+    AdminScope adminScope = adminScopeRaw == null ? null : AdminScope.valueOf(adminScopeRaw);
+    return new JwtClaims(id(c), u, roleId, academyId, accountType, adminScope);
   }
 
   public RefreshTokenClaims parseRefreshToken(String token) {

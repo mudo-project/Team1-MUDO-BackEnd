@@ -139,7 +139,7 @@ public class ApprovalController {
 
     @Operation(summary = "첨부파일 AI 요약 생성",
             description = "Gemini API를 호출해 첨부파일 요약을 생성한다. 신청자 본인 또는 결재선 포함자만 가능. "
-                    + "⚠️ 아직 실제 파일 내용이 아니라 placeholder 텍스트로 요약을 요청한다.")
+                    + "file 모듈이 첨부파일 원문을 제공하지 않으면 409로 실패한다.")
     @PostMapping("/{documentId}/attachments/{fileId}/summarize")
     public ResponseEntity<GlobalApiResponse<ApprovalAttachmentSummaryResponse>> summarizeAttachment(
             @AuthenticationPrincipal AuthUser authUser,

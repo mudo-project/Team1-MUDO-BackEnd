@@ -19,7 +19,9 @@ public class CalendarEventPersistenceAdapter implements CalendarEventRepository 
 
     @Override
     public CalendarEvent save(CalendarEvent calendarEvent) {
-        CalendarEventEntity entity = toEntity(calendarEvent);
+        CalendarEventEntity entity = calendarEvent.getId() != null
+                ? updateExisting(calendarEvent)
+                : toEntity(calendarEvent);
         return toDomain(calendarEventJpaRepository.save(entity));
     }
 
@@ -38,6 +40,13 @@ public class CalendarEventPersistenceAdapter implements CalendarEventRepository 
     @Override
     public void deleteById(Long id) {
         calendarEventJpaRepository.deleteById(id);
+    }
+
+    private CalendarEventEntity updateExisting(CalendarEvent domain) {
+        CalendarEventEntity entity = calendarEventJpaRepository.getReferenceById(domain.getId());
+        entity.update(domain.getTitle(), domain.getContent(), domain.getEventStartAt(),
+                domain.getEventEndAt(), domain.isAllDay(), domain.getColor());
+        return entity;
     }
 
     private CalendarEventEntity toEntity(CalendarEvent domain) {

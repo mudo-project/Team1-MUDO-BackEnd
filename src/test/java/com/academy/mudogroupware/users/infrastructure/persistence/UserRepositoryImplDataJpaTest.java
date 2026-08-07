@@ -65,9 +65,9 @@ class UserRepositoryImplDataJpaTest {
         jdbcTemplate.update("""
                 insert into users (
                     id, academy_id, username, password, name, phone_number, email, status,
-                    must_change_pw, is_platform_admin, created_at, updated_at
-                ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, current_timestamp, current_timestamp)
+                    must_change_pw, account_type, admin_scope, created_at, updated_at
+                ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, current_timestamp, current_timestamp)
                 """, id, academyId, "user-" + suffix, "password", "사용자-" + suffix,
-                "010-0000-0000", suffix + "@example.com", status.name(), false, false);
+                "010-0000-0000", suffix + "@example.com", status.name(), false, "MEMBER", null);
     }
 }

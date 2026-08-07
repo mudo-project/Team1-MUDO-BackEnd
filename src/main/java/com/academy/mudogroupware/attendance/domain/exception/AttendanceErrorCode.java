@@ -83,6 +83,14 @@ public enum AttendanceErrorCode implements ErrorCode {
             HttpStatus.BAD_REQUEST,
             "ATTENDANCE_400_9",
             "초과근무인 경우 퇴근 사유를 입력해야 합니다."),
+    INVALID_LEAVE_PERIOD(
+            HttpStatus.BAD_REQUEST,
+            "ATTENDANCE_400_10",
+            "유효하지 않은 휴가 기간입니다."),
+    LEAVE_REQUEST_NO_WORKDAY(
+            HttpStatus.BAD_REQUEST,
+            "ATTENDANCE_400_11",
+            "휴가 기간에 근무일이 없습니다."),
     CHECK_IN_FORBIDDEN(
             HttpStatus.FORBIDDEN,
             "ATTENDANCE_403_2",
@@ -122,7 +130,19 @@ public enum AttendanceErrorCode implements ErrorCode {
     ATTENDANCE_ALREADY_CHECKED_OUT(
             HttpStatus.CONFLICT,
             "ATTENDANCE_409_3",
-            "오늘은 이미 퇴근이 등록되었습니다.");
+            "오늘은 이미 퇴근이 등록되었습니다."),
+    LEAVE_REQUEST_OVERLAP(
+            HttpStatus.CONFLICT,
+            "ATTENDANCE_409_4",
+            "같은 기간에 신청 중이거나 승인된 휴가가 있습니다."),
+    INSUFFICIENT_LEAVE_BALANCE(
+            HttpStatus.CONFLICT,
+            "ATTENDANCE_409_5",
+            "신청 가능한 잔여 연차가 부족합니다."),
+    INVALID_LEAVE_REQUEST_STATE(
+            HttpStatus.CONFLICT,
+            "ATTENDANCE_409_6",
+            "변경할 수 없는 휴가 신청 상태입니다.");
 
     private final HttpStatus httpStatus;
     private final String code;

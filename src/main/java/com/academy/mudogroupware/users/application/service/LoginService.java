@@ -35,6 +35,7 @@ public class LoginService implements LoginUseCase {
 
         user.ensureLoginAllowed();
 
-        return tokenIssuerUseCase.issue(user.getId(), user.getUsername(), user.getRoleId(), user.getAcademyId());
+        return tokenIssuerUseCase.issue(user.getId(), user.getUsername(), user.getRoleId(), user.getAcademyId(),
+                user.getAccountType(), user.getAdminScope());
     }
 }

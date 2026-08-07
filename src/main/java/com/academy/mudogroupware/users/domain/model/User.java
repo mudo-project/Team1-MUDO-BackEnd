@@ -2,6 +2,8 @@ package com.academy.mudogroupware.users.domain.model;
 
 import java.time.LocalDateTime;
 
+import com.academy.mudogroupware.global.domain.auth.AccountType;
+import com.academy.mudogroupware.global.domain.auth.AdminScope;
 import com.academy.mudogroupware.users.domain.exception.UserErrorCode;
 import com.academy.mudogroupware.users.domain.exception.UserException;
 
@@ -17,14 +19,15 @@ public final class User {
     private final Long roleId;
     private final UserStatus status;
     private final boolean mustChangePw;
-    private final boolean platformAdmin;
+    private final AccountType accountType;
+    private final AdminScope adminScope;
     private final LocalDateTime joinedAt;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
 
     private User(Long id, Long academyId, String username, String password, String name, String phone,
-                  String email, Long roleId, UserStatus status, boolean mustChangePw, boolean platformAdmin,
-                  LocalDateTime joinedAt, LocalDateTime createdAt, LocalDateTime updatedAt) {
+                  String email, Long roleId, UserStatus status, boolean mustChangePw, AccountType accountType,
+                  AdminScope adminScope, LocalDateTime joinedAt, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.academyId = academyId;
         this.username = username;
@@ -35,7 +38,8 @@ public final class User {
         this.roleId = roleId;
         this.status = status;
         this.mustChangePw = mustChangePw;
-        this.platformAdmin = platformAdmin;
+        this.accountType = accountType;
+        this.adminScope = adminScope;
         this.joinedAt = joinedAt;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
@@ -43,10 +47,10 @@ public final class User {
 
     public static User restore(Long id, Long academyId, String username, String password, String name, String phone,
                                 String email, Long roleId, UserStatus status, boolean mustChangePw,
-                                boolean platformAdmin, LocalDateTime joinedAt, LocalDateTime createdAt,
-                                LocalDateTime updatedAt) {
+                                AccountType accountType, AdminScope adminScope, LocalDateTime joinedAt,
+                                LocalDateTime createdAt, LocalDateTime updatedAt) {
         return new User(id, academyId, username, password, name, phone, email, roleId, status, mustChangePw,
-                platformAdmin, joinedAt, createdAt, updatedAt);
+                accountType, adminScope, joinedAt, createdAt, updatedAt);
     }
 
     public void ensureLoginAllowed() {
@@ -95,8 +99,12 @@ public final class User {
         return mustChangePw;
     }
 
-    public boolean isPlatformAdmin() {
-        return platformAdmin;
+    public AccountType getAccountType() {
+        return accountType;
+    }
+
+    public AdminScope getAdminScope() {
+        return adminScope;
     }
 
     public LocalDateTime getJoinedAt() {
