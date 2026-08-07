@@ -2,6 +2,8 @@ package com.academy.mudogroupware.users.domain.model;
 
 import java.time.LocalDateTime;
 
+import com.academy.mudogroupware.users.domain.exception.AcademyApplicationAlreadyReviewedException;
+
 public final class AcademyApplication {
 
     private final Long id;
@@ -49,6 +51,12 @@ public final class AcademyApplication {
         return new AcademyApplication(id, requestedLoginId, academyName, businessNo, representativeName,
                 representativeEmail, representativePhone, businessLicenseFileId, status, rejectReason,
                 reviewedByUserId, reviewedAt, createdAt, updatedAt);
+    }
+
+    public void ensurePending() {
+        if (status != AcademyApplicationStatus.PENDING) {
+            throw new AcademyApplicationAlreadyReviewedException();
+        }
     }
 
     public Long getId() {

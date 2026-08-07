@@ -285,7 +285,67 @@
 
 ---
 
-## 9. 역할 목록 조회
+## 9. 학원 신청 승인
+
+`POST /api/academy-applications/{applicationId}/approve`
+권한: `PLATFORM:SUPER_ADMIN` 필요
+
+### Request
+
+별도 요청 바디 없음.
+
+### Response · `200 OK`
+
+승인 시 academy와 최초 관리자 계정을 같은 트랜잭션에서 함께 생성합니다. 이메일 발송 인프라가 아직 없어, 생성된 임시 비밀번호를 응답에 평문으로 1회 담아 SUPER ADMIN이 신청자에게 수동으로 전달합니다.
+
+```json
+{
+  "status": 200,
+  "code": "ACADEMY_APPLICATION_200_3",
+  "message": "학원 신청을 승인했습니다.",
+  "data": {
+    "academyId": 10,
+    "userId": 20,
+    "temporaryPassword": "Xk9#mQ2pRt7$"
+  }
+}
+```
+
+### 검증 및 정책
+
+- `applicationId`가 존재하지 않으면 `USER_404_3`, 이미 승인/반려된 신청서면 `USER_409_5`로 응답합니다.
+- 새로 발급되는 계정은 `account_type=ADMIN`, `admin_scope=ACADEMY`, `must_change_pw=true`로 생성되어 최초 로그인 시 비밀번호 변경이 강제됩니다.
+
+---
+
+## 10. 학원 신청 반려
+
+`POST /api/academy-applications/{applicationId}/reject`
+권한: `PLATFORM:SUPER_ADMIN` 필요
+
+### Request
+
+```json
+{
+  "rejectReason": "사업자번호 확인 불가"
+}
+```
+
+| name | type | required | 설명 |
+| --- | --- | --- | --- |
+| `rejectReason` | String | true | 반려 사유 (최대 255자) |
+
+### Response · `204 No Content`
+
+본문 없음.
+
+### 검증 및 정책
+
+- `applicationId`가 존재하지 않으면 `USER_404_3`, 이미 승인/반려된 신청서면 `USER_409_5`로 응답합니다.
+
+---
+
+## 11. 역할 목록 조회
 
 `GET /api/roles`
 권한: `ROLE:MANAGE` 필요
@@ -330,9 +390,10 @@
 | `400` | `USER_400_1` | 존재하지 않는 권한 코드로 역할 권한 조립 시도 |
 | `404` | `USER_404_2` | 역할이 존재하지 않거나 다른 학원 소속 |
 | `404` | `USER_404_3` | 학원 신청서가 존재하지 않음 |
+| `409` | `USER_409_5` | 이미 검토된(승인/반려) 신청서를 다시 승인/반려 시도 |
 | `401` | `AUTH_401_1` | 리프레시 토큰 자체가 위조되었거나 형식이 올바르지 않음 |
 | `401` | `AUTH_401_2` | 리프레시 토큰이 만료됨 |
 | `401` | `AUTH_401_6` | 서버에 저장된 리프레시 토큰이 없음 |
 | `401` | `AUTH_401_7` | 요청된 리프레시 토큰이 저장된 값과 일치하지 않음 (다른 기기 재로그인 등으로 무효화됨) |
 | `400` | `COMMON_400_1` | 요청 형식 오류 (`username`/`password` 누락 또는 길이 초과, 또는 역할 `name`/`description` 형식 오류) |
-| `403` | `COMMON_403_1` | `ROLE:MANAGE` 권한이 없는 계정으로 역할 생성 시도, 또는 `PLATFORM:SUPER_ADMIN`이 아닌 계정으로 학원 신청 목록/상세 조회 시도 |
+| `403` | `COMMON_403_1` | `ROLE:MANAGE` 권한이 없는 계정으로 역할 생성 시도, 또는 `PLATFORM:SUPER_ADMIN`이 아닌 계정으로 학원 신청 목록/상세 조회·승인·반려 시도 |

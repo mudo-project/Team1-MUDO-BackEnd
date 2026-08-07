@@ -66,4 +66,19 @@ public class AcademyApplicationEntity {
 
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    void markApproved(Long reviewerId, LocalDateTime reviewedAt) {
+        this.status = AcademyApplicationStatus.APPROVED;
+        this.reviewedByUserId = reviewerId;
+        this.reviewedAt = reviewedAt;
+        this.updatedAt = reviewedAt;
+    }
+
+    void markRejected(Long reviewerId, LocalDateTime reviewedAt, String reason) {
+        this.status = AcademyApplicationStatus.REJECTED;
+        this.reviewedByUserId = reviewerId;
+        this.reviewedAt = reviewedAt;
+        this.rejectReason = reason;
+        this.updatedAt = reviewedAt;
+    }
 }

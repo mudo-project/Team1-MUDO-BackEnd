@@ -2,6 +2,7 @@ package com.academy.mudogroupware.attendance.domain.repository;
 
 import java.time.LocalDate;
 import java.util.Optional;
+import java.util.List;
 import java.util.Set;
 
 import com.academy.mudogroupware.attendance.domain.model.LeaveRequest;
@@ -21,4 +22,11 @@ public interface LeaveRequestRepository {
     boolean existsOverlapping(Long academyId, Long userId, LocalDate startDate, LocalDate endDate);
 
     int sumReservedDays(Long academyId, Long userId, LocalDate periodStart, LocalDate periodEnd);
+
+    List<LeaveRequest> findApprovedOverlapping(
+            Long academyId, Long userId, LocalDate startDate, LocalDate endDate);
+
+    int sumUsedDaysByStatus(
+            Long academyId, Long userId, LocalDate periodStart, LocalDate periodEnd,
+            com.academy.mudogroupware.attendance.domain.model.LeaveRequestStatus status);
 }
