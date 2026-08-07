@@ -1,8 +1,10 @@
 package com.academy.mudogroupware.users.presentation.api;
 
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.LocalDateTime;
@@ -18,6 +20,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import com.academy.mudogroupware.users.application.usecase.GetAcademyApplicationUseCase;
 import com.academy.mudogroupware.users.application.usecase.ListAcademyApplicationsUseCase;
+import com.academy.mudogroupware.users.domain.exception.AcademyApplicationNotFoundException;
 import com.academy.mudogroupware.users.domain.model.AcademyApplication;
 import com.academy.mudogroupware.users.domain.model.AcademyApplicationStatus;
 
@@ -93,6 +96,22 @@ class AcademyApplicationSecurityIntegrationTest {
                 new TestingAuthenticationToken("superadmin", null, "PLATFORM:SUPER_ADMIN");
 
         mockMvc.perform(get("/api/academy-applications/1").with(authentication(superAdmin)))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("ACADEMY_APPLICATION_200_2"))
+                .andExpect(jsonPath("$.data.applicationId").value(1));
+
+        verify(getAcademyApplicationUseCase).getApplication(1L);
+    }
+
+    @Test
+    void detailReturns404WhenApplicationNotFound() throws Exception {
+        when(getAcademyApplicationUseCase.getApplication(99L))
+                .thenThrow(new AcademyApplicationNotFoundException());
+        TestingAuthenticationToken superAdmin =
+                new TestingAuthenticationToken("superadmin", null, "PLATFORM:SUPER_ADMIN");
+
+        mockMvc.perform(get("/api/academy-applications/99").with(authentication(superAdmin)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("USER_404_3"));
     }
 }
