@@ -8,19 +8,16 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.academy.mudogroupware.workspace.domain.model.RecurrenceType;
+import com.academy.mudogroupware.workspace.domain.model.Task;
 import com.academy.mudogroupware.workspace.domain.model.TaskStatus;
-import com.academy.mudogroupware.workspace.infrastructure.persistence.task.RecurringTaskTemplateJpaEntity;
-import com.academy.mudogroupware.workspace.infrastructure.persistence.task.TaskJpaEntity;
-import com.academy.mudogroupware.workspace.infrastructure.persistence.task.TaskJpaRepository;
-import com.academy.mudogroupware.workspace.infrastructure.persistence.task.TaskStatusHistoryJpaEntity;
-import com.academy.mudogroupware.workspace.infrastructure.persistence.task.TaskStatusHistoryJpaRepository;
+import com.academy.mudogroupware.workspace.domain.model.TaskStatusHistory;
+import com.academy.mudogroupware.workspace.domain.repository.TaskRepository;
+import com.academy.mudogroupware.workspace.domain.repository.TaskStatusHistoryRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
-import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -37,14 +34,17 @@ class DelayOverdueTasksServiceTest {
   // KST day-boundary instead of coincidentally agreeing with a UTC-naive LocalDate.now().
   private static final Clock FIXED_CLOCK =
       Clock.fixed(Instant.parse("2026-08-04T15:00:00Z"), KST);
+  private static final long WORKSPACE_ID = 1L;
+  private static final long CREATOR_ID = 10L;
 
-  @Mock private TaskJpaRepository taskJpaRepository;
-  @Mock private TaskStatusHistoryJpaRepository taskStatusHistoryJpaRepository;
+  @Mock private TaskRepository taskRepository;
+  @Mock private TaskStatusHistoryRepository taskStatusHistoryRepository;
 
-  @Captor private ArgumentCaptor<TaskStatusHistoryJpaEntity> historyCaptor;
+  @Captor private ArgumentCaptor<Task> taskCaptor;
+  @Captor private ArgumentCaptor<TaskStatusHistory> historyCaptor;
 
   private DelayOverdueTasksService service() {
-    return new DelayOverdueTasksService(taskJpaRepository, taskStatusHistoryJpaRepository, FIXED_CLOCK);
+    return new DelayOverdueTasksService(taskRepository, taskStatusHistoryRepository, FIXED_CLOCK);
   }
 
   @Test
@@ -52,27 +52,25 @@ class DelayOverdueTasksServiceTest {
     LocalDate today = LocalDate.now(FIXED_CLOCK);
     assertThat(today).isEqualTo(LocalDate.of(2026, 8, 5));
 
-    TaskJpaEntity regular =
-        TaskJpaEntity.create(null, null, "정기", 10L, TaskStatus.IN_PROGRESS, today.minusDays(1), null);
-    // 실제 반복 업무 계약(recurringTemplate != null, 과거 scheduledFor)을 그대로 갖춘 fixture
-    RecurringTaskTemplateJpaEntity template =
-        RecurringTaskTemplateJpaEntity.create(null, "daily", RecurrenceType.DAILY, Map.of(), 10L);
-    TaskJpaEntity recurring =
-        TaskJpaEntity.create(
-            null, template, "반복", 10L, TaskStatus.WAITING, null, today.minusDays(1).atTime(9, 0));
-    when(taskJpaRepository.findOverdueRegularTasks(eq(today), eq(TaskStatus.COMPLETED), eq(TaskStatus.DELAYED)))
-        .thenReturn(List.of(regular));
-    when(taskJpaRepository.findOverdueRecurringTasks(
-            eq(today.atStartOfDay()), eq(TaskStatus.COMPLETED), eq(TaskStatus.DELAYED)))
+    Task regular =
+        Task.restore(1L, WORKSPACE_ID, null, "정기", TaskStatus.IN_PROGRESS, today.minusDays(1),
+            null, CREATOR_ID);
+    Task recurring =
+        Task.restore(2L, WORKSPACE_ID, 100L, "반복", TaskStatus.WAITING, null,
+            today.minusDays(1).atTime(9, 0), CREATOR_ID);
+    when(taskRepository.findOverdueRegularTasks(eq(today))).thenReturn(List.of(regular));
+    when(taskRepository.findOverdueRecurringTasks(eq(today.atStartOfDay())))
         .thenReturn(List.of(recurring));
 
     service().delayOverdueTasks();
 
-    assertThat(regular.getStatus()).isEqualTo(TaskStatus.DELAYED);
-    assertThat(recurring.getStatus()).isEqualTo(TaskStatus.DELAYED);
-    verify(taskStatusHistoryJpaRepository, times(2)).save(historyCaptor.capture());
+    verify(taskRepository, times(2)).save(taskCaptor.capture());
+    assertThat(taskCaptor.getAllValues())
+        .extracting(Task::getStatus)
+        .containsOnly(TaskStatus.DELAYED);
 
-    List<TaskStatusHistoryJpaEntity> savedHistories = historyCaptor.getAllValues();
+    verify(taskStatusHistoryRepository, times(2)).append(historyCaptor.capture());
+    List<TaskStatusHistory> savedHistories = historyCaptor.getAllValues();
     assertThat(savedHistories)
         .allSatisfy(
             history -> {
@@ -80,26 +78,24 @@ class DelayOverdueTasksServiceTest {
               assertThat(history.getChangedBy()).isNull();
             });
     assertThat(savedHistories)
-        .filteredOn(history -> history.getTask() == regular)
-        .extracting(TaskStatusHistoryJpaEntity::getPreviousStatus)
+        .filteredOn(history -> history.getTaskId().equals(1L))
+        .extracting(TaskStatusHistory::getPreviousStatus)
         .containsExactly(TaskStatus.IN_PROGRESS);
     assertThat(savedHistories)
-        .filteredOn(history -> history.getTask() == recurring)
-        .extracting(TaskStatusHistoryJpaEntity::getPreviousStatus)
+        .filteredOn(history -> history.getTaskId().equals(2L))
+        .extracting(TaskStatusHistory::getPreviousStatus)
         .containsExactly(TaskStatus.WAITING);
   }
 
   @Test
   void savesNoHistoryWhenThereAreNoOverdueTasks() {
     LocalDate today = LocalDate.now(FIXED_CLOCK);
-    when(taskJpaRepository.findOverdueRegularTasks(eq(today), eq(TaskStatus.COMPLETED), eq(TaskStatus.DELAYED)))
-        .thenReturn(List.of());
-    when(taskJpaRepository.findOverdueRecurringTasks(
-            eq(today.atStartOfDay()), eq(TaskStatus.COMPLETED), eq(TaskStatus.DELAYED)))
-        .thenReturn(List.of());
+    when(taskRepository.findOverdueRegularTasks(eq(today))).thenReturn(List.of());
+    when(taskRepository.findOverdueRecurringTasks(eq(today.atStartOfDay()))).thenReturn(List.of());
 
     service().delayOverdueTasks();
 
-    verify(taskStatusHistoryJpaRepository, never()).save(any());
+    verify(taskRepository, never()).save(any());
+    verify(taskStatusHistoryRepository, never()).append(any());
   }
 }

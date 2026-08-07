@@ -10,11 +10,13 @@ KST 00:00 매일 실행
   → WorkspaceTaskDelayScheduler @Scheduled(cron="0 0 0 * * *", zone="Asia/Seoul")
   → DelayOverdueTasksUseCase (interface)
   → DelayOverdueTasksService @Service @Transactional
-  → TaskJpaRepository.findOverdueRegularTasks
-  → TaskJpaRepository.findOverdueRecurringTasks
-  → TaskJpaEntity.markDelayed()
-  → TaskStatusHistoryJpaRepository.save()
-  → TaskStatusHistoryJpaEntity.systemChanged()
+  → TaskRepository.findOverdueRegularTasks
+  → TaskRepository.findOverdueRecurringTasks
+  → TaskPersistenceAdapter → TaskJpaRepository
+  → Task.changeStatus(DELAYED, null, today) (Domain Model)
+  → TaskRepository.save → TaskPersistenceAdapter
+  → TaskStatusHistoryRepository.append → TaskStatusHistoryPersistenceAdapter
+  → TaskStatusHistory.systemChanged()
   → Logger.info(...) 처리 건수 기록
 ```
 
@@ -26,7 +28,7 @@ KST 00:00 매일 실행
 
 ## 2. 일반 업무(Regular Task) 지연 조회
 
-`TaskJpaRepository.findOverdueRegularTasks(LocalDate today, TaskStatus completed, TaskStatus delayed)`는 다음 조건을 만족하는 모든 업무를 조회합니다.
+`TaskRepository.findOverdueRegularTasks(LocalDate today)`는 다음 조건을 만족하는 모든 업무를 조회합니다.
 
 - `recurringTemplate IS NULL` — 반복 템플릿이 없는 일반 업무
 - `due_at < :today` — 기한이 오늘보다 이전 (즉, 지난 날짜)
@@ -35,7 +37,7 @@ KST 00:00 매일 실행
 
 ## 3. 반복 업무(Recurring Task) 지연 조회
 
-`TaskJpaRepository.findOverdueRecurringTasks(LocalDateTime startOfToday, TaskStatus completed, TaskStatus delayed)`는 다음 조건을 만족하는 모든 업무 발생(occurrence)을 조회합니다.
+`TaskRepository.findOverdueRecurringTasks(LocalDateTime startOfToday)`는 다음 조건을 만족하는 모든 업무 발생(occurrence)을 조회합니다.
 
 - `recurringTemplate IS NOT NULL` — 반복 템플릿을 가진 반복 업무
 - `scheduledFor < :startOfToday` — 예정일이 오늘(KST) 00:00 이전
@@ -48,14 +50,15 @@ KST 00:00 매일 실행
 조회된 각 업무에 대해 `DelayOverdueTasksService`는:
 
 1. 현재 상태를 `previousStatus` 변수에 기록 (전환 전에 **반드시** 수행)
-2. `TaskJpaEntity.markDelayed()` 도메인 메서드를 호출해 상태를 `DELAYED`로 변경
-3. `TaskStatusHistoryJpaEntity.systemChanged()` 팩토리 메서드로 이력 엔티티를 생성
+2. `Task.changeStatus(TaskStatus.DELAYED, null, today)` 도메인 메서드를 호출해 `DELAYED` 상태의 새 `Task` 인스턴스를 얻음 (불변 모델이므로 원본 인스턴스는 바뀌지 않음)
+3. `TaskRepository.save(delayed)`로 변경된 상태를 영속화
+4. `TaskStatusHistory.systemChanged()` 팩토리 메서드로 이력 도메인 객체를 생성
    - `previousStatus`: 전환 전 상태 (예: `IN_PROGRESS`, `WAITING`)
    - `currentStatus`: `DELAYED`
    - `changedBy`: `NULL` (시스템이 자동으로 생성했음을 의미)
-4. `TaskStatusHistoryJpaRepository.save()`로 이력을 저장
+5. `TaskStatusHistoryRepository.append()`로 이력을 저장
 
-**핵심**: `previousStatus`를 `task.getStatus()` 호출로 미리 캡처해야만, `markDelayed()` 후에도 올바른 이전 상태를 기록할 수 있습니다. 이 순서가 뒤바뀌면 이력이 잘못 기록됩니다.
+**핵심**: `previousStatus`를 `task.getStatus()` 호출로 미리 캡처해야만, `changeStatus()` 후에도 올바른 이전 상태를 기록할 수 있습니다. 이 순서가 뒤바뀌면 이력이 잘못 기록됩니다.
 
 ## 5. 멱등성 보장
 
@@ -85,10 +88,11 @@ KST 00:00 매일 실행
 |---|---|---|
 | 1. 스케줄 트리거 | Infrastructure (`SchedulingConfig`, `WorkspaceTaskDelayScheduler`) | 매일 KST 00:00에 작업 시작 신호 |
 | 2. 조회 후보 발굴 | Application (`DelayOverdueTasksService`) | 일반·반복 업무별로 기한 초과 대상 검색 |
-| 3. 쿼리 실행 | Infrastructure (`TaskJpaRepository`) | 데이터베이스에서 조건을 만족하는 업무 조회 |
-| 4. 상태 변경 | Domain (`TaskJpaEntity.markDelayed()`) | 업무 엔티티의 상태를 DELAYED로 변경 |
-| 5. 이력 기록 | Infrastructure (`TaskStatusHistoryJpaRepository`) | 상태 변경 사실과 전환 정보를 영속화 |
-| 6. 관찰 | Infrastructure (`Logger`) | 처리 결과를 로그로 남겨 추적 가능하게 함 |
+| 3. 쿼리 실행 | Port (`TaskRepository.findOverdueRegularTasks`/`findOverdueRecurringTasks`, 구현체 `TaskPersistenceAdapter`) | 데이터베이스에서 조건을 만족하는 업무 조회 |
+| 4. 상태 변경 | Domain (`Task.changeStatus(DELAYED, null, today)`) | 도메인 모델이 상태 전이 규칙을 검증하고 DELAYED 상태의 새 인스턴스를 반환 |
+| 5. 저장 | Port (`TaskRepository.save`) | 반영된 상태를 영속화 |
+| 6. 이력 기록 | Port (`TaskStatusHistoryRepository.append`) | 상태 변경 사실과 전환 정보를 영속화. `changedBy = NULL`로 시스템 처리를 표시 |
+| 7. 관찰 | Infrastructure (`Logger`) | 처리 결과를 로그로 남겨 추적 가능하게 함 |
 
 ## ⚠️ 주의 사항
 
