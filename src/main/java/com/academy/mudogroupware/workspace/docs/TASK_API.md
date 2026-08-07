@@ -6,6 +6,10 @@
 
 ## 업무 생성
 
+### Endpoint
+
+`POST /api/workspaces/{workspaceId}/tasks`
+
 # **[request]**
 
 ### Request Header
@@ -100,6 +104,10 @@ Response Body
 
 ## 업무 상태·마감일 수정
 
+### Endpoint
+
+`PATCH /api/workspaces/{workspaceId}/tasks/{taskId}`
+
 # **[request]**
 
 ### Request Header
@@ -188,6 +196,10 @@ Response Body
 ---
 
 ## 업무 삭제
+
+### Endpoint
+
+`DELETE /api/workspaces/{workspaceId}/tasks/{taskId}`
 
 # **[request]**
 
