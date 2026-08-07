@@ -45,7 +45,7 @@ import com.academy.mudogroupware.messenger.presentation.api.response.ChatRoomMem
 import com.academy.mudogroupware.messenger.presentation.api.response.ChatRoomSummaryResponse;
 import com.academy.mudogroupware.messenger.presentation.api.response.MessageSendResponse;
 import com.academy.mudogroupware.messenger.presentation.api.response.TaskCardCreateResponse;
-import com.academy.mudogroupware.messenger.presentation.api.response.TaskCardResponse;
+import com.academy.mudogroupware.messenger.presentation.api.response.TaskCardPageResponse;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -165,15 +165,18 @@ public class MessengerController {
                         TaskCardCreateResponse.from(cardId)));
     }
 
-    @Operation(summary = "업무지시 카드 목록조회", description = "완료 인원과 전체 담당자 수를 포함해 조회합니다.")
+    @Operation(summary = "업무지시 카드 목록조회",
+            description = "cursor(createdAt+cardId) 기반 페이지네이션으로, 완료 인원과 전체 담당자 수를 포함해 조회합니다.")
     @GetMapping("/{roomId}/task-cards")
-    public ResponseEntity<GlobalApiResponse<List<TaskCardResponse>>> getTaskCards(
+    public ResponseEntity<GlobalApiResponse<TaskCardPageResponse>> getTaskCards(
             @AuthenticationPrincipal AuthUser authUser,
-            @PathVariable Long roomId) {
-        List<TaskCardResponse> responses = taskCardQueryUseCase.getTaskCards(roomId, authUser.userId()).stream()
-                .map(TaskCardResponse::from)
-                .toList();
-        return ResponseEntity.ok(GlobalApiResponse.ok(MessengerResponseCode.TASK_CARD_LIST_RETRIEVED, responses));
+            @PathVariable Long roomId,
+            @RequestParam(required = false) LocalDateTime cursorCreatedAt,
+            @RequestParam(required = false) Long cursorCardId,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
+        TaskCardPageResponse response = TaskCardPageResponse.from(taskCardQueryUseCase.getTaskCards(
+                roomId, authUser.userId(), cursorCreatedAt, cursorCardId, size));
+        return ResponseEntity.ok(GlobalApiResponse.ok(MessengerResponseCode.TASK_CARD_LIST_RETRIEVED, response));
     }
 
     @Operation(summary = "업무지시 완료 처리", description = "담당자 본인만 완료 처리할 수 있습니다.")

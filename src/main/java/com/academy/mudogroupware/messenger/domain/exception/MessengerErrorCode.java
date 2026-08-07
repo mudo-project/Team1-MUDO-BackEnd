@@ -28,6 +28,10 @@ public enum MessengerErrorCode implements ErrorCode {
     NOT_TEXT_MESSAGE(HttpStatus.BAD_REQUEST, "MESSENGER_400_14", "TEXT 메시지만 수정할 수 있습니다."),
     MESSAGE_ALREADY_DELETED(HttpStatus.BAD_REQUEST, "MESSENGER_400_15", "이미 삭제된 메시지입니다."),
     TASK_CARD_ALREADY_DELETED(HttpStatus.BAD_REQUEST, "MESSENGER_400_16", "이미 삭제된 업무지시입니다."),
+    INVALID_TASK_CARD_CURSOR(HttpStatus.BAD_REQUEST, "MESSENGER_400_17",
+            "cursorCreatedAt과 cursorCardId는 함께 전달하거나 함께 생략해야 합니다."),
+    INVALID_TASK_CARD_PAGE_SIZE(HttpStatus.BAD_REQUEST, "MESSENGER_400_18",
+            "업무지시 카드 조회 size는 1 이상 100 이하여야 합니다."),
 
     NOT_ROOM_MEMBER(HttpStatus.FORBIDDEN, "MESSENGER_403_1", "채팅방 참여자가 아닙니다."),
     NOT_TASK_ASSIGNEE(HttpStatus.FORBIDDEN, "MESSENGER_403_2", "해당 업무지시의 담당자가 아닙니다."),

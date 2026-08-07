@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
 
 import com.academy.mudogroupware.messenger.domain.model.ChatTaskAssignee;
@@ -31,8 +32,9 @@ public class ChatTaskCardRepositoryImpl implements ChatTaskCardRepository {
     }
 
     @Override
-    public List<ChatTaskCard> findAllByChatRoomId(Long chatRoomId) {
-        return chatTaskCardJpaRepository.findAllByChatRoomIdAndDeletedAtIsNullOrderByCreatedAtDescIdDesc(chatRoomId)
+    public List<ChatTaskCard> findPage(Long chatRoomId, LocalDateTime cursorCreatedAt, Long cursorCardId, int size) {
+        return chatTaskCardJpaRepository.findPage(chatRoomId, cursorCreatedAt, cursorCardId,
+                        PageRequest.of(0, size + 1))
                 .stream()
                 .map(this::toDomain)
                 .toList();

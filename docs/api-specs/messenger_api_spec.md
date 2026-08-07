@@ -517,6 +517,8 @@ Response Body
 
 `GET /api/messenger/rooms/{roomId}/task-cards`
 
+> 2026-08-07: 페이지네이션 없이 방의 카드를 전부 반환하던 방식이 카드가 쌓일수록 응답이 무한히 커지는 문제(부하테스트로 1,000건 기준 374KB 확인)가 있어, 메시지 목록조회와 동일한 cursor 페이지네이션으로 변경했다.
+
 # **[request]**
 
 Request Header
@@ -530,6 +532,14 @@ Request Parameter
 | name | description |
 | --- | --- |
 | `roomId` | 조회할 채팅방 ID입니다. |
+
+Request Query Parameter
+
+| name | type | required | description |
+| --- | --- | --- | --- |
+| `cursorCreatedAt` | `LocalDateTime` | `false` | 이전 페이지 마지막 카드의 등록 시각. `cursorCardId`와 함께 전달. |
+| `cursorCardId` | `Long` | `false` | 이전 페이지 마지막 카드 ID. `cursorCreatedAt`과 함께 전달. |
+| `size` | `Integer` | `false` | 페이지 크기(1~100, 기본값 20). |
 
 # **[response]**
 
@@ -545,36 +555,43 @@ Response Body
   "status": 200,
   "code": "MESSENGER_200_4",
   "message": "업무지시 카드 목록 조회에 성공했습니다.",
-  "data": [
-    {
-      "id": 7,
-      "assignerId": 2,
-      "assignerName": "이지훈",
-      "content": "과제 제출",
-      "dueDate": "2026-08-10",
-      "assignees": [
-        { "userId": 3, "name": "박서연", "completedAt": null },
-        { "userId": 4, "name": "김도윤", "completedAt": "2026-08-06T09:30:00" }
-      ],
-      "completedCount": 1,
-      "assigneeCount": 2,
-      "fullyCompleted": false,
-      "createdAt": "2026-08-06T09:00:00"
-    }
-  ]
+  "data": {
+    "content": [
+      {
+        "id": 7,
+        "assignerId": 2,
+        "assignerName": "이지훈",
+        "content": "과제 제출",
+        "dueDate": "2026-08-10",
+        "assignees": [
+          { "userId": 3, "name": "박서연", "completedAt": null },
+          { "userId": 4, "name": "김도윤", "completedAt": "2026-08-06T09:30:00" }
+        ],
+        "completedCount": 1,
+        "assigneeCount": 2,
+        "fullyCompleted": false,
+        "createdAt": "2026-08-06T09:00:00"
+      }
+    ],
+    "hasNext": false,
+    "nextCursorCreatedAt": null,
+    "nextCursorCardId": null
+  }
 }
 ```
 ### Response Field
 
 | name | 설명 |
 | --- | --- |
-| `data[].id` | 업무지시 카드 ID입니다. |
-| `data[].assignerId` / `assignerName` | 등록자 정보입니다. |
-| `data[].content` / `dueDate` | 업무지시 내용/마감일입니다. |
-| `data[].assignees[].userId` / `name` / `completedAt` | 담당자별 완료 시각입니다. 미완료면 `null`입니다. |
-| `data[].completedCount` / `assigneeCount` | 완료 인원 / 전체 담당자 수입니다. |
-| `data[].fullyCompleted` | 담당자 전원 완료 여부입니다. |
-| `data[].createdAt` | 카드 등록 시각입니다. |
+| `data.content[].id` | 업무지시 카드 ID입니다. |
+| `data.content[].assignerId` / `assignerName` | 등록자 정보입니다. |
+| `data.content[].content` / `dueDate` | 업무지시 내용/마감일입니다. |
+| `data.content[].assignees[].userId` / `name` / `completedAt` | 담당자별 완료 시각입니다. 미완료면 `null`입니다. |
+| `data.content[].completedCount` / `assigneeCount` | 완료 인원 / 전체 담당자 수입니다. |
+| `data.content[].fullyCompleted` | 담당자 전원 완료 여부입니다. |
+| `data.content[].createdAt` | 카드 등록 시각입니다. |
+| `data.hasNext` | 다음 페이지 존재 여부입니다. |
+| `data.nextCursorCreatedAt` / `nextCursorCardId` | 다음 페이지 조회 시 넘길 cursor 값입니다. `hasNext=false`면 `null`입니다. |
 
 > 정렬: 등록 시각(`createdAt`) 내림차순(최신순, 동일 시각이면 ID 내림차순)입니다.
 
@@ -582,6 +599,8 @@ Response Body
 
 | HTTP 상태 | code | message | 설명 |
 | --- | --- | --- | --- |
+| `400 Bad Request` | `MESSENGER_400_17` | cursorCreatedAt과 cursorCardId는 함께 전달하거나 함께 생략해야 합니다. | 둘 중 하나만 전달됨 |
+| `400 Bad Request` | `MESSENGER_400_18` | 업무지시 카드 조회 size는 1 이상 100 이하여야 합니다. | `size`가 범위를 벗어남(주로 Bean Validation `COMMON_400_1`이 먼저 걸리며, 이 코드는 서비스 레이어 방어용) |
 | `401 Unauthorized` | `COMMON_401_1` | 인증이 필요합니다. | 토큰 누락/만료 |
 | `403 Forbidden` | `MESSENGER_403_1` | 채팅방 참여자가 아닙니다. | 요청자가 해당 방 멤버가 아님 |
 | `404 Not Found` | `MESSENGER_404_1` | 채팅방을 찾을 수 없습니다. | `roomId`에 해당하는 방이 없음 |

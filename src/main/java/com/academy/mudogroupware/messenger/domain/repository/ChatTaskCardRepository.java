@@ -15,8 +15,9 @@ public interface ChatTaskCardRepository {
 
     Optional<ChatTaskCard> findById(Long id);
 
-    // createdAt 내림차순(최신순, id로 동일 시각 타이브레이크)으로, 삭제되지 않은 카드만 반환한다.
-    List<ChatTaskCard> findAllByChatRoomId(Long chatRoomId);
+    // messenger 메시지 목록조회와 동일한 cursor 페이지네이션. createdAt 내림차순(최신순, id로 동일 시각
+    // 타이브레이크)이며 삭제되지 않은 카드만 반환한다. size+1개를 가져와 hasNext 판단은 호출부에서 한다.
+    List<ChatTaskCard> findPage(Long chatRoomId, LocalDateTime cursorCreatedAt, Long cursorCardId, int size);
 
     // 담당자 완료 행만 원자적으로 갱신한다(카드 전체를 다시 저장하는 방식은 동시 완료 처리 시 유실 위험이 있어 대신 사용).
     void markAssigneeCompleted(Long cardId, Long userId, LocalDateTime completedAt);
