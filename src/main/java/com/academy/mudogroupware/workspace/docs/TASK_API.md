@@ -1,6 +1,6 @@
 # 업무(Task) API 명세
 
-> `WORKSPACE_API_FLOW.md`/`TASK_API_FLOW.md`가 워크스페이스와 업무의 호출 흐름을 분리해 문서화하듯, 이 문서는 업무(Task) API 명세만 모은다. 현재는 업무 생성·수정이 구현되어 있으며, 삭제 API가 추가되는 대로 이 문서에 이어서 작성한다.
+> `WORKSPACE_API_FLOW.md`/`TASK_API_FLOW.md`가 워크스페이스와 업무의 호출 흐름을 분리해 문서화하듯, 이 문서는 업무(Task) API 명세만 모은다. 업무 생성·수정·삭제 세 API를 모두 문서화한다.
 
 ---
 
@@ -187,8 +187,54 @@ Response Body
 
 ---
 
+## 업무 삭제
+
+# **[request]**
+
+### Request Header
+
+| name | description |
+| --- | --- |
+| `Authorization` | `Bearer {accessToken}` |
+
+### Path Variable
+
+| name | description |
+| --- | --- |
+| `workspaceId` | 업무가 속한 워크스페이스 번호 |
+| `taskId` | 삭제할 업무 번호 |
+
+### Request Parameter
+
+없음
+
+# **[response]**
+
+### 성공코드
+
+| HTTP 상태 | 설명 |
+| --- | --- |
+| `204 No Content` | 업무 삭제 성공 |
+
+응답 본문은 없다.
+
+### 실패 코드
+
+| HTTP 상태 | code | message | 설명 |
+| --- | --- | --- | --- |
+| `401 Unauthorized` | `COMMON_401_1` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않은 경우 |
+| `403 Forbidden` | `WORKSPACE_403_1` | 워크스페이스에 접근할 권한이 없습니다. | 요청자가 참여자가 아닌 경우 |
+| `404 Not Found` | `WORKSPACE_404_1` | 워크스페이스를 찾을 수 없습니다. | 워크스페이스가 없거나 삭제된 경우 |
+| `404 Not Found` | `WORKSPACE_404_3` | 업무를 찾을 수 없습니다. | 업무가 없거나 해당 워크스페이스 소속이 아닌 경우 |
+
+> 하드 삭제이며 복구할 수 없다. 업무 댓글, 댓글 멘션, 상태 변경 이력을 함께 삭제한다.
+> 반복 업무의 회차를 삭제하면 같은 트랜잭션에서 `recurring_task_skip`에 `(recurring_template_id, scheduled_for)` 기록을 남긴다. 같은 기록이 이미 있으면 중복 오류 없이 멱등적으로 처리한다. 일반 업무 삭제 시에는 skip 기록을 남기지 않는다.
+> 다른 워크스페이스에 속한 업무 번호를 보내면 존재를 노출하지 않기 위해 `403`이 아니라 `WORKSPACE_404_3`을 반환한다.
+
+---
+
 ## 참고 문서
 
-- [WORKSPACE_API.md](WORKSPACE_API.md) — 워크스페이스 API 명세 (업무 생성·수정 섹션이 이 문서와 중복 수록되어 있음, 추후 정리 예정)
-- [TASK_API_FLOW.md](TASK_API_FLOW.md) — 업무 생성/자동 지연 스케줄러 호출 흐름
+- [WORKSPACE_API.md](WORKSPACE_API.md) — 워크스페이스 API 명세 (업무 생성·수정·삭제 섹션이 이 문서와 중복 수록되어 있음, 추후 정리 예정)
+- [TASK_API_FLOW.md](TASK_API_FLOW.md) — 업무 자동 지연 스케줄러 호출 흐름과 업무 생성 API 호출 흐름 (수정·삭제 흐름은 다루지 않음)
 - [BUSINESS_RULES.md](BUSINESS_RULES.md) — 업무 상태 결정·전이 규칙

@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.academy.mudogroupware.workspace.application.command.UpdateTaskCommand;
+import com.academy.mudogroupware.workspace.domain.exception.IllegalTaskDueAtException;
 import com.academy.mudogroupware.workspace.domain.exception.TaskDueAtRequiredException;
 import com.academy.mudogroupware.workspace.domain.exception.TaskNotFoundException;
 import com.academy.mudogroupware.workspace.domain.exception.InvalidTaskStatusTransitionException;
@@ -23,6 +24,7 @@ import com.academy.mudogroupware.workspace.domain.repository.WorkspaceRepository
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Optional;
 import java.util.Set;
@@ -42,8 +44,10 @@ class UpdateTaskServiceTest {
   private static final long WORKSPACE_ID = 1L;
   private static final long OTHER_WORKSPACE_ID = 2L;
   private static final long TASK_ID = 101L;
+  private static final long TEMPLATE_ID = 100L;
   private static final long MEMBER_ID = 10L;
   private static final long OUTSIDER_ID = 99L;
+  private static final LocalDateTime SCHEDULED_FOR = LocalDateTime.of(2026, 8, 5, 9, 0);
 
   @Mock private WorkspaceRepository workspaceRepository;
   @Mock private TaskRepository taskRepository;
@@ -214,6 +218,39 @@ class UpdateTaskServiceTest {
     verify(taskRepository, never()).save(any());
   }
 
+  // --- 반복 업무 ---
+
+  @Test
+  void rejectsDueAtChangeOnRecurringTask() {
+    givenWorkspaceWithMember();
+    givenRecurringTask(TaskStatus.WAITING, WORKSPACE_ID);
+
+    assertThatThrownBy(
+            () ->
+                service()
+                    .updateTask(
+                        new UpdateTaskCommand(
+                            WORKSPACE_ID, TASK_ID, MEMBER_ID, null, TODAY.plusDays(5))))
+        .isInstanceOf(IllegalTaskDueAtException.class);
+
+    verify(taskRepository, never()).save(any());
+  }
+
+  @Test
+  void changesRecurringTaskStatusWithoutDueAt() {
+    givenWorkspaceWithMember();
+    givenRecurringTask(TaskStatus.DELAYED, WORKSPACE_ID);
+    when(taskRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+    service()
+        .updateTask(
+            new UpdateTaskCommand(
+                WORKSPACE_ID, TASK_ID, MEMBER_ID, TaskStatus.IN_PROGRESS, null));
+
+    verify(taskRepository).save(taskCaptor.capture());
+    assertThat(taskCaptor.getValue().getStatus()).isEqualTo(TaskStatus.IN_PROGRESS);
+  }
+
   private void givenWorkspaceWithMember() {
     Workspace workspace =
         Workspace.restore(WORKSPACE_ID, 1L, "8월 학사 운영", MEMBER_ID, Set.of(MEMBER_ID));
@@ -223,6 +260,14 @@ class UpdateTaskServiceTest {
   private void givenTask(TaskStatus status, LocalDate dueAt, long owningWorkspaceId) {
     Task task =
         Task.restore(TASK_ID, owningWorkspaceId, null, "업무", status, dueAt, null, MEMBER_ID);
+    when(taskRepository.findByIdForUpdate(TASK_ID)).thenReturn(Optional.of(task));
+  }
+
+  private void givenRecurringTask(TaskStatus status, long owningWorkspaceId) {
+    Task task =
+        Task.restore(
+            TASK_ID, owningWorkspaceId, TEMPLATE_ID, "반복 업무", status, null, SCHEDULED_FOR,
+            MEMBER_ID);
     when(taskRepository.findByIdForUpdate(TASK_ID)).thenReturn(Optional.of(task));
   }
 }

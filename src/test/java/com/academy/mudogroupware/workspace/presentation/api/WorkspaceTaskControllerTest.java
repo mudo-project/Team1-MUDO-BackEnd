@@ -21,6 +21,7 @@ import com.academy.mudogroupware.workspace.application.command.UpdateTaskCommand
 import com.academy.mudogroupware.workspace.application.usecase.CreateTaskUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.DeleteTaskUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.UpdateTaskUseCase;
+import com.academy.mudogroupware.workspace.domain.exception.IllegalTaskDueAtException;
 import com.academy.mudogroupware.workspace.domain.exception.InvalidTaskStatusTransitionException;
 import com.academy.mudogroupware.workspace.domain.exception.TaskDueAtRequiredException;
 import com.academy.mudogroupware.workspace.domain.exception.TaskNotFoundException;
@@ -228,6 +229,22 @@ class WorkspaceTaskControllerTest {
                 .content("{\"status\":\"IN_PROGRESS\"}"))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("WORKSPACE_400_4"));
+  }
+
+  @Test
+  void updateTaskPropagatesRecurringDueAtRejected() throws Exception {
+    when(updateTaskUseCase.updateTask(any(UpdateTaskCommand.class)))
+        .thenThrow(new IllegalTaskDueAtException());
+
+    mockMvc
+        .perform(
+            patch("/api/workspaces/1/tasks/101")
+                .with(authentication(auth()))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"dueAt\":\"2026-08-20\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("WORKSPACE_400_5"));
   }
 
   @Test
