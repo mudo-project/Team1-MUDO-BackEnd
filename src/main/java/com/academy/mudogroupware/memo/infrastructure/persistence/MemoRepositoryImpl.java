@@ -44,6 +44,11 @@ public class MemoRepositoryImpl implements MemoRepository {
     }
 
     @Override
+    public long countByUserId(Long userId) {
+        return memoJpaRepository.countByUserId(userId);
+    }
+
+    @Override
     public void updateContent(Long id, String title, String content, LocalDateTime updatedAt) {
         memoJpaRepository.updateContent(id, title, content, updatedAt);
     }
