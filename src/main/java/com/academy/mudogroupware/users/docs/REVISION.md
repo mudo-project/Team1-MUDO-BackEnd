@@ -1,5 +1,5 @@
 > 작성일: 2026-08-04
-> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청/승인 워크플로우(PR 1·2·3/3, "계정 발급 체계" 2단계) 완료, 역할 목록/상세/수정(역할 CRUD 1~3/4) 완료 · 역할 삭제(4/4), 학원 관리자의 직원 계정 발급(계정 발급 체계 3단계) 미착수
+> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청/승인 워크플로우(PR 1·2·3/3, "계정 발급 체계" 2단계) 완료, 역할 관리 API 7개(생성/목록/상세/수정/삭제/권한 조립/권한 카탈로그 조회) 완료 · 학원 관리자의 직원 계정 발급(계정 발급 체계 3단계) 미착수
 
 ## 🎯 변경 목적
 
@@ -400,6 +400,102 @@ PR 1(목록 조회)이 develop에 머지된 뒤 그 위에서 이어가는 두 �
 | Domain(users) | `RoleRepository`에 `existsByAcademyIdAndNameAndIdNot`/`updateNameAndDescription` 추가 |
 | Application(users) | `UpdateRoleCommand`/`UpdateRoleUseCase`/`UpdateRoleService` 신규 |
 | Presentation(users) | `RoleController`에 `PUT /api/roles/{roleId}` 핸들러 추가, `UpdateRoleRequest` 신규 |
+
+---
+
+## ✅ 2026-08-07 · 역할 삭제 API 구현 (`DELETE /api/roles/{roleId}`, 이슈 #189, 역할 CRUD 4개 중 4번째)
+
+### 배경
+
+역할 관리 API 7개 중 마지막 하나. 이 PR로 생성/목록/상세/수정/삭제/권한 조립/권한 카탈로그 조회가 모두 갖춰진다. 계획: `docs/superpowers/plans/2026-08-07-role-crud.md` Task 3, Task 4, Task 8.
+
+### 확정된 정책
+
+- **삭제 전에 `UserRepository.existsByRoleId(roleId)`로 배정된 구성원이 있는지 명시적으로 체크한다.** DB의 FK 제약(예: `ON DELETE RESTRICT`)에 기대는 대신 애플리케이션 레이어에서 먼저 검사해, "왜 삭제가 안 되는지" 사용자가 이해할 수 있는 전용 에러 코드(`USER_409_2`)로 안내한다. FK 예외를 잡아서 변환하는 방식보다 이 방식이 의도를 명확히 드러낸다.
+- **`ROLE_IN_USE`는 학원 범위를 따로 확인하지 않는다.** 애초에 `academyId`로 스코프가 걸린 역할(`findById` 필터)만 이 지점까지 도달하므로, 그 역할을 쓰는 사용자는 같은 학원 소속일 수밖에 없다.
+
+### 완료 기준
+
+- [x] `UserErrorCode.ROLE_IN_USE`(`USER_409_2`) + `RoleInUseException`
+- [x] `RoleRepository.deleteById` 추가, `RoleRepositoryImpl` 구현(`RoleJpaRepository`가 상속하는 `JpaRepository.deleteById` 재사용)
+- [x] `UserRepository`/`UserJpaRepository`/`UserRepositoryImpl`에 `existsByRoleId` 추가
+- [x] `DeleteRoleCommand`/`DeleteRoleUseCase`/`DeleteRoleService`(TDD, 4케이스: 미존재 404/다른 학원 404/사용 중 409/정상 삭제)
+- [x] `RoleController`에 `DELETE /{roleId}` 핸들러 추가
+- [x] 로컬 curl end-to-end 검증(사용 중인 역할 삭제 시도 409, 미사용 역할 삭제 204, 미존재 404, 권한 없음 403)
+- [x] `./gradlew build` 통과
+
+### 🧩 영향 범위
+
+| 계층 | 변경 내용 |
+| --- | --- |
+| Domain(users) | `UserErrorCode.ROLE_IN_USE` 추가, `RoleInUseException` 신규, `RoleRepository.deleteById`/`UserRepository.existsByRoleId` 추가 |
+| Persistence(users) | `RoleRepositoryImpl.deleteById`/`UserRepositoryImpl.existsByRoleId` 구현, `UserJpaRepository.existsByRoleId` 추가 |
+| Application(users) | `DeleteRoleCommand`/`DeleteRoleUseCase`/`DeleteRoleService` 신규 |
+| Presentation(users) | `RoleController`에 `DELETE /api/roles/{roleId}` 핸들러 추가 |
+
+---
+
+## ✅ 2026-08-07 · 역할 수정/삭제 동시성 방어 보강 (셀프 리뷰)
+
+### 배경
+
+역할 CRUD 4개 PR을 다 올린 뒤 직접 코드 리뷰를 하다가, `updateNameAndDescription()`/`deleteById()`가 애플리케이션 레벨 사전 체크(이름 중복/사용 중 확인)만 믿고 있고, 그 체크와 실제 쓰기 사이의 TOCTOU(check-then-act) 틈에서 DB 제약조건(유니크 제약 `uk_role_academy_name`, FK `fk_users_role`)에 걸리면 그 예외를 잡아주는 코드가 없어서 문서화된 409 대신 원시 500이 나가는 걸 발견했다. `save()`는 이미 `saveAndFlush()`를 `DataIntegrityViolationException`으로 감싸는 방어 로직이 있는데, 나중에 추가된 두 메서드에는 이 패턴이 빠져 있었다.
+
+### 확정된 정책
+
+- **`RoleRepositoryImpl`의 모든 쓰기 경로(`save`/`updateNameAndDescription`/`deleteById`)가 동일한 방어 패턴을 따른다**: 변경 직후 `roleJpaRepository.flush()`를 명시적으로 호출해 SQL을 즉시 실행시키고, `DataIntegrityViolationException`을 잡아 메시지에 특정 제약조건 이름이 포함되어 있는지 확인한 뒤 알맞은 도메인 예외로 변환한다. `entity.update(...)`나 `deleteById(...)`만으로는 Hibernate가 SQL을 트랜잭션 커밋 시점까지 미루기 때문에, 명시적 flush 없이는 이 메서드 안에서 예외를 잡을 수 없다.
+- **이건 애플리케이션 레벨 사전 체크(`existsByAcademyIdAndNameAndIdNot`/`existsByRoleId`)를 대체하는 게 아니라 보강한다.** 사전 체크는 여전히 정상 경로에서 빠른 실패와 명확한 흐름을 제공하고, DB 제약조건 catch는 사전 체크와 실제 쓰기 사이의 경합 상황을 잡아주는 마지막 방어선이다.
+- **`RoleInUseException`에 `Throwable cause`를 받는 생성자를 추가**해 `RoleNameDuplicateException`과 동일한 패턴을 따르게 했다.
+- **경합 자체는 순차 curl로 재현이 안 되므로, 실제 MySQL이 던지는 것과 동일한 형식의 예외 메시지를 강제로 발생시키는 Mockito 단위 테스트(`RoleRepositoryImplTest`)로 검증했다** — `save()`에 이미 있던 것과 같은 스타일.
+
+### 완료 기준
+
+- [x] `RoleRepositoryImpl.updateNameAndDescription()`에 flush + `DataIntegrityViolationException` catch 추가
+- [x] `RoleRepositoryImpl.deleteById()`에 flush + `DataIntegrityViolationException` catch 추가
+- [x] `RoleInUseException(Throwable cause)` 생성자 추가
+- [x] `isRoleNameConflict` → `containsConstraint(Throwable, String)`로 일반화해 3곳(`save`/`updateNameAndDescription`/`deleteById`)에서 재사용
+- [x] `RoleRepositoryImplTest`에 4케이스 추가(이름 중복 변환/무관한 위반 통과, 사용 중 변환/무관한 위반 통과)
+- [x] `./gradlew build` 통과, 로컬 curl로 회귀 없음 확인
+
+### 🧩 영향 범위
+
+| 계층 | 변경 내용 |
+| --- | --- |
+| Domain(users) | `RoleInUseException(Throwable cause)` 생성자 추가 |
+| Persistence(users) | `RoleRepositoryImpl.updateNameAndDescription`/`deleteById`에 flush+catch 추가, `containsConstraint` 헬퍼로 일반화 |
+| Test(users) | `RoleRepositoryImplTest`에 4케이스 추가 |
+
+---
+
+## ✅ 2026-08-07 · 역할 삭제 정책을 "재직 중인 구성원 기준"으로 조정
+
+### 배경
+
+역할 삭제(`existsByRoleId`)가 상태와 관계없이 role_id를 참조하는 계정이 하나라도 있으면 무조건 막는 구조였는데, 이 시스템엔 계정을 물리적으로 삭제하는 기능이 없다(퇴사 처리는 `status=RESIGNED`로 바꾸는 소프트 딜리트뿐). 그러면 한 번이라도 누군가에게 배정된 역할은 그 사람이 퇴사해도 `role_id`가 그대로 남아있어 **영원히 삭제할 수 없는** 역할이 생긴다는 문제가 발견됐다.
+
+### 확정된 정책
+
+- **삭제를 막는 기준을 `ACTIVE` 상태 구성원으로 좁혔다** (`existsByRoleId` → `existsActiveByRoleId`). 퇴사자(`RESIGNED`)/비활성(`INACTIVE`) 계정이 이 역할을 들고 있어도 삭제를 막지 않는다 — 어차피 로그인이 제한된 계정이라 역할 정보가 실질적 권한에 영향을 주지 않는다.
+- **삭제 시 그 역할을 들고 있던 나머지(비활성) 계정들의 `role_id`를 명시적으로 NULL 처리한다** (`UserRepository.clearRoleId`). DB의 `fk_users_role` FK가 `RESTRICT`라 role_id를 참조하는 행이 남아있으면 삭제 자체가 실패하기 때문에, 역할을 지우기 전에 반드시 이 정리가 선행되어야 한다.
+- FK를 `ON DELETE SET NULL`로 마이그레이션하는 대안도 검토했으나, 그러면 계정의 role_id가 조용히 NULL이 되어 "왜 이렇게 됐는지" 코드만 봐서는 추적하기 어려워진다고 판단해 애플리케이션 레벨에서 명시적으로 처리하는 쪽을 택했다.
+- `ACTIVE` 여부 확인이 먼저 통과했다는 건 이 시점에 이 역할을 쓰는 사람이 전부 비활성 상태라는 뜻이므로, `clearRoleId`는 상태를 다시 필터링하지 않고 해당 `role_id`를 가진 모든 행을 정리한다.
+
+### 완료 기준
+
+- [x] `UserRepository.existsByRoleId` → `existsActiveByRoleId`로 변경, `clearRoleId` 추가
+- [x] `UserJpaRepository.existsByRoleIdAndStatus` 파생 쿼리, `clearRoleId` 벌크 업데이트(`@Modifying`) 추가
+- [x] `DeleteRoleService`가 삭제 전 `clearRoleId` 호출하도록 수정
+- [x] `DeleteRoleServiceTest` 케이스 갱신(재직 중 구성원만 차단, 비활성 구성원은 자동 정리 후 삭제)
+- [x] 로컬 curl/DB로 end-to-end 검증(퇴사자만 보유한 역할 삭제 → 204 + role_id 정리 확인, 재직 중 구성원 보유 역할 → 여전히 409)
+- [x] `./gradlew build` 통과
+
+### 🧩 영향 범위
+
+| 계층 | 변경 내용 |
+| --- | --- |
+| Domain(users) | `UserRepository.existsByRoleId` → `existsActiveByRoleId`, `clearRoleId` 추가 |
+| Persistence(users) | `UserJpaRepository.existsByRoleIdAndStatus`/`clearRoleId` 추가, `UserRepositoryImpl` 구현 |
+| Application(users) | `DeleteRoleService`가 삭제 전 `clearRoleId` 호출하도록 수정 |
 
 ---
 

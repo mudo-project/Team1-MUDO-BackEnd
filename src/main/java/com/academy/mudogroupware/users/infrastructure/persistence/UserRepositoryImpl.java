@@ -7,6 +7,7 @@ import java.util.Optional;
 import org.springframework.stereotype.Repository;
 
 import com.academy.mudogroupware.users.domain.model.User;
+import com.academy.mudogroupware.users.domain.model.UserStatus;
 import com.academy.mudogroupware.users.domain.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,16 @@ import lombok.RequiredArgsConstructor;
 public class UserRepositoryImpl implements UserRepository {
 
     private final UserJpaRepository userJpaRepository;
+
+    @Override
+    public boolean existsActiveByRoleId(Long roleId) {
+        return userJpaRepository.existsByRoleIdAndStatus(roleId, UserStatus.ACTIVE);
+    }
+
+    @Override
+    public void clearRoleId(Long roleId) {
+        userJpaRepository.clearRoleId(roleId);
+    }
 
     @Override
     public User save(User user) {

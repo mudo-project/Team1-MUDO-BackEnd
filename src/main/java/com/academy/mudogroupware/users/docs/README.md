@@ -22,6 +22,7 @@
 - `ListRolesUseCase`
 - `GetRoleUseCase`
 - `UpdateRoleUseCase`
+- `DeleteRoleUseCase`
 - `ListAcademyApplicationsUseCase`
 - `GetAcademyApplicationUseCase`
 - `ApproveAcademyApplicationUseCase`
