@@ -1,5 +1,27 @@
 # Messenger Revision
 
+## 2026-08-06 · 메시지·업무지시 카드 수정/삭제 실시간 반영
+
+### 배경
+
+메시지 수정/삭제 REST API는 이미 있었지만 실시간 브로드캐스트가 없어 상대방 화면에 재조회 전까지 반영되지 않았다. 업무지시 카드는 수정/삭제 API 자체가 아직 없었다.
+
+### 변경 내용
+
+- `MessageEditedEvent`/`MessageDeletedEvent` 추가, `MessengerWebSocketNotifier`가 메시지 전송과 동일하게 `/topic/messenger/rooms/{roomId}`로 `MESSAGE_EDITED`/`MESSAGE_DELETED` 브로드캐스트.
+- `chat_task_card`에 `deleted_at` 컬럼 추가(`V6.1.4`), `ChatTaskCard.update()`/`delete()` 도메인 메서드 추가(등록자 본인만 가능, 소프트 삭제).
+- `PATCH`/`DELETE /api/messenger/rooms/{roomId}/task-cards/{cardId}` 추가, `TASK_CARD_UPDATED`/`TASK_CARD_DELETED` 브로드캐스트 추가.
+- 신규 에러코드: `NOT_TASK_CARD_OWNER`, `TASK_CARD_ALREADY_DELETED`.
+- 담당자 목록 변경은 전체 재저장이 아니라 추가/삭제분만 targeted 쿼리로 반영 — 담당자 완료 처리와의 동시 업데이트 유실을 설계 단계에서 방지.
+
+### 동시성 버그 수정 (CodeRabbit 리뷰)
+
+- `UpdateTaskCardService`: `updateContent`의 영향 행 수를 확인해, 조회 이후 다른 트랜잭션이 먼저 삭제를 커밋한 경우 담당자 변경/이벤트 발행 없이 `TASK_CARD_ALREADY_DELETED`를 던지도록 수정(`deleted_at is null` 조건의 UPDATE가 잡는 행 잠금을 이용, 별도 lock/`@Version` 불필요).
+- `DeleteTaskCardService`: 이미 삭제된 카드를 재삭제해도 실제 상태 변경이 없으면 `markDeleted` 호출과 이벤트 발행을 스킵(권한 검증은 항상 수행, 재삭제 자체는 메시지 삭제와 동일하게 에러 없는 idempotent 204 유지).
+
+> 작성일: 2026-08-06
+> 상태: 백엔드 구현 완료, 테스트 통과(`ChatTaskCardJpaRepository` native SQL 자체에 대한 리포지토리 레벨 테스트는 아직 없음). API 명세서(`docs/api-specs/messenger_api_spec.md`)는 REST 2건 반영 완료, Notion 반영은 별도 진행 필요.
+
 ## 2026-08-06 · 업무지시 카드 실시간 반영 + echo/optimistic 최종 결정
 
 ### 배경

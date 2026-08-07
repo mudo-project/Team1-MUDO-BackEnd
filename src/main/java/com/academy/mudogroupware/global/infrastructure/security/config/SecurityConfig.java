@@ -51,6 +51,8 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/token/reissue")
                     .permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/google/connections/callback")
+                    .permitAll()
                     .anyRequest()
                     .authenticated())
         .addFilterBefore(jwt, UsernamePasswordAuthenticationFilter.class)
