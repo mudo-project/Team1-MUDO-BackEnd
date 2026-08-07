@@ -26,9 +26,9 @@
 | **코드** | `WORKSPACE:CREATE` |
 | **설명** | 워크스페이스를 생성하고, 이름을 수정하며, 참여자를 추가·제거할 수 있습니다. |
 | **적용 대상** | 워크스페이스 생성 권한자(선생님, 팀장) |
-| **구현 상태** | 🟡 구조 완성, 시드 대기 (TODO 주석 6곳) |
+| **구현 상태** | 🟡 구조 완성, 시드 대기 (TODO 주석 8곳) |
 | **적용 API** | `POST /api/workspaces`, `PATCH /api/workspaces/{id}`, `POST /api/workspaces/{id}/members`, `DELETE /api/workspaces/{id}/members/{userId}`, `POST /api/workspaces/{id}/recover` |
-| **적용 API (업무)** | `POST /api/workspaces/{id}/tasks` |
+| **적용 API (업무)** | `POST /api/workspaces/{id}/tasks`, `PATCH /api/workspaces/{id}/tasks/{taskId}`, `DELETE /api/workspaces/{id}/tasks/{taskId}` |
 | **비고** | 현재는 "현재 참여자" 조건만 검증. 시드 후 이 권한도 함께 검증됨. 자진 탈퇴는 권한 없이 항상 허용. |
 
 **관련 코드 (TODO 위치):**
@@ -37,6 +37,8 @@
 - `AddWorkspaceMembersService` — 참여자 조건 추가
 - `RemoveWorkspaceMemberService` — 타인 제거 시에만 권한 검증
 - `WorkspaceTaskController.createTask()` — 업무 생성
+- `UpdateTaskService` — 업무 상태·마감일 수정
+- `DeleteTaskService` — 업무 삭제
 - `RecoverWorkspaceService` — 워크스페이스 복구
 
 ---

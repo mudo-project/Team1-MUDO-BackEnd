@@ -169,7 +169,9 @@ class WorkspaceTaskControllerTest {
   void updateTaskReturnsAppliedStatusAndDueAt() throws Exception {
     Task updated =
         Task.restore(101L, 1L, null, "업무", TaskStatus.IN_PROGRESS, LocalDate.of(2026, 8, 20), null, 10L);
-    when(updateTaskUseCase.updateTask(any(UpdateTaskCommand.class))).thenReturn(updated);
+    when(updateTaskUseCase.updateTask(
+            new UpdateTaskCommand(1L, 101L, 10L, TaskStatus.IN_PROGRESS, LocalDate.of(2026, 8, 20))))
+        .thenReturn(updated);
 
     mockMvc
         .perform(
@@ -183,6 +185,10 @@ class WorkspaceTaskControllerTest {
         .andExpect(jsonPath("$.data.taskId").value(101))
         .andExpect(jsonPath("$.data.status").value("IN_PROGRESS"))
         .andExpect(jsonPath("$.data.dueAt").value("2026-08-20"));
+
+    verify(updateTaskUseCase)
+        .updateTask(
+            new UpdateTaskCommand(1L, 101L, 10L, TaskStatus.IN_PROGRESS, LocalDate.of(2026, 8, 20)));
   }
 
   @Test

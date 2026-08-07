@@ -193,10 +193,13 @@ class TaskTest {
   void nonRecurringTaskWithNullDueAtReopensWithoutNewDueAt() {
     Task noDueAt = Task.restore(1L, WORKSPACE_ID, null, "마감일 없는 업무", TaskStatus.DELAYED, null, null, CREATOR_ID);
 
-    assertThatCode(() -> noDueAt.changeStatus(TaskStatus.WAITING, null, TODAY))
-        .doesNotThrowAnyException();
-    assertThatCode(() -> noDueAt.changeStatus(TaskStatus.IN_PROGRESS, null, TODAY))
-        .doesNotThrowAnyException();
+    Task waiting = noDueAt.changeStatus(TaskStatus.WAITING, null, TODAY);
+    assertThat(waiting.getStatus()).isEqualTo(TaskStatus.WAITING);
+    assertThat(waiting.getDueAt()).isNull();
+
+    Task inProgress = noDueAt.changeStatus(TaskStatus.IN_PROGRESS, null, TODAY);
+    assertThat(inProgress.getStatus()).isEqualTo(TaskStatus.IN_PROGRESS);
+    assertThat(inProgress.getDueAt()).isNull();
   }
 
   // --- 반복 업무 ---
