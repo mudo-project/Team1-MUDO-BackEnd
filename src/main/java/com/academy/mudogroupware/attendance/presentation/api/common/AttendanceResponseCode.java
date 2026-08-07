@@ -24,6 +24,8 @@ public enum AttendanceResponseCode implements ResponseCode {
     ATTENDANCE_CORRECTION_RETRIEVED("ATTENDANCE_200_13", "근태 수정 요청이 조회되었습니다."),
     ATTENDANCE_CORRECTION_APPROVED("ATTENDANCE_200_14", "근태 수정 요청이 승인되었습니다."),
     ATTENDANCE_CORRECTION_REJECTED("ATTENDANCE_200_15", "근태 수정 요청이 반려되었습니다."),
+    WEEKLY_EMPLOYEE_ATTENDANCE_RETRIEVED("ATTENDANCE_200_16", "주간 전 직원 출결 현황을 조회했습니다."),
+    WEEKLY_EMPLOYEE_DETAIL_RETRIEVED("ATTENDANCE_200_17", "직원의 주간 출결 상세를 조회했습니다."),
     TODAY_TEAM_ATTENDANCE_RETRIEVED(
             "ATTENDANCE_200_3", "오늘 팀 근태 현황을 조회했습니다."),
     MY_MONTHLY_ATTENDANCE_RETRIEVED(
