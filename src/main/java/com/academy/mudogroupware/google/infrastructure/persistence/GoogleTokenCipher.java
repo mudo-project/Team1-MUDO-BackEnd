@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * 리프레시 토큰을 DB에 평문으로 저장하지 않기 위한 AES-GCM 암복호화기.
- * 키는 JWT_SECRET을 SHA-256으로 해시해 32바이트로 만들어 재사용한다(별도 시크릿 설정 불필요).
+ * 키는 JWT 서명 키와 분리된 전용 시크릿(GOOGLE_TOKEN_ENCRYPTION_KEY)을 SHA-256으로 해시해 32바이트로 만든다.
  */
 @Component
 public class GoogleTokenCipher {
@@ -27,9 +27,10 @@ public class GoogleTokenCipher {
     private final SecretKeySpec key;
     private final SecureRandom secureRandom = new SecureRandom();
 
-    public GoogleTokenCipher(@Value("${JWT_SECRET:local-development-only-change-this-secret-key}") String jwtSecret) {
+    public GoogleTokenCipher(@Value("${GOOGLE_TOKEN_ENCRYPTION_KEY}") String encryptionKey) {
         try {
-            byte[] hashed = MessageDigest.getInstance("SHA-256").digest(jwtSecret.getBytes(StandardCharsets.UTF_8));
+            byte[] hashed = MessageDigest.getInstance("SHA-256")
+                    .digest(encryptionKey.getBytes(StandardCharsets.UTF_8));
             this.key = new SecretKeySpec(hashed, "AES");
         } catch (GeneralSecurityException e) {
             throw new IllegalStateException("암호화 키 초기화에 실패했습니다.", e);
@@ -55,7 +56,15 @@ public class GoogleTokenCipher {
 
     public String decrypt(String encoded) {
         try {
-            byte[] combined = Base64.getDecoder().decode(encoded);
+            byte[] combined;
+            try {
+                combined = Base64.getDecoder().decode(encoded);
+            } catch (IllegalArgumentException e) {
+                throw new IllegalStateException("토큰 복호화에 실패했습니다.", e);
+            }
+            if (combined.length < IV_LENGTH_BYTES) {
+                throw new IllegalStateException("토큰 복호화에 실패했습니다.");
+            }
             byte[] iv = new byte[IV_LENGTH_BYTES];
             byte[] cipherText = new byte[combined.length - IV_LENGTH_BYTES];
             System.arraycopy(combined, 0, iv, 0, IV_LENGTH_BYTES);

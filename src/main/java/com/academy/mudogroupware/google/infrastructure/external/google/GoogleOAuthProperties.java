@@ -7,9 +7,9 @@ import org.springframework.stereotype.Component;
 public record GoogleOAuthProperties(String clientId, String clientSecret, String redirectUri, String scope,
                                      String frontendRedirectUri) {
 
-    private static final String DEFAULT_SCOPE =
-            "openid email https://www.googleapis.com/auth/drive.file "
-                    + "https://www.googleapis.com/auth/documents https://www.googleapis.com/auth/spreadsheets";
+    // 이번 범위는 계정 연동(이메일 확인)까지다. drive.file/documents/spreadsheets는
+    // 템플릿 기능을 실제로 구현할 때 점진적으로 요청한다(Google의 incremental authorization 권장 사항).
+    private static final String DEFAULT_SCOPE = "openid email";
 
     public GoogleOAuthProperties(
             @Value("${GOOGLE_CLIENT_ID:}") String clientId,

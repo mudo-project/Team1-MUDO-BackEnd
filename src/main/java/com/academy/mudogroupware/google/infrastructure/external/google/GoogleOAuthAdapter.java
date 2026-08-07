@@ -33,6 +33,7 @@ public class GoogleOAuthAdapter implements GoogleOAuthPort {
 
     @Override
     public String buildAuthorizationUrl(String state, boolean forceAccountSelection) {
+        requireConfigured();
         String prompt = forceAccountSelection ? "select_account consent" : "consent";
         return AUTHORIZATION_ENDPOINT
                 + "?client_id=" + encode(googleOAuthProperties.clientId())
@@ -47,6 +48,7 @@ public class GoogleOAuthAdapter implements GoogleOAuthPort {
 
     @Override
     public GoogleTokenExchangeResult exchangeAuthorizationCode(String authorizationCode) {
+        requireConfigured();
         MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
         body.add("code", authorizationCode);
         body.add("client_id", googleOAuthProperties.clientId());
@@ -60,6 +62,7 @@ public class GoogleOAuthAdapter implements GoogleOAuthPort {
 
     @Override
     public GoogleTokenExchangeResult refreshAccessToken(String refreshToken) {
+        requireConfigured();
         MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
         body.add("refresh_token", refreshToken);
         body.add("client_id", googleOAuthProperties.clientId());
@@ -122,5 +125,20 @@ public class GoogleOAuthAdapter implements GoogleOAuthPort {
 
     private String encode(String value) {
         return URLEncoder.encode(value, StandardCharsets.UTF_8);
+    }
+
+    // GOOGLE_CLIENT_ID/SECRET/REDIRECT_URI가 비어 있으면 앱 시작이 아니라 실제 호출 시점에
+    // 명확한 오류로 실패시킨다. 앱 시작 시 강제하면 이 기능과 무관한 도메인 작업자도 구글
+    // 시크릿을 반드시 설정해야만 로컬에서 앱을 띄울 수 있게 되어 개발 편의성이 크게 떨어진다.
+    private void requireConfigured() {
+        if (isBlank(googleOAuthProperties.clientId()) || isBlank(googleOAuthProperties.clientSecret())
+                || isBlank(googleOAuthProperties.redirectUri())) {
+            throw new GoogleOAuthCallException(
+                    "GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET/GOOGLE_REDIRECT_URI가 설정되지 않았습니다.");
+        }
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 }

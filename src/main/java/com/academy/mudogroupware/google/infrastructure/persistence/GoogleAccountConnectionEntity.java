@@ -38,7 +38,7 @@ public class GoogleAccountConnectionEntity extends BaseTimeEntity {
     @Column(name = "scope", nullable = false, length = 500)
     private String scope;
 
-    @Column(name = "encrypted_refresh_token", nullable = false, length = 1000)
+    @Column(name = "encrypted_refresh_token", nullable = false, length = 2048)
     private String encryptedRefreshToken;
 
     @Column(name = "connected_at", nullable = false)

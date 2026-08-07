@@ -68,10 +68,10 @@ public final class GoogleAccountConnection {
         if (failed) {
             return GoogleConnectionStatus.FAILED;
         }
-        if (now.isAfter(tokenExpiresAt)) {
+        if (!now.isBefore(tokenExpiresAt)) {
             return GoogleConnectionStatus.EXPIRED;
         }
-        if (now.isAfter(tokenExpiresAt.minusDays(EXPIRING_WARNING_DAYS))) {
+        if (!now.isBefore(tokenExpiresAt.minusDays(EXPIRING_WARNING_DAYS))) {
             return GoogleConnectionStatus.EXPIRING;
         }
         return GoogleConnectionStatus.CONNECTED;

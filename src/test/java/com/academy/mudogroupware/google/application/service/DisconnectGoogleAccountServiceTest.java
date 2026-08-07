@@ -1,6 +1,7 @@
 package com.academy.mudogroupware.google.application.service;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -11,6 +12,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -44,8 +46,9 @@ class DisconnectGoogleAccountServiceTest {
 
         service.disconnect(new DisconnectGoogleAccountCommand(1L));
 
-        verify(googleOAuthPort).revoke("refresh-token");
-        verify(googleAccountConnectionRepository).deleteByAcademyId(1L);
+        InOrder order = inOrder(googleOAuthPort, googleAccountConnectionRepository);
+        order.verify(googleOAuthPort).revoke("refresh-token");
+        order.verify(googleAccountConnectionRepository).deleteByAcademyId(1L);
     }
 
     @Test

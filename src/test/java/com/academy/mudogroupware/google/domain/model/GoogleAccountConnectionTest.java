@@ -68,6 +68,24 @@ class GoogleAccountConnectionTest {
     }
 
     @Test
+    void deriveStatusReturnsExpiringExactlyAtWarningBoundary() {
+        GoogleAccountConnection connection = GoogleAccountConnection.connect(
+                1L, "a@b.com", 7L, "scope", "token", CONNECTED_AT);
+
+        assertThat(connection.deriveStatus(connection.getTokenExpiresAt().minusDays(3)))
+                .isEqualTo(GoogleConnectionStatus.EXPIRING);
+    }
+
+    @Test
+    void deriveStatusReturnsExpiredExactlyAtExpiry() {
+        GoogleAccountConnection connection = GoogleAccountConnection.connect(
+                1L, "a@b.com", 7L, "scope", "token", CONNECTED_AT);
+
+        assertThat(connection.deriveStatus(connection.getTokenExpiresAt()))
+                .isEqualTo(GoogleConnectionStatus.EXPIRED);
+    }
+
+    @Test
     void deriveStatusReturnsFailedWhenMarkedInvalidRegardlessOfExpiry() {
         GoogleAccountConnection connection = GoogleAccountConnection.connect(
                 1L, "a@b.com", 7L, "scope", "token", CONNECTED_AT);

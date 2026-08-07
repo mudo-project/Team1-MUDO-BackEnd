@@ -13,7 +13,7 @@
 
 - `GoogleAccountConnection`: 학원(`academyId`)당 1건. 구글 이메일, 연결한 관리자, 부여받은 scope, 암호화된 리프레시 토큰, 연결 일시, 토큰 만료 예정 일시(연결일 + 60일), 마지막 확인 일시, 실패 여부를 가진다.
 - 상태(`GoogleConnectionStatus`)는 저장하지 않고 조회 시점에 계산한다: `CONNECTED` / `EXPIRING`(만료 3일 전부터) / `EXPIRED` / `FAILED`. 행이 없으면 "연동 안 됨"이다.
-- 리프레시 토큰은 평문으로 저장하지 않는다. `GoogleTokenCipher`(AES-GCM, 키는 `JWT_SECRET` 재사용)로 암호화해 저장하고, 조회 시 복호화한다.
+- 리프레시 토큰은 평문으로 저장하지 않는다. `GoogleTokenCipher`(AES-GCM, 전용 시크릿 `GOOGLE_TOKEN_ENCRYPTION_KEY`)로 암호화해 저장하고, 조회 시 복호화한다. JWT 서명 키와 분리해, 하나가 노출돼도 다른 하나는 영향받지 않는다.
 
 ## 외부에 공개하는 Application API
 
@@ -31,11 +31,12 @@
 
 | 변수 | 설명 | 로컬 기본값 |
 | --- | --- | --- |
-| `GOOGLE_CLIENT_ID` | 구글 Cloud Console OAuth 클라이언트 ID | 없음(필수 설정) |
-| `GOOGLE_CLIENT_SECRET` | 구글 OAuth 클라이언트 시크릿 | 없음(필수 설정) |
-| `GOOGLE_REDIRECT_URI` | 구글 콘솔에 등록한 콜백 URI. 이 서버의 `GET /api/google/connections/callback` 절대 경로여야 한다 | 없음(필수 설정) |
+| `GOOGLE_CLIENT_ID` | 구글 Cloud Console OAuth 클라이언트 ID | 없음(비어 있으면 앱은 뜨지만 구글 연동 API 호출 시점에 실패) |
+| `GOOGLE_CLIENT_SECRET` | 구글 OAuth 클라이언트 시크릿 | 없음(비어 있으면 앱은 뜨지만 구글 연동 API 호출 시점에 실패) |
+| `GOOGLE_REDIRECT_URI` | 구글 콘솔에 등록한 콜백 URI. 이 서버의 `GET /api/google/connections/callback` 절대 경로여야 한다 | 없음(비어 있으면 앱은 뜨지만 구글 연동 API 호출 시점에 실패) |
 | `GOOGLE_OAUTH_FRONTEND_REDIRECT_URI` | 콜백 처리 후 브라우저를 돌려보낼 프론트엔드 결과 페이지 | `/`(설정 전 임시값) |
-| `GOOGLE_OAUTH_SCOPE` | 요청할 OAuth scope(공백 구분) | `openid email drive.file documents spreadsheets` 조합 |
+| `GOOGLE_OAUTH_SCOPE` | 요청할 OAuth scope(공백 구분) | `openid email`(계정 식별용. drive.file/documents/spreadsheets는 템플릿 기능 구현 시 점진적으로 추가) |
+| `GOOGLE_TOKEN_ENCRYPTION_KEY` | 리프레시 토큰 암호화 전용 키. `JWT_SECRET`과 별도 값이어야 한다 | 없음(필수 설정, 없으면 앱 시작 실패) |
 
 시크릿 값은 `.env.local`(팀 공용 로컬 파일)에 커밋하지 않는다. 각자 실제 구글 Cloud 프로젝트에서 발급받아 로컬 환경 변수 또는 별도 시크릿 관리 방식으로 주입한다.
 
@@ -62,7 +63,7 @@
 | 새 스프레드시트 생성 | Sheets API v4 | `POST https://sheets.googleapis.com/v4/spreadsheets` |
 
 - **미리보기·수정은 별도 API 호출이 아니다.** `https://docs.google.com/document/d/{fileId}/edit?embedded=true` (스프레드시트는 `spreadsheets/d/...`) URL을 프론트가 `<iframe>`으로 띄우면, 편집 내용은 구글 서버로 직접 저장된다. 우리 백엔드는 이 URL만 내려주면 된다.
-- 지금 요청해 둔 scope(`drive.file`, `documents`, `spreadsheets`)가 위 API를 전부 커버하므로 추가 동의는 필요 없다.
+- 지금은 `openid email`만 요청하므로, 템플릿 기능을 실제로 켤 때는 `GOOGLE_OAUTH_SCOPE`에 `drive.file`/`documents`/`spreadsheets`를 추가하고 기존 연동 계정은 재연결(재동의)을 받아야 한다(Google의 incremental authorization 권장 방식).
 - 다만 `GoogleOAuthPort.refreshAccessToken(...)`은 현재 "유효성 검증" 용도로만 액세스 토큰을 발급받고 버린다. 템플릿 기능에서는 이 액세스 토큰 자체를 반환받아 Drive/Docs/Sheets 호출에 재사용하도록 확장해야 한다(액세스 토큰은 1시간짜리라 매 요청마다 새로 발급받는 흐름이 될 가능성이 높다).
 - 이 기능은 `google` 도메인의 리프레시 토큰을 그대로 갖다 쓰는 게 아니라, `MODULES.md`의 도메인 간 조회 Port 정책에 따라 `template`(가칭) 도메인이 필요한 Port를 정의하고 `google` 도메인 담당자 동의하에 Adapter로 구현하는 방식을 검토한다.
 

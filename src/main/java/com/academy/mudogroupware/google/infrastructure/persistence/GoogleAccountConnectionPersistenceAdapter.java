@@ -42,7 +42,6 @@ public class GoogleAccountConnectionPersistenceAdapter implements GoogleAccountC
 
     private GoogleAccountConnectionEntity toEntity(GoogleAccountConnection domain) {
         return GoogleAccountConnectionEntity.builder()
-                .id(domain.getId())
                 .academyId(domain.getAcademyId())
                 .googleEmail(domain.getGoogleEmail())
                 .connectedByUserId(domain.getConnectedByUserId())

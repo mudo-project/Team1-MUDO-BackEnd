@@ -19,7 +19,8 @@ import com.academy.mudogroupware.google.domain.exception.GoogleOAuthStateInvalid
 /**
  * OAuth state는 브라우저 리다이렉트를 거치므로 Authorization 헤더가 없다.
  * academyId·userId를 HMAC-SHA256으로 서명해 콜백에서 위조·재사용 없이 복원하기 위한 컴포넌트다.
- * 키는 JWT_SECRET을 재사용한다(별도 시크릿 설정 불필요).
+ * 키는 JWT_SECRET을 재사용한다. 알려진 기본값으로 대체되면 누구나 유효한 state를 위조할 수 있으므로
+ * 값이 없으면 기본값으로 넘어가지 않고 앱 시작을 실패시킨다.
  */
 @Component
 public class GoogleOAuthStateSigner implements GoogleOAuthStatePort {
@@ -31,8 +32,7 @@ public class GoogleOAuthStateSigner implements GoogleOAuthStatePort {
     private final Clock clock;
     private final String jwtSecret;
 
-    public GoogleOAuthStateSigner(Clock clock,
-            @Value("${JWT_SECRET:local-development-only-change-this-secret-key}") String jwtSecret) {
+    public GoogleOAuthStateSigner(Clock clock, @Value("${JWT_SECRET}") String jwtSecret) {
         this.clock = clock;
         this.jwtSecret = jwtSecret;
     }
