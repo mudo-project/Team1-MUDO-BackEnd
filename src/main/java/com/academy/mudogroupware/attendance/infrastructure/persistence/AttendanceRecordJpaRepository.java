@@ -14,6 +14,9 @@ public interface AttendanceRecordJpaRepository
     boolean existsByAcademyIdAndUserIdAndWorkDate(
             Long academyId, Long userId, LocalDate workDate);
 
+    Optional<AttendanceRecordJpaEntity> findByAcademyIdAndUserIdAndWorkDate(
+            Long academyId, Long userId, LocalDate workDate);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<AttendanceRecordJpaEntity>
             findFirstByAcademyIdAndUserIdAndWorkDateGreaterThanEqualAndClockOutAtIsNullOrderByClockInAtDesc(

@@ -59,6 +59,13 @@ public class AttendanceRecordRepositoryImpl implements AttendanceRecordRepositor
     }
 
     @Override
+    public Optional<AttendanceRecord> findByAcademyIdAndUserIdAndWorkDate(
+            Long academyId, Long userId, LocalDate workDate) {
+        return attendanceRecordJpaRepository.findByAcademyIdAndUserIdAndWorkDate(
+                academyId, userId, workDate).map(this::toDomain);
+    }
+
+    @Override
     public Optional<AttendanceRecord> findLatestOpenSince(
             Long academyId, Long userId, LocalDate earliestWorkDate) {
         return attendanceRecordJpaRepository

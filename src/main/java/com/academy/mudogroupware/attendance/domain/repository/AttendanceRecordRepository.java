@@ -12,6 +12,9 @@ public interface AttendanceRecordRepository {
 
     AttendanceRecord save(AttendanceRecord attendanceRecord);
 
+    Optional<AttendanceRecord> findByAcademyIdAndUserIdAndWorkDate(
+            Long academyId, Long userId, LocalDate workDate);
+
     Optional<AttendanceRecord> findLatestOpenSince(
             Long academyId, Long userId, LocalDate earliestWorkDate);
 
