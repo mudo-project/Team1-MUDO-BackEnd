@@ -53,6 +53,8 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/google/connections/callback")
                     .permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/academy-applications")
+                    .hasAuthority("PLATFORM:SUPER_ADMIN")
                     .anyRequest()
                     .authenticated())
         .addFilterBefore(jwt, UsernamePasswordAuthenticationFilter.class)
