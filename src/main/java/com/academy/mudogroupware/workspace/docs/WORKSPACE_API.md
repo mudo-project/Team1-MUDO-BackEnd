@@ -472,3 +472,35 @@ HTTP `200 OK`
 - 같은 상태로의 전이는 성공으로 응답하되 상태 이력을 남기지 않는다. 이때 `dueAt`이 함께 왔으면 마감일은 반영된다.
 - 반복 업무는 `dueAt`을 함께 보내면 `WORKSPACE_400_5`를 반환한다. `status`만 보내는 것은 허용된다.
 - 다른 워크스페이스에 속한 업무 번호를 보내면 존재를 노출하지 않기 위해 `403`이 아니라 `WORKSPACE_404_3`을 반환한다.
+
+## 업무 삭제
+
+### Endpoint
+
+`DELETE /api/workspaces/{workspaceId}/tasks/{taskId}`
+
+### 인증 및 권한
+
+- `Authorization: Bearer {accessToken}` 헤더가 필요하다.
+- 현재 워크스페이스 참여자만 호출할 수 있다.
+
+### Success Response
+
+HTTP `204 No Content`
+
+응답 본문은 없다.
+
+### Error Response
+
+| HTTP 상태 | code | 발생 조건 |
+| --- | --- | --- |
+| `401 Unauthorized` | `COMMON_401_1` | Access Token이 없거나 유효하지 않은 경우 |
+| `403 Forbidden` | `WORKSPACE_403_1` | 요청자가 참여자가 아닌 경우 |
+| `404 Not Found` | `WORKSPACE_404_1` | 워크스페이스가 없거나 삭제된 경우 |
+| `404 Not Found` | `WORKSPACE_404_3` | 업무가 없거나 해당 워크스페이스 소속이 아닌 경우 |
+
+### Business Rules
+
+- 하드 삭제이며 복구할 수 없다. 업무 댓글, 댓글 멘션, 상태 변경 이력을 함께 삭제한다.
+- 반복 업무의 회차를 삭제하면 같은 트랜잭션에서 `recurring_task_skip`에 `(recurring_template_id, scheduled_for)` 기록을 남긴다. 같은 기록이 이미 있으면 중복 오류 없이 멱등적으로 처리한다.
+- 일반 업무 삭제 시에는 skip 기록을 남기지 않는다.

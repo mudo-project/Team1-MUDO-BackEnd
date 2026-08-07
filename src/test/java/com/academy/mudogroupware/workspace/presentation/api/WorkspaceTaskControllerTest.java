@@ -6,6 +6,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -15,8 +16,10 @@ import com.academy.mudogroupware.global.infrastructure.security.jwt.JwtTokenProv
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
 import com.academy.mudogroupware.global.presentation.security.JwtAuthenticationConverter;
 import com.academy.mudogroupware.workspace.application.command.CreateTaskCommand;
+import com.academy.mudogroupware.workspace.application.command.DeleteTaskCommand;
 import com.academy.mudogroupware.workspace.application.command.UpdateTaskCommand;
 import com.academy.mudogroupware.workspace.application.usecase.CreateTaskUseCase;
+import com.academy.mudogroupware.workspace.application.usecase.DeleteTaskUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.UpdateTaskUseCase;
 import com.academy.mudogroupware.workspace.domain.exception.InvalidTaskStatusTransitionException;
 import com.academy.mudogroupware.workspace.domain.exception.TaskDueAtRequiredException;
@@ -44,6 +47,7 @@ class WorkspaceTaskControllerTest {
 
   @MockitoBean private CreateTaskUseCase createTaskUseCase;
   @MockitoBean private UpdateTaskUseCase updateTaskUseCase;
+  @MockitoBean private DeleteTaskUseCase deleteTaskUseCase;
   @MockitoBean private JwtTokenProvider jwtTokenProvider;
   @MockitoBean private JwtAuthenticationConverter jwtAuthenticationConverter;
 
@@ -240,6 +244,42 @@ class WorkspaceTaskControllerTest {
                 .content("{\"status\":\"COMPLETED\"}"))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.code").value("WORKSPACE_404_3"));
+  }
+
+  @Test
+  void deleteTaskReturnsNoContent() throws Exception {
+    mockMvc
+        .perform(
+            delete("/api/workspaces/1/tasks/101").with(authentication(auth())).with(csrf()))
+        .andExpect(status().isNoContent());
+
+    verify(deleteTaskUseCase).deleteTask(new DeleteTaskCommand(1L, 101L, 10L));
+  }
+
+  @Test
+  void deleteTaskPropagatesTaskNotFound() throws Exception {
+    org.mockito.Mockito.doThrow(new TaskNotFoundException())
+        .when(deleteTaskUseCase)
+        .deleteTask(any(DeleteTaskCommand.class));
+
+    mockMvc
+        .perform(
+            delete("/api/workspaces/1/tasks/101").with(authentication(auth())).with(csrf()))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("WORKSPACE_404_3"));
+  }
+
+  @Test
+  void deleteTaskPropagatesAccessDenied() throws Exception {
+    org.mockito.Mockito.doThrow(new WorkspaceAccessDeniedException())
+        .when(deleteTaskUseCase)
+        .deleteTask(any(DeleteTaskCommand.class));
+
+    mockMvc
+        .perform(
+            delete("/api/workspaces/1/tasks/101").with(authentication(auth())).with(csrf()))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("WORKSPACE_403_1"));
   }
 
   private Authentication auth() {
