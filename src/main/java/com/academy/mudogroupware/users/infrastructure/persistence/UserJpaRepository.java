@@ -14,6 +14,8 @@ public interface UserJpaRepository extends JpaRepository<UserEntity, Long> {
 
     Optional<UserEntity> findByUsername(String username);
 
+    boolean existsByRoleId(Long roleId);
+
     @Query("select u.id from UserEntity u "
             + "where u.academyId = :academyId "
             + "and u.status = com.academy.mudogroupware.users.domain.model.UserStatus.ACTIVE "

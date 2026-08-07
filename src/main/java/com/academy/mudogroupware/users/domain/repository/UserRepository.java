@@ -8,6 +8,8 @@ import com.academy.mudogroupware.users.domain.model.User;
 
 public interface UserRepository {
 
+    boolean existsByRoleId(Long roleId);
+
     Optional<User> findByUsername(String username);
 
     Optional<User> findById(Long id);

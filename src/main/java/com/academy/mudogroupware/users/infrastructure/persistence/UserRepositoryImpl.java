@@ -18,6 +18,11 @@ public class UserRepositoryImpl implements UserRepository {
     private final UserJpaRepository userJpaRepository;
 
     @Override
+    public boolean existsByRoleId(Long roleId) {
+        return userJpaRepository.existsByRoleId(roleId);
+    }
+
+    @Override
     public Optional<User> findByUsername(String username) {
         return userJpaRepository.findByUsername(username).map(this::toDomain);
     }
