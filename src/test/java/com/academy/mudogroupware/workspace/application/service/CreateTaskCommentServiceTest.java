@@ -9,7 +9,6 @@ import static org.mockito.Mockito.when;
 
 import com.academy.mudogroupware.workspace.application.command.CreateTaskCommentCommand;
 import com.academy.mudogroupware.workspace.domain.exception.InvalidMentionedUserException;
-import com.academy.mudogroupware.workspace.domain.exception.TaskNotFoundException;
 import com.academy.mudogroupware.workspace.domain.exception.WorkspaceAccessDeniedException;
 import com.academy.mudogroupware.workspace.domain.exception.WorkspaceNotFoundException;
 import com.academy.mudogroupware.workspace.domain.model.Task;
@@ -40,7 +39,6 @@ class CreateTaskCommentServiceTest {
   private static final ZoneId KST = ZoneId.of("Asia/Seoul");
   private static final Clock FIXED_CLOCK = Clock.fixed(Instant.parse("2026-08-07T01:00:00Z"), KST);
   private static final long WORKSPACE_ID = 1L;
-  private static final long OTHER_WORKSPACE_ID = 2L;
   private static final long TASK_ID = 101L;
   private static final long MEMBER_ID = 10L;
   private static final long MENTIONED_MEMBER_ID = 11L;

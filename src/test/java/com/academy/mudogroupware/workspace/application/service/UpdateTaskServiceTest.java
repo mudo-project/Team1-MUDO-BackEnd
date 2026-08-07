@@ -42,7 +42,6 @@ class UpdateTaskServiceTest {
   private static final Clock FIXED_CLOCK = Clock.fixed(Instant.parse("2026-08-04T15:00:00Z"), KST);
   private static final LocalDate TODAY = LocalDate.of(2026, 8, 5);
   private static final long WORKSPACE_ID = 1L;
-  private static final long OTHER_WORKSPACE_ID = 2L;
   private static final long TASK_ID = 101L;
   private static final long TEMPLATE_ID = 100L;
   private static final long MEMBER_ID = 10L;

@@ -233,7 +233,7 @@ DELETE /api/workspaces/{workspaceId}/tasks/{taskId}
 
 ### 2. 업무 조회와 소속 검증 (비관적 락)
 
-`TaskRepository.findByIdForUpdate`로 삭제 대상을 비관적 락으로 조회한다. 없으면 `TaskNotFoundException`(`404_3`), 다른 워크스페이스 소속이면 마찬가지로 `404_3`(존재를 노출하지 않음). 이 락이 수정 API의 동시 요청과 경합을 직렬화한다.
+`TaskRepository.findByIdForUpdate(workspaceId, taskId)`로 삭제 대상 업무를 **워크스페이스 범위로 제한한 비관적 락**으로 조회한다. 다른 워크스페이스 소속 taskId는 조회 자체가 빈 결과를 반환하므로, 그 시점에 바로 `TaskNotFoundException`(`404_3`)이 발생한다 — 존재를 노출하지 않기 위해 `403`이 아니라 `404_3`으로 응답한다는 정책은 그대로다. 수정 API의 `findByIdForUpdate`와 같은 락을 공유하는 대상이므로, 이 락이 수정 API의 동시 요청과 경합을 직렬화한다.
 
 ### 3. 반복 업무 skip 기록 (조건부)
 

@@ -31,7 +31,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class DeleteTaskServiceTest {
 
   private static final long WORKSPACE_ID = 1L;
-  private static final long OTHER_WORKSPACE_ID = 2L;
   private static final long TASK_ID = 101L;
   private static final long TEMPLATE_ID = 100L;
   private static final long MEMBER_ID = 10L;
