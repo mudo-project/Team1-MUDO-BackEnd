@@ -6,7 +6,9 @@ import java.time.LocalTime;
 import java.time.YearMonth;
 import java.util.List;
 
+import com.academy.mudogroupware.calendar.application.command.DeleteCalendarEventCommand;
 import com.academy.mudogroupware.calendar.application.usecase.CreateCalendarEventUseCase;
+import com.academy.mudogroupware.calendar.application.usecase.DeleteCalendarEventUseCase;
 import com.academy.mudogroupware.calendar.application.usecase.GetCalendarEventUseCase;
 import com.academy.mudogroupware.calendar.application.usecase.GetCalendarEventsUseCase;
 import com.academy.mudogroupware.calendar.application.usecase.UpdateCalendarEventUseCase;
@@ -30,6 +32,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -48,6 +51,7 @@ public class CalendarController {
 
     private final CreateCalendarEventUseCase createCalendarEventUseCase;
     private final GetCalendarEventsUseCase getCalendarEventsUseCase;
+    private final DeleteCalendarEventUseCase deleteCalendarEventUseCase;
     private final UpdateCalendarEventUseCase updateCalendarEventUseCase;
     private final GetCalendarEventUseCase getCalendarEventUseCase;
 
@@ -98,6 +102,19 @@ public class CalendarController {
                 .map(CalendarEventResponse::from)
                 .toList();
         return ResponseEntity.ok(GlobalApiResponse.ok(CalendarResponseCode.EVENT_LIST_RETRIEVED, responses));
+    }
+
+    @Operation(summary = "일정 삭제", description = "일정 번호로 학원 공용 캘린더 일정을 삭제합니다.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "204", description = "일정 삭제 성공"),
+        @ApiResponse(responseCode = "404", description = "일정이 존재하지 않거나 다른 학원 소속인 경우")
+    })
+    @DeleteMapping("/{eventId}")
+    public ResponseEntity<Void> deleteEvent(
+            @AuthenticationPrincipal AuthUser authUser,
+            @PathVariable Long eventId) {
+        deleteCalendarEventUseCase.deleteEvent(new DeleteCalendarEventCommand(eventId, authUser.academyId()));
+        return ResponseEntity.noContent().build();
     }
 
     @Operation(summary = "일정 수정", description = "일정 번호로 학원 공용 캘린더 일정을 수정합니다.")

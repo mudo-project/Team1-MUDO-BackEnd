@@ -21,6 +21,28 @@
 
 - `CalendarControllerTest` — `date`만 지정, `yearMonth`만 지정, 둘 다 지정, 둘 다 생략, 미인증 각각의 응답을 검증했습니다. `LocalTime.MAX`(`23:59:59.999999999`) 기준으로 계산되는 정확한 종료 시각까지 확인했습니다.
 - `./gradlew test`(전체) — calendar 관련 테스트 전부 통과, 기존 도메인 회귀 없음을 확인했습니다.
+## ✅ 2026-08-06 · 일정 삭제 API 추가
+
+### 변경 목적
+
+목록/일별 조회 다음으로, 등록된 일정을 삭제하는 API를 추가했습니다.
+
+### 구현 변경
+
+- `DELETE /api/calendars/{eventId}`를 추가했습니다.
+- `DeleteCalendarEventCommand(eventId, academyId)`를 새로 추가했습니다. `memo`의 `DeleteMemoCommand(memoId, userId)` 선례와 동일한 구성입니다.
+- `DeleteCalendarEventService`는 `findById` 후 요청자의 `academyId`와 다르면(또는 존재하지 않으면) 동일하게 `CalendarEventNotFoundException`(`CALENDAR_404_1`)을 던집니다. 상세조회·수정과 같은 결정입니다.
+- 검증을 통과하면 `CalendarEventRepository.deleteById(eventId)`를 호출합니다. 소프트 삭제 플래그 없이 하드 삭제합니다.
+- 응답은 `memo`의 삭제 엔드포인트와 동일하게 본문 없이 `204 No Content`를 반환합니다. 새 `ResponseCode`를 추가하지 않았습니다.
+
+### 유예한 결정
+
+- 상세조회(`GET /api/calendars/{eventId}`), 수정(`PATCH`)은 각각 별도 브랜치(`feature/calendar-detail-query`, `feature/calendar-update-event`)에서 진행 중입니다.
+
+### 검증
+
+- `DeleteCalendarEventServiceTest` — 정상 삭제 흐름, 존재하지 않는 일정, 다른 학원 소속 일정 각각에서 예상대로 동작/예외가 발생하고 `deleteById`가 호출/미호출되는지 검증했습니다.
+- `CalendarControllerTest` — `DELETE /api/calendars/{eventId}`의 `204`/`404`/`401` 응답 형식을 검증했습니다.
 
 ## ✅ 2026-08-06 · 일정 수정 API 추가
 
