@@ -245,6 +245,46 @@
 
 ---
 
+## 8. 학원 신청 상세 조회
+
+`GET /api/academy-applications/{applicationId}`
+권한: `PLATFORM:SUPER_ADMIN` 필요
+
+### Request
+
+없음
+
+### Response · `200 OK`
+
+목록 조회와 동일한 필드 구성의 단건 객체를 반환합니다.
+
+```json
+{
+  "status": 200,
+  "code": "ACADEMY_APPLICATION_200_2",
+  "message": "학원 신청 상세 조회에 성공했습니다.",
+  "data": {
+    "applicationId": 1,
+    "requestedLoginId": "academy01",
+    "academyName": "우리학원",
+    "businessNo": "123-45-67890",
+    "representativeName": "홍길동",
+    "representativeEmail": "hong@example.com",
+    "representativePhone": "010-0000-0000",
+    "status": "PENDING",
+    "rejectReason": null,
+    "createdAt": "2026-08-07T10:00:00"
+  }
+}
+```
+
+### 검증 및 정책
+
+- `applicationId`가 존재하지 않으면 `USER_404_3`으로 응답합니다.
+- 목록 응답과 필드가 지금은 같지만, 프론트 상세 화면 디자인이 확정되면 상세 전용 필드가 늘어날 수 있어 처음부터 별도 엔드포인트로 분리해뒀습니다.
+
+---
+
 ## ⚠️ 주요 오류
 
 | HTTP | 코드 | 상황 |
@@ -256,9 +296,10 @@
 | `409` | `USER_409_1` | 같은 학원 내에 이미 존재하는 역할 이름 |
 | `400` | `USER_400_1` | 존재하지 않는 권한 코드로 역할 권한 조립 시도 |
 | `404` | `USER_404_2` | 역할이 존재하지 않거나 다른 학원 소속 |
+| `404` | `USER_404_3` | 학원 신청서가 존재하지 않음 |
 | `401` | `AUTH_401_1` | 리프레시 토큰 자체가 위조되었거나 형식이 올바르지 않음 |
 | `401` | `AUTH_401_2` | 리프레시 토큰이 만료됨 |
 | `401` | `AUTH_401_6` | 서버에 저장된 리프레시 토큰이 없음 |
 | `401` | `AUTH_401_7` | 요청된 리프레시 토큰이 저장된 값과 일치하지 않음 (다른 기기 재로그인 등으로 무효화됨) |
 | `400` | `COMMON_400_1` | 요청 형식 오류 (`username`/`password` 누락 또는 길이 초과, 또는 역할 `name`/`description` 형식 오류) |
-| `403` | `COMMON_403_1` | `ROLE:MANAGE` 권한이 없는 계정으로 역할 생성 시도, 또는 `PLATFORM:SUPER_ADMIN`이 아닌 계정으로 학원 신청 목록 조회 시도 |
+| `403` | `COMMON_403_1` | `ROLE:MANAGE` 권한이 없는 계정으로 역할 생성 시도, 또는 `PLATFORM:SUPER_ADMIN`이 아닌 계정으로 학원 신청 목록/상세 조회 시도 |
