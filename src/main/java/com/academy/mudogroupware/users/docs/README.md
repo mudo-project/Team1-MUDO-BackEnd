@@ -20,6 +20,7 @@
 - `PermissionQueryUseCase`
 - `ListRolesUseCase`
 - `GetRoleUseCase`
+- `UpdateRoleUseCase`
 - `ListAcademyApplicationsUseCase`
 - `GetAcademyApplicationUseCase`
 
