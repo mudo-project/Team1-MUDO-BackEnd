@@ -14,7 +14,8 @@ public enum WorkspaceResponseCode implements ResponseCode {
   WORKSPACE_RENAMED("WORKSPACE_200_3", "워크스페이스 이름 수정에 성공했습니다."),
   WORKSPACE_MEMBER_ADDED("WORKSPACE_200_4", "참여자 추가에 성공했습니다."),
   WORKSPACE_RECOVERED("WORKSPACE_200_5", "워크스페이스 복구에 성공했습니다."),
-  TASK_CREATED("WORKSPACE_201_2", "업무 생성에 성공했습니다.");
+  TASK_CREATED("WORKSPACE_201_2", "업무 생성에 성공했습니다."),
+  TASK_UPDATED("WORKSPACE_200_6", "업무 수정에 성공했습니다.");
 
   private final String code;
   private final String message;

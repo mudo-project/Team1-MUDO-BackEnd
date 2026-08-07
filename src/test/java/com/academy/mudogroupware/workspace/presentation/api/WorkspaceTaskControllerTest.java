@@ -6,6 +6,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -14,9 +15,16 @@ import com.academy.mudogroupware.global.infrastructure.security.jwt.JwtTokenProv
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
 import com.academy.mudogroupware.global.presentation.security.JwtAuthenticationConverter;
 import com.academy.mudogroupware.workspace.application.command.CreateTaskCommand;
+import com.academy.mudogroupware.workspace.application.command.UpdateTaskCommand;
 import com.academy.mudogroupware.workspace.application.usecase.CreateTaskUseCase;
+import com.academy.mudogroupware.workspace.application.usecase.UpdateTaskUseCase;
+import com.academy.mudogroupware.workspace.domain.exception.InvalidTaskStatusTransitionException;
+import com.academy.mudogroupware.workspace.domain.exception.TaskDueAtRequiredException;
+import com.academy.mudogroupware.workspace.domain.exception.TaskNotFoundException;
 import com.academy.mudogroupware.workspace.domain.exception.WorkspaceAccessDeniedException;
 import com.academy.mudogroupware.workspace.domain.exception.WorkspaceNotFoundException;
+import com.academy.mudogroupware.workspace.domain.model.Task;
+import com.academy.mudogroupware.workspace.domain.model.TaskStatus;
 import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,6 +43,7 @@ class WorkspaceTaskControllerTest {
   @Autowired private MockMvc mockMvc;
 
   @MockitoBean private CreateTaskUseCase createTaskUseCase;
+  @MockitoBean private UpdateTaskUseCase updateTaskUseCase;
   @MockitoBean private JwtTokenProvider jwtTokenProvider;
   @MockitoBean private JwtAuthenticationConverter jwtAuthenticationConverter;
 
@@ -149,6 +158,88 @@ class WorkspaceTaskControllerTest {
                 .content("{\"title\":\"업무\",\"dueAt\":\"2026-08-10\"}"))
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.code").value("WORKSPACE_403_1"));
+  }
+
+  @Test
+  void updateTaskReturnsAppliedStatusAndDueAt() throws Exception {
+    Task updated =
+        Task.restore(101L, 1L, null, "업무", TaskStatus.IN_PROGRESS, LocalDate.of(2026, 8, 20), null, 10L);
+    when(updateTaskUseCase.updateTask(any(UpdateTaskCommand.class))).thenReturn(updated);
+
+    mockMvc
+        .perform(
+            patch("/api/workspaces/1/tasks/101")
+                .with(authentication(auth()))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"IN_PROGRESS\",\"dueAt\":\"2026-08-20\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.code").value("WORKSPACE_200_6"))
+        .andExpect(jsonPath("$.data.taskId").value(101))
+        .andExpect(jsonPath("$.data.status").value("IN_PROGRESS"))
+        .andExpect(jsonPath("$.data.dueAt").value("2026-08-20"));
+  }
+
+  @Test
+  void updateTaskRejectsEmptyBody() throws Exception {
+    mockMvc
+        .perform(
+            patch("/api/workspaces/1/tasks/101")
+                .with(authentication(auth()))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+        .andExpect(status().isBadRequest());
+
+    verifyNoInteractions(updateTaskUseCase);
+  }
+
+  @Test
+  void updateTaskPropagatesInvalidTransition() throws Exception {
+    when(updateTaskUseCase.updateTask(any(UpdateTaskCommand.class)))
+        .thenThrow(new InvalidTaskStatusTransitionException());
+
+    mockMvc
+        .perform(
+            patch("/api/workspaces/1/tasks/101")
+                .with(authentication(auth()))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"DELAYED\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("WORKSPACE_400_3"));
+  }
+
+  @Test
+  void updateTaskPropagatesDueAtRequired() throws Exception {
+    when(updateTaskUseCase.updateTask(any(UpdateTaskCommand.class)))
+        .thenThrow(new TaskDueAtRequiredException());
+
+    mockMvc
+        .perform(
+            patch("/api/workspaces/1/tasks/101")
+                .with(authentication(auth()))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"IN_PROGRESS\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("WORKSPACE_400_4"));
+  }
+
+  @Test
+  void updateTaskPropagatesTaskNotFound() throws Exception {
+    when(updateTaskUseCase.updateTask(any(UpdateTaskCommand.class)))
+        .thenThrow(new TaskNotFoundException());
+
+    mockMvc
+        .perform(
+            patch("/api/workspaces/1/tasks/101")
+                .with(authentication(auth()))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"COMPLETED\"}"))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("WORKSPACE_404_3"));
   }
 
   private Authentication auth() {
