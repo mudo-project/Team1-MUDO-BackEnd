@@ -1,7 +1,9 @@
 package com.academy.mudogroupware.workspace.domain.model;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.academy.mudogroupware.global.domain.common.exception.BadRequestException;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -68,5 +70,19 @@ class TaskCommentTest {
 
     assertThat(comment.belongsTo(TASK_ID)).isTrue();
     assertThat(comment.belongsTo(999L)).isFalse();
+  }
+
+  @Test
+  void createRejectsBlankContent() {
+    assertThatThrownBy(() -> TaskComment.create(TASK_ID, AUTHOR_ID, "   ", List.of(), NOW))
+        .isInstanceOf(BadRequestException.class);
+  }
+
+  @Test
+  void updateContentRejectsBlankContent() {
+    TaskComment comment = TaskComment.create(TASK_ID, AUTHOR_ID, "원본", List.of(), NOW);
+
+    assertThatThrownBy(() -> comment.updateContent("   ", List.of(), NOW.plusHours(1)))
+        .isInstanceOf(BadRequestException.class);
   }
 }

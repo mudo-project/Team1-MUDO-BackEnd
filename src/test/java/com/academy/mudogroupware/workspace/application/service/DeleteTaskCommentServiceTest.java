@@ -113,6 +113,21 @@ class DeleteTaskCommentServiceTest {
     verify(taskCommentRepository, never()).deleteById(any());
   }
 
+  @Test
+  void rejectsMissingComment() {
+    givenWorkspaceWithMembers(MEMBER_ID);
+    givenTask(WORKSPACE_ID);
+    when(taskCommentRepository.findById(COMMENT_ID)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(
+            () ->
+                service()
+                    .deleteComment(new DeleteTaskCommentCommand(WORKSPACE_ID, TASK_ID, COMMENT_ID, MEMBER_ID)))
+        .isInstanceOf(TaskCommentNotFoundException.class);
+
+    verify(taskCommentRepository, never()).deleteById(any());
+  }
+
   private void givenWorkspaceWithMembers(long... memberIds) {
     Set<Long> members = new LinkedHashSet<>();
     for (long id : memberIds) {

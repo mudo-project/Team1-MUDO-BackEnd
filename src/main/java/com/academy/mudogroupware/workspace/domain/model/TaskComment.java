@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.workspace.domain.model;
 
+import com.academy.mudogroupware.global.domain.common.exception.BadRequestException;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.Getter;
@@ -47,7 +48,7 @@ public class TaskComment {
         null,
         taskId,
         authorId,
-        content.trim(),
+        validateContent(content),
         false,
         null,
         null,
@@ -77,7 +78,7 @@ public class TaskComment {
         id,
         taskId,
         authorId,
-        newContent.trim(),
+        validateContent(newContent),
         completed,
         completedBy,
         completedAt,
@@ -107,5 +108,14 @@ public class TaskComment {
 
   private static List<TaskCommentMention> toMentions(List<Long> mentionedUserIds, LocalDateTime now) {
     return mentionedUserIds.stream().map(userId -> TaskCommentMention.create(userId, now)).toList();
+  }
+
+  // 댓글 내용은 항상 공백만으로 채워질 수 없다 — Request 계층의 @NotBlank가 API 경로를 막지만,
+  // 도메인을 직접 호출하는 경로(다른 도메인 연동, 배치 등)도 동일하게 방어한다.
+  private static String validateContent(String content) {
+    if (content == null || content.trim().isEmpty()) {
+      throw new BadRequestException();
+    }
+    return content.trim();
   }
 }

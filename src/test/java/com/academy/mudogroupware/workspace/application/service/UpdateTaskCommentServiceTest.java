@@ -15,6 +15,7 @@ import com.academy.mudogroupware.workspace.domain.exception.WorkspaceAccessDenie
 import com.academy.mudogroupware.workspace.domain.exception.WorkspaceNotFoundException;
 import com.academy.mudogroupware.workspace.domain.model.Task;
 import com.academy.mudogroupware.workspace.domain.model.TaskComment;
+import com.academy.mudogroupware.workspace.domain.model.TaskCommentMention;
 import com.academy.mudogroupware.workspace.domain.model.TaskStatus;
 import com.academy.mudogroupware.workspace.domain.model.Workspace;
 import com.academy.mudogroupware.workspace.domain.repository.TaskCommentRepository;
@@ -70,6 +71,23 @@ class UpdateTaskCommentServiceTest {
                     WORKSPACE_ID, TASK_ID, COMMENT_ID, OTHER_MEMBER_ID, "수정된 내용", List.of(OTHER_MEMBER_ID)));
 
     assertThat(result.getContent()).isEqualTo("수정된 내용");
+  }
+
+  @Test
+  void updateReplacesExistingMentionsEntirely() {
+    givenWorkspaceWithMembers(MEMBER_ID, OTHER_MEMBER_ID);
+    givenTask(WORKSPACE_ID);
+    givenCommentWithMentions(TASK_ID, MEMBER_ID, List.of(MEMBER_ID));
+    when(taskCommentRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+    TaskComment result =
+        service()
+            .updateComment(
+                new UpdateTaskCommentCommand(
+                    WORKSPACE_ID, TASK_ID, COMMENT_ID, MEMBER_ID, "수정된 내용", List.of(OTHER_MEMBER_ID)));
+
+    assertThat(result.getMentions()).extracting(m -> m.getMentionedUserId())
+        .containsExactly(OTHER_MEMBER_ID);
   }
 
   @Test
@@ -181,6 +199,16 @@ class UpdateTaskCommentServiceTest {
         TaskComment.restore(
             COMMENT_ID, owningTaskId, authorId, "원본", false, null, null, List.of(),
             LocalDateTime.of(2026, 8, 7, 9, 0), LocalDateTime.of(2026, 8, 7, 9, 0));
+    when(taskCommentRepository.findById(COMMENT_ID)).thenReturn(Optional.of(comment));
+  }
+
+  private void givenCommentWithMentions(long owningTaskId, long authorId, List<Long> mentionedUserIds) {
+    LocalDateTime createdAt = LocalDateTime.of(2026, 8, 7, 9, 0);
+    List<TaskCommentMention> mentions =
+        mentionedUserIds.stream().map(userId -> TaskCommentMention.create(userId, createdAt)).toList();
+    TaskComment comment =
+        TaskComment.restore(
+            COMMENT_ID, owningTaskId, authorId, "원본", false, null, null, mentions, createdAt, createdAt);
     when(taskCommentRepository.findById(COMMENT_ID)).thenReturn(Optional.of(comment));
   }
 }

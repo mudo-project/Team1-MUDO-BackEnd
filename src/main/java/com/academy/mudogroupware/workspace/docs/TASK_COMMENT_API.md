@@ -10,8 +10,6 @@
 
 `POST /api/workspaces/{workspaceId}/tasks/{taskId}/comments`
 
-# **[request]**
-
 ### Request Header
 
 | name | description |
@@ -43,8 +41,6 @@ Request Body
 | --- | --- |
 | `content` | 댓글 내용. 필수. 앞뒤 공백 제거 후 공백만 남으면 거부. |
 | `mentionedUserIds` | 멘션할 사용자 번호 목록. 선택(생략 시 빈 목록). 워크스페이스 참여자만 지정할 수 있다. |
-
-# **[response]**
 
 ### 성공코드
 
@@ -124,8 +120,6 @@ Response Body
 
 `PATCH /api/workspaces/{workspaceId}/tasks/{taskId}/comments/{commentId}`
 
-# **[request]**
-
 ### Request Header
 
 | name | description |
@@ -158,8 +152,6 @@ Request Body
 | --- | --- |
 | `content` | 수정할 댓글 내용. 필수. |
 | `mentionedUserIds` | 교체할 멘션 대상 번호 목록. 선택(생략 시 빈 목록). 기존 멘션은 요청 내용으로 전체 교체된다. |
-
-# **[response]**
 
 ### 성공코드
 
@@ -214,8 +206,6 @@ Response Body
 
 `DELETE /api/workspaces/{workspaceId}/tasks/{taskId}/comments/{commentId}`
 
-# **[request]**
-
 ### Request Header
 
 | name | description |
@@ -233,8 +223,6 @@ Response Body
 ### Request Parameter
 
 없음
-
-# **[response]**
 
 ### 성공코드
 
@@ -265,8 +253,6 @@ Response Body
 
 `PATCH /api/workspaces/{workspaceId}/tasks/{taskId}/comments/{commentId}/complete`
 
-# **[request]**
-
 ### Request Header
 
 | name | description |
@@ -286,8 +272,6 @@ Response Body
 없음
 
 본문 없음.
-
-# **[response]**
 
 ### 성공코드
 
