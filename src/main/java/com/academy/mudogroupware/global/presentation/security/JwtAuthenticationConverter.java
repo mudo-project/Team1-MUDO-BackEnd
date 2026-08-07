@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.global.presentation.security;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -30,8 +31,11 @@ public class JwtAuthenticationConverter {
         : rolePermissionLookupPort.lookup(c.roleId());
     AuthUser p = new AuthUser(c.userId(), c.username(), c.academyId(), c.roleId(), info.roleName(),
         c.accountType(), c.adminScope());
-    List<SimpleGrantedAuthority> authorities =
-        info.permissionCodes().stream().map(SimpleGrantedAuthority::new).toList();
+    List<SimpleGrantedAuthority> authorities = new ArrayList<>(
+        info.permissionCodes().stream().map(SimpleGrantedAuthority::new).toList());
+    if (isPlatformAdmin) {
+      authorities.add(new SimpleGrantedAuthority("PLATFORM:SUPER_ADMIN"));
+    }
     return new UsernamePasswordAuthenticationToken(p, null, authorities);
   }
 }
