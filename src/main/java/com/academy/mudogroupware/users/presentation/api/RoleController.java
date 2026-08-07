@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -16,8 +17,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.academy.mudogroupware.global.presentation.api.common.GlobalApiResponse;
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
+import com.academy.mudogroupware.users.application.command.DeleteRoleCommand;
 import com.academy.mudogroupware.users.application.usecase.AssignRolePermissionsUseCase;
 import com.academy.mudogroupware.users.application.usecase.CreateRoleUseCase;
+import com.academy.mudogroupware.users.application.usecase.DeleteRoleUseCase;
 import com.academy.mudogroupware.users.application.usecase.GetRoleUseCase;
 import com.academy.mudogroupware.users.application.usecase.ListRolesUseCase;
 import com.academy.mudogroupware.users.application.usecase.UpdateRoleUseCase;
@@ -42,6 +45,7 @@ public class RoleController {
     private final ListRolesUseCase listRolesUseCase;
     private final GetRoleUseCase getRoleUseCase;
     private final UpdateRoleUseCase updateRoleUseCase;
+    private final DeleteRoleUseCase deleteRoleUseCase;
 
     @PreAuthorize("hasAuthority('ROLE:MANAGE')")
     @PostMapping
@@ -80,6 +84,15 @@ public class RoleController {
             @PathVariable Long roleId,
             @Valid @RequestBody UpdateRoleRequest request) {
         updateRoleUseCase.updateRole(request.toCommand(roleId, authUser.academyId()));
+        return ResponseEntity.noContent().build();
+    }
+
+    @PreAuthorize("hasAuthority('ROLE:MANAGE')")
+    @DeleteMapping("/{roleId}")
+    public ResponseEntity<Void> delete(
+            @AuthenticationPrincipal AuthUser authUser,
+            @PathVariable Long roleId) {
+        deleteRoleUseCase.deleteRole(new DeleteRoleCommand(roleId, authUser.academyId()));
         return ResponseEntity.noContent().build();
     }
 
