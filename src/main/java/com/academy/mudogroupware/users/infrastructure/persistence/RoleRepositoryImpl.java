@@ -1,6 +1,7 @@
 package com.academy.mudogroupware.users.infrastructure.persistence;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
@@ -65,6 +66,19 @@ public class RoleRepositoryImpl implements RoleRepository {
         Set<PermissionEntity> permissions = new HashSet<>(permissionJpaRepository.findAllByCodeIn(permissionCodes));
         role.getPermissions().clear();
         role.getPermissions().addAll(permissions);
+    }
+
+    @Override
+    public List<Role> findAllByAcademyId(Long academyId) {
+        return roleJpaRepository.findAllByAcademyId(academyId).stream()
+                .map(this::toDomainWithoutPermissions)
+                .toList();
+    }
+
+    private Role toDomainWithoutPermissions(RoleEntity entity) {
+        return Role.restore(
+                entity.getId(), entity.getAcademyId(), entity.getName(), entity.getDescription(),
+                entity.getCreatedAt(), Set.of());
     }
 
     private Role toDomain(RoleEntity entity) {

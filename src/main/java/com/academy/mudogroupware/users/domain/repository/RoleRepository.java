@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.users.domain.repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -14,4 +15,6 @@ public interface RoleRepository {
     Optional<Role> findById(Long id);
 
     void updatePermissions(Long roleId, Set<String> permissionCodes);
+
+    List<Role> findAllByAcademyId(Long academyId);
 }
