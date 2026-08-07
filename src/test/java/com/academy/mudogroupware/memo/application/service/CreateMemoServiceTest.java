@@ -48,6 +48,22 @@ class CreateMemoServiceTest {
     }
 
     @Test
+    void allowsCreationWhenUserHas199Memos() {
+        CreateMemoService service = new CreateMemoService(memoRepository, clock);
+        when(memoRepository.countByUserId(10L)).thenReturn(199L);
+        when(memoRepository.save(any(Memo.class))).thenAnswer(invocation -> {
+            Memo memo = invocation.getArgument(0);
+            return Memo.restore(200L, memo.getUserId(), memo.getTitle(), memo.getContent(), memo.getColor(),
+                    memo.getPositionX(), memo.getPositionY(), memo.getWidth(), memo.getHeight(),
+                    memo.getCreatedAt(), memo.getUpdatedAt());
+        });
+
+        Long memoId = service.createMemo(new CreateMemoCommand(10L, "제목", "내용", MemoColor.YELLOW));
+
+        assertEquals(200L, memoId);
+    }
+
+    @Test
     void throwsWhenUserAlreadyHas200Memos() {
         CreateMemoService service = new CreateMemoService(memoRepository, clock);
         when(memoRepository.countByUserId(10L)).thenReturn(200L);
