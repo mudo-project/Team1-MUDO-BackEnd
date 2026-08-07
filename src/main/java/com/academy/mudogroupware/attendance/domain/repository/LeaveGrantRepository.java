@@ -12,4 +12,6 @@ public interface LeaveGrantRepository {
     boolean existsByAcademyIdAndUserIdAndGrantDate(Long academyId, Long userId, LocalDate grantDate);
 
     Optional<LeaveGrant> findActiveForUpdate(Long academyId, Long userId, LocalDate date);
+
+    Optional<LeaveGrant> findActive(Long academyId, Long userId, LocalDate date);
 }

@@ -39,4 +39,14 @@ public interface LeaveRequestJpaRepository extends JpaRepository<LeaveRequestJpa
                     @Param("statuses") Set<LeaveRequestStatus> statuses,
                     @Param("periodStart") LocalDate periodStart,
                     @Param("periodEnd") LocalDate periodEnd);
+
+    @Query("select l from LeaveRequestJpaEntity l "
+            + "where l.academyId = :academyId and l.userId = :userId and l.status = :status "
+            + "and l.startDate <= :endDate and l.endDate >= :startDate")
+    List<LeaveRequestJpaEntity> findOverlapping(
+            @Param("academyId") Long academyId,
+            @Param("userId") Long userId,
+            @Param("status") LeaveRequestStatus status,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
 }
