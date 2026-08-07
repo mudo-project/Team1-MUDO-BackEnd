@@ -30,11 +30,43 @@ class JwtAuthenticationConverterTest {
 
         assertThat(authentication.getAuthorities())
                 .extracting(GrantedAuthority::getAuthority)
-                .containsExactlyInAnyOrder("ROLE:MANAGE", "ACCOUNT:CREATE");
+                .containsExactlyInAnyOrder("ROLE:MANAGE", "ACCOUNT:CREATE", "PLATFORM:SUPER_ADMIN");
         AuthUser principal = (AuthUser) authentication.getPrincipal();
         assertThat(principal.accountType()).isEqualTo(AccountType.ADMIN);
         assertThat(principal.adminScope()).isEqualTo(AdminScope.PLATFORM);
         assertThat(principal.roleName()).isEqualTo("SUPER_ADMIN");
+    }
+
+    @Test
+    void platformAdminGetsSuperAdminAuthorityAlongsideCatalogPermissions() {
+        JwtAuthenticationConverter converter = new JwtAuthenticationConverter(
+                roleId -> {
+                    throw new AssertionError("플랫폼 관리자는 역할 조회를 하면 안 됨");
+                },
+                () -> Set.of("ROLE:MANAGE"));
+
+        Authentication authentication = converter.toAuthentication(
+                new JwtClaims(1L, "super-admin", null, 99L, AccountType.ADMIN, AdminScope.PLATFORM));
+
+        assertThat(authentication.getAuthorities())
+                .extracting(GrantedAuthority::getAuthority)
+                .containsExactlyInAnyOrder("ROLE:MANAGE", "PLATFORM:SUPER_ADMIN");
+    }
+
+    @Test
+    void nonPlatformAdminDoesNotGetSuperAdminAuthority() {
+        JwtAuthenticationConverter converter = new JwtAuthenticationConverter(
+                roleId -> new RolePermissionInfo("TEACHER", Set.of("WORKSPACE:READ")),
+                () -> {
+                    throw new AssertionError("일반 사용자는 플랫폼 권한 포트를 호출하면 안 됨");
+                });
+
+        Authentication authentication = converter.toAuthentication(
+                new JwtClaims(2L, "teacher", 10L, 1L, AccountType.MEMBER, null));
+
+        assertThat(authentication.getAuthorities())
+                .extracting(GrantedAuthority::getAuthority)
+                .doesNotContain("PLATFORM:SUPER_ADMIN");
     }
 
     @Test
