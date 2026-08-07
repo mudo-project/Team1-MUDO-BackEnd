@@ -17,4 +17,8 @@ public interface RoleRepository {
     void updatePermissions(Long roleId, Set<String> permissionCodes);
 
     List<Role> findAllByAcademyId(Long academyId);
+
+    boolean existsByAcademyIdAndNameAndIdNot(Long academyId, String name, Long excludedRoleId);
+
+    void updateNameAndDescription(Long roleId, String name, String description);
 }

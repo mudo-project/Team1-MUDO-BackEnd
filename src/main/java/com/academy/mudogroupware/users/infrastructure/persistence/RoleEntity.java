@@ -51,6 +51,11 @@ public class RoleEntity {
         this.createdAt = createdAt;
     }
 
+    void update(String name, String description) {
+        this.name = name;
+        this.description = description;
+    }
+
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
             name = "role_permission",

@@ -1,5 +1,5 @@
 > 작성일: 2026-08-04
-> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청/승인 워크플로우(PR 1·2·3/3, "계정 발급 체계" 2단계) 완료, 역할 목록/상세 조회(역할 CRUD 1~2/4) 완료 · 역할 수정/삭제(3~4/4), 학원 관리자의 직원 계정 발급(계정 발급 체계 3단계) 미착수
+> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청/승인 워크플로우(PR 1·2·3/3, "계정 발급 체계" 2단계) 완료, 역할 목록/상세/수정(역할 CRUD 1~3/4) 완료 · 역할 삭제(4/4), 학원 관리자의 직원 계정 발급(계정 발급 체계 3단계) 미착수
 
 ## 🎯 변경 목적
 
@@ -366,6 +366,40 @@ PR 1(목록 조회)이 develop에 머지된 뒤 그 위에서 이어가는 두 �
 | Domain(users) | 없음(기존 `RoleRepository.findById` 재사용) |
 | Application(users) | `GetRoleUseCase`/`GetRoleService` 신규 |
 | Presentation(users) | `RoleController`에 `GET /api/roles/{roleId}` 핸들러 추가, `RoleResponseCode.ROLE_DETAIL_FOUND`, `RoleDetailResponse` 신규 |
+
+---
+
+## ✅ 2026-08-07 · 역할 수정 API 구현 (`PUT /api/roles/{roleId}`, 이슈 #187, 역할 CRUD 4개 중 3번째)
+
+### 배경
+
+역할 생성 후 이름/설명을 잘못 지었거나 바꾸고 싶으면 지금까지는 방법이 없었다(삭제 API도 아직 없어 재생성도 불가능). 계획: `docs/superpowers/plans/2026-08-07-role-crud.md` Task 1, Task 2 나머지, Task 7.
+
+### 확정된 정책
+
+- **이름/설명 수정은 `RoleRepository.updatePermissions()`와 동일한 관리(managed) 엔티티 직접 mutate 패턴을 쓴다.** `RoleEntity.update(name, description)`을 package-private으로 추가하고, `RoleRepositoryImpl.updateNameAndDescription()`이 `findWithPermissionsById()`로 로드한 관리 엔티티를 직접 mutate한다. 트랜잭션 커밋 시점에 dirty-checking으로 반영되므로 `@Transactional`이 걸린 서비스 계층에서만 호출해야 한다.
+- **원래 스펙에 있던 `Role.withNameAndDescription()`(불변 도메인 객체의 with-copy 메서드)은 추가하지 않는다.** 실제 흐름이 `RoleRepository.updateNameAndDescription()`(관리 엔티티 mutate)만 쓰고 도메인 객체의 with-copy 메서드를 전혀 거치지 않기 때문이다. 같은 패턴으로 먼저 추가됐던 `Role.withPermissionCodes()`가 코드베이스 어디서도 호출되지 않는 죽은 코드였던 것이 확인돼(역할 목록 조회 PR에서), 같은 실수를 반복하지 않기로 했다.
+- **이름 중복 검사는 자기 자신을 제외한다(`existsByAcademyIdAndNameAndIdNot`).** 이름을 바꾸지 않고 설명만 고치는 수정 요청이 "자기 자신과 이름이 겹친다"는 이유로 거부되면 안 되기 때문이다.
+- **권한 목록(`permissionCodes`)은 이 API의 스코프가 아니다.** 기존 `PUT /api/roles/{roleId}/permissions`(권한 조립)를 그대로 쓴다 — 이름/설명 수정과 권한 조립은 서로 다른 빈도로, 다른 화면에서 일어나는 별개의 연산이라고 판단했다.
+
+### 완료 기준
+
+- [x] `RoleEntity.update(name, description)` 추가
+- [x] `RoleRepository`/`RoleJpaRepository`/`RoleRepositoryImpl`에 `existsByAcademyIdAndNameAndIdNot`/`updateNameAndDescription` 추가, `RoleRepositoryImplDataJpaTest`에 케이스 추가
+- [x] `UpdateRoleCommand`/`UpdateRoleUseCase`/`UpdateRoleService`(TDD, 4케이스: 미존재 404/다른 학원 404/이름 중복 409/정상 수정)
+- [x] `UpdateRoleRequest`
+- [x] `RoleController`에 `PUT /{roleId}` 핸들러 추가
+- [x] 로컬 curl end-to-end 검증(정상 수정 204/이름 중복 409/자기 이름 유지 204/권한 없음 403)
+- [x] `./gradlew build` 통과
+
+### 🧩 영향 범위
+
+| 계층 | 변경 내용 |
+| --- | --- |
+| Persistence(users) | `RoleEntity.update(name, description)` 추가, `RoleJpaRepository.existsByAcademyIdAndNameAndIdNot` 추가, `RoleRepositoryImpl`에 `existsByAcademyIdAndNameAndIdNot`/`updateNameAndDescription` 구현 |
+| Domain(users) | `RoleRepository`에 `existsByAcademyIdAndNameAndIdNot`/`updateNameAndDescription` 추가 |
+| Application(users) | `UpdateRoleCommand`/`UpdateRoleUseCase`/`UpdateRoleService` 신규 |
+| Presentation(users) | `RoleController`에 `PUT /api/roles/{roleId}` 핸들러 추가, `UpdateRoleRequest` 신규 |
 
 ---
 
