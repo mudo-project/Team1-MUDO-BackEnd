@@ -36,10 +36,9 @@ public class DeleteTaskService implements DeleteTaskUseCase {
     }
 
     Task task =
-        taskRepository.findByIdForUpdate(command.taskId()).orElseThrow(TaskNotFoundException::new);
-    if (!task.belongsTo(command.workspaceId())) {
-      throw new TaskNotFoundException();
-    }
+        taskRepository
+            .findByIdForUpdate(command.workspaceId(), command.taskId())
+            .orElseThrow(TaskNotFoundException::new);
 
     // 반복 업무의 특정 회차를 지우면 스케줄러가 같은 회차를 다시 만들지 않도록 기록을 남긴다.
     // 이 기록 저장과 삭제는 같은 트랜잭션에서 처리한다.

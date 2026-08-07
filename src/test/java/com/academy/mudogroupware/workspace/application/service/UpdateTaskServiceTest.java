@@ -170,7 +170,7 @@ class UpdateTaskServiceTest {
                             WORKSPACE_ID, TASK_ID, MEMBER_ID, TaskStatus.COMPLETED, null)))
         .isInstanceOf(WorkspaceNotFoundException.class);
 
-    verify(taskRepository, never()).findByIdForUpdate(any());
+    verify(taskRepository, never()).findByIdForUpdate(any(), any());
   }
 
   @Test
@@ -185,13 +185,13 @@ class UpdateTaskServiceTest {
                             WORKSPACE_ID, TASK_ID, OUTSIDER_ID, TaskStatus.COMPLETED, null)))
         .isInstanceOf(WorkspaceAccessDeniedException.class);
 
-    verify(taskRepository, never()).findByIdForUpdate(any());
+    verify(taskRepository, never()).findByIdForUpdate(any(), any());
   }
 
   @Test
   void rejectsMissingTask() {
     givenWorkspaceWithMember();
-    when(taskRepository.findByIdForUpdate(TASK_ID)).thenReturn(Optional.empty());
+    when(taskRepository.findByIdForUpdate(WORKSPACE_ID, TASK_ID)).thenReturn(Optional.empty());
 
     assertThatThrownBy(
             () ->
@@ -200,22 +200,6 @@ class UpdateTaskServiceTest {
                         new UpdateTaskCommand(
                             WORKSPACE_ID, TASK_ID, MEMBER_ID, TaskStatus.COMPLETED, null)))
         .isInstanceOf(TaskNotFoundException.class);
-  }
-
-  @Test
-  void rejectsTaskFromAnotherWorkspace() {
-    givenWorkspaceWithMember();
-    givenTask(TaskStatus.WAITING, TODAY.plusDays(2), OTHER_WORKSPACE_ID);
-
-    assertThatThrownBy(
-            () ->
-                service()
-                    .updateTask(
-                        new UpdateTaskCommand(
-                            WORKSPACE_ID, TASK_ID, MEMBER_ID, TaskStatus.COMPLETED, null)))
-        .isInstanceOf(TaskNotFoundException.class);
-
-    verify(taskRepository, never()).save(any());
   }
 
   // --- 반복 업무 ---
@@ -260,7 +244,7 @@ class UpdateTaskServiceTest {
   private void givenTask(TaskStatus status, LocalDate dueAt, long owningWorkspaceId) {
     Task task =
         Task.restore(TASK_ID, owningWorkspaceId, null, "업무", status, dueAt, null, MEMBER_ID);
-    when(taskRepository.findByIdForUpdate(TASK_ID)).thenReturn(Optional.of(task));
+    when(taskRepository.findByIdForUpdate(WORKSPACE_ID, TASK_ID)).thenReturn(Optional.of(task));
   }
 
   private void givenRecurringTask(TaskStatus status, long owningWorkspaceId) {
@@ -268,6 +252,6 @@ class UpdateTaskServiceTest {
         Task.restore(
             TASK_ID, owningWorkspaceId, TEMPLATE_ID, "반복 업무", status, null, SCHEDULED_FOR,
             MEMBER_ID);
-    when(taskRepository.findByIdForUpdate(TASK_ID)).thenReturn(Optional.of(task));
+    when(taskRepository.findByIdForUpdate(WORKSPACE_ID, TASK_ID)).thenReturn(Optional.of(task));
   }
 }
