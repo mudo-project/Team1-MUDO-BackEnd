@@ -13,7 +13,7 @@
 - `TaskRepository`·`TaskStatusHistoryRepository`·`RecurringTaskSkipRepository` 포트 3개와 어댑터를 추가했습니다. `recurring_task_skip`은 `task`가 아니라 `recurring_task_template`에 FK를 가진 별개 Aggregate이므로 포트를 분리했습니다.
 - `WorkspaceRepository`에 락 없는 `findById`를 추가했습니다. 업무 API 3개는 워크스페이스를 참여자 검증용으로 읽기만 하므로, 기존 `findByIdForUpdate`를 재사용하면 같은 워크스페이스에서 동시에 업무를 만들 때 불필요하게 직렬화됩니다.
 - 업무 하드 삭제를 DB의 `ON DELETE CASCADE`에 의존하지 않고 어댑터가 자식 → 부모 순서로 명시적으로 수행합니다(멘션 → 댓글 → 상태 이력 → 업무). `@DataJpaTest`의 H2 스키마는 엔티티에서 생성되어 cascade가 없으므로, DB cascade에만 의존하면 삭제 동작을 MySQL Testcontainers 없이는 검증할 수 없습니다. DB cascade는 안전망으로 남습니다.
-- `DelayOverdueTasksService`를 포트 기반으로 이관하고 TODO 주석을 제거했습니다. `TaskJpaEntity.markDelayed()`는 참조처가 사라져 삭제하고, 도메인 모델이 결정한 값을 반영하는 `updateStatusAndDueAt(status, dueAt)`으로 대체했습니다.
+- `DelayOverdueTasksService`를 포트 기반으로 이관하고 TODO 주석을 제거했습니다. 상태만 직접 바꾸던 이전 엔티티 메서드는 참조처가 사라져 삭제하고, 도메인 모델이 결정한 값을 반영하는 `updateStatusAndDueAt(status, dueAt)`으로 대체했습니다.
 
 ### 수용한 한계
 
