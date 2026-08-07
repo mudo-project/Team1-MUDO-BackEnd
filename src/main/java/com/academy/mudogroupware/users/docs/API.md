@@ -378,6 +378,38 @@
 
 ---
 
+## 10. 역할 상세 조회
+
+`GET /api/roles/{roleId}`
+권한: `ROLE:MANAGE` 필요
+
+### Request
+
+없음 (path variable `roleId`)
+
+### Response · `200 OK`
+
+```json
+{
+  "status": 200,
+  "code": "ROLE_200_2",
+  "message": "역할 상세 조회에 성공했습니다.",
+  "data": {
+    "roleId": 3,
+    "name": "강사",
+    "description": "수업 담당",
+    "permissionCodes": ["NOTICE:READ", "TASK:MANAGE"]
+  }
+}
+```
+
+### 검증 및 정책
+
+- 목록 조회와 달리 `permissionCodes`를 포함해 내려줍니다.
+- 역할이 존재하지 않거나, 존재하더라도 요청자의 소속 학원(`academyId`)이 아니면 동일하게 `404 USER_404_2`로 응답합니다 — 다른 학원 역할의 존재 여부가 노출되지 않도록 하기 위함입니다.
+
+---
+
 ## ⚠️ 주요 오류
 
 | HTTP | 코드 | 상황 |

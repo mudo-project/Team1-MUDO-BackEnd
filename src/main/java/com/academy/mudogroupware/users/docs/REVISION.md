@@ -1,5 +1,5 @@
 > 작성일: 2026-08-04
-> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청/승인 워크플로우(PR 1·2·3/3, "계정 발급 체계" 2단계) 완료, 역할 목록 조회(역할 CRUD 1/4) 완료 · 역할 상세/수정/삭제(2~4/4), 학원 관리자의 직원 계정 발급(계정 발급 체계 3단계) 미착수
+> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청/승인 워크플로우(PR 1·2·3/3, "계정 발급 체계" 2단계) 완료, 역할 목록/상세 조회(역할 CRUD 1~2/4) 완료 · 역할 수정/삭제(3~4/4), 학원 관리자의 직원 계정 발급(계정 발급 체계 3단계) 미착수
 
 ## 🎯 변경 목적
 
@@ -336,6 +336,36 @@ PR 1(목록 조회)이 develop에 머지된 뒤 그 위에서 이어가는 두 �
 | Persistence(users) | `RoleJpaRepository.findAllByAcademyId` 추가, `RoleRepositoryImpl`에 구현 + `toDomainWithoutPermissions` 신규 |
 | Application(users) | `ListRolesUseCase`/`ListRolesService` 신규 |
 | Presentation(users) | `RoleController`에 `GET /api/roles` 핸들러 추가, `RoleResponseCode.ROLE_LIST_FOUND`, `RoleListResponse` 신규 |
+
+---
+
+## ✅ 2026-08-07 · 역할 상세 조회 API 구현 (`GET /api/roles/{roleId}`, 이슈 #185, 역할 CRUD 4개 중 2번째)
+
+### 배경
+
+역할 목록 조회(#183, PR #184)에서는 이름/설명만 내려주고 `permissionCodes`를 뺐다 — 실제로 어떤 권한이 담겼는지 확인하려면 별도 상세 조회가 필요하다. 계획: `docs/superpowers/plans/2026-08-07-role-crud.md` Task 6.
+
+### 확정된 정책
+
+- 리포지토리 변경이 없다. 기존 `RoleRepository.findById()`(권한 조립 API가 이미 쓰고 있던, `permissions`까지 채워서 반환하는 조회)를 그대로 재사용한다 — 목록 조회 때와 달리 상세 조회는 애초에 권한 정보가 필요하므로 별도 매퍼가 필요 없다.
+- 역할이 아예 없는 경우와 다른 학원 소유인 경우를 동일하게 `RoleNotFoundException`(`404 USER_404_2`)으로 처리한다 — 권한 조립 API(`updatePermissions`)에서 이미 확립된 정책을 그대로 따른다.
+- PR #184(역할 목록 조회)가 develop에 머지되기 전에 그 브랜치(`feature/users/role-list`) 위에서 이어 작업했다 — `RoleController.java`를 두 PR이 함께 수정하므로, develop에서 병렬로 브랜치를 따면 머지 충돌이 난다.
+
+### 완료 기준
+
+- [x] `GetRoleUseCase`/`GetRoleService`(TDD, 3케이스: 정상 조회/미존재 404/다른 학원 소유 404)
+- [x] `RoleResponseCode.ROLE_DETAIL_FOUND`(`ROLE_200_2`), `RoleDetailResponse`(`permissionCodes` 포함)
+- [x] `RoleController`에 `GET /{roleId}` 핸들러 추가
+- [x] 로컬 curl end-to-end 검증
+- [x] `./gradlew build` 통과
+
+### 🧩 영향 범위
+
+| 계층 | 변경 내용 |
+| --- | --- |
+| Domain(users) | 없음(기존 `RoleRepository.findById` 재사용) |
+| Application(users) | `GetRoleUseCase`/`GetRoleService` 신규 |
+| Presentation(users) | `RoleController`에 `GET /api/roles/{roleId}` 핸들러 추가, `RoleResponseCode.ROLE_DETAIL_FOUND`, `RoleDetailResponse` 신규 |
 
 ---
 
