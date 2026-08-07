@@ -41,10 +41,9 @@ public class ToggleTaskCommentCompleteService implements ToggleTaskCommentComple
     }
 
     Task task =
-        taskRepository.findByIdForUpdate(command.taskId()).orElseThrow(TaskNotFoundException::new);
-    if (!task.belongsTo(command.workspaceId())) {
-      throw new TaskNotFoundException();
-    }
+        taskRepository
+            .findByIdForUpdate(command.workspaceId(), command.taskId())
+            .orElseThrow(TaskNotFoundException::new);
 
     TaskComment comment =
         taskCommentRepository

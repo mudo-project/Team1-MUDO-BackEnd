@@ -89,7 +89,7 @@ class DeleteTaskCommentServiceTest {
   @Test
   void rejectsMissingTask() {
     givenWorkspaceWithMembers(MEMBER_ID);
-    when(taskRepository.findByIdForUpdate(TASK_ID)).thenReturn(Optional.empty());
+    when(taskRepository.findByIdForUpdate(WORKSPACE_ID, TASK_ID)).thenReturn(Optional.empty());
 
     assertThatThrownBy(
             () ->
@@ -142,7 +142,7 @@ class DeleteTaskCommentServiceTest {
         Task.restore(
             TASK_ID, owningWorkspaceId, null, "업무", TaskStatus.WAITING, LocalDate.of(2026, 8, 10),
             null, MEMBER_ID);
-    when(taskRepository.findByIdForUpdate(TASK_ID)).thenReturn(Optional.of(task));
+    when(taskRepository.findByIdForUpdate(WORKSPACE_ID, TASK_ID)).thenReturn(Optional.of(task));
   }
 
   private void givenComment(long owningTaskId, long authorId) {
