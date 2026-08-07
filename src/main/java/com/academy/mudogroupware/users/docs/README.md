@@ -8,7 +8,8 @@
 - `Role`: 학원별 역할.
 - `Permission`: 시스템 권한 코드.
 - `RolePermission`: 역할과 권한의 연결.
-- `AcademyApplication`: 학원 신청서. 신청 접수 API는 아직 없고(파일 업로드 인프라 선행 필요), 현재는 SUPER ADMIN의 목록/상세 조회만 가능하다. 승인/반려는 후속 PR에서 추가된다.
+- `AcademyApplication`: 학원 신청서. 신청 접수 API는 아직 없다(파일 업로드 인프라 선행 필요). SUPER ADMIN이 목록/상세 조회, 승인/반려까지 처리할 수 있다. 승인 시 `Academy`와 최초 관리자 `User`가 함께 발급된다.
+- `Academy`: 학원. `attendance` 모듈도 Wi-Fi IP 기능 전용으로 좁게 매핑한 별도 엔티티(`AcademyJpaEntity`)를 갖고 있으나, 이름/사업자번호/상태를 포함한 전체 소유권은 `users`가 갖는다.
 
 ## 공개 UseCase
 
@@ -20,6 +21,8 @@
 - `PermissionQueryUseCase`
 - `ListAcademyApplicationsUseCase`
 - `GetAcademyApplicationUseCase`
+- `ApproveAcademyApplicationUseCase`
+- `RejectAcademyApplicationUseCase`
 
 ## 다른 모듈에 제공하는 Adapter
 
@@ -42,8 +45,8 @@
 - 필요한 조회는 소비 모듈이 Port를 정의하고 users infrastructure Adapter가 구현한다.
 - notice에는 아직 users 직접 조회 shim이 남아 있을 수 있으며 별도 notice 범위에서 교체한다.
 - `account_type=ADMIN`+`admin_scope=PLATFORM` 계정은 역할 없이도 모든 권한 카탈로그를 authority로 부여받는다(`PLATFORM:SUPER_ADMIN` 합성 authority도 추가로 받음).
-- `admin_scope=ACADEMY`(학원 관리자)는 컬럼만 존재하고 아직 미사용(학원 신청 승인 API가 추가되는 후속 PR에서 도입 예정).
-- 학원 신청 목록/상세 조회(`GET /api/academy-applications`, `GET /api/academy-applications/{applicationId}`)는 이 코드베이스에서 처음으로 `@PreAuthorize` 대신 `SecurityConfig` 필터체인의 URL 매칭(`PLATFORM:SUPER_ADMIN` authority)으로 막는다 — SUPER ADMIN인지 아닌지 하나만 갈리고 그 안에서 세분화된 권한 차이가 없기 때문.
+- `admin_scope=ACADEMY`(학원 관리자)는 학원 신청 승인 시점에 실제로 발급된다. 승인 시점에 `AccountType.ADMIN`+`AdminScope.ACADEMY`로 생성되며, 세부 권한은 여전히 기존 역할/권한 카탈로그로 체크한다.
+- 학원 신청 목록/상세 조회·승인·반려(`/api/academy-applications`의 GET·approve·reject)는 이 코드베이스에서 처음으로 `@PreAuthorize` 대신 `SecurityConfig` 필터체인의 URL 매칭(`PLATFORM:SUPER_ADMIN` authority)으로 막는다 — SUPER ADMIN인지 아닌지 하나만 갈리고 그 안에서 세분화된 권한 차이가 없기 때문.
 
 ## 문서
 
