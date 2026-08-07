@@ -30,7 +30,7 @@ public class TaskPersistenceAdapter implements TaskRepository {
     TaskJpaEntity entity =
         taskJpaRepository.findById(task.getId()).orElseThrow(TaskNotFoundException::new);
     entity.updateStatusAndDueAt(task.getStatus(), task.getDueAt());
-    return taskPersistenceMapper.toDomain(taskJpaRepository.saveAndFlush(entity));
+    return taskPersistenceMapper.toDomain(taskJpaRepository.save(entity));
   }
 
   @Override

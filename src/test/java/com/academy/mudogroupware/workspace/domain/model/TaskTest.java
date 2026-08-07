@@ -187,6 +187,21 @@ class TaskTest {
     assertThat(updated.getDueAt()).isEqualTo(TOMORROW);
   }
 
+  // --- 마감일 없는 일반 업무 (규칙 2 면제) ---
+
+  @Test
+  void nonRecurringTaskWithNullDueAtReopensWithoutNewDueAt() {
+    Task noDueAt = Task.restore(1L, WORKSPACE_ID, null, "마감일 없는 업무", TaskStatus.DELAYED, null, null, CREATOR_ID);
+
+    Task waiting = noDueAt.changeStatus(TaskStatus.WAITING, null, TODAY);
+    assertThat(waiting.getStatus()).isEqualTo(TaskStatus.WAITING);
+    assertThat(waiting.getDueAt()).isNull();
+
+    Task inProgress = noDueAt.changeStatus(TaskStatus.IN_PROGRESS, null, TODAY);
+    assertThat(inProgress.getStatus()).isEqualTo(TaskStatus.IN_PROGRESS);
+    assertThat(inProgress.getDueAt()).isNull();
+  }
+
   // --- 반복 업무 ---
 
   @Test

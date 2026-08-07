@@ -406,3 +406,101 @@ HTTP `201 Created`
 - 마감일이 서버 `Clock` 기준 오늘 이전이면 최초 상태를 `DELAYED`로, 그 외에는 `WAITING`으로 저장한다.
 - 생성 시 상태 이력 1건을 저장한다. `previous_status = NULL`, `changed_by = 생성자`.
 - 존재 확인을 권한 확인보다 먼저 한다 — 없거나 삭제된 워크스페이스는 참여 여부와 무관하게 `WORKSPACE_404_1`을 반환한다.
+
+## 업무 상태·마감일 수정
+
+### Endpoint
+
+`PATCH /api/workspaces/{workspaceId}/tasks/{taskId}`
+
+### 인증 및 권한
+
+- `Authorization: Bearer {accessToken}` 헤더가 필요하다.
+- 현재 워크스페이스 참여자만 호출할 수 있다.
+
+### Request Body
+
+```json
+{
+  "status": "IN_PROGRESS",
+  "dueAt": "2026-08-20"
+}
+```
+
+| name | type | required | description |
+| --- | --- | --- | --- |
+| `status` | String | false | `WAITING` / `IN_PROGRESS` / `COMPLETED` / `DELAYED` |
+| `dueAt` | LocalDate (`yyyy-MM-dd`) | false | 새 마감일 |
+
+두 필드를 모두 생략하면 `400`이다.
+
+### Success Response
+
+HTTP `200 OK`
+
+```json
+{
+  "status": 200,
+  "code": "WORKSPACE_200_6",
+  "message": "업무 수정에 성공했습니다.",
+  "data": {
+    "taskId": 101,
+    "status": "IN_PROGRESS",
+    "dueAt": "2026-08-20"
+  }
+}
+```
+
+### Error Response
+
+| HTTP 상태 | code | 발생 조건 |
+| --- | --- | --- |
+| `400 Bad Request` | `COMMON_400_1` | 두 필드를 모두 생략했거나 형식이 잘못된 경우 |
+| `400 Bad Request` | `WORKSPACE_400_3` | 완료된 업무를 지연으로 바꾸려는 경우 |
+| `400 Bad Request` | `WORKSPACE_400_4` | 기한이 지난 업무를 대기·진행 중으로 되돌리는데 오늘 이후의 새 마감일이 없는 경우 |
+| `400 Bad Request` | `WORKSPACE_400_5` | 반복 업무의 마감일을 수정하려는 경우 |
+| `401 Unauthorized` | `COMMON_401_1` | Access Token이 없거나 유효하지 않은 경우 |
+| `403 Forbidden` | `WORKSPACE_403_1` | 요청자가 참여자가 아닌 경우 |
+| `404 Not Found` | `WORKSPACE_404_1` | 워크스페이스가 없거나 삭제된 경우 |
+| `404 Not Found` | `WORKSPACE_404_3` | 업무가 없거나 해당 워크스페이스 소속이 아닌 경우 |
+
+### Business Rules
+
+- `status`만 보내면 상태만 전이한다.
+- `dueAt`만 보내면 마감일만 수정하고 상태는 바꾸지 않는다. 마감일을 과거로 바꾸면 다음 자정에 스케줄러가 `DELAYED`로 전환하고, 미래로 바꾸어도 `DELAYED`는 그대로 유지된다.
+- 둘 다 보내면 새 마감일을 반영한 뒤 상태를 전이한다. 규칙 2가 새 마감일을 요구하지 않는 경우에도 마감일은 반영된다.
+- 같은 상태로의 전이는 성공으로 응답하되 상태 이력을 남기지 않는다. 이때 `dueAt`이 함께 왔으면 마감일은 반영된다.
+- 반복 업무는 `dueAt`을 함께 보내면 `WORKSPACE_400_5`를 반환한다. `status`만 보내는 것은 허용된다.
+- 다른 워크스페이스에 속한 업무 번호를 보내면 존재를 노출하지 않기 위해 `403`이 아니라 `WORKSPACE_404_3`을 반환한다.
+
+## 업무 삭제
+
+### Endpoint
+
+`DELETE /api/workspaces/{workspaceId}/tasks/{taskId}`
+
+### 인증 및 권한
+
+- `Authorization: Bearer {accessToken}` 헤더가 필요하다.
+- 현재 워크스페이스 참여자만 호출할 수 있다.
+
+### Success Response
+
+HTTP `204 No Content`
+
+응답 본문은 없다.
+
+### Error Response
+
+| HTTP 상태 | code | 발생 조건 |
+| --- | --- | --- |
+| `401 Unauthorized` | `COMMON_401_1` | Access Token이 없거나 유효하지 않은 경우 |
+| `403 Forbidden` | `WORKSPACE_403_1` | 요청자가 참여자가 아닌 경우 |
+| `404 Not Found` | `WORKSPACE_404_1` | 워크스페이스가 없거나 삭제된 경우 |
+| `404 Not Found` | `WORKSPACE_404_3` | 업무가 없거나 해당 워크스페이스 소속이 아닌 경우 |
+
+### Business Rules
+
+- 하드 삭제이며 복구할 수 없다. 업무 댓글, 댓글 멘션, 상태 변경 이력을 함께 삭제한다.
+- 반복 업무의 회차를 삭제하면 같은 트랜잭션에서 `recurring_task_skip`에 `(recurring_template_id, scheduled_for)` 기록을 남긴다. 같은 기록이 이미 있으면 중복 오류 없이 멱등적으로 처리한다.
+- 일반 업무 삭제 시에는 skip 기록을 남기지 않는다.
