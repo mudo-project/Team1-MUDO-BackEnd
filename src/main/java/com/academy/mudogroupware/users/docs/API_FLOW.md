@@ -13,7 +13,7 @@
    → 불일치하면 UserException(LOGIN_FAILED) — 위 "없음" 케이스와 동일 코드
 → User.ensureLoginAllowed()
    → status != ACTIVE 이면 UserException(LOGIN_RESTRICTED)
-→ TokenIssuerUseCase.issue(id, username, roleId, academyId)  ※ auth 모듈의 TokenService
+→ TokenIssuerUseCase.issue(id, username, roleId, academyId, accountType, adminScope)  ※ auth 모듈의 TokenService
    → JwtTokenProvider.createAccessToken / createRefreshToken
    → RefreshTokenRepository: 기존 행 있으면 교체(replace), 없으면 저장(save)
    → TokenPair(accessToken, refreshToken) 반환
@@ -47,7 +47,7 @@
    → 없으면 UserException(USER_NOT_FOUND)
 → User.ensureLoginAllowed()
    → status != ACTIVE 이면 UserException(LOGIN_RESTRICTED)
-→ TokenIssuerUseCase.issueAccessToken(id, username, roleId, academyId)  ※ 액세스 토큰만 새로 생성, refreshToken 저장소는 건드리지 않음
+→ TokenIssuerUseCase.issueAccessToken(id, username, roleId, academyId, accountType, adminScope)  ※ 액세스 토큰만 새로 생성, refreshToken 저장소는 건드리지 않음
 → RefreshResponse(accessToken)
 → GlobalApiResponse<RefreshResponse>
 ```
@@ -62,21 +62,31 @@
 모든 요청 (SecurityConfig: 명시적으로 permitAll 안 된 경로는 authenticated() 필요)
 → JwtAuthenticationFilter (OncePerRequestFilter)
 → Authorization 헤더 또는 accessToken 쿠키에서 토큰 추출
-→ JwtTokenProvider.parseAccessToken → JwtClaims(userId, username, roleId, academyId)
+→ JwtTokenProvider.parseAccessToken → JwtClaims(userId, username, roleId, academyId, accountType, adminScope)
    → 위조/만료 시 request attribute에 에러코드만 저장(필터는 그냥 통과, 이후 인가 단계에서 401/403으로 응답)
 → JwtAuthenticationConverter.toAuthentication(claims)
-   → RolePermissionLookupPort.lookup(roleId)  ※ users 도메인의 RolePermissionLookupAdapter가 구현
-      → roleId가 null이면 즉시 빈 RolePermissionInfo 반환(DB 조회 안 함) — 플랫폼 관리자 등
-      → role → role_permission → permission 조인 조회 (@Transactional(readOnly=true))
-      → RolePermissionInfo(roleName, permissionCodes)
-   → AuthUser(userId, username, academyId, roleId, roleName)
+   
+   【platform admin 분기】
+   → accountType == ADMIN && adminScope == PLATFORM 인지 확인
+      → YES: PlatformAdminPermissionPort.allPermissionCodes()  ※ users 도메인의 PlatformAdminPermissionAdapter가 구현
+         → 모든 권한 코드 반환
+         → RolePermissionInfo(roleName="SUPER_ADMIN", permissionCodes=전체)
+      
+      → NO (MEMBER 또는 ADMIN+ACADEMY): RolePermissionLookupPort.lookup(roleId)  ※ users 도메인의 RolePermissionLookupAdapter가 구현
+         → roleId가 null이면 즉시 빈 RolePermissionInfo 반환(DB 조회 안 함)
+         → role → role_permission → permission 조인 조회 (@Transactional(readOnly=true))
+         → RolePermissionInfo(roleName, permissionCodes)
+   
+   → AuthUser(userId, username, academyId, roleId, roleName, accountType, adminScope)
    → authorities = permissionCodes를 SimpleGrantedAuthority로 변환한 목록
 → SecurityContextHolder에 Authentication 저장
 → 컨트롤러의 @PreAuthorize("hasAuthority('RESOURCE:ACTION')")가 authorities를 검사
 ```
 
-- roleId→permission 조회는 **매 요청마다** 실행됩니다. JWT에 permission을 통째로 넣지 않은 이유는, 원장이 역할의 권한 구성을 바꾸면 재로그인 없이 다음 요청부터 바로 반영되게 하기 위함입니다.
-- `roleId`가 없는 계정(플랫폼 관리자 등)은 DB 조회 없이 빈 권한으로 처리됩니다.
+- **platform admin(`accountType==ADMIN && adminScope==PLATFORM`)인 경우**, 역할 조회 단계를 완전히 건너뛰고 `PlatformAdminPermissionPort`에서 전체 권한 목록을 받아 `roleName="SUPER_ADMIN"`으로 고정합니다.
+- **그 외의 계정(`MEMBER` 또는 아직 미사용 상태인 `ADMIN+ACADEMY`)**은 기존 `RolePermissionLookupPort.lookup(roleId)` 경로를 통해 역할의 권한을 조회합니다.
+- `roleId`가 없는 평신원 계정(비platform admin, 역할 미할당)은 `RolePermissionLookupAdapter`에서 DB 조회 없이 빈 권한으로 처리됩니다.
+- 역할을 가진 계정의 roleId→permission 조회는 **매 요청마다** 실행됩니다. JWT에 permission을 통째로 넣지 않은 이유는, 원장이 역할의 권한 구성을 바꾸면 재로그인 없이 다음 요청부터 바로 반영되게 하기 위함입니다.
 
 ## 4. 로그아웃 흐름
 
@@ -98,9 +108,10 @@
 
 ## 📝 문서 정보
 
-- 업데이트일: `2026-08-04`
+- 업데이트일: `2026-08-07`
 - 변경 사항(요약):
   - 로그인 흐름을 처음 작성했습니다.
   - 액세스 토큰 재발급 흐름을 추가했습니다 (리프레시 토큰 검증 3단계 분기 포함).
   - JWT를 `roleId`/`academyId` 기반으로 재작업하고, 매 요청 권한 조회 흐름(3번)을 추가했습니다.
   - 로그아웃 흐름(4번)을 추가했습니다.
+  - JWT에 `accountType`/`adminScope` 매개변수 전파, `JwtAuthenticationConverter`에 platform admin 분기 로직 추가 (accountType==ADMIN && adminScope==PLATFORM인 경우 RolePermissionLookupPort 대신 PlatformAdminPermissionPort 호출).

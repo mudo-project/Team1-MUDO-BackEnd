@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import com.academy.mudogroupware.approval.application.port.ApproverInfo;
 import com.academy.mudogroupware.approval.domain.exception.ApprovalErrorCode;
 import com.academy.mudogroupware.approval.domain.exception.ApprovalException;
+import com.academy.mudogroupware.global.domain.auth.AccountType;
 import com.academy.mudogroupware.users.domain.model.User;
 import com.academy.mudogroupware.users.domain.model.UserStatus;
 import com.academy.mudogroupware.users.domain.repository.UserRepository;
@@ -57,7 +58,7 @@ class ApprovalApproverDirectoryAdapterTest {
 
     private User user(Long id, Long academyId, String name) {
         return User.restore(id, academyId, "user" + id, "pw", name, "010", "user" + id + "@example.com",
-                1L, UserStatus.ACTIVE, false, false, LocalDateTime.now(), LocalDateTime.now(),
+                1L, UserStatus.ACTIVE, false, AccountType.MEMBER, null, LocalDateTime.now(), LocalDateTime.now(),
                 LocalDateTime.now());
     }
 }

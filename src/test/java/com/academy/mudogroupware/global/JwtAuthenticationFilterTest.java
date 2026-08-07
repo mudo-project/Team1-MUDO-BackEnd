@@ -2,6 +2,7 @@ package com.academy.mudogroupware.global;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.academy.mudogroupware.global.domain.auth.AccountType;
 import com.academy.mudogroupware.global.domain.auth.RolePermissionInfo;
 import com.academy.mudogroupware.global.infrastructure.security.jwt.*;
 import com.academy.mudogroupware.global.presentation.security.*;
@@ -28,10 +29,11 @@ class JwtAuthenticationFilterTest {
         new JwtAuthenticationFilter(
             provider,
             new JwtAuthenticationConverter(
-                roleId -> new RolePermissionInfo("TEACHER", Set.of("WORKSPACE:READ"))));
+                roleId -> new RolePermissionInfo("TEACHER", Set.of("WORKSPACE:READ")),
+                Set::of));
     MockHttpServletRequest request = new MockHttpServletRequest();
     request.addHeader(
-        "Authorization", "Bearer " + provider.createAccessToken(7L, "teacher", 1L, 1L));
+        "Authorization", "Bearer " + provider.createAccessToken(7L, "teacher", 1L, 1L, AccountType.MEMBER, null));
     filter.doFilter(request, new MockHttpServletResponse(), (q, s) -> {});
 
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();

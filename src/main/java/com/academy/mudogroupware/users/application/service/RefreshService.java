@@ -38,6 +38,7 @@ public class RefreshService implements RefreshUseCase {
 
         user.ensureLoginAllowed();
 
-        return tokenIssuerUseCase.issueAccessToken(user.getId(), user.getUsername(), user.getRoleId(), user.getAcademyId());
+        return tokenIssuerUseCase.issueAccessToken(user.getId(), user.getUsername(), user.getRoleId(),
+                user.getAcademyId(), user.getAccountType(), user.getAdminScope());
     }
 }
