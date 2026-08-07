@@ -1,6 +1,7 @@
 package com.academy.mudogroupware.users.infrastructure.persistence;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.stereotype.Repository;
 
@@ -18,6 +19,11 @@ public class AcademyApplicationRepositoryImpl implements AcademyApplicationRepos
     @Override
     public List<AcademyApplication> findAll() {
         return academyApplicationJpaRepository.findAll().stream().map(this::toDomain).toList();
+    }
+
+    @Override
+    public Optional<AcademyApplication> findById(Long id) {
+        return academyApplicationJpaRepository.findById(id).map(this::toDomain);
     }
 
     private AcademyApplication toDomain(AcademyApplicationEntity entity) {
