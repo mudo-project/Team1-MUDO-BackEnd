@@ -22,5 +22,5 @@ public interface RoleJpaRepository extends JpaRepository<RoleEntity, Long> {
 
     boolean existsByAcademyIdAndName(Long academyId, String name);
 
-    List<RoleEntity> findAllByAcademyId(Long academyId);
+    List<RoleEntity> findAllByAcademyIdOrderByIdAsc(Long academyId);
 }
