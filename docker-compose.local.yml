@@ -44,6 +44,7 @@ services:
     # 팀 공용 로컬 값은 저장소의 .env.local에서 컨테이너로 전달한다.
     env_file:
       - .env.local
+      - .env.google.local
     environment:
       # 기존 local 프로필을 사용하되 DB 접속값만 컨테이너 환경에 맞게 덮어쓴다.
       SPRING_PROFILES_ACTIVE: local

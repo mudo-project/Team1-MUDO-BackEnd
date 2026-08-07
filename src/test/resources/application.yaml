@@ -9,3 +9,8 @@ spring:
   jpa:
     hibernate:
       ddl-auto: none
+
+# GoogleOAuthStateSigner/GoogleTokenCipher는 각각 JWT_SECRET/GOOGLE_TOKEN_ENCRYPTION_KEY가
+# 없으면 앱 시작을 실패시키므로, 전체 컨텍스트를 로드하는 테스트를 위해 테스트 전용 값을 둔다.
+JWT_SECRET: test-only-jwt-secret-value
+GOOGLE_TOKEN_ENCRYPTION_KEY: test-only-token-encryption-key-value
