@@ -16,6 +16,8 @@ public interface MemoJpaRepository extends JpaRepository<MemoEntity, Long> {
 
     List<MemoEntity> findAllByUserIdOrderByCreatedAtAscIdAsc(Long userId);
 
+    long countByUserId(Long userId);
+
     @Modifying
     @Query("UPDATE MemoEntity m SET m.title = :title, m.content = :content, m.updatedAt = :updatedAt "
             + "WHERE m.id = :id")
