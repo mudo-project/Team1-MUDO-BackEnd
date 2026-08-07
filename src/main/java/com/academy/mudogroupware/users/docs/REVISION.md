@@ -1,5 +1,5 @@
 > 작성일: 2026-08-04
-> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, 역할 생성 + 권한 조립 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청 목록/상세 조회(PR 1·2/3) 완료, 역할 목록/상세/수정(역할 CRUD 1~3/4) 완료 · 역할 삭제(4/4), 학원 신청 승인/반려(PR 3/3), 학원 관리자의 직원 계정 발급(계정 발급 체계 3단계) 미착수
+> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청 목록/상세 조회(PR 1·2/3) 완료, 역할 관리 API 7개(생성/목록/상세/수정/삭제/권한 조립/권한 카탈로그 조회) 완료 · 학원 신청 승인/반려(PR 3/3), 학원 관리자의 직원 계정 발급(계정 발급 체계 3단계) 미착수
 
 ## 🎯 변경 목적
 
@@ -400,6 +400,38 @@ PR 1(목록 조회)이 develop에 머지된 뒤 그 위에서 이어가는 두 �
 | Domain(users) | `RoleRepository`에 `existsByAcademyIdAndNameAndIdNot`/`updateNameAndDescription` 추가 |
 | Application(users) | `UpdateRoleCommand`/`UpdateRoleUseCase`/`UpdateRoleService` 신규 |
 | Presentation(users) | `RoleController`에 `PUT /api/roles/{roleId}` 핸들러 추가, `UpdateRoleRequest` 신규 |
+
+---
+
+## ✅ 2026-08-07 · 역할 삭제 API 구현 (`DELETE /api/roles/{roleId}`, 이슈 #189, 역할 CRUD 4개 중 4번째)
+
+### 배경
+
+역할 관리 API 7개 중 마지막 하나. 이 PR로 생성/목록/상세/수정/삭제/권한 조립/권한 카탈로그 조회가 모두 갖춰진다. 계획: `docs/superpowers/plans/2026-08-07-role-crud.md` Task 3, Task 4, Task 8.
+
+### 확정된 정책
+
+- **삭제 전에 `UserRepository.existsByRoleId(roleId)`로 배정된 구성원이 있는지 명시적으로 체크한다.** DB의 FK 제약(예: `ON DELETE RESTRICT`)에 기대는 대신 애플리케이션 레이어에서 먼저 검사해, "왜 삭제가 안 되는지" 사용자가 이해할 수 있는 전용 에러 코드(`USER_409_2`)로 안내한다. FK 예외를 잡아서 변환하는 방식보다 이 방식이 의도를 명확히 드러낸다.
+- **`ROLE_IN_USE`는 학원 범위를 따로 확인하지 않는다.** 애초에 `academyId`로 스코프가 걸린 역할(`findById` 필터)만 이 지점까지 도달하므로, 그 역할을 쓰는 사용자는 같은 학원 소속일 수밖에 없다.
+
+### 완료 기준
+
+- [x] `UserErrorCode.ROLE_IN_USE`(`USER_409_2`) + `RoleInUseException`
+- [x] `RoleRepository.deleteById` 추가, `RoleRepositoryImpl` 구현(`RoleJpaRepository`가 상속하는 `JpaRepository.deleteById` 재사용)
+- [x] `UserRepository`/`UserJpaRepository`/`UserRepositoryImpl`에 `existsByRoleId` 추가
+- [x] `DeleteRoleCommand`/`DeleteRoleUseCase`/`DeleteRoleService`(TDD, 4케이스: 미존재 404/다른 학원 404/사용 중 409/정상 삭제)
+- [x] `RoleController`에 `DELETE /{roleId}` 핸들러 추가
+- [x] 로컬 curl end-to-end 검증(사용 중인 역할 삭제 시도 409, 미사용 역할 삭제 204, 미존재 404, 권한 없음 403)
+- [x] `./gradlew build` 통과
+
+### 🧩 영향 범위
+
+| 계층 | 변경 내용 |
+| --- | --- |
+| Domain(users) | `UserErrorCode.ROLE_IN_USE` 추가, `RoleInUseException` 신규, `RoleRepository.deleteById`/`UserRepository.existsByRoleId` 추가 |
+| Persistence(users) | `RoleRepositoryImpl.deleteById`/`UserRepositoryImpl.existsByRoleId` 구현, `UserJpaRepository.existsByRoleId` 추가 |
+| Application(users) | `DeleteRoleCommand`/`DeleteRoleUseCase`/`DeleteRoleService` 신규 |
+| Presentation(users) | `RoleController`에 `DELETE /api/roles/{roleId}` 핸들러 추가 |
 
 ---
 
