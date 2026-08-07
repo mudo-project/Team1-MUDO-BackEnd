@@ -47,6 +47,6 @@
 ## 🚨 예외 정책
 
 - 도메인 규칙 위반은 `CalendarErrorCode` + 에러별 이름이 드러나는 개별 예외 클래스로 던진다.
-- 사용 중인 예외: `CalendarTitleRequiredException`(400), `InvalidCalendarPeriodException`(400), `CalendarEventNotFoundException`(404, `addContext`로 `eventId` 기록).
+- 사용 중인 예외: `CalendarTitleRequiredException`(400), `InvalidCalendarPeriodException`(400), `InvalidCalendarQueryException`(400, 목록/일별/월간 조회 시 `date`/`yearMonth`를 둘 다 지정하거나 둘 다 생략한 경우), `CalendarEventNotFoundException`(404, `addContext`로 `eventId` 기록).
 - `docs/ERROR_HANDLING.md`의 표준 패턴을 따르며, `approval`/`notice`/`memo`의 단일 `<Domain>Exception` 방식은 채택하지 않는다.
 - `workspace` 도메인과 동일한 방식이다.

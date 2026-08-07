@@ -1,6 +1,9 @@
 package com.academy.mudogroupware.calendar.presentation.api;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.YearMonth;
 import java.util.List;
 
 import com.academy.mudogroupware.calendar.application.command.DeleteCalendarEventCommand;
@@ -9,6 +12,7 @@ import com.academy.mudogroupware.calendar.application.usecase.DeleteCalendarEven
 import com.academy.mudogroupware.calendar.application.usecase.GetCalendarEventUseCase;
 import com.academy.mudogroupware.calendar.application.usecase.GetCalendarEventsUseCase;
 import com.academy.mudogroupware.calendar.application.usecase.UpdateCalendarEventUseCase;
+import com.academy.mudogroupware.calendar.domain.exception.InvalidCalendarQueryException;
 import com.academy.mudogroupware.calendar.presentation.api.common.CalendarResponseCode;
 import com.academy.mudogroupware.calendar.presentation.api.request.CreateCalendarEventRequest;
 import com.academy.mudogroupware.calendar.presentation.api.request.UpdateCalendarEventRequest;
@@ -24,6 +28,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -66,20 +71,32 @@ public class CalendarController {
                         CreateCalendarEventResponse.from(eventId)));
     }
 
-    @Operation(summary = "일정 목록/일별 조회",
-            description = "요청한 기간(from~to) 내에 시작하는 학원 공용 캘린더 일정을 모두 조회합니다. "
-                    + "하루치를 조회하려면 from/to에 같은 날의 00:00:00~23:59:59를 넣습니다.")
+    @Operation(summary = "일정 목록/일별/월간 조회",
+            description = "한국 시간(Asia/Seoul) 기준으로 date(하루) 또는 yearMonth(한 달) 중 정확히 하나를 지정해 "
+                    + "해당 기간에 시작하는 학원 공용 캘린더 일정을 모두 조회합니다.")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "일정 목록 조회 성공"),
-        @ApiResponse(responseCode = "400", description = "to가 from보다 이전인 경우")
+        @ApiResponse(responseCode = "400", description = "date와 yearMonth 중 정확히 하나를 지정하지 않은 경우")
     })
     @GetMapping
     public ResponseEntity<GlobalApiResponse<List<CalendarEventResponse>>> getEvents(
             @AuthenticationPrincipal AuthUser authUser,
-            @Parameter(description = "조회 시작 일시", example = "2026-08-01T00:00:00")
-            @RequestParam LocalDateTime from,
-            @Parameter(description = "조회 종료 일시", example = "2026-08-31T23:59:59")
-            @RequestParam LocalDateTime to) {
+            @Parameter(description = "일별 조회 대상 날짜(한국 시간 기준)", example = "2026-08-04")
+            @RequestParam(required = false) LocalDate date,
+            @Parameter(description = "월간 조회 대상 연월(한국 시간 기준)", example = "2026-08")
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM") YearMonth yearMonth) {
+        LocalDateTime from;
+        LocalDateTime to;
+        if (date != null && yearMonth == null) {
+            from = date.atStartOfDay();
+            to = date.atTime(LocalTime.MAX);
+        } else if (yearMonth != null && date == null) {
+            from = yearMonth.atDay(1).atStartOfDay();
+            to = yearMonth.atEndOfMonth().atTime(LocalTime.MAX);
+        } else {
+            throw new InvalidCalendarQueryException();
+        }
+
         List<CalendarEventResponse> responses = getCalendarEventsUseCase
                 .getEvents(authUser.academyId(), from, to).stream()
                 .map(CalendarEventResponse::from)

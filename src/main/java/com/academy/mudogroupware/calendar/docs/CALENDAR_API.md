@@ -80,11 +80,11 @@ HTTP `201 Created`
 - 도메인 검증은 `CalendarEvent.create(...)` 내부에서 수행하며, 위반 시 `CalendarTitleRequiredException`(`CALENDAR_400_1`) 또는 `InvalidCalendarPeriodException`(`CALENDAR_400_2`)이 발생한다.
 - 자세한 처리 흐름은 [CALENDAR_API_FLOW.md](CALENDAR_API_FLOW.md), 도메인 규칙은 [BUSINESS_RULES.md](BUSINESS_RULES.md)를 참고한다.
 
-## 일정 목록/일별 조회
+## 일정 목록/일별/월간 조회
 
 ### Endpoint
 
-`GET /api/calendars?from={from}&to={to}`
+`GET /api/calendars?date={date}` 또는 `GET /api/calendars?yearMonth={yearMonth}`
 
 ### 인증 및 권한
 
@@ -101,10 +101,10 @@ HTTP `201 Created`
 
 | name | type | required | description |
 | --- | --- | --- | --- |
-| `from` | LocalDateTime | true | 조회 시작 일시. 예: `2026-08-01T00:00:00` |
-| `to` | LocalDateTime | true | 조회 종료 일시. `from`보다 이전일 수 없음. 예: `2026-08-31T23:59:59` |
+| `date` | LocalDate | 조건부 | 일별 조회 대상 날짜(한국 시간 기준). 예: `2026-08-03`. `yearMonth`와 동시에 지정할 수 없다. |
+| `yearMonth` | YearMonth | 조건부 | 월간 조회 대상 연월(한국 시간 기준). 예: `2026-08`. `date`와 동시에 지정할 수 없다. |
 
-일별 조회는 같은 날의 `00:00:00`~`23:59:59`를 `from`/`to`에 각각 넣어서 호출한다.
+`date`와 `yearMonth` 중 **정확히 하나**를 지정해야 한다. 서버가 한국 시간(Asia/Seoul) 기준으로 해당 하루 또는 해당 월 전체의 시작~끝 구간을 계산한다(프론트가 시각을 직접 계산해서 보낼 필요 없음).
 
 ### Success Response
 
@@ -149,16 +149,17 @@ HTTP `200 OK`
 
 | HTTP 상태 | code | 발생 조건 |
 | --- | --- | --- |
-| `400 Bad Request` | `COMMON_400_1` | `from`/`to` 누락 또는 형식이 유효하지 않음 |
-| `400 Bad Request` | `CALENDAR_400_2` | `to`가 `from`보다 이전인 경우 |
+| `400 Bad Request` | `COMMON_400_1` | `date`/`yearMonth` 형식이 유효하지 않음 |
+| `400 Bad Request` | `CALENDAR_400_3` | `date`와 `yearMonth`를 둘 다 지정했거나 둘 다 지정하지 않은 경우 |
 | `401 Unauthorized` | `COMMON_401_1` | Access Token이 없거나 유효하지 않은 경우 |
 | `500 Internal Server Error` | `COMMON_500_1` | 처리되지 않은 서버 오류 |
 
 ### Business Rules
 
 - 조회 대상은 요청자의 `academyId` 소속 일정으로 한정한다. 다른 학원의 일정은 조회되지 않는다.
-- 현재 조회 조건은 `event_start_at`이 `[from, to]` 구간에 포함되는 일정만 반환한다(종료 시각이 구간 밖까지 걸치는 일정은 포함하지 않음).
+- 현재 조회 조건은 `event_start_at`이 계산된 구간에 포함되는 일정만 반환한다(종료 시각이 구간 밖까지 걸치는 일정은 포함하지 않음).
 - 목록/일별/상세 조회는 모두 `CalendarEventResponse`를 공용으로 사용한다.
+- 구간 계산은 한국 시간(Asia/Seoul) 기준이며, 시스템 기본 시간대에 의존하지 않는다(`docs/DATABASE.md`의 시간대 정책과 동일).
 
 ## 일정 수정
 

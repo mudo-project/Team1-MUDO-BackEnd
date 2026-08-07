@@ -60,13 +60,13 @@ POST /api/calendars
 
 성공하면 Controller가 `CreateCalendarEventResponse.from(eventId)`로 응답 데이터를 만들고, `GlobalApiResponse.created(CalendarResponseCode.EVENT_CREATED, ...)`로 감싸 HTTP `201 Created`를 반환한다.
 
-## 일정 목록/일별 조회 API 흐름
+## 일정 목록/일별/월간 조회 API 흐름
 
 ```text
-GET /api/calendars?from=&to=
+GET /api/calendars?date= 또는 ?yearMonth=
   → Security Filter
   → AuthUser
-  → CalendarController
+  → CalendarController (date/yearMonth → from/to 계산)
   → GetCalendarEventsUseCase
   → GetCalendarEventsService
   → CalendarEventRepository
@@ -76,16 +76,21 @@ GET /api/calendars?from=&to=
   → GlobalApiResponse
 ```
 
-### 1. 쿼리 파라미터 검증
+### 1. 쿼리 파라미터 검증과 구간 계산
 
-`CalendarController`는 `@RequestParam`으로 `from`, `to`(둘 다 필수 `LocalDateTime`)를 받는다. 형식이 유효하지 않으면 Spring이 자체적으로 `COMMON_400_1`로 응답한다.
+`CalendarController`는 `date`(`LocalDate`, 일별)와 `yearMonth`(`YearMonth`, `@DateTimeFormat(pattern = "yyyy-MM")`, 월간)를 둘 다 `@RequestParam(required = false)`로 받는다.
 
-### 2. 조회 조건 검증과 조회
+- 형식이 유효하지 않으면 Spring이 자체적으로 `COMMON_400_1`로 응답한다.
+- 둘 다 지정했거나 둘 다 지정하지 않으면 `InvalidCalendarQueryException`을 던져 `CALENDAR_400_3`으로 응답한다.
+- `date`만 있으면 `from = date.atStartOfDay()`, `to = date.atTime(LocalTime.MAX)`로 그날 하루 구간을 계산한다.
+- `yearMonth`만 있으면 `from = yearMonth.atDay(1).atStartOfDay()`, `to = yearMonth.atEndOfMonth().atTime(LocalTime.MAX)`로 그 달 전체 구간을 계산한다.
+- 이 계산은 시스템 기본 시간대가 아니라 애플리케이션이 다루는 모든 시각이 이미 한국 시간(Asia/Seoul) 기준이라는 전제(`docs/DATABASE.md`)를 그대로 따른다. 별도의 타임존 변환은 하지 않는다.
 
-`GetCalendarEventsService`는 별도 Command 없이 `academyId`, `from`, `to`를 그대로 받아 처리한다(`memo` 도메인의 조회 패턴과 동일하게 Domain Model을 그대로 반환).
+### 2. 조회
 
-- `to`가 `from`보다 이전이면 리포지토리를 조회하지 않고 `InvalidCalendarPeriodException`을 던져 `CALENDAR_400_2`로 응답한다.
-- 통과하면 `CalendarEventRepository.findAllByAcademyIdAndPeriod(academyId, from, to)`를 호출한다. `academyId`는 요청 본문/쿼리가 아니라 `AuthUser.academyId()`에서 가져와, 다른 학원의 일정은 조회되지 않는다.
+`GetCalendarEventsService`는 별도 Command 없이 `academyId`, 계산된 `from`, `to`를 그대로 받아 처리한다(`memo` 도메인의 조회 패턴과 동일하게 Domain Model을 그대로 반환). `CalendarEventRepository.findAllByAcademyIdAndPeriod(academyId, from, to)`를 호출한다. `academyId`는 요청 본문/쿼리가 아니라 `AuthUser.academyId()`에서 가져와, 다른 학원의 일정은 조회되지 않는다.
+
+이 Service는 여전히 `to.isBefore(from)`이면 `InvalidCalendarPeriodException`(`CALENDAR_400_2`)을 던지는 방어 로직을 유지한다. Controller가 항상 유효한 구간을 계산해 넘기므로 이 API 경로에서는 사실상 도달하지 않지만, Service 자체의 불변식으로 남겨둔다.
 
 ### 3. 조회 및 변환
 
