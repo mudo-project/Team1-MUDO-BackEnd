@@ -24,11 +24,11 @@ class DeploymentManifestTest(unittest.TestCase):
         cells["cell-1"]["rds_max_connections"] = 100
         return tenants, cells
 
-    def test_repository_manifests_are_valid_but_disabled(self):
+    def test_repository_manifests_are_valid_with_academy_a_enabled(self):
         enabled = validate_manifests(
             self.profiles, self.tenants, self.cells, deployment=False
         )
-        self.assertEqual([], enabled)
+        self.assertEqual(["academy-a"], [tenant["code"] for tenant in enabled])
 
     def test_capacity_includes_one_sequential_deployment_surge(self):
         tenants, cells = self.enabled_configuration()
@@ -55,10 +55,10 @@ class DeploymentManifestTest(unittest.TestCase):
 
         self.assertEqual("academy-a", environment["TENANT_ID"])
         self.assertEqual("basic", environment["TENANT_PLAN"])
-        self.assertEqual("60", environment["SERVER_TOMCAT_THREADS_MAX"])
-        self.assertEqual(1024, container["cpu"])
-        self.assertEqual(1536, container["memoryReservation"])
-        self.assertEqual(2048, container["memory"])
+        self.assertEqual("30", environment["SERVER_TOMCAT_THREADS_MAX"])
+        self.assertEqual(500, container["cpu"])
+        self.assertEqual(480, container["memoryReservation"])
+        self.assertEqual(550, container["memory"])
         self.assertEqual("academy-a", container["dockerLabels"]["mudo.tenant"])
         self.assertIn("DB_PASSWORD", secret_names)
         self.assertNotIn("DB_PASSWORD", environment)
