@@ -27,10 +27,11 @@ public class DeleteRoleService implements DeleteRoleUseCase {
                 .filter(r -> r.getAcademyId().equals(command.academyId()))
                 .orElseThrow(RoleNotFoundException::new);
 
-        if (userRepository.existsByRoleId(role.getId())) {
+        if (userRepository.existsActiveByRoleId(role.getId())) {
             throw new RoleInUseException();
         }
 
+        userRepository.clearRoleId(role.getId());
         roleRepository.deleteById(role.getId());
     }
 }

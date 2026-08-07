@@ -48,31 +48,33 @@ class DeleteRoleServiceTest {
     }
 
     @Test
-    void throwsWhenRoleIsInUse() {
+    void throwsWhenRoleIsInUseByActiveMember() {
         RoleRepository roleRepository = mock(RoleRepository.class);
         UserRepository userRepository = mock(UserRepository.class);
         Role role = Role.restore(1L, 10L, "강사", "설명", LocalDateTime.now(), Set.of());
         when(roleRepository.findById(1L)).thenReturn(Optional.of(role));
-        when(userRepository.existsByRoleId(1L)).thenReturn(true);
+        when(userRepository.existsActiveByRoleId(1L)).thenReturn(true);
         DeleteRoleService service = new DeleteRoleService(roleRepository, userRepository);
 
         assertThatThrownBy(() -> service.deleteRole(new DeleteRoleCommand(1L, 10L)))
                 .isInstanceOf(RoleInUseException.class);
 
+        verify(userRepository, never()).clearRoleId(any());
         verify(roleRepository, never()).deleteById(any());
     }
 
     @Test
-    void deletesRoleWhenNotInUse() {
+    void deletesRoleAndClearsInactiveHoldersWhenNoActiveMember() {
         RoleRepository roleRepository = mock(RoleRepository.class);
         UserRepository userRepository = mock(UserRepository.class);
         Role role = Role.restore(1L, 10L, "강사", "설명", LocalDateTime.now(), Set.of());
         when(roleRepository.findById(1L)).thenReturn(Optional.of(role));
-        when(userRepository.existsByRoleId(1L)).thenReturn(false);
+        when(userRepository.existsActiveByRoleId(1L)).thenReturn(false);
         DeleteRoleService service = new DeleteRoleService(roleRepository, userRepository);
 
         service.deleteRole(new DeleteRoleCommand(1L, 10L));
 
+        verify(userRepository).clearRoleId(1L);
         verify(roleRepository).deleteById(1L);
     }
 }
