@@ -26,14 +26,15 @@ class MessengerRepositoryFetchPlanTest {
 
     @Test
     void taskCardQueriesFetchAssignees() throws NoSuchMethodException {
-        EntityGraph findAllGraph = ChatTaskCardJpaRepository.class
-                .getMethod("findAllByChatRoomIdAndDeletedAtIsNullOrderByCreatedAtDescIdDesc", Long.class)
+        EntityGraph findPageGraph = ChatTaskCardJpaRepository.class
+                .getMethod("findPage", Long.class, java.time.LocalDateTime.class, Long.class,
+                        org.springframework.data.domain.Pageable.class)
                 .getAnnotation(EntityGraph.class);
         EntityGraph findByIdGraph = ChatTaskCardJpaRepository.class
                 .getMethod("findById", Long.class)
                 .getAnnotation(EntityGraph.class);
 
-        assertThat(findAllGraph.attributePaths()).containsExactly("assignees");
+        assertThat(findPageGraph.attributePaths()).containsExactly("assignees");
         assertThat(findByIdGraph.attributePaths()).containsExactly("assignees");
     }
 }

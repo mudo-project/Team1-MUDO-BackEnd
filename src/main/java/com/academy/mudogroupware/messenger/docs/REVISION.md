@@ -1,5 +1,21 @@
 # Messenger Revision
 
+## 2026-08-07 · 업무지시 카드 목록조회 페이지네이션 추가
+
+### 배경
+
+k6로 memo/messenger 로컬 부하테스트를 진행하며, 업무지시 카드 목록조회가 페이지네이션 없이 방의 카드를 전부 반환하고 있음을 발견했다(1,000건 seed 기준 응답 374KB). 메시지 목록조회는 이미 cursor 페이지네이션이 있어 20,000건을 seed해도 응답이 6.4KB로 고정되는 것과 대조적이었다. 카드가 계속 쌓여야 하는 도메인 특성상(memo처럼 개수 상한을 두는 방식은 부적합) 페이지네이션을 붙이기로 했다.
+
+### 변경 내용
+
+- `ChatTaskCardJpaRepository.findAllByChatRoomIdAndDeletedAtIsNullOrderByCreatedAtDescIdDesc` → `findPage`로 교체, 메시지 목록조회와 동일한 `createdAt`/`id` 기반 cursor 쿼리(`@EntityGraph(attributePaths = "assignees")` 유지).
+- `TaskCardQueryUseCase`/`TaskCardQueryService`가 `cursorCreatedAt`/`cursorCardId`/`size`를 받아 `TaskCardPageView`(content/hasNext/nextCursorCreatedAt/nextCursorCardId)를 반환하도록 변경. size 범위(1~100)와 cursor 완전성 검증은 `ChatMessageQueryService`와 동일한 패턴.
+- `GET /api/messenger/rooms/{roomId}/task-cards` 응답이 배열에서 `{content, hasNext, nextCursorCreatedAt, nextCursorCardId}` 페이지 구조로 변경(breaking change) — 프론트 반영 필요.
+- 신규 에러코드: `INVALID_TASK_CARD_CURSOR`(`MESSENGER_400_17`), `INVALID_TASK_CARD_PAGE_SIZE`(`MESSENGER_400_18`).
+
+> 작성일: 2026-08-07
+> 상태: 백엔드 구현 완료, 테스트 통과, k6로 응답 크기 감소(374KB → 7.7KB) 확인. 프론트 반영은 별도 진행 필요(응답이 배열에서 페이지 객체로 바뀌는 breaking change).
+
 ## 2026-08-06 · 메시지·업무지시 카드 수정/삭제 실시간 반영
 
 ### 배경
