@@ -1,5 +1,34 @@
 # 🔄 워크스페이스 생성 이름 중복 정책 단순화
 
+## ✅ 2026-08-07 · 업무 CRUD 추가와 Task 도메인 계층 도입
+
+### 변경 목적
+
+업무 생성·상태변경·삭제 API를 구현하면서 `Task`의 도메인 모델과 Repository 포트를 처음으로 만듭니다. 이전 라운드(업무 자동 지연 스케줄러)에서 `Task` 도메인 모델이 없어 의도적으로 미뤄둔 계층 위반 — `DelayOverdueTasksService`가 `TaskJpaRepository`·`TaskJpaEntity`에 직접 의존하던 문제 — 를 같은 라운드에서 함께 해소합니다. 도메인 모델을 두 번 설계하지 않기 위해 세 API를 하나의 스펙으로 묶었습니다.
+
+### 구현 변경
+
+- `Task` 불변 도메인 모델을 추가했습니다. 초기 상태 결정(마감일이 오늘 이전이면 `DELAYED`)과 상태 전이 규칙 두 개를 소유합니다. `Clock`을 주입받지 않고 `today`를 파라미터로 받아 `docs/ARCHITECTURE.md`의 "Domain은 Spring·JPA에 의존하지 않는다" 규칙을 지키고, 규칙 전체를 순수 단위 테스트로 검증할 수 있게 했습니다.
+- 상태 전이를 4×4 전이표 하드코딩이 아니라 두 규칙으로 표현했습니다. ① `DELAYED`로의 전환은 미완료 상태에서만 가능(`COMPLETED → DELAYED`만 금지) ② 미완료 상태로 전환할 때 현재 마감일이 오늘 이전이면 오늘 이후의 새 마감일이 필요. 규칙 ②는 기존 "지연 업무를 진행 중으로 바꾸려면 미래의 새 마감일" 규칙을 일반화한 것으로, `DELAYED` 경유든 `COMPLETED` 경유든 마감일 정합성을 동일하게 지킵니다. 새 마감일 경계는 생성 규칙(오늘 마감은 `WAITING`)과 대칭이 되도록 오늘을 허용합니다.
+- `TaskRepository`·`TaskStatusHistoryRepository`·`RecurringTaskSkipRepository` 포트 3개와 어댑터를 추가했습니다. `recurring_task_skip`은 `task`가 아니라 `recurring_task_template`에 FK를 가진 별개 Aggregate이므로 포트를 분리했습니다.
+- `WorkspaceRepository`에 락 없는 `findById`를 추가했습니다. 업무 API 3개는 워크스페이스를 참여자 검증용으로 읽기만 하므로, 기존 `findByIdForUpdate`를 재사용하면 같은 워크스페이스에서 동시에 업무를 만들 때 불필요하게 직렬화됩니다.
+- 업무 하드 삭제를 DB의 `ON DELETE CASCADE`에 의존하지 않고 어댑터가 자식 → 부모 순서로 명시적으로 수행합니다(멘션 → 댓글 → 상태 이력 → 업무). `@DataJpaTest`의 H2 스키마는 엔티티에서 생성되어 cascade가 없으므로, DB cascade에만 의존하면 삭제 동작을 MySQL Testcontainers 없이는 검증할 수 없습니다. DB cascade는 안전망으로 남습니다.
+- `DelayOverdueTasksService`를 포트 기반으로 이관하고 TODO 주석을 제거했습니다. 상태만 직접 바꾸던 이전 엔티티 메서드는 참조처가 사라져 삭제하고, 도메인 모델이 결정한 값을 반영하는 `updateStatusAndDueAt(status, dueAt)`으로 대체했습니다.
+
+### 수용한 한계
+
+- 스케줄러 실행과 사용자의 상태 변경이 정확히 같은 시각에 겹치면 한쪽 변경이 덮이거나 이력이 어긋날 수 있습니다. 스케줄러는 벌크 조회 후 순회하는 구조라 대상 업무 전체를 잠그는 비용이 과해 락을 걸지 않았습니다. KST 00:00 트래픽이 사실상 없다는 전제로 수용하며, 다중 인스턴스 대응으로 분산 락을 도입할 때(GitHub 이슈 #138) 함께 해결합니다.
+- 반복 업무 회차 삭제 시 남기는 `recurring_task_skip` 기록은 소비자(반복 업무 생성 스케줄러)가 아직 없어 당장 아무도 읽지 않습니다. 스케줄러 도입 전에 삭제된 회차가 되살아나는 것을 막기 위해 미리 기록합니다.
+
+### 검증
+
+- `TaskTest`에서 초기 상태 결정(어제/오늘/내일 마감일)과 상태 전이 전수, 규칙 ② 경계(현재 마감일 어제 × 새 마감일 없음/어제/오늘/내일), 반복 업무 면제를 `Clock` 없이 검증했습니다.
+- 세 서비스 테스트에서 검증 순서(`404_1` → `403_1` → `404_3` → `400_x`)를 고정하고, 저장된 이력의 `previousStatus`·`currentStatus`·`changedBy`를 `ArgumentCaptor`로 직접 단언했습니다. 같은 상태 전이 시 이력을 저장하지 않는 것도 검증합니다.
+- `TaskPersistenceAdapterDataJpaTest`에서 도메인 ↔ 엔티티 왕복(일반·반복 양쪽)과 삭제 시 댓글·멘션·이력 4종이 실제로 사라지는지, `saveIfAbsent`의 멱등성을 확인했습니다.
+- 모든 테스트의 고정 `Clock`을 KST 날짜 경계를 실제로 넘는 시각(UTC 전날 15:00)으로 맞췄습니다.
+
+> 상태 전이 규칙과 삭제 정책은 [BUSINESS_RULES.md](BUSINESS_RULES.md)에, API 계약은 [WORKSPACE_API.md](WORKSPACE_API.md)에, 스케줄러 흐름 변경은 [TASK_API_FLOW.md](TASK_API_FLOW.md)에 반영했습니다. 📚
+
 ## ✅ 2026-08-06 · 업무 자동 지연 스케줄러 최종 리뷰 반영
 
 ### 변경 목적

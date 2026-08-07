@@ -95,8 +95,4 @@ public class TaskJpaEntity extends BaseTimeEntity {
     this.status = status;
     this.dueAt = dueAt;
   }
-
-  public void markDelayed() {
-    this.status = TaskStatus.DELAYED;
-  }
 }

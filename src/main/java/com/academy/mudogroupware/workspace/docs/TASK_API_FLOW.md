@@ -10,11 +10,13 @@ KST 00:00 매일 실행
   → WorkspaceTaskDelayScheduler @Scheduled(cron="0 0 0 * * *", zone="Asia/Seoul")
   → DelayOverdueTasksUseCase (interface)
   → DelayOverdueTasksService @Service @Transactional
-  → TaskJpaRepository.findOverdueRegularTasks
-  → TaskJpaRepository.findOverdueRecurringTasks
-  → TaskJpaEntity.markDelayed()
-  → TaskStatusHistoryJpaRepository.save()
-  → TaskStatusHistoryJpaEntity.systemChanged()
+  → TaskRepository.findOverdueRegularTasks
+  → TaskRepository.findOverdueRecurringTasks
+  → TaskPersistenceAdapter → TaskJpaRepository
+  → Task.changeStatus(DELAYED, null, today) (Domain Model)
+  → TaskRepository.save → TaskPersistenceAdapter
+  → TaskStatusHistoryRepository.append → TaskStatusHistoryPersistenceAdapter
+  → TaskStatusHistory.systemChanged()
   → Logger.info(...) 처리 건수 기록
 ```
 
@@ -26,7 +28,7 @@ KST 00:00 매일 실행
 
 ## 2. 일반 업무(Regular Task) 지연 조회
 
-`TaskJpaRepository.findOverdueRegularTasks(LocalDate today, TaskStatus completed, TaskStatus delayed)`는 다음 조건을 만족하는 모든 업무를 조회합니다.
+`TaskRepository.findOverdueRegularTasks(LocalDate today)`는 다음 조건을 만족하는 모든 업무를 조회합니다.
 
 - `recurringTemplate IS NULL` — 반복 템플릿이 없는 일반 업무
 - `due_at < :today` — 기한이 오늘보다 이전 (즉, 지난 날짜)
@@ -35,7 +37,7 @@ KST 00:00 매일 실행
 
 ## 3. 반복 업무(Recurring Task) 지연 조회
 
-`TaskJpaRepository.findOverdueRecurringTasks(LocalDateTime startOfToday, TaskStatus completed, TaskStatus delayed)`는 다음 조건을 만족하는 모든 업무 발생(occurrence)을 조회합니다.
+`TaskRepository.findOverdueRecurringTasks(LocalDateTime startOfToday)`는 다음 조건을 만족하는 모든 업무 발생(occurrence)을 조회합니다.
 
 - `recurringTemplate IS NOT NULL` — 반복 템플릿을 가진 반복 업무
 - `scheduledFor < :startOfToday` — 예정일이 오늘(KST) 00:00 이전
@@ -48,14 +50,15 @@ KST 00:00 매일 실행
 조회된 각 업무에 대해 `DelayOverdueTasksService`는:
 
 1. 현재 상태를 `previousStatus` 변수에 기록 (전환 전에 **반드시** 수행)
-2. `TaskJpaEntity.markDelayed()` 도메인 메서드를 호출해 상태를 `DELAYED`로 변경
-3. `TaskStatusHistoryJpaEntity.systemChanged()` 팩토리 메서드로 이력 엔티티를 생성
+2. `Task.changeStatus(TaskStatus.DELAYED, null, today)` 도메인 메서드를 호출해 `DELAYED` 상태의 새 `Task` 인스턴스를 얻음 (불변 모델이므로 원본 인스턴스는 바뀌지 않음)
+3. `TaskRepository.save(delayed)`로 변경된 상태를 영속화
+4. `TaskStatusHistory.systemChanged()` 팩토리 메서드로 이력 도메인 객체를 생성
    - `previousStatus`: 전환 전 상태 (예: `IN_PROGRESS`, `WAITING`)
    - `currentStatus`: `DELAYED`
    - `changedBy`: `NULL` (시스템이 자동으로 생성했음을 의미)
-4. `TaskStatusHistoryJpaRepository.save()`로 이력을 저장
+5. `TaskStatusHistoryRepository.append()`로 이력을 저장
 
-**핵심**: `previousStatus`를 `task.getStatus()` 호출로 미리 캡처해야만, `markDelayed()` 후에도 올바른 이전 상태를 기록할 수 있습니다. 이 순서가 뒤바뀌면 이력이 잘못 기록됩니다.
+**핵심**: `previousStatus`를 `task.getStatus()` 호출로 미리 캡처해야만, `changeStatus()` 후에도 올바른 이전 상태를 기록할 수 있습니다. 이 순서가 뒤바뀌면 이력이 잘못 기록됩니다.
 
 ## 5. 멱등성 보장
 
@@ -85,10 +88,11 @@ KST 00:00 매일 실행
 |---|---|---|
 | 1. 스케줄 트리거 | Infrastructure (`SchedulingConfig`, `WorkspaceTaskDelayScheduler`) | 매일 KST 00:00에 작업 시작 신호 |
 | 2. 조회 후보 발굴 | Application (`DelayOverdueTasksService`) | 일반·반복 업무별로 기한 초과 대상 검색 |
-| 3. 쿼리 실행 | Infrastructure (`TaskJpaRepository`) | 데이터베이스에서 조건을 만족하는 업무 조회 |
-| 4. 상태 변경 | Domain (`TaskJpaEntity.markDelayed()`) | 업무 엔티티의 상태를 DELAYED로 변경 |
-| 5. 이력 기록 | Infrastructure (`TaskStatusHistoryJpaRepository`) | 상태 변경 사실과 전환 정보를 영속화 |
-| 6. 관찰 | Infrastructure (`Logger`) | 처리 결과를 로그로 남겨 추적 가능하게 함 |
+| 3. 쿼리 실행 | Port (`TaskRepository.findOverdueRegularTasks`/`findOverdueRecurringTasks`, 구현체 `TaskPersistenceAdapter`) | 데이터베이스에서 조건을 만족하는 업무 조회 |
+| 4. 상태 변경 | Domain (`Task.changeStatus(DELAYED, null, today)`) | 도메인 모델이 상태 전이 규칙을 검증하고 DELAYED 상태의 새 인스턴스를 반환 |
+| 5. 저장 | Port (`TaskRepository.save`) | 반영된 상태를 영속화 |
+| 6. 이력 기록 | Port (`TaskStatusHistoryRepository.append`) | 상태 변경 사실과 전환 정보를 영속화. `changedBy = NULL`로 시스템 처리를 표시 |
+| 7. 관찰 | Infrastructure (`Logger`) | 처리 결과를 로그로 남겨 추적 가능하게 함 |
 
 ## ⚠️ 주의 사항
 
@@ -155,3 +159,90 @@ POST /api/workspaces/{workspaceId}/tasks
 ### 6. 응답
 
 성공하면 Controller가 `GlobalApiResponse.created(WorkspaceResponseCode.TASK_CREATED, ...)`로 HTTP `201 Created`와 `taskId`를 반환한다.
+
+## ✏️ 업무 상태·마감일 수정 API 흐름
+
+```text
+PATCH /api/workspaces/{workspaceId}/tasks/{taskId}
+  → Security Filter
+  → AuthUser
+  → WorkspaceTaskController
+  → UpdateTaskRequest
+  → UpdateTaskCommand
+  → UpdateTaskUseCase
+  → UpdateTaskService
+  → WorkspaceRepository.findById (락 없음)
+  → WorkspacePersistenceAdapter
+  → TaskRepository.findByIdForUpdate (비관적 락)
+  → TaskPersistenceAdapter
+  → Task.changeDueAt / Task.changeStatus (Domain Model)
+  → TaskRepository.save
+  → TaskPersistenceAdapter
+  → TaskJpaRepository
+  → TaskStatusHistoryRepository.append (상태가 실제로 바뀐 경우만)
+  → TaskStatusHistoryPersistenceAdapter
+```
+
+### 1. 요청 검증과 Command 변환
+
+`UpdateTaskRequest`는 `status`·`dueAt` 둘 다 `null`이면 `@AssertTrue`로 `400`을 반환한다(`isAtLeastOneFieldPresent()`). 둘 중 하나만 있어도 통과한다. `toCommand`가 `UpdateTaskCommand`로 변환한다.
+
+### 2. 워크스페이스 존재 확인과 참여자 검증
+
+`UpdateTaskService`는 업무 생성 API와 동일한 순서를 따른다 — `WorkspaceRepository.findById`(락 없음)로 조회 후 없으면 `WorkspaceNotFoundException`(`404_1`), 참여자가 아니면 `WorkspaceAccessDeniedException`(`403_1`).
+
+### 3. 업무 조회와 소속 검증 (비관적 락)
+
+`TaskRepository.findByIdForUpdate`로 수정 대상 업무를 **비관적 락**으로 조회한다. 삭제 API의 `findByIdForUpdate`와 같은 락을 공유하는 대상이므로, 삭제와 수정이 동시에 들어오면 뒤에 도착한 트랜잭션이 먼저 완료된 트랜잭션의 결과(삭제됐다면 빈 `Optional`, 즉 `TaskNotFoundException` → `404_3`)를 보게 된다. 다른 워크스페이스 소속이면(`!task.belongsTo(workspaceId)`) 존재를 노출하지 않기 위해 `403`이 아니라 `404_3`으로 응답한다.
+
+### 4. 상태·마감일 반영
+
+`command.status()`가 `null`이면 `task.changeDueAt(dueAt)`만 호출(마감일만 반영, 상태는 그대로). `status()`가 있으면 `task.changeStatus(status, dueAt, today)`를 호출한다 — 이 안에서 상태 전이 규칙 1·2, 반복 업무의 `dueAt` 동반 거부(`IllegalTaskDueAtException` → `400_5`)가 모두 검증된다. `today`는 `UpdateTaskService`가 소유한 `Clock`으로 계산해 도메인에 파라미터로 넘긴다.
+
+### 5. 저장과 이력 기록
+
+`TaskRepository.save(updated)`로 반영된 상태·마감일을 저장한다. 저장 전 캡처해둔 `previousStatus`와 저장 후 `saved.getStatus()`가 다를 때만 `TaskStatusHistoryRepository.append(TaskStatusHistory.userChanged(...))`를 호출한다 — 같은 상태로의 전이(`dueAt`만 바뀐 경우 포함)는 이력을 남기지 않는다.
+
+### 6. 응답
+
+성공하면 Controller가 `GlobalApiResponse.ok(WorkspaceResponseCode.TASK_UPDATED, ...)`로 HTTP `200 OK`와 `taskId`·`status`·`dueAt`을 반환한다.
+
+## 🗑️ 업무 삭제 API 흐름
+
+```text
+DELETE /api/workspaces/{workspaceId}/tasks/{taskId}
+  → Security Filter
+  → AuthUser
+  → WorkspaceTaskController
+  → DeleteTaskCommand
+  → DeleteTaskUseCase
+  → DeleteTaskService
+  → WorkspaceRepository.findById (락 없음)
+  → WorkspacePersistenceAdapter
+  → TaskRepository.findByIdForUpdate (비관적 락)
+  → TaskPersistenceAdapter
+  → RecurringTaskSkipRepository.saveIfAbsent (반복 업무만)
+  → RecurringTaskSkipPersistenceAdapter
+  → TaskRepository.delete (자식 → 부모 순차 삭제)
+  → TaskPersistenceAdapter → TaskJpaRepository
+```
+
+### 1. 워크스페이스 존재 확인과 참여자 검증
+
+`DeleteTaskService`도 업무 생성·수정과 동일한 순서 — 존재 확인(`404_1`) → 참여자 확인(`403_1`).
+
+### 2. 업무 조회와 소속 검증 (비관적 락)
+
+`TaskRepository.findByIdForUpdate`로 삭제 대상을 비관적 락으로 조회한다. 없으면 `TaskNotFoundException`(`404_3`), 다른 워크스페이스 소속이면 마찬가지로 `404_3`(존재를 노출하지 않음). 이 락이 수정 API의 동시 요청과 경합을 직렬화한다.
+
+### 3. 반복 업무 skip 기록 (조건부)
+
+`task.isRecurring()`이면 삭제 전에 `RecurringTaskSkipRepository.saveIfAbsent(recurringTemplateId, scheduledFor)`를 호출해 같은 회차가 나중에 되살아나지 않도록 기록한다. 일반 업무는 이 단계를 건너뛴다. 이 저장과 다음 단계의 삭제는 같은 트랜잭션(`@Transactional`)에서 원자적으로 처리된다.
+
+### 4. 하드 삭제
+
+`TaskRepository.delete(taskId)`를 호출한다. `TaskPersistenceAdapter`가 자식 → 부모 순서(멘션 → 댓글 → 상태 이력 → 업무)로 명시적 벌크 삭제를 수행한다 — DB의 `ON DELETE CASCADE`는 안전망으로만 남고 이 순차 삭제가 실제 삭제를 담당한다. 삭제는 복구할 수 없다.
+
+### 5. 응답
+
+성공하면 Controller가 본문 없는 HTTP `204 No Content`를 반환한다.

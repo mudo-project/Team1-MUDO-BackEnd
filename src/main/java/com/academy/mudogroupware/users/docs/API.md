@@ -204,6 +204,47 @@
 
 ---
 
+## 7. 학원 신청 목록 조회
+
+`GET /api/academy-applications`
+권한: `PLATFORM:SUPER_ADMIN` 필요 (SUPER ADMIN 계정만 — `ROLE:MANAGE` 등 카탈로그 권한과는 별개)
+
+### Request
+
+없음
+
+### Response · `200 OK`
+
+```json
+{
+  "status": 200,
+  "code": "ACADEMY_APPLICATION_200_1",
+  "message": "학원 신청 목록 조회에 성공했습니다.",
+  "data": [
+    {
+      "applicationId": 1,
+      "requestedLoginId": "academy01",
+      "academyName": "우리학원",
+      "businessNo": "123-45-67890",
+      "representativeName": "홍길동",
+      "representativeEmail": "hong@example.com",
+      "representativePhone": "010-0000-0000",
+      "status": "PENDING",
+      "rejectReason": null,
+      "createdAt": "2026-08-07T10:00:00"
+    }
+  ]
+}
+```
+
+### 검증 및 정책
+
+- 페이지네이션이 없습니다(기존 역할/권한 목록 조회와 동일한 전례).
+- `PLATFORM:SUPER_ADMIN`은 `@PreAuthorize` 권한 코드가 아니라 `SecurityConfig` 필터체인 URL 매칭으로 확인합니다 — 학원 관리자는 이 authority를 절대 자기 역할에 배정할 수 없습니다.
+- 신청 접수(`POST`) API는 아직 없습니다(파일 업로드 인프라 선행 필요) — 테스트 데이터는 수동으로 DB에 넣어야 합니다.
+
+---
+
 ## ⚠️ 주요 오류
 
 | HTTP | 코드 | 상황 |
@@ -220,4 +261,4 @@
 | `401` | `AUTH_401_6` | 서버에 저장된 리프레시 토큰이 없음 |
 | `401` | `AUTH_401_7` | 요청된 리프레시 토큰이 저장된 값과 일치하지 않음 (다른 기기 재로그인 등으로 무효화됨) |
 | `400` | `COMMON_400_1` | 요청 형식 오류 (`username`/`password` 누락 또는 길이 초과, 또는 역할 `name`/`description` 형식 오류) |
-| `403` | `COMMON_403_1` | `ROLE:MANAGE` 권한이 없는 계정으로 역할 생성 시도 |
+| `403` | `COMMON_403_1` | `ROLE:MANAGE` 권한이 없는 계정으로 역할 생성 시도, 또는 `PLATFORM:SUPER_ADMIN`이 아닌 계정으로 학원 신청 목록 조회 시도 |

@@ -97,7 +97,7 @@ public class Task {
   // 규칙 2: 기한이 지난 일반 업무를 미완료 상태로 되돌릴 때만 새 마감일이 필요하다.
   // 반복 업무는 due_at을 쓰지 않으므로 면제한다.
   private boolean requiresNewDueAt(TaskStatus newStatus, LocalDate today) {
-    return isIncomplete(newStatus) && !isRecurring() && dueAt.isBefore(today);
+    return isIncomplete(newStatus) && !isRecurring() && dueAt != null && dueAt.isBefore(today);
   }
 
   private boolean isIncomplete(TaskStatus target) {

@@ -1,5 +1,5 @@
 > 작성일: 2026-08-04
-> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, 역할 생성 + 권한 조립 API 완료 · 역할 수정·삭제·목록/상세 조회, 계정 발급(회원가입) API 미착수
+> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, 역할 생성 + 권한 조립 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청 목록 조회(PR 1/3) 완료 · 역할 수정·삭제·목록/상세 조회, 학원 신청 상세 조회·승인/반려(PR 2·3/3), 학원 관리자의 직원 계정 발급(계정 발급 체계 3단계) 미착수
 
 ## 🎯 변경 목적
 
@@ -228,6 +228,46 @@ Redis 도입이 확정되면서(WebSocket Pub/Sub 용도로 시작해 액세스 
 | Application(auth) | `TokenService.issue/issueAccessToken` 메서드 시그니처에 두 매개변수 추가 |
 | Application(users) | `LoginService`/`RefreshService`에서 `TokenIssuerUseCase` 호출 시 `accountType`/`adminScope` 전달 로직 추가 |
 | Domain(users) | `User.restore()` 생성자 확장(delegating constructor 없이 15-인자 단일 시그니처, 호출부 3곳 직접 갱신) |
+
+---
+
+## ✅ 2026-08-07 · 학원 신청 목록 조회 API 구현 (`GET /api/academy-applications`, 이슈 #165, PR 1/3)
+
+### 배경
+
+당초 "SUPER ADMIN이 학원 계정을 직접 발급"으로 설계했으나, 팀 기획 자료(모체 레포 Gym-Jjak_BE의 `organization_applications`→`organizations` 승인 패턴)를 확인한 결과 "학원이 신청 → SUPER ADMIN 승인/반려 → 승인 시점에 계정 발급" 구조였다. `docs/superpowers/specs/2026-08-07-academy-application-design.md` 참고.
+
+전체 워크플로우(신청 접수/목록/상세/승인/반려 4개 엔드포인트)를 한 번에 구현하려 했으나, 리뷰 과정에서 "이슈 하나·PR 하나·기능 하나" 원칙에 어긋난다는 지적이 있었다. 게다가 신청 접수는 사업자등록증 파일 업로드 없이는 반쪽짜리로 판단해 이번 스코프에서 완전히 제외했다. 그래서 **목록 조회(PR 1) → 상세 조회(PR 2, 신규 추가) → 승인/반려(PR 3)** 순서로 3개 PR로 나눠 진행하기로 했다. 이 PR은 그중 첫 번째로, `academy_application` 테이블과 목록 조회만 다룬다.
+
+### 확정된 정책
+
+- **신청 접수(`POST`) API는 이번 스코프에서 완전히 제외했다.** 파일 업로드(`business_license_file_id`) 없이는 실사용이 불가능한 반쪽짜리라, presigned URL 발급 등 파일 업로드 인프라가 갖춰진 뒤 별도로 다시 설계한다. 테스트용 신청서 데이터는 로컬 DB에 수동 SQL로 직접 넣는다(SUPER ADMIN 계정 수동 시드와 동일한 방식).
+- **`AcademyApplication` 도메인 모델은 `restore()` 팩토리 하나만 가진다.** `submit()` 생성 팩토리, `ensurePending()` 가드는 각각 접수 API·승인/반려 API가 추가되는 PR에서 함께 들어온다 — 지금 당장 호출부가 없는 메서드를 미리 만들어두면 리뷰어가 "왜 있는데 아무도 안 부르냐"고 묻게 된다.
+- **`AcademyApplicationRepository`는 `findAll()` 하나만 가진다.** `findById`(PR 2), `markApproved`/`markRejected`(PR 3)도 같은 이유로 필요한 PR에서 추가한다. `AcademyApplicationEntity`도 지금은 읽기 전용(빌더·mutator 메서드 없음)이다.
+- **목록 조회는 이 코드베이스에서 처음으로 `@PreAuthorize` 대신 `SecurityConfig` 필터체인의 URL 매칭으로 막는다.** `ACADEMY:CREATE` 같은 권한 코드를 카탈로그에 추가하는 방식은 안전하지 않다 — 카탈로그 코드는 학원 관리자가 자기 역할에 자유롭게 배정할 수 있어서, 넣는 순간 학원 관리자가 신청 목록을 볼 수 있게 된다. 대신 `JwtAuthenticationConverter`가 `accountType==ADMIN && adminScope==PLATFORM`일 때만 카탈로그에 없는 합성 authority `PLATFORM:SUPER_ADMIN`을 추가로 부여하고, `SecurityConfig`가 `GET /api/academy-applications`를 `hasAuthority("PLATFORM:SUPER_ADMIN")`으로 정확히 매칭한다. 이 authority 부여 로직 자체는 이후 PR(상세/승인/반려)에서도 그대로 재사용된다.
+
+### 완료 기준
+
+- [x] `be4/V4.1.2__create_academy_application.sql` 마이그레이션(`academy_application` 테이블, `academy.application_id` 컬럼)
+- [x] `AcademyApplicationStatus` enum, `AcademyApplication` 도메인 모델(`restore()`만)
+- [x] `AcademyApplicationRepository.findAll()` + JPA 구현체
+- [x] `ListAcademyApplicationsService`
+- [x] `AcademyApplicationController`(`GET /api/academy-applications`)
+- [x] `JwtAuthenticationConverter`에 `PLATFORM:SUPER_ADMIN` 합성 authority 추가(TDD), `SecurityConfig`에 경로 규칙 추가
+- [x] 로컬 curl end-to-end 검증(수동 시드한 신청서로 목록 조회, 비SUPER ADMIN 계정으로 403 확인)
+- [x] `./gradlew build` 통과
+
+### 🧩 영향 범위
+
+| 계층 | 변경 내용 |
+| --- | --- |
+| Migration | `V4.1.2`(`academy_application` 테이블 신설, `academy.application_id` 컬럼 추가) |
+| Domain(users) | `AcademyApplicationStatus` enum, `AcademyApplication` 도메인 모델(`restore()`) 신규 |
+| Domain(users) | `AcademyApplicationRepository` 인터페이스(`findAll()`) 신규 |
+| Persistence(users) | `AcademyApplicationEntity`(읽기 전용)/`AcademyApplicationJpaRepository`/`AcademyApplicationRepositoryImpl` 신규 |
+| Application(users) | `ListAcademyApplicationsUseCase`/`ListAcademyApplicationsService` 신규 |
+| Presentation(users) | `AcademyApplicationController`(`GET` 목록) 신규, `AcademyApplicationResponseCode`, `AcademyApplicationResponse` 신규 |
+| Security(global) | `JwtAuthenticationConverter`에 `PLATFORM:SUPER_ADMIN` 합성 authority 부여 로직 추가. `SecurityConfig`에 목록 조회 경로 접근 규칙 추가(이 코드베이스 최초의 필터체인 URL 매칭 기반 인가) |
 
 ---
 
