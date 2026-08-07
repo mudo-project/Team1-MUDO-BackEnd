@@ -191,9 +191,9 @@ PATCH /api/workspaces/{workspaceId}/tasks/{taskId}
 
 `UpdateTaskService`는 업무 생성 API와 동일한 순서를 따른다 — `WorkspaceRepository.findById`(락 없음)로 조회 후 없으면 `WorkspaceNotFoundException`(`404_1`), 참여자가 아니면 `WorkspaceAccessDeniedException`(`403_1`).
 
-### 3. 업무 조회와 소속 검증 (비관적 락)
+### 3. 업무 조회 (워크스페이스 범위 비관적 락)
 
-`TaskRepository.findByIdForUpdate`로 수정 대상 업무를 **비관적 락**으로 조회한다. 삭제 API의 `findByIdForUpdate`와 같은 락을 공유하는 대상이므로, 삭제와 수정이 동시에 들어오면 뒤에 도착한 트랜잭션이 먼저 완료된 트랜잭션의 결과(삭제됐다면 빈 `Optional`, 즉 `TaskNotFoundException` → `404_3`)를 보게 된다. 다른 워크스페이스 소속이면(`!task.belongsTo(workspaceId)`) 존재를 노출하지 않기 위해 `403`이 아니라 `404_3`으로 응답한다.
+`TaskRepository.findByIdForUpdate(workspaceId, taskId)`로 수정 대상 업무를 **워크스페이스 범위로 제한한 비관적 락**으로 조회한다. 다른 워크스페이스 소속 taskId는 조회 자체가 빈 결과를 반환하므로, 그 시점에 바로 `TaskNotFoundException`(`404_3`)이 발생한다 — 존재를 노출하지 않기 위해 `403`이 아니라 `404_3`으로 응답한다는 정책은 그대로다. 삭제 API의 `findByIdForUpdate`와 같은 락을 공유하는 대상이므로, 삭제와 수정이 동시에 들어오면 뒤에 도착한 트랜잭션이 먼저 완료된 트랜잭션의 결과(삭제됐다면 빈 `Optional`)를 보게 된다.
 
 ### 4. 상태·마감일 반영
 

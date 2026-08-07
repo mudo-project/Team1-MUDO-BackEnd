@@ -90,10 +90,6 @@ public class Task {
     return recurringTemplateId != null;
   }
 
-  public boolean belongsTo(Long targetWorkspaceId) {
-    return workspaceId.equals(targetWorkspaceId);
-  }
-
   // 규칙 2: 기한이 지난 일반 업무를 미완료 상태로 되돌릴 때만 새 마감일이 필요하다.
   // 반복 업무는 due_at을 쓰지 않으므로 면제한다.
   private boolean requiresNewDueAt(TaskStatus newStatus, LocalDate today) {
