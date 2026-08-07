@@ -1,5 +1,11 @@
 # 📚 Workspace Changelog
 
+## 2026-08-07
+
+- 업무 생성 API(`POST /api/workspaces/{workspaceId}/tasks`)를 추가했습니다. 제목과 마감일을 입력하며, 마감일이 오늘 이전이면 최초 상태를 `DELAYED`로, 그 외에는 `WAITING`으로 저장합니다.
+- 업무를 생성하면 상태 이력 1건을 함께 저장합니다. `previous_status = NULL`, `changed_by = 생성자`입니다.
+- 일반 업무의 마감일은 필수입니다. 과거 날짜도 지정할 수 있습니다.
+
 ## 2026-08-06
 
 - 워크스페이스 이름 수정 API(`PATCH /api/workspaces/{workspaceId}`)를 추가했습니다.
