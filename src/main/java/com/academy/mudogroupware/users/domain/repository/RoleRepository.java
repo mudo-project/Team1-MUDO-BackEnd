@@ -21,4 +21,6 @@ public interface RoleRepository {
     boolean existsByAcademyIdAndNameAndIdNot(Long academyId, String name, Long excludedRoleId);
 
     void updateNameAndDescription(Long roleId, String name, String description);
+
+    void deleteById(Long roleId);
 }

@@ -87,6 +87,11 @@ public class RoleRepositoryImpl implements RoleRepository {
         entity.update(name, description);
     }
 
+    @Override
+    public void deleteById(Long roleId) {
+        roleJpaRepository.deleteById(roleId);
+    }
+
     private Role toDomainWithoutPermissions(RoleEntity entity) {
         return Role.restore(
                 entity.getId(), entity.getAcademyId(), entity.getName(), entity.getDescription(),
