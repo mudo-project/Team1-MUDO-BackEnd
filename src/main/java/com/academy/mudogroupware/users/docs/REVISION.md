@@ -1,5 +1,5 @@
 > 작성일: 2026-08-04
-> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, 역할 생성 + 권한 조립 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청 목록/상세 조회(PR 1·2/3) 완료 · 역할 수정·삭제·목록/상세 조회, 학원 신청 승인/반려(PR 3/3), 학원 관리자의 직원 계정 발급(계정 발급 체계 3단계) 미착수
+> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, 역할 생성 + 권한 조립 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청 목록/상세 조회(PR 1·2/3) 완료, 역할 목록 조회(역할 CRUD 1/4) 완료 · 역할 상세/수정/삭제(2~4/4), 학원 신청 승인/반려(PR 3/3), 학원 관리자의 직원 계정 발급(계정 발급 체계 3단계) 미착수
 
 ## 🎯 변경 목적
 
@@ -304,6 +304,38 @@ PR 1(목록 조회)이 develop에 머지된 뒤 그 위에서 이어가는 두 �
 | Application(users) | `GetAcademyApplicationUseCase`/`GetAcademyApplicationService` 신규 |
 | Presentation(users) | `AcademyApplicationController`에 `GET /{applicationId}` 핸들러 추가, `AcademyApplicationResponseCode.ACADEMY_APPLICATION_200_2` 추가 |
 | Security(global) | `SecurityConfig` GET 규칙에 `/api/academy-applications/*` 패턴 추가 |
+
+---
+
+## ✅ 2026-08-07 · 역할 목록 조회 API 구현 (`GET /api/roles`, 이슈 #183, 역할 CRUD 4개 중 1번째)
+
+### 배경
+
+역할 생성(#59)과 권한 조립(#84)만 있고 조회가 안 되는 상태라 프론트 "역할 설정" 화면이 실제로 동작하지 않았다. 역할 관리 API 7개 중 남은 4개(목록/상세/수정/삭제)를 "1 이슈 = 1 PR = 1 기능" 원칙에 따라 나눠 진행하며, 이 PR은 목록 조회다. 설계: `docs/superpowers/specs/2026-08-06-role-crud-design.md`, 계획: `docs/superpowers/plans/2026-08-07-role-crud.md`.
+
+### 확정된 정책
+
+- `RoleRepository.findAllByAcademyId()`는 목록 응답이 권한 정보를 안 내려주므로, 기존 `toDomain()`(항상 `permissions` LAZY 컬렉션을 건드림)을 재사용하지 않고 권한 없이 매핑하는 별도 `toDomainWithoutPermissions()`를 뒀다 — 안 그러면 역할마다 권한 조회 쿼리가 추가로 나가는 N+1이 생긴다.
+- 원래 스펙에는 `Role.withNameAndDescription()`을 추가하기로 돼 있었으나, 실제 수정 흐름(다음 PR)은 `RoleRepository.updateNameAndDescription()`(관리 엔티티 직접 mutate)만 쓰고 이 메서드를 호출하지 않아 스코프에서 뺐다. 확인해보니 같은 패턴으로 먼저 추가됐던 `Role.withPermissionCodes()`도 코드베이스 어디에서도 호출되지 않는 죽은 코드였다 — 같은 실수를 반복하지 않기로 했다.
+
+### 완료 기준
+
+- [x] `RoleJpaRepository.findAllByAcademyId` 추가
+- [x] `RoleRepository.findAllByAcademyId` 추가, `RoleRepositoryImpl`에 구현(`toDomainWithoutPermissions` 포함)
+- [x] `ListRolesUseCase`/`ListRolesService`(TDD)
+- [x] `RoleResponseCode.ROLE_LIST_FOUND`(`ROLE_200_1`), `RoleListResponse`
+- [x] `RoleController`에 `GET` 목록 핸들러 추가
+- [x] 로컬 curl end-to-end 검증
+- [x] `./gradlew build` 통과
+
+### 🧩 영향 범위
+
+| 계층 | 변경 내용 |
+| --- | --- |
+| Domain(users) | `RoleRepository.findAllByAcademyId(Long)` 추가 |
+| Persistence(users) | `RoleJpaRepository.findAllByAcademyId` 추가, `RoleRepositoryImpl`에 구현 + `toDomainWithoutPermissions` 신규 |
+| Application(users) | `ListRolesUseCase`/`ListRolesService` 신규 |
+| Presentation(users) | `RoleController`에 `GET /api/roles` 핸들러 추가, `RoleResponseCode.ROLE_LIST_FOUND`, `RoleListResponse` 신규 |
 
 ---
 
