@@ -236,5 +236,5 @@ Response Body
 ## 참고 문서
 
 - [WORKSPACE_API.md](WORKSPACE_API.md) — 워크스페이스 API 명세 (업무 생성·수정·삭제 섹션이 이 문서와 중복 수록되어 있음, 추후 정리 예정)
-- [TASK_API_FLOW.md](TASK_API_FLOW.md) — 업무 자동 지연 스케줄러 호출 흐름과 업무 생성 API 호출 흐름 (수정·삭제 흐름은 다루지 않음)
+- [TASK_API_FLOW.md](TASK_API_FLOW.md) — 업무 자동 지연 스케줄러 호출 흐름과 업무 생성·수정·삭제 API 호출 흐름
 - [BUSINESS_RULES.md](BUSINESS_RULES.md) — 업무 상태 결정·전이 규칙

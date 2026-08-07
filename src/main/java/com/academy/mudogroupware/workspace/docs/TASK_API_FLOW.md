@@ -159,3 +159,90 @@ POST /api/workspaces/{workspaceId}/tasks
 ### 6. 응답
 
 성공하면 Controller가 `GlobalApiResponse.created(WorkspaceResponseCode.TASK_CREATED, ...)`로 HTTP `201 Created`와 `taskId`를 반환한다.
+
+## ✏️ 업무 상태·마감일 수정 API 흐름
+
+```text
+PATCH /api/workspaces/{workspaceId}/tasks/{taskId}
+  → Security Filter
+  → AuthUser
+  → WorkspaceTaskController
+  → UpdateTaskRequest
+  → UpdateTaskCommand
+  → UpdateTaskUseCase
+  → UpdateTaskService
+  → WorkspaceRepository.findById (락 없음)
+  → WorkspacePersistenceAdapter
+  → TaskRepository.findByIdForUpdate (비관적 락)
+  → TaskPersistenceAdapter
+  → Task.changeDueAt / Task.changeStatus (Domain Model)
+  → TaskRepository.save
+  → TaskPersistenceAdapter
+  → TaskJpaRepository
+  → TaskStatusHistoryRepository.append (상태가 실제로 바뀐 경우만)
+  → TaskStatusHistoryPersistenceAdapter
+```
+
+### 1. 요청 검증과 Command 변환
+
+`UpdateTaskRequest`는 `status`·`dueAt` 둘 다 `null`이면 `@AssertTrue`로 `400`을 반환한다(`isAtLeastOneFieldPresent()`). 둘 중 하나만 있어도 통과한다. `toCommand`가 `UpdateTaskCommand`로 변환한다.
+
+### 2. 워크스페이스 존재 확인과 참여자 검증
+
+`UpdateTaskService`는 업무 생성 API와 동일한 순서를 따른다 — `WorkspaceRepository.findById`(락 없음)로 조회 후 없으면 `WorkspaceNotFoundException`(`404_1`), 참여자가 아니면 `WorkspaceAccessDeniedException`(`403_1`).
+
+### 3. 업무 조회와 소속 검증 (비관적 락)
+
+`TaskRepository.findByIdForUpdate`로 수정 대상 업무를 **비관적 락**으로 조회한다. 삭제 API의 `findByIdForUpdate`와 같은 락을 공유하는 대상이므로, 삭제와 수정이 동시에 들어오면 뒤에 도착한 트랜잭션이 먼저 완료된 트랜잭션의 결과(삭제됐다면 빈 `Optional`, 즉 `TaskNotFoundException` → `404_3`)를 보게 된다. 다른 워크스페이스 소속이면(`!task.belongsTo(workspaceId)`) 존재를 노출하지 않기 위해 `403`이 아니라 `404_3`으로 응답한다.
+
+### 4. 상태·마감일 반영
+
+`command.status()`가 `null`이면 `task.changeDueAt(dueAt)`만 호출(마감일만 반영, 상태는 그대로). `status()`가 있으면 `task.changeStatus(status, dueAt, today)`를 호출한다 — 이 안에서 상태 전이 규칙 1·2, 반복 업무의 `dueAt` 동반 거부(`IllegalTaskDueAtException` → `400_5`)가 모두 검증된다. `today`는 `UpdateTaskService`가 소유한 `Clock`으로 계산해 도메인에 파라미터로 넘긴다.
+
+### 5. 저장과 이력 기록
+
+`TaskRepository.save(updated)`로 반영된 상태·마감일을 저장한다. 저장 전 캡처해둔 `previousStatus`와 저장 후 `saved.getStatus()`가 다를 때만 `TaskStatusHistoryRepository.append(TaskStatusHistory.userChanged(...))`를 호출한다 — 같은 상태로의 전이(`dueAt`만 바뀐 경우 포함)는 이력을 남기지 않는다.
+
+### 6. 응답
+
+성공하면 Controller가 `GlobalApiResponse.ok(WorkspaceResponseCode.TASK_UPDATED, ...)`로 HTTP `200 OK`와 `taskId`·`status`·`dueAt`을 반환한다.
+
+## 🗑️ 업무 삭제 API 흐름
+
+```text
+DELETE /api/workspaces/{workspaceId}/tasks/{taskId}
+  → Security Filter
+  → AuthUser
+  → WorkspaceTaskController
+  → DeleteTaskCommand
+  → DeleteTaskUseCase
+  → DeleteTaskService
+  → WorkspaceRepository.findById (락 없음)
+  → WorkspacePersistenceAdapter
+  → TaskRepository.findByIdForUpdate (비관적 락)
+  → TaskPersistenceAdapter
+  → RecurringTaskSkipRepository.saveIfAbsent (반복 업무만)
+  → RecurringTaskSkipPersistenceAdapter
+  → TaskRepository.delete (자식 → 부모 순차 삭제)
+  → TaskPersistenceAdapter → TaskJpaRepository
+```
+
+### 1. 워크스페이스 존재 확인과 참여자 검증
+
+`DeleteTaskService`도 업무 생성·수정과 동일한 순서 — 존재 확인(`404_1`) → 참여자 확인(`403_1`).
+
+### 2. 업무 조회와 소속 검증 (비관적 락)
+
+`TaskRepository.findByIdForUpdate`로 삭제 대상을 비관적 락으로 조회한다. 없으면 `TaskNotFoundException`(`404_3`), 다른 워크스페이스 소속이면 마찬가지로 `404_3`(존재를 노출하지 않음). 이 락이 수정 API의 동시 요청과 경합을 직렬화한다.
+
+### 3. 반복 업무 skip 기록 (조건부)
+
+`task.isRecurring()`이면 삭제 전에 `RecurringTaskSkipRepository.saveIfAbsent(recurringTemplateId, scheduledFor)`를 호출해 같은 회차가 나중에 되살아나지 않도록 기록한다. 일반 업무는 이 단계를 건너뛴다. 이 저장과 다음 단계의 삭제는 같은 트랜잭션(`@Transactional`)에서 원자적으로 처리된다.
+
+### 4. 하드 삭제
+
+`TaskRepository.delete(taskId)`를 호출한다. `TaskPersistenceAdapter`가 자식 → 부모 순서(멘션 → 댓글 → 상태 이력 → 업무)로 명시적 벌크 삭제를 수행한다 — DB의 `ON DELETE CASCADE`는 안전망으로만 남고 이 순차 삭제가 실제 삭제를 담당한다. 삭제는 복구할 수 없다.
+
+### 5. 응답
+
+성공하면 Controller가 본문 없는 HTTP `204 No Content`를 반환한다.
