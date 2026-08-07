@@ -92,12 +92,22 @@ UNIQUE (academy_id, active_name)
 
 - 업무 상태는 `WAITING`, `IN_PROGRESS`, `COMPLETED`, `DELAYED`를 사용한다.
 - `due_at`은 nullable이다. 마감일이 없는 업무는 자동 지연 대상이 아니다.
-- 자동 지연 조건은 `due_at IS NOT NULL`, `due_at < 현재 시각`, `status != COMPLETED`이다.
+- 일반 업무의 자동 지연 조건은 `due_at IS NOT NULL`, `due_at < 오늘(KST)`, `status NOT IN (COMPLETED, DELAYED)`이다.
+- 반복 업무의 자동 지연 조건은 `scheduled_for`가 오늘(KST) 00:00 이전, `status NOT IN (COMPLETED, DELAYED)`이다. `due_at`은 사용하지 않는다.
+- 두 조건 모두 업무가 속한 워크스페이스가 소프트 삭제되지 않았어야 한다(`workspace.deleted_at IS NULL`). 소프트 삭제된 워크스페이스의 업무는 자동 지연 대상에서 제외한다.
+- 스케줄러는 매일 KST 00:00에 실행하며, 조건에 `status != DELAYED`를 포함해 재실행해도 이미 지연 처리된 업무의 상태 이력이 중복 저장되지 않는다.
 - 스케줄러가 자동으로 지연 처리할 때 `task_status_history.changed_by`는 `NULL`로 저장한다. `NULL`은 시스템 처리자를 의미한다.
 - 과거 마감일로 미완료 업무를 생성하면 최초 상태를 `DELAYED`로 저장한다.
 - 최초 상태 이력은 `previous_status = NULL`로 저장한다.
-- 지연 업무를 진행 중으로 바꾸려면 미래의 새 마감일을 함께 입력해야 한다. UI에서는 상태 변경 시 마감일 입력 모달을 제공한다.
+- 일반 업무 생성 시 마감일은 필수다. 과거 날짜도 지정할 수 있고, 이 경우 최초 상태를 `DELAYED`로 저장한다. 마감일이 오늘이거나 미래면 `WAITING`으로 저장한다.
+- `task.due_at` 컬럼은 반복 업무(항상 `NULL`) 때문에 nullable을 유지하고, 일반 업무 생성 API에서만 필수로 검증한다.
+- 상태 전이 규칙 1: `DELAYED`로의 전환은 미완료 상태(`WAITING`, `IN_PROGRESS`)에서만 가능하다. 즉 `COMPLETED → DELAYED`만 금지한다.
+- 상태 전이 규칙 2: 미완료 상태(`WAITING`, `IN_PROGRESS`)로 전환할 때 현재 마감일이 오늘 이전이면 오늘 이후(오늘 포함)의 새 마감일을 함께 입력해야 한다. UI에서는 상태 변경 시 마감일 입력 모달을 제공한다.
+- 규칙 2의 경계는 생성 규칙과 대칭이다. 생성 시 오늘 마감이 `WAITING`이므로, 새 마감일로 오늘을 지정할 수 있다.
+- 위 두 규칙 외의 전이는 모두 허용한다. 완료된 업무를 `WAITING` 또는 `IN_PROGRESS`로 되돌릴 수 있고(잘못 누른 완료의 원상복구), 사용자가 미완료 업무를 직접 `DELAYED`로 옮길 수도 있다(업무를 의도적으로 미루는 경우).
 - 지연 업무는 마감일 수정 없이 완료 처리할 수 있다.
+- 반복 업무는 `due_at`을 쓰지 않으므로 규칙 2를 면제하고, 마감일 수정을 허용하지 않는다.
+- 같은 상태로의 전이 요청은 성공으로 응답하되 상태 이력을 남기지 않는다.
 
 ### 삭제
 

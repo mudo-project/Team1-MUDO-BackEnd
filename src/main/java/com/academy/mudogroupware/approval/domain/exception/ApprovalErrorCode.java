@@ -14,6 +14,8 @@ public enum ApprovalErrorCode implements ErrorCode {
     TITLE_REQUIRED(HttpStatus.BAD_REQUEST, "APPROVAL_400_2", "결재 제목은 비어 있을 수 없습니다."),
     LINES_REQUIRED(HttpStatus.BAD_REQUEST, "APPROVAL_400_3", "결재선은 최소 1명 이상 지정해야 합니다."),
     TEMPLATE_NAME_REQUIRED(HttpStatus.BAD_REQUEST, "APPROVAL_400_4", "템플릿 이름은 비어 있을 수 없습니다."),
+    INVALID_LEAVE_PERIOD(HttpStatus.BAD_REQUEST, "APPROVAL_400_5",
+            "휴가 기간은 시작일과 종료일을 함께 입력해야 하며, 종료일은 시작일보다 빠를 수 없습니다."),
 
     DOCUMENT_ACCESS_DENIED(HttpStatus.FORBIDDEN, "APPROVAL_403_1", "해당 결재를 조회할 권한이 없습니다."),
     CROSS_ACADEMY_TEMPLATE(HttpStatus.FORBIDDEN, "APPROVAL_403_2", "다른 학원의 템플릿으로는 결재를 신청할 수 없습니다."),
@@ -33,6 +35,7 @@ public enum ApprovalErrorCode implements ErrorCode {
     NOT_YOUR_TURN(HttpStatus.CONFLICT, "APPROVAL_409_4", "본인 차례의 결재가 아닙니다."),
     LINES_ALREADY_IN_PROGRESS(HttpStatus.CONFLICT, "APPROVAL_409_5", "이미 결재가 진행된 건은 결재선을 수정할 수 없습니다."),
     LINE_ALREADY_DECIDED(HttpStatus.CONFLICT, "APPROVAL_409_6", "이미 처리가 완료된 결재선입니다."),
+    ATTACHMENT_CONTENT_UNAVAILABLE(HttpStatus.CONFLICT, "APPROVAL_409_7", "첨부파일 원문 조회 기능이 없어 요약할 수 없습니다."),
 
     SUMMARY_GENERATION_FAILED(HttpStatus.BAD_GATEWAY, "APPROVAL_502_1", "첨부파일 요약 생성에 실패했습니다.");
 

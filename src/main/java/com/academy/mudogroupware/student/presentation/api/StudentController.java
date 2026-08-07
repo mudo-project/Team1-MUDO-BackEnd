@@ -2,6 +2,7 @@ package com.academy.mudogroupware.student.presentation.api;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -57,6 +58,7 @@ public class StudentController {
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "학생 등록 성공")
     })
+    @PreAuthorize("hasAuthority('STUDENT:MANAGE')")
     @PostMapping
     public ResponseEntity<GlobalApiResponse<StudentCreateResponse>> createStudent(
             @AuthenticationPrincipal AuthUser authUser,
@@ -71,6 +73,7 @@ public class StudentController {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "학생 목록 조회 성공")
     })
+    @PreAuthorize("hasAuthority('STUDENT:READ')")
     @GetMapping
     public ResponseEntity<GlobalApiResponse<SliceResponse<StudentSummaryResponse>>> getStudents(
             @AuthenticationPrincipal AuthUser authUser,
@@ -87,6 +90,7 @@ public class StudentController {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "학생 상세 조회 성공")
     })
+    @PreAuthorize("hasAuthority('STUDENT:READ')")
     @GetMapping("/{studentId}")
     public ResponseEntity<GlobalApiResponse<StudentDetailResponse>> getStudentDetail(
             @AuthenticationPrincipal AuthUser authUser,
@@ -100,6 +104,7 @@ public class StudentController {
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "학생 정보 수정 성공")
     })
+    @PreAuthorize("hasAuthority('STUDENT:MANAGE')")
     @PatchMapping("/{studentId}")
     public ResponseEntity<Void> updateStudent(
             @AuthenticationPrincipal AuthUser authUser,
@@ -113,6 +118,7 @@ public class StudentController {
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "학생 수강 등록 성공")
     })
+    @PreAuthorize("hasAuthority('ENROLLMENT:MANAGE')")
     @PostMapping("/{studentId}/enrollments")
     public ResponseEntity<GlobalApiResponse<EnrollmentCreateResponse>> enroll(
             @AuthenticationPrincipal AuthUser authUser,
@@ -128,6 +134,7 @@ public class StudentController {
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "학생 수강 종료 성공")
     })
+    @PreAuthorize("hasAuthority('ENROLLMENT:MANAGE')")
     @PatchMapping("/{studentId}/enrollments/{enrollmentId}/end")
     public ResponseEntity<Void> endEnrollment(
             @AuthenticationPrincipal AuthUser authUser,

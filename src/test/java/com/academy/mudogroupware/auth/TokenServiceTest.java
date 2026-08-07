@@ -6,6 +6,7 @@ import static org.mockito.Mockito.*;
 import com.academy.mudogroupware.auth.application.result.TokenPair;
 import com.academy.mudogroupware.auth.application.service.TokenService;
 import com.academy.mudogroupware.auth.infrastructure.persistence.*;
+import com.academy.mudogroupware.global.domain.auth.AccountType;
 import com.academy.mudogroupware.global.domain.auth.JwtClaims;
 import com.academy.mudogroupware.global.infrastructure.security.jwt.*;
 import java.util.Optional;
@@ -20,10 +21,10 @@ class TokenServiceTest {
     RefreshTokenRepository r = mock(RefreshTokenRepository.class);
     RefreshTokenJpaEntity saved = new RefreshTokenJpaEntity(1L, "old");
     when(r.findByUserId(1L)).thenReturn(Optional.of(saved));
-    TokenPair pair = new TokenService(provider, r).issue(1L, "user", 2L, 3L);
+    TokenPair pair = new TokenService(provider, r).issue(1L, "user", 2L, 3L, AccountType.MEMBER, null);
     assertThat(saved.getRefreshToken()).isEqualTo(pair.refreshToken());
     verify(r, never()).save(any());
     assertThat(provider.parseAccessToken(pair.accessToken()))
-        .isEqualTo(new JwtClaims(1L, "user", 2L, 3L));
+        .isEqualTo(new JwtClaims(1L, "user", 2L, 3L, AccountType.MEMBER, null));
   }
 }

@@ -24,10 +24,11 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 /**
- * 결재 차례 도래 등을 Web Push로 알리기 위한 구독 정보 저장 API.
- * 실제 푸시 발송(VAPID, web-push 라이브러리 연동)은 아직 구현하지 않았다 — 프론트 서비스워커 준비 후 별도 작업으로 연동한다.
+ * 사용 중지 예정 API. 결재 실시간 알림은 WebSocket/STOMP로 고정한다.
+ * 기존 구독 저장 API는 호환성 때문에 남겨두지만 Web Push 발송 로직은 추가하지 않는다.
  */
-@Tag(name = "Web Push 구독", description = "브라우저 푸시 구독 정보 저장/해지 API (실제 발송은 아직 미구현)")
+@Deprecated(since = "2026-08-06", forRemoval = false)
+@Tag(name = "Web Push 구독", description = "사용 중지 예정 API. 결재 실시간 알림은 WebSocket/STOMP를 사용한다.")
 @RestController
 @RequestMapping("/api/approvals/push-subscriptions")
 @RequiredArgsConstructor
@@ -36,7 +37,8 @@ public class PushSubscriptionController {
     private final RegisterPushSubscriptionUseCase registerPushSubscriptionUseCase;
     private final UnregisterPushSubscriptionUseCase unregisterPushSubscriptionUseCase;
 
-    @Operation(summary = "푸시 구독 등록", description = "같은 사용자·endpoint 조합이 이미 있으면 새로 만들지 않고 p256dh/auth 키만 갱신한다.")
+    @Operation(summary = "푸시 구독 등록(사용 중지 예정)",
+            description = "호환성 때문에 구독 정보 저장만 유지한다. 실제 Web Push 발송은 구현하지 않는다.")
     @PostMapping
     public ResponseEntity<GlobalApiResponse<PushSubscriptionCreateResponse>> register(
             @AuthenticationPrincipal AuthUser authUser,
@@ -47,7 +49,7 @@ public class PushSubscriptionController {
                 .body(GlobalApiResponse.created(ApprovalResponseCode.PUSH_SUBSCRIPTION_REGISTERED, data));
     }
 
-    @Operation(summary = "푸시 구독 해지", description = "본인 구독만 해지할 수 있다.")
+    @Operation(summary = "푸시 구독 해지(사용 중지 예정)", description = "본인 구독만 해지할 수 있다.")
     @DeleteMapping
     public ResponseEntity<Void> unregister(@AuthenticationPrincipal AuthUser authUser,
                                             @RequestParam String endpoint) {

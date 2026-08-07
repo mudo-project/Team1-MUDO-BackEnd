@@ -13,6 +13,7 @@ public record LectureDetailView(
         String termName,
         String subjectName,
         Long teacherId,
+        String teacherName,
         String classroomName,
         FeeType feeType,
         Integer feeAmount,

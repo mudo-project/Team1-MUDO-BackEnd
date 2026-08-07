@@ -7,6 +7,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.academy.mudogroupware.approval.application.command.SummarizeApprovalAttachmentCommand;
+import com.academy.mudogroupware.approval.application.port.AttachmentContentPort;
+import com.academy.mudogroupware.approval.application.port.AttachmentContentUnavailableException;
 import com.academy.mudogroupware.approval.application.port.AttachmentSummarizationException;
 import com.academy.mudogroupware.approval.application.port.AttachmentSummarizerPort;
 import com.academy.mudogroupware.approval.application.query.ApprovalAttachmentSummaryView;
@@ -28,6 +30,7 @@ import lombok.RequiredArgsConstructor;
 public class SummarizeApprovalAttachmentService implements SummarizeApprovalAttachmentUseCase {
 
     private final ApprovalDocumentRepository approvalDocumentRepository;
+    private final AttachmentContentPort attachmentContentPort;
     private final AttachmentSummarizerPort attachmentSummarizerPort;
     private final Clock clock;
 
@@ -46,13 +49,17 @@ public class SummarizeApprovalAttachmentService implements SummarizeApprovalAtta
 
         LocalDateTime now = LocalDateTime.now(clock);
 
-        // TODO: file 모듈이 fileId → 실제 파일 내용(objectKey 등) 조회를 제공하면 이 placeholder를
-        // 실제 첨부파일 내용으로 교체한다. 지금은 fileId만 있고 실제 파일에 접근할 방법이 없다.
-        String placeholderContent = "첨부파일(fileId=" + attachment.getFileId() + ")의 내용을 한국어로 3문장 이내로 "
-                + "요약해줘. 참고: 아직 실제 파일 내용을 읽어오는 연동이 없어 임시로 이 안내문을 대신 보낸다.";
+        String attachmentContent;
+        try {
+            attachmentContent = attachmentContentPort.loadContent(attachment.getFileId());
+        } catch (AttachmentContentUnavailableException e) {
+            attachment.markSummaryFailed(now);
+            approvalDocumentRepository.save(approvalDocument);
+            throw new ApprovalException(ApprovalErrorCode.ATTACHMENT_CONTENT_UNAVAILABLE);
+        }
 
         try {
-            String summary = attachmentSummarizerPort.summarize(placeholderContent);
+            String summary = attachmentSummarizerPort.summarize(attachmentContent);
             attachment.applySummary(summary, now);
         } catch (AttachmentSummarizationException e) {
             attachment.markSummaryFailed(now);

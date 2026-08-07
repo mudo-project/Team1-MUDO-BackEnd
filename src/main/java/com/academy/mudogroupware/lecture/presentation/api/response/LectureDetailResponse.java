@@ -14,6 +14,7 @@ public record LectureDetailResponse(
         String termName,
         String subjectName,
         Long teacherId,
+        String teacherName,
         String classroomName,
         FeeType feeType,
         Integer feeAmount,
@@ -26,7 +27,7 @@ public record LectureDetailResponse(
         List<ScheduleResponse> schedules = view.schedules().stream().map(ScheduleResponse::from).toList();
         List<StudentSummaryResponse> students = view.students().stream().map(StudentSummaryResponse::from).toList();
         return new LectureDetailResponse(view.id(), view.name(), view.grade(), view.termName(), view.subjectName(),
-                view.teacherId(), view.classroomName(), view.feeType(), view.feeAmount(), schedules, students,
+                view.teacherId(), view.teacherName(), view.classroomName(), view.feeType(), view.feeAmount(), schedules, students,
                 view.createdAt());
     }
 }

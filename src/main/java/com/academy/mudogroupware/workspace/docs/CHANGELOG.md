@@ -1,5 +1,11 @@
 # 📚 Workspace Changelog
 
+## 2026-08-07
+
+- 업무 생성 API(`POST /api/workspaces/{workspaceId}/tasks`)를 추가했습니다. 제목과 마감일을 입력하며, 마감일이 오늘 이전이면 최초 상태를 `DELAYED`로, 그 외에는 `WAITING`으로 저장합니다.
+- 업무를 생성하면 상태 이력 1건을 함께 저장합니다. `previous_status = NULL`, `changed_by = 생성자`입니다.
+- 일반 업무의 마감일은 필수입니다. 과거 날짜도 지정할 수 있습니다.
+
 ## 2026-08-06
 
 - 워크스페이스 이름 수정 API(`PATCH /api/workspaces/{workspaceId}`)를 추가했습니다.
@@ -8,6 +14,7 @@
 - 워크스페이스 참여자 추가 API(`POST /api/workspaces/{workspaceId}/members`)를 추가했습니다.
 - 워크스페이스 참여자 제거·자진탈퇴 API(`DELETE /api/workspaces/{workspaceId}/members/{userId}`)를 추가했습니다.
 - 워크스페이스 복구 API(`POST /api/workspaces/{workspaceId}/recover`)를 추가했습니다. 삭제 당시 참여자만 복구할 수 있고, 이름이 충돌하면 시각 접미사를 붙입니다.
+- 업무 자동 지연 처리 스케줄러를 추가했습니다. 매일 KST 00:00에 기한이 지난 미완료 일반 업무와 예정일이 지난 미완료 반복 업무를 `DELAYED`로 자동 전환하고, 전환마다 시스템 상태 이력(`changed_by = NULL`)을 한 건 저장합니다. 이미 `DELAYED`인 업무는 다시 전환하지 않으므로 재실행해도 상태 이력이 중복되지 않습니다.
 
 ## 2026-08-05 · 업무 기한을 날짜 단위로 변경 ✨
 

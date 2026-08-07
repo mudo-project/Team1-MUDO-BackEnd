@@ -1,5 +1,39 @@
 # 📚 Calendar Changelog
 
+## 2026-08-07 · 목록/일별/월간 조회 쿼리를 date/yearMonth 기반으로 변경 🔧
+
+- `GET /api/calendars?from=&to=` 대신 `?date=`(일별) 또는 `?yearMonth=`(월간)로 호출합니다.
+- 프론트가 시각 경계를 직접 계산할 필요 없이, 서버가 한국 시간(Asia/Seoul) 기준으로 그날/그달의 시작~끝 구간을 계산합니다.
+- `date`와 `yearMonth`를 둘 다 지정하거나 둘 다 생략하면 `CALENDAR_400_3`으로 응답합니다.
+## 2026-08-06 · 일정 삭제 API 추가 ✨
+
+- `DELETE /api/calendars/{eventId}`로 학원 공용 캘린더 일정을 삭제할 수 있습니다.
+- 일정이 존재하지 않거나 다른 학원 소속이면 `CALENDAR_404_1`로 응답합니다.
+- 성공 시 응답 본문 없이 HTTP `204 No Content`를 반환합니다.
+- 소프트 삭제 없이 하드 삭제합니다.
+
+## 2026-08-06 · 일정 수정 API 추가 ✨
+
+- `PATCH /api/calendars/{eventId}`로 학원 공용 캘린더 일정을 수정할 수 있습니다.
+- 요청 필드는 생성 API와 동일하며, 부분 필드가 아니라 수정 가능한 필드 전체를 매번 새 값으로 교체합니다.
+- 일정이 존재하지 않거나 다른 학원 소속이면 `CALENDAR_404_1`로 응답합니다.
+- `title`이 공백이거나 `eventEndAt`이 `eventStartAt`보다 이전이면 각각 `CALENDAR_400_1`, `CALENDAR_400_2`로 응답합니다.
+- 성공 시 응답 본문 없이 HTTP `204 No Content`를 반환합니다.
+- `updated_at`은 `BaseTimeEntity`(Spring Data JPA Auditing)가 자동으로 갱신합니다.
+## 2026-08-06 · 일정 상세 조회 API 추가 ✨
+
+- `GET /api/calendars/{eventId}`로 일정 상세를 조회할 수 있습니다.
+- 일정이 존재하지 않거나 다른 학원 소속이면 `CALENDAR_404_1`로 응답합니다(다른 학원에 존재 여부를 노출하지 않기 위해 두 경우를 구분하지 않음).
+- 성공 시 HTTP `200 OK`와 함께 `CalendarEventResponse`(목록조회와 동일한 응답 형태)를 반환합니다.
+
+## 2026-08-06 · 일정 목록/일별 조회 API 추가 ✨
+
+- `GET /api/calendars?from=&to=`로 학원 공용 캘린더 일정을 기간 조회할 수 있습니다. 목록조회와 일별조회를 겸용합니다.
+- 조회 대상은 요청자의 `academyId` 소속 일정으로 한정합니다.
+- `to`가 `from`보다 이전이면 `CALENDAR_400_2`로 응답합니다.
+- 성공 시 HTTP `200 OK`와 함께 일정 목록(`CalendarEventResponse[]`)을 반환합니다.
+- `CalendarEventResponse`는 목록/일별/상세 조회에서 공용으로 재사용합니다.
+
 ## 2026-08-06 · 캘린더 도메인 신설 및 일정 생성 API 추가 ✨
 
 - 학원 공용 캘린더를 담당하는 `calendar` top-level 도메인 모듈을 신설했습니다.

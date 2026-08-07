@@ -90,6 +90,14 @@ public interface WorkspaceJpaRepository extends JpaRepository<WorkspaceJpaEntity
       """)
   List<Long> findMemberUserIds(@Param("workspaceId") Long workspaceId);
 
+  @Query(
+      """
+      select workspace
+      from WorkspaceJpaEntity workspace
+      where workspace.id = :workspaceId and workspace.deletedAt is null
+      """)
+  Optional<WorkspaceJpaEntity> findActiveById(@Param("workspaceId") Long workspaceId);
+
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query(
       """

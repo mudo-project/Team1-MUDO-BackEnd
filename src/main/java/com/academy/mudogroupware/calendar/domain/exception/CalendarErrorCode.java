@@ -12,6 +12,7 @@ public enum CalendarErrorCode implements ErrorCode {
 
     TITLE_REQUIRED(HttpStatus.BAD_REQUEST, "CALENDAR_400_1", "일정 제목은 비어 있을 수 없습니다."),
     INVALID_PERIOD(HttpStatus.BAD_REQUEST, "CALENDAR_400_2", "종료 시각은 시작 시각보다 이전일 수 없습니다."),
+    INVALID_QUERY_RANGE(HttpStatus.BAD_REQUEST, "CALENDAR_400_3", "date 또는 yearMonth 중 정확히 하나를 지정해야 합니다."),
     EVENT_NOT_FOUND(HttpStatus.NOT_FOUND, "CALENDAR_404_1", "일정을 찾을 수 없습니다.");
 
     private final HttpStatus httpStatus;
