@@ -18,11 +18,13 @@ import com.academy.mudogroupware.global.presentation.api.common.GlobalApiRespons
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
 import com.academy.mudogroupware.users.application.usecase.AssignRolePermissionsUseCase;
 import com.academy.mudogroupware.users.application.usecase.CreateRoleUseCase;
+import com.academy.mudogroupware.users.application.usecase.GetRoleUseCase;
 import com.academy.mudogroupware.users.application.usecase.ListRolesUseCase;
 import com.academy.mudogroupware.users.presentation.api.common.RoleResponseCode;
 import com.academy.mudogroupware.users.presentation.api.request.AssignRolePermissionsRequest;
 import com.academy.mudogroupware.users.presentation.api.request.CreateRoleRequest;
 import com.academy.mudogroupware.users.presentation.api.response.RoleCreateResponse;
+import com.academy.mudogroupware.users.presentation.api.response.RoleDetailResponse;
 import com.academy.mudogroupware.users.presentation.api.response.RoleListResponse;
 
 import jakarta.validation.Valid;
@@ -36,6 +38,7 @@ public class RoleController {
     private final CreateRoleUseCase createRoleUseCase;
     private final AssignRolePermissionsUseCase assignRolePermissionsUseCase;
     private final ListRolesUseCase listRolesUseCase;
+    private final GetRoleUseCase getRoleUseCase;
 
     @PreAuthorize("hasAuthority('ROLE:MANAGE')")
     @PostMapping
@@ -56,6 +59,15 @@ public class RoleController {
                 .map(RoleListResponse::from)
                 .toList();
         return ResponseEntity.ok(GlobalApiResponse.ok(RoleResponseCode.ROLE_LIST_FOUND, data));
+    }
+
+    @PreAuthorize("hasAuthority('ROLE:MANAGE')")
+    @GetMapping("/{roleId}")
+    public ResponseEntity<GlobalApiResponse<RoleDetailResponse>> get(
+            @AuthenticationPrincipal AuthUser authUser,
+            @PathVariable Long roleId) {
+        RoleDetailResponse data = RoleDetailResponse.from(getRoleUseCase.getRole(roleId, authUser.academyId()));
+        return ResponseEntity.ok(GlobalApiResponse.ok(RoleResponseCode.ROLE_DETAIL_FOUND, data));
     }
 
     @PreAuthorize("hasAuthority('ROLE:MANAGE')")
