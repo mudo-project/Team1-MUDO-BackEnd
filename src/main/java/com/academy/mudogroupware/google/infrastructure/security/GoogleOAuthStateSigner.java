@@ -33,6 +33,9 @@ public class GoogleOAuthStateSigner implements GoogleOAuthStatePort {
     private final String jwtSecret;
 
     public GoogleOAuthStateSigner(Clock clock, @Value("${JWT_SECRET}") String jwtSecret) {
+        if (jwtSecret == null || jwtSecret.isBlank()) {
+            throw new IllegalStateException("JWT_SECRET이 설정되지 않았습니다.");
+        }
         this.clock = clock;
         this.jwtSecret = jwtSecret;
     }

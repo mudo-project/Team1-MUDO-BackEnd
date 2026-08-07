@@ -28,6 +28,9 @@ public class GoogleTokenCipher {
     private final SecureRandom secureRandom = new SecureRandom();
 
     public GoogleTokenCipher(@Value("${GOOGLE_TOKEN_ENCRYPTION_KEY}") String encryptionKey) {
+        if (encryptionKey == null || encryptionKey.isBlank()) {
+            throw new IllegalStateException("GOOGLE_TOKEN_ENCRYPTION_KEY가 설정되지 않았습니다.");
+        }
         try {
             byte[] hashed = MessageDigest.getInstance("SHA-256")
                     .digest(encryptionKey.getBytes(StandardCharsets.UTF_8));

@@ -57,6 +57,12 @@ class GoogleOAuthStateSignerTest {
                 .isInstanceOf(GoogleOAuthStateInvalidException.class);
     }
 
+    @Test
+    void constructorThrowsWhenJwtSecretIsBlank() {
+        assertThatThrownBy(() -> new GoogleOAuthStateSigner(fixedClock(), "  "))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
     private Clock fixedClock() {
         return Clock.fixed(NOW, ZoneOffset.UTC);
     }

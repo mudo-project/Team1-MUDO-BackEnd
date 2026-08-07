@@ -37,4 +37,10 @@ class GoogleTokenCipherTest {
         assertThatThrownBy(() -> cipher.decrypt("YQ=="))
                 .isInstanceOf(IllegalStateException.class);
     }
+
+    @Test
+    void constructorThrowsWhenEncryptionKeyIsBlank() {
+        assertThatThrownBy(() -> new GoogleTokenCipher(" "))
+                .isInstanceOf(IllegalStateException.class);
+    }
 }
