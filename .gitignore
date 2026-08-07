@@ -256,3 +256,7 @@ infra/monitoring/runtime/
 
 # bkit plugin local state
 /.bkit/
+
+# npx skills CLI local manifest (개인 AI 툴링 로컬 상태)
+/skills-lock.json
+/.agents/
