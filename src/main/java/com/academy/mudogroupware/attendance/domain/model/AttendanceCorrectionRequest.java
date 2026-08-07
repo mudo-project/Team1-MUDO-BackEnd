@@ -211,4 +211,40 @@ public final class AttendanceCorrectionRequest {
     public LocalDateTime getProcessedAt() { return processedAt; }
     public Long getProcessedBy() { return processedBy; }
     public String getRejectionReason() { return rejectionReason; }
+
+    public AttendanceCorrectionRequest approve(Long processorId, LocalDateTime processedAt) {
+        validatePending();
+        return new AttendanceCorrectionRequest(id, academyId, userId, attendanceId, workDate, type,
+                AttendanceCorrectionStatus.APPROVED, originalClockInAt, originalClockOutAt,
+                originalClockInNote, originalClockOutNote, requestedClockInAt, requestedClockOutAt,
+                requestedClockInNote, requestedClockOutNote, reason, requestedAt, processedAt,
+                processorId, null);
+    }
+
+    public AttendanceCorrectionRequest attachAttendanceId(Long nextAttendanceId) {
+        return new AttendanceCorrectionRequest(id, academyId, userId, nextAttendanceId, workDate,
+                type, status, originalClockInAt, originalClockOutAt, originalClockInNote,
+                originalClockOutNote, requestedClockInAt, requestedClockOutAt, requestedClockInNote,
+                requestedClockOutNote, reason, requestedAt, processedAt, processedBy, rejectionReason);
+    }
+
+    public AttendanceCorrectionRequest reject(Long processorId, LocalDateTime processedAt,
+                                               String rejectionReason) {
+        validatePending();
+        String normalized = normalize(rejectionReason);
+        if (normalized == null || normalized.length() > 500) {
+            throw new AttendanceException(AttendanceErrorCode.INVALID_CORRECTION_REJECTION_REASON);
+        }
+        return new AttendanceCorrectionRequest(id, academyId, userId, attendanceId, workDate, type,
+                AttendanceCorrectionStatus.REJECTED, originalClockInAt, originalClockOutAt,
+                originalClockInNote, originalClockOutNote, requestedClockInAt, requestedClockOutAt,
+                requestedClockInNote, requestedClockOutNote, reason, requestedAt, processedAt,
+                processorId, normalized);
+    }
+
+    private void validatePending() {
+        if (status != AttendanceCorrectionStatus.PENDING) {
+            throw new AttendanceException(AttendanceErrorCode.CORRECTION_REQUEST_ALREADY_PROCESSED);
+        }
+    }
 }

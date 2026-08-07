@@ -144,6 +144,8 @@ public enum AttendanceErrorCode implements ErrorCode {
     CORRECTION_ATTENDANCE_NOT_FOUND(HttpStatus.NOT_FOUND, "ATTENDANCE_404_3", "수정할 근태 기록을 찾을 수 없습니다."),
     CORRECTION_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "ATTENDANCE_404_4", "근태 수정 요청을 찾을 수 없습니다."),
     CORRECTION_REQUEST_ALREADY_PENDING(HttpStatus.CONFLICT, "ATTENDANCE_409_7", "해당 날짜에 처리 중인 근태 수정 요청이 있습니다."),
+    CORRECTION_REQUEST_ALREADY_PROCESSED(HttpStatus.CONFLICT, "ATTENDANCE_409_8", "이미 처리된 근태 수정 요청입니다."),
+    INVALID_CORRECTION_REJECTION_REASON(HttpStatus.BAD_REQUEST, "ATTENDANCE_400_14", "반려 사유는 500자 이내로 입력해야 합니다."),
     INVALID_LEAVE_REQUEST_STATE(
             HttpStatus.CONFLICT,
             "ATTENDANCE_409_6",
