@@ -310,8 +310,8 @@ Alloy 중단·재시작 후 로그 위치와 메트릭 전송이 복구되는지
 | 13. 런타임 프로필 | ✅ 완료(값 변경) | `shared-default`를 `t3.small`(2 vCPU/2GiB) 1대에 학원 2개가 binpack으로 들어가도록 축소: `cpu 850`(≈0.83 vCPU), `memoryReservation 800MiB`(≈0.78GiB), `memory 950MiB`(≈0.93GiB). **ECS 콘솔의 Task Definition 컨테이너 CPU/메모리 입력 필드는 units/MiB가 아니라 vCPU/GiB 소수값을 그대로 받는다** — 이 단위를 모르고 `850`을 그대로 넣었다가 "850 vCPU" 요구로 해석되어 Task가 영원히 배치 안 되는 문제를 겪었음. 반드시 소수(vCPU 0.83, GiB 0.78/0.93)로 입력 |
 | 14. Task Definition | ✅ 완료(임시) | academy-a만 생성. ECR에 실제 이미지가 아직 없어(20장 CI/CD 이전) `nginx:alpine` placeholder(명령어 재정의로 8080에서 200 응답) 사용. CD 활성화 후 실제 이미지로 교체 예정 |
 | 15. ALB·Target Group | ✅ 완료 | `mudo-prod-tg-academy-a`(8080), 리스너 규칙 3개(우선순위 1: `/actuator/prometheus*` 차단 403, 100: `academy-a.ieum.store` 호스트 헤더 전달, 기본값: 404) |
-| 16. ECS Service | ✅ 완료 | `mudo-prod-svc-academy-a`, 배치 전략 `binpack`(MEMORY), 원하는 태스크 1, 상태 검사 유예 60초. Target Healthy 확인, `https://academy-a.ieum.store/actuator/health` 200 확인 |
-| 17. WAF | ✅ 완료 | `mudo-prod-web-acl`, ALB에 연결. AWS 관리형 규칙 3개(Common, KnownBadInputs, SQLi) + Rate-based 규칙(2000/5분, 소스 IP 기준) 전부 Count 모드로 관찰 중, 아직 Block 전환 안 함 |
+| 16. ECS Service | ✅ 완료(인프라 스모크 테스트) | `mudo-prod-svc-academy-a`, 배치 전략 `binpack`(MEMORY), 원하는 태스크 1, 상태 검사 유예 60초. Target Healthy 확인, `https://academy-a.ieum.store/actuator/health` 200 확인. **단, 이 200 응답은 ALB→nginx placeholder 연결만 검증한 것**이며 실제 애플리케이션·DB·SSM·S3·Task Role·Flyway 동작은 검증되지 않았다. 애플리케이션 검증은 실제 ECR 이미지 배포(20장 CD 활성화) 이후 별도로 확인한다 |
+| 17. WAF | ✅ 완료(관찰 전용) | `mudo-prod-web-acl`, ALB에 연결. AWS 관리형 규칙 3개(Common, KnownBadInputs, SQLi) + Rate-based 규칙(2000/5분, 소스 IP 기준) 전부 Count 모드 — **차단은 아직 적용되지 않은 관찰 전용 상태**. 오탐 검증 기간 후 Block 전환 기준·롤백 절차는 별도 항목으로 트래킹 |
 | 18. S3 격리 | ✅ 완료 | 공유 버킷(`mudo-prod-staff-635249349258`) + `tenants/{code}/` prefix + IAM Resource 조건으로 확정(가이드 원문과 동일 방식). academy-a Task Role 정책을 prefix 기준(`tenants/academy-a/*`)으로 교체 완료 |
 | 19. WebSocket·Redis | ✅ 확인 완료(보류) | 코드 조사 결과 Redis 클라이언트 의존성·연동 코드가 아직 없음(WebSocket은 인메모리 SimpleBroker). ElastiCache는 만들지 않음 — 실제 Redis 코드 구현 시점에 다시 결정 |
 | 20. main 운영 CI/CD | ⬜ 미착수 | GitHub OIDC 역할·워크플로우 연결 예정, 오늘 목표 지점 |
