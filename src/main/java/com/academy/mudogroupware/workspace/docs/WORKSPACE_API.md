@@ -349,3 +349,60 @@ HTTP `200 OK`
 | `409 Conflict` | `WORKSPACE_409_1` | 극히 드문 동시성 경합으로 타임스탬프 접미사까지 붙였는데도 이름이 충돌한 경우 |
 
 > **참고:** `WORKSPACE_409_2`(이미 활성 상태) 판정은 참여자 여부 확인보다 먼저 일어난다 — 즉 삭제되지 않은 워크스페이스에 대한 복구 요청은 요청자가 참여자인지와 무관하게 항상 409를 받는다.
+
+## 업무 생성
+
+### Endpoint
+
+`POST /api/workspaces/{workspaceId}/tasks`
+
+### 인증 및 권한
+
+- `Authorization: Bearer {accessToken}` 헤더가 필요하다.
+- 현재 워크스페이스 참여자만 호출할 수 있다.
+- `WORKSPACE:READ_ALL` 보유자(학원 관리 권한자)는 조회만 가능하며 업무를 생성할 수 없다.
+
+### Request Body
+
+```json
+{
+  "title": "8월 원생 청구서 발송",
+  "dueAt": "2026-08-10"
+}
+```
+
+| name | type | required | description |
+| --- | --- | --- | --- |
+| `title` | String | true | 업무 제목. trim 후 공백일 수 없고 최대 200자 |
+| `dueAt` | LocalDate (`yyyy-MM-dd`) | true | 마감일. 과거 날짜도 허용한다 |
+
+### Success Response
+
+HTTP `201 Created`
+
+```json
+{
+  "status": 201,
+  "code": "WORKSPACE_201_2",
+  "message": "업무 생성에 성공했습니다.",
+  "data": {
+    "taskId": 101
+  }
+}
+```
+
+### Error Response
+
+| HTTP 상태 | code | 발생 조건 |
+| --- | --- | --- |
+| `400 Bad Request` | `COMMON_400_1` | 제목 누락·공백·200자 초과, 마감일 누락 또는 형식 오류 |
+| `401 Unauthorized` | `COMMON_401_1` | Access Token이 없거나 유효하지 않은 경우 |
+| `403 Forbidden` | `WORKSPACE_403_1` | 요청자가 참여자가 아닌 경우 |
+| `404 Not Found` | `WORKSPACE_404_1` | 워크스페이스가 없거나 삭제된 경우 |
+
+### Business Rules
+
+- `workspaceId`는 경로에서, 요청자 정보는 Access Token에서 가져온다.
+- 마감일이 서버 `Clock` 기준 오늘 이전이면 최초 상태를 `DELAYED`로, 그 외에는 `WAITING`으로 저장한다.
+- 생성 시 상태 이력 1건을 저장한다. `previous_status = NULL`, `changed_by = 생성자`.
+- 존재 확인을 권한 확인보다 먼저 한다 — 없거나 삭제된 워크스페이스는 참여 여부와 무관하게 `WORKSPACE_404_1`을 반환한다.

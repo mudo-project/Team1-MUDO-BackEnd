@@ -11,6 +11,10 @@ public interface WorkspaceRepository {
 
   boolean existsByAcademyIdAndName(Long academyId, String name);
 
+  // 활성 워크스페이스를 락 없이 조회. 참여자 검증처럼 읽기만 필요한 경로에서 쓴다
+  // (업무 생성·수정·삭제). 쓰기 경로는 findByIdForUpdate를 쓴다.
+  Optional<Workspace> findById(Long workspaceId);
+
   // 활성 워크스페이스를 비관적 락으로 조회 (이름수정/삭제/참여자관리 공통 진입점)
   Optional<Workspace> findByIdForUpdate(Long workspaceId);
 

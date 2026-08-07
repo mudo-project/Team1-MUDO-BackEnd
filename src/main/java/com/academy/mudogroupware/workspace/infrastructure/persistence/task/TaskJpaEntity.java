@@ -90,6 +90,12 @@ public class TaskJpaEntity extends BaseTimeEntity {
         workspace, recurringTemplate, title, createdBy, status, dueAt, scheduledFor);
   }
 
+  // 도메인 모델이 결정한 상태·마감일을 그대로 반영한다. 규칙 검증은 Task 도메인 모델이 담당한다.
+  public void updateStatusAndDueAt(TaskStatus status, LocalDate dueAt) {
+    this.status = status;
+    this.dueAt = dueAt;
+  }
+
   public void markDelayed() {
     this.status = TaskStatus.DELAYED;
   }
