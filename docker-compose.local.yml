@@ -52,8 +52,9 @@ services:
       SPRING_DATASOURCE_USERNAME: ${DB_USERNAME:?Set DB_USERNAME in .env.local}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env.local}
     ports:
-      # 브라우저와 프론트엔드는 기본적으로 http://localhost:8080으로 접근한다.
-      - "${APP_HOST_PORT:-8080}:8080"
+      # 브라우저와 프론트엔드는 기본적으로 http://localhost:8081로 접근한다.
+      # (로컬 개발 시 8080은 IDE/gradle bootRun 등 호스트에서 직접 띄우는 앱과 충돌할 수 있어 8081을 기본값으로 사용한다.)
+      - "${APP_HOST_PORT:-8081}:8080"
     volumes:
       # 컨테이너가 남긴 파일 로그를 호스트의 logs 디렉터리에서 확인한다.
       - ./logs:/app/logs

@@ -1,5 +1,12 @@
 # 📚 Calendar Changelog
 
+## 2026-08-06 · 일정 삭제 API 추가 ✨
+
+- `DELETE /api/calendars/{eventId}`로 학원 공용 캘린더 일정을 삭제할 수 있습니다.
+- 일정이 존재하지 않거나 다른 학원 소속이면 `CALENDAR_404_1`로 응답합니다.
+- 성공 시 응답 본문 없이 HTTP `204 No Content`를 반환합니다.
+- 소프트 삭제 없이 하드 삭제합니다.
+
 ## 2026-08-06 · 일정 수정 API 추가 ✨
 
 - `PATCH /api/calendars/{eventId}`로 학원 공용 캘린더 일정을 수정할 수 있습니다.
