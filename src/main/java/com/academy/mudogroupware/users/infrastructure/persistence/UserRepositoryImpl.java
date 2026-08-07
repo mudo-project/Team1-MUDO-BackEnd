@@ -18,6 +18,27 @@ public class UserRepositoryImpl implements UserRepository {
     private final UserJpaRepository userJpaRepository;
 
     @Override
+    public User save(User user) {
+        UserEntity entity = UserEntity.builder()
+                .academyId(user.getAcademyId())
+                .username(user.getUsername())
+                .password(user.getPassword())
+                .name(user.getName())
+                .roleId(user.getRoleId())
+                .phone(user.getPhone())
+                .email(user.getEmail())
+                .status(user.getStatus())
+                .mustChangePw(user.isMustChangePw())
+                .accountType(user.getAccountType())
+                .adminScope(user.getAdminScope())
+                .joinedAt(user.getJoinedAt())
+                .createdAt(user.getCreatedAt())
+                .updatedAt(user.getUpdatedAt())
+                .build();
+        return toDomain(userJpaRepository.save(entity));
+    }
+
+    @Override
     public Optional<User> findByUsername(String username) {
         return userJpaRepository.findByUsername(username).map(this::toDomain);
     }

@@ -73,4 +73,8 @@ public class TaskCommentJpaEntity extends BaseTimeEntity {
     this.completedBy = null;
     this.completedAt = null;
   }
+
+  public void updateContent(String content) {
+    this.content = content;
+  }
 }

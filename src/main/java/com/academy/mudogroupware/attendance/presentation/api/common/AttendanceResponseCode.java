@@ -17,7 +17,17 @@ public enum AttendanceResponseCode implements ResponseCode {
     ATTENDANCE_CHECKED_IN("ATTENDANCE_201_1", "출근이 등록되었습니다."),
     ATTENDANCE_CHECKED_OUT("ATTENDANCE_200_2", "퇴근이 등록되었습니다."),
     TODAY_TEAM_ATTENDANCE_RETRIEVED(
-            "ATTENDANCE_200_3", "오늘 팀 근태 현황을 조회했습니다.");
+            "ATTENDANCE_200_3", "오늘 팀 근태 현황을 조회했습니다."),
+    MY_MONTHLY_ATTENDANCE_RETRIEVED(
+            "ATTENDANCE_200_4", "월별 근태를 조회했습니다."),
+    MY_TODAY_ATTENDANCE_RETRIEVED(
+            "ATTENDANCE_200_5", "오늘 근태를 조회했습니다."),
+    MY_LEAVE_SUMMARY_RETRIEVED(
+            "ATTENDANCE_200_6", "연가 현황을 조회했습니다."),
+    MY_EMPLOYMENT_SUMMARY_RETRIEVED(
+            "ATTENDANCE_200_7", "재직 정보를 조회했습니다."),
+    MY_ATTENDANCE_DASHBOARD_RETRIEVED(
+            "ATTENDANCE_200_8", "내 근태 대시보드를 조회했습니다.");
 
     private final String code;
     private final String message;

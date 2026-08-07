@@ -10,7 +10,8 @@ import lombok.RequiredArgsConstructor;
 public enum AcademyApplicationResponseCode implements ResponseCode {
 
     ACADEMY_APPLICATION_LIST_FOUND("ACADEMY_APPLICATION_200_1", "학원 신청 목록 조회에 성공했습니다."),
-    ACADEMY_APPLICATION_DETAIL_FOUND("ACADEMY_APPLICATION_200_2", "학원 신청 상세 조회에 성공했습니다.");
+    ACADEMY_APPLICATION_DETAIL_FOUND("ACADEMY_APPLICATION_200_2", "학원 신청 상세 조회에 성공했습니다."),
+    ACADEMY_APPLICATION_APPROVED("ACADEMY_APPLICATION_200_3", "학원 신청을 승인했습니다.");
 
     private final String code;
     private final String message;
