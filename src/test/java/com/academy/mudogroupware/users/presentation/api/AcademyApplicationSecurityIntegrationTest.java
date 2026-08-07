@@ -1,10 +1,13 @@
 package com.academy.mudogroupware.users.presentation.api;
 
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
@@ -15,7 +18,11 @@ import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import com.academy.mudogroupware.users.application.usecase.GetAcademyApplicationUseCase;
 import com.academy.mudogroupware.users.application.usecase.ListAcademyApplicationsUseCase;
+import com.academy.mudogroupware.users.domain.exception.AcademyApplicationNotFoundException;
+import com.academy.mudogroupware.users.domain.model.AcademyApplication;
+import com.academy.mudogroupware.users.domain.model.AcademyApplicationStatus;
 
 /**
  * @WebMvcTest 슬라이스는 실제 SecurityConfig를 로드하지 않아 PLATFORM:SUPER_ADMIN 기반
@@ -34,6 +41,9 @@ class AcademyApplicationSecurityIntegrationTest {
 
     @MockitoBean
     private ListAcademyApplicationsUseCase listAcademyApplicationsUseCase;
+
+    @MockitoBean
+    private GetAcademyApplicationUseCase getAcademyApplicationUseCase;
 
     @Test
     void listIsUnauthorizedWithoutAuthentication() throws Exception {
@@ -58,5 +68,50 @@ class AcademyApplicationSecurityIntegrationTest {
 
         mockMvc.perform(get("/api/academy-applications").with(authentication(superAdmin)))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void detailIsUnauthorizedWithoutAuthentication() throws Exception {
+        mockMvc.perform(get("/api/academy-applications/1"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void detailIsForbiddenForAuthenticatedNonSuperAdmin() throws Exception {
+        TestingAuthenticationToken nonSuperAdmin =
+                new TestingAuthenticationToken("teacher", null, "WORKSPACE:READ");
+
+        mockMvc.perform(get("/api/academy-applications/1").with(authentication(nonSuperAdmin)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void detailIsOkForPlatformSuperAdmin() throws Exception {
+        AcademyApplication application = AcademyApplication.restore(
+                1L, "academy01", "테스트학원", "123-45-67890", "홍길동", "a@a.com", "010-0000-0000",
+                null, AcademyApplicationStatus.PENDING, null, null, null,
+                LocalDateTime.now(), LocalDateTime.now());
+        when(getAcademyApplicationUseCase.getApplication(1L)).thenReturn(application);
+        TestingAuthenticationToken superAdmin =
+                new TestingAuthenticationToken("superadmin", null, "PLATFORM:SUPER_ADMIN");
+
+        mockMvc.perform(get("/api/academy-applications/1").with(authentication(superAdmin)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("ACADEMY_APPLICATION_200_2"))
+                .andExpect(jsonPath("$.data.applicationId").value(1));
+
+        verify(getAcademyApplicationUseCase).getApplication(1L);
+    }
+
+    @Test
+    void detailReturns404WhenApplicationNotFound() throws Exception {
+        when(getAcademyApplicationUseCase.getApplication(99L))
+                .thenThrow(new AcademyApplicationNotFoundException());
+        TestingAuthenticationToken superAdmin =
+                new TestingAuthenticationToken("superadmin", null, "PLATFORM:SUPER_ADMIN");
+
+        mockMvc.perform(get("/api/academy-applications/99").with(authentication(superAdmin)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("USER_404_3"));
     }
 }

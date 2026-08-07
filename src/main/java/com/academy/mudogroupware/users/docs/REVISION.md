@@ -1,5 +1,5 @@
 > 작성일: 2026-08-04
-> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, 역할 생성 + 권한 조립 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청 목록 조회(PR 1/3) 완료 · 역할 수정·삭제·목록/상세 조회, 학원 신청 상세 조회·승인/반려(PR 2·3/3), 학원 관리자의 직원 계정 발급(계정 발급 체계 3단계) 미착수
+> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, 역할 생성 + 권한 조립 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청 목록/상세 조회(PR 1·2/3) 완료 · 역할 수정·삭제·목록/상세 조회, 학원 신청 승인/반려(PR 3/3), 학원 관리자의 직원 계정 발급(계정 발급 체계 3단계) 미착수
 
 ## 🎯 변경 목적
 
@@ -268,6 +268,42 @@ Redis 도입이 확정되면서(WebSocket Pub/Sub 용도로 시작해 액세스 
 | Application(users) | `ListAcademyApplicationsUseCase`/`ListAcademyApplicationsService` 신규 |
 | Presentation(users) | `AcademyApplicationController`(`GET` 목록) 신규, `AcademyApplicationResponseCode`, `AcademyApplicationResponse` 신규 |
 | Security(global) | `JwtAuthenticationConverter`에 `PLATFORM:SUPER_ADMIN` 합성 authority 부여 로직 추가. `SecurityConfig`에 목록 조회 경로 접근 규칙 추가(이 코드베이스 최초의 필터체인 URL 매칭 기반 인가) |
+
+---
+
+## ✅ 2026-08-07 · 학원 신청 상세 조회 API 구현 (`GET /api/academy-applications/{applicationId}`, 이슈 #165, PR 2/3)
+
+### 배경
+
+PR 1(목록 조회)이 develop에 머지된 뒤 그 위에서 이어가는 두 번째 PR. 목록 조회는 이미 있지만, 원래 설계엔 없던 상세 조회를 새로 추가한다 — 나중에 프론트 상세 화면 디자인이 확정되면 목록과 다른 필드가 필요해질 수 있어, 처음부터 별도 엔드포인트로 분리해뒀다.
+
+### 확정된 정책
+
+- `AcademyApplicationRepository`에 `findById(Long)`을 추가했다. `findAll()`과 마찬가지로 조회 전용이라 별다른 트랜잭션 고려사항은 없다.
+- 신청서를 찾지 못하면 `AcademyApplicationNotFoundException`(`USER_404_3`)을 던진다 — 기존 `RoleNotFoundException`(`USER_404_2`)과 동일한 패턴.
+- `GetAcademyApplicationService`를 신규로 만들었다 — PR 1 이전 설계(승인/반려 서비스에 조회 로직이 내장돼 있던 버전)와 달리, 목록/상세 조회가 이미 별도 서비스(`ListAcademyApplicationsService`)로 분리된 상태라 같은 원칙을 그대로 따랐다.
+- `SecurityConfig`의 GET 규칙을 `/api/academy-applications` 단일 경로에서 `/api/academy-applications`, `/api/academy-applications/*` 두 패턴으로 확장했다 — 목록/상세 모두 동일하게 `PLATFORM:SUPER_ADMIN`으로 인가한다.
+
+### 완료 기준
+
+- [x] `AcademyApplicationRepository.findById(Long)` + JPA 구현체
+- [x] `AcademyApplicationNotFoundException` + `UserErrorCode.ACADEMY_APPLICATION_NOT_FOUND`(`USER_404_3`)
+- [x] `GetAcademyApplicationService`(TDD: 정상 조회 / 404)
+- [x] `AcademyApplicationController`에 `GET /{applicationId}` 핸들러 추가
+- [x] `SecurityConfig` GET 규칙에 `/api/academy-applications/*` 패턴 추가
+- [x] `AcademyApplicationSecurityIntegrationTest`에 상세 조회 401/403/200 케이스 추가
+- [x] 로컬 curl end-to-end 검증(상세 조회 성공, 존재하지 않는 ID 404, 비SUPER ADMIN 403)
+- [x] `./gradlew build` 통과
+
+### 🧩 영향 범위
+
+| 계층 | 변경 내용 |
+| --- | --- |
+| Domain(users) | `AcademyApplicationRepository.findById(Long)` 추가. `AcademyApplicationNotFoundException` 신규, `UserErrorCode.ACADEMY_APPLICATION_NOT_FOUND`(`USER_404_3`) 추가 |
+| Persistence(users) | `AcademyApplicationRepositoryImpl.findById` 구현 |
+| Application(users) | `GetAcademyApplicationUseCase`/`GetAcademyApplicationService` 신규 |
+| Presentation(users) | `AcademyApplicationController`에 `GET /{applicationId}` 핸들러 추가, `AcademyApplicationResponseCode.ACADEMY_APPLICATION_200_2` 추가 |
+| Security(global) | `SecurityConfig` GET 규칙에 `/api/academy-applications/*` 패턴 추가 |
 
 ---
 

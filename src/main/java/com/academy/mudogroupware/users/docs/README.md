@@ -8,7 +8,7 @@
 - `Role`: 학원별 역할.
 - `Permission`: 시스템 권한 코드.
 - `RolePermission`: 역할과 권한의 연결.
-- `AcademyApplication`: 학원 신청서. 신청 접수 API는 아직 없고(파일 업로드 인프라 선행 필요), 현재는 SUPER ADMIN의 목록 조회만 가능하다. 승인/반려는 후속 PR에서 추가된다.
+- `AcademyApplication`: 학원 신청서. 신청 접수 API는 아직 없고(파일 업로드 인프라 선행 필요), 현재는 SUPER ADMIN의 목록/상세 조회만 가능하다. 승인/반려는 후속 PR에서 추가된다.
 
 ## 공개 UseCase
 
@@ -19,6 +19,7 @@
 - `AssignRolePermissionsUseCase`
 - `PermissionQueryUseCase`
 - `ListAcademyApplicationsUseCase`
+- `GetAcademyApplicationUseCase`
 
 ## 다른 모듈에 제공하는 Adapter
 
@@ -42,7 +43,7 @@
 - notice에는 아직 users 직접 조회 shim이 남아 있을 수 있으며 별도 notice 범위에서 교체한다.
 - `account_type=ADMIN`+`admin_scope=PLATFORM` 계정은 역할 없이도 모든 권한 카탈로그를 authority로 부여받는다(`PLATFORM:SUPER_ADMIN` 합성 authority도 추가로 받음).
 - `admin_scope=ACADEMY`(학원 관리자)는 컬럼만 존재하고 아직 미사용(학원 신청 승인 API가 추가되는 후속 PR에서 도입 예정).
-- 학원 신청 목록 조회(`GET /api/academy-applications`)는 이 코드베이스에서 처음으로 `@PreAuthorize` 대신 `SecurityConfig` 필터체인의 URL 매칭(`PLATFORM:SUPER_ADMIN` authority)으로 막는다 — SUPER ADMIN인지 아닌지 하나만 갈리고 그 안에서 세분화된 권한 차이가 없기 때문.
+- 학원 신청 목록/상세 조회(`GET /api/academy-applications`, `GET /api/academy-applications/{applicationId}`)는 이 코드베이스에서 처음으로 `@PreAuthorize` 대신 `SecurityConfig` 필터체인의 URL 매칭(`PLATFORM:SUPER_ADMIN` authority)으로 막는다 — SUPER ADMIN인지 아닌지 하나만 갈리고 그 안에서 세분화된 권한 차이가 없기 때문.
 
 ## 문서
 
