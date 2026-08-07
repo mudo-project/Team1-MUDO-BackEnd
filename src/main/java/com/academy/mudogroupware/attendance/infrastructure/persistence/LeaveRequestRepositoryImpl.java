@@ -3,6 +3,7 @@ package com.academy.mudogroupware.attendance.infrastructure.persistence;
 import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.Optional;
+import java.util.List;
 import java.util.Set;
 
 import org.springframework.stereotype.Repository;
@@ -57,6 +58,24 @@ public class LeaveRequestRepositoryImpl implements LeaveRequestRepository {
     public int sumReservedDays(Long academyId, Long userId, LocalDate periodStart, LocalDate periodEnd) {
         return leaveRequestJpaRepository.sumUsedDays(academyId, userId,
                 Set.of(LeaveRequestStatus.PENDING, LeaveRequestStatus.APPROVED), periodStart, periodEnd);
+    }
+
+    @Override
+    public List<LeaveRequest> findApprovedOverlapping(
+            Long academyId, Long userId, LocalDate startDate, LocalDate endDate) {
+        return leaveRequestJpaRepository.findOverlapping(
+                        academyId, userId, LeaveRequestStatus.APPROVED, startDate, endDate)
+                .stream()
+                .map(this::toDomain)
+                .toList();
+    }
+
+    @Override
+    public int sumUsedDaysByStatus(
+            Long academyId, Long userId, LocalDate periodStart, LocalDate periodEnd,
+            LeaveRequestStatus status) {
+        return leaveRequestJpaRepository.sumUsedDays(
+                academyId, userId, Set.of(status), periodStart, periodEnd);
     }
 
     private LeaveRequest toDomain(LeaveRequestJpaEntity entity) {

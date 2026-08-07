@@ -21,4 +21,11 @@ public interface LeaveGrantJpaRepository extends JpaRepository<LeaveGrantJpaEnti
     Optional<LeaveGrantJpaEntity> findActiveForUpdate(@Param("academyId") Long academyId,
                                                        @Param("userId") Long userId,
                                                        @Param("date") LocalDate date);
+
+    @Query("select g from LeaveGrantJpaEntity g "
+            + "where g.academyId = :academyId and g.userId = :userId "
+            + "and g.grantDate <= :date and g.expirationDate >= :date")
+    Optional<LeaveGrantJpaEntity> findActive(@Param("academyId") Long academyId,
+                                              @Param("userId") Long userId,
+                                              @Param("date") LocalDate date);
 }
