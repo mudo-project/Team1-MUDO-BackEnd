@@ -12,7 +12,9 @@ public interface TaskRepository {
   Task save(Task task);
 
   // 수정·삭제 공통 진입점. 비관적 락으로 삭제와 상태 변경의 경합을 막는다.
-  Optional<Task> findByIdForUpdate(Long taskId);
+  // workspaceId가 일치하지 않으면 조회 결과가 없다 — 다른 워크스페이스의 taskId로
+  // 락 경합을 일으킬 수 없도록 조회 자체를 워크스페이스 범위로 제한한다.
+  Optional<Task> findByIdForUpdate(Long workspaceId, Long taskId);
 
   // 하드 삭제. 댓글·멘션·상태 이력을 함께 제거한다.
   void delete(Long taskId);

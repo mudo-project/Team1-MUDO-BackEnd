@@ -83,8 +83,9 @@ public interface TaskJpaRepository extends JpaRepository<TaskJpaEntity, Long> {
       @Param("delayed") TaskStatus delayed);
 
   @Lock(LockModeType.PESSIMISTIC_WRITE)
-  @Query("select t from TaskJpaEntity t where t.id = :taskId")
-  Optional<TaskJpaEntity> findByIdForUpdate(@Param("taskId") Long taskId);
+  @Query("select t from TaskJpaEntity t where t.id = :taskId and t.workspace.id = :workspaceId")
+  Optional<TaskJpaEntity> findByIdForUpdate(
+      @Param("workspaceId") Long workspaceId, @Param("taskId") Long taskId);
 
   // 아래 3개는 업무 하드 삭제 시 자식 행을 먼저 지우기 위한 벌크 삭제다.
   // 운영 MySQL에는 ON DELETE CASCADE가 걸려 있지만, @DataJpaTest의 H2 스키마는

@@ -34,8 +34,10 @@ public class TaskPersistenceAdapter implements TaskRepository {
   }
 
   @Override
-  public Optional<Task> findByIdForUpdate(Long taskId) {
-    return taskJpaRepository.findByIdForUpdate(taskId).map(taskPersistenceMapper::toDomain);
+  public Optional<Task> findByIdForUpdate(Long workspaceId, Long taskId) {
+    return taskJpaRepository
+        .findByIdForUpdate(workspaceId, taskId)
+        .map(taskPersistenceMapper::toDomain);
   }
 
   @Override
