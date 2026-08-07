@@ -147,7 +147,15 @@ public enum AttendanceErrorCode implements ErrorCode {
     INVALID_LEAVE_REQUEST_STATE(
             HttpStatus.CONFLICT,
             "ATTENDANCE_409_6",
-            "변경할 수 없는 휴가 신청 상태입니다.");
+            "변경할 수 없는 휴가 신청 상태입니다."),
+    INVALID_ATTENDANCE_QUERY_PERIOD(
+            HttpStatus.BAD_REQUEST,
+            "ATTENDANCE_400_12",
+            "조회할 연도와 월이 올바르지 않습니다."),
+    EMPLOYMENT_INFO_NOT_FOUND(
+            HttpStatus.NOT_FOUND,
+            "ATTENDANCE_404_3",
+            "재직 정보를 찾을 수 없습니다.");
 
     private final HttpStatus httpStatus;
     private final String code;

@@ -3,6 +3,7 @@ package com.academy.mudogroupware.attendance.infrastructure.persistence;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Locale;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.dao.DataIntegrityViolationException;
@@ -80,6 +81,25 @@ public class AttendanceRecordRepositoryImpl implements AttendanceRecordRepositor
         return attendanceRecordJpaRepository
                 .existsByAcademyIdAndUserIdAndClockOutAtBetween(
                         academyId, userId, from, to);
+    }
+
+    @Override
+    public Optional<AttendanceRecord> findByAcademyIdAndUserIdAndWorkDate(
+            Long academyId, Long userId, LocalDate workDate) {
+        return attendanceRecordJpaRepository
+                .findByAcademyIdAndUserIdAndWorkDate(academyId, userId, workDate)
+                .map(this::toDomain);
+    }
+
+    @Override
+    public List<AttendanceRecord> findByAcademyIdAndUserIdAndWorkDateBetween(
+            Long academyId, Long userId, LocalDate startDate, LocalDate endDate) {
+        return attendanceRecordJpaRepository
+                .findAllByAcademyIdAndUserIdAndWorkDateBetweenOrderByWorkDate(
+                        academyId, userId, startDate, endDate)
+                .stream()
+                .map(this::toDomain)
+                .toList();
     }
 
     private AttendanceRecord toDomain(AttendanceRecordJpaEntity entity) {

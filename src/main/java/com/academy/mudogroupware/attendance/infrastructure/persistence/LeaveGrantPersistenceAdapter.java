@@ -31,6 +31,11 @@ public class LeaveGrantPersistenceAdapter implements LeaveGrantRepository {
         return leaveGrantJpaRepository.findActiveForUpdate(academyId, userId, date).map(this::toDomain);
     }
 
+    @Override
+    public Optional<LeaveGrant> findActive(Long academyId, Long userId, LocalDate date) {
+        return leaveGrantJpaRepository.findActive(academyId, userId, date).map(this::toDomain);
+    }
+
     private LeaveGrantJpaEntity toEntity(LeaveGrant grant) {
         return LeaveGrantJpaEntity.builder()
                 .id(grant.getId())
