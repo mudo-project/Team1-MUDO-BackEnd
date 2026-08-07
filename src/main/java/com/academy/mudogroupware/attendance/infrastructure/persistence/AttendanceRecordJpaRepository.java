@@ -3,6 +3,7 @@ package com.academy.mudogroupware.attendance.infrastructure.persistence;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.List;
 
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -21,4 +22,10 @@ public interface AttendanceRecordJpaRepository
 
     boolean existsByAcademyIdAndUserIdAndClockOutAtBetween(
             Long academyId, Long userId, LocalDateTime from, LocalDateTime to);
+
+    Optional<AttendanceRecordJpaEntity> findByAcademyIdAndUserIdAndWorkDate(
+            Long academyId, Long userId, LocalDate workDate);
+
+    List<AttendanceRecordJpaEntity> findAllByAcademyIdAndUserIdAndWorkDateBetweenOrderByWorkDate(
+            Long academyId, Long userId, LocalDate startDate, LocalDate endDate);
 }
