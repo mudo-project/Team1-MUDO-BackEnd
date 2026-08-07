@@ -435,6 +435,38 @@ PR 1(목록 조회)이 develop에 머지된 뒤 그 위에서 이어가는 두 �
 
 ---
 
+## ✅ 2026-08-07 · 역할 수정/삭제 동시성 방어 보강 (셀프 리뷰)
+
+### 배경
+
+역할 CRUD 4개 PR을 다 올린 뒤 직접 코드 리뷰를 하다가, `updateNameAndDescription()`/`deleteById()`가 애플리케이션 레벨 사전 체크(이름 중복/사용 중 확인)만 믿고 있고, 그 체크와 실제 쓰기 사이의 TOCTOU(check-then-act) 틈에서 DB 제약조건(유니크 제약 `uk_role_academy_name`, FK `fk_users_role`)에 걸리면 그 예외를 잡아주는 코드가 없어서 문서화된 409 대신 원시 500이 나가는 걸 발견했다. `save()`는 이미 `saveAndFlush()`를 `DataIntegrityViolationException`으로 감싸는 방어 로직이 있는데, 나중에 추가된 두 메서드에는 이 패턴이 빠져 있었다.
+
+### 확정된 정책
+
+- **`RoleRepositoryImpl`의 모든 쓰기 경로(`save`/`updateNameAndDescription`/`deleteById`)가 동일한 방어 패턴을 따른다**: 변경 직후 `roleJpaRepository.flush()`를 명시적으로 호출해 SQL을 즉시 실행시키고, `DataIntegrityViolationException`을 잡아 메시지에 특정 제약조건 이름이 포함되어 있는지 확인한 뒤 알맞은 도메인 예외로 변환한다. `entity.update(...)`나 `deleteById(...)`만으로는 Hibernate가 SQL을 트랜잭션 커밋 시점까지 미루기 때문에, 명시적 flush 없이는 이 메서드 안에서 예외를 잡을 수 없다.
+- **이건 애플리케이션 레벨 사전 체크(`existsByAcademyIdAndNameAndIdNot`/`existsByRoleId`)를 대체하는 게 아니라 보강한다.** 사전 체크는 여전히 정상 경로에서 빠른 실패와 명확한 흐름을 제공하고, DB 제약조건 catch는 사전 체크와 실제 쓰기 사이의 경합 상황을 잡아주는 마지막 방어선이다.
+- **`RoleInUseException`에 `Throwable cause`를 받는 생성자를 추가**해 `RoleNameDuplicateException`과 동일한 패턴을 따르게 했다.
+- **경합 자체는 순차 curl로 재현이 안 되므로, 실제 MySQL이 던지는 것과 동일한 형식의 예외 메시지를 강제로 발생시키는 Mockito 단위 테스트(`RoleRepositoryImplTest`)로 검증했다** — `save()`에 이미 있던 것과 같은 스타일.
+
+### 완료 기준
+
+- [x] `RoleRepositoryImpl.updateNameAndDescription()`에 flush + `DataIntegrityViolationException` catch 추가
+- [x] `RoleRepositoryImpl.deleteById()`에 flush + `DataIntegrityViolationException` catch 추가
+- [x] `RoleInUseException(Throwable cause)` 생성자 추가
+- [x] `isRoleNameConflict` → `containsConstraint(Throwable, String)`로 일반화해 3곳(`save`/`updateNameAndDescription`/`deleteById`)에서 재사용
+- [x] `RoleRepositoryImplTest`에 4케이스 추가(이름 중복 변환/무관한 위반 통과, 사용 중 변환/무관한 위반 통과)
+- [x] `./gradlew build` 통과, 로컬 curl로 회귀 없음 확인
+
+### 🧩 영향 범위
+
+| 계층 | 변경 내용 |
+| --- | --- |
+| Domain(users) | `RoleInUseException(Throwable cause)` 생성자 추가 |
+| Persistence(users) | `RoleRepositoryImpl.updateNameAndDescription`/`deleteById`에 flush+catch 추가, `containsConstraint` 헬퍼로 일반화 |
+| Test(users) | `RoleRepositoryImplTest`에 4케이스 추가 |
+
+---
+
 ## ✅ 2026-08-05 · 권한 카탈로그 조회 + 역할 권한 조립 API 구현 (`GET /api/permissions`, `PUT /api/roles/{roleId}/permissions`, 이슈 #84)
 
 ### 배경

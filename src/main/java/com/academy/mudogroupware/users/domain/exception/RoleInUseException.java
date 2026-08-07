@@ -7,4 +7,8 @@ public class RoleInUseException extends ConflictException {
     public RoleInUseException() {
         super(UserErrorCode.ROLE_IN_USE);
     }
+
+    public RoleInUseException(Throwable cause) {
+        super(UserErrorCode.ROLE_IN_USE, UserErrorCode.ROLE_IN_USE.getMessage(), cause);
+    }
 }
