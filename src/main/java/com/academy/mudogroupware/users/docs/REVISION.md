@@ -467,6 +467,38 @@ PR 1(목록 조회)이 develop에 머지된 뒤 그 위에서 이어가는 두 �
 
 ---
 
+## ✅ 2026-08-07 · 역할 삭제 정책을 "재직 중인 구성원 기준"으로 조정
+
+### 배경
+
+역할 삭제(`existsByRoleId`)가 상태와 관계없이 role_id를 참조하는 계정이 하나라도 있으면 무조건 막는 구조였는데, 이 시스템엔 계정을 물리적으로 삭제하는 기능이 없다(퇴사 처리는 `status=RESIGNED`로 바꾸는 소프트 딜리트뿐). 그러면 한 번이라도 누군가에게 배정된 역할은 그 사람이 퇴사해도 `role_id`가 그대로 남아있어 **영원히 삭제할 수 없는** 역할이 생긴다는 문제가 발견됐다.
+
+### 확정된 정책
+
+- **삭제를 막는 기준을 `ACTIVE` 상태 구성원으로 좁혔다** (`existsByRoleId` → `existsActiveByRoleId`). 퇴사자(`RESIGNED`)/비활성(`INACTIVE`) 계정이 이 역할을 들고 있어도 삭제를 막지 않는다 — 어차피 로그인이 제한된 계정이라 역할 정보가 실질적 권한에 영향을 주지 않는다.
+- **삭제 시 그 역할을 들고 있던 나머지(비활성) 계정들의 `role_id`를 명시적으로 NULL 처리한다** (`UserRepository.clearRoleId`). DB의 `fk_users_role` FK가 `RESTRICT`라 role_id를 참조하는 행이 남아있으면 삭제 자체가 실패하기 때문에, 역할을 지우기 전에 반드시 이 정리가 선행되어야 한다.
+- FK를 `ON DELETE SET NULL`로 마이그레이션하는 대안도 검토했으나, 그러면 계정의 role_id가 조용히 NULL이 되어 "왜 이렇게 됐는지" 코드만 봐서는 추적하기 어려워진다고 판단해 애플리케이션 레벨에서 명시적으로 처리하는 쪽을 택했다.
+- `ACTIVE` 여부 확인이 먼저 통과했다는 건 이 시점에 이 역할을 쓰는 사람이 전부 비활성 상태라는 뜻이므로, `clearRoleId`는 상태를 다시 필터링하지 않고 해당 `role_id`를 가진 모든 행을 정리한다.
+
+### 완료 기준
+
+- [x] `UserRepository.existsByRoleId` → `existsActiveByRoleId`로 변경, `clearRoleId` 추가
+- [x] `UserJpaRepository.existsByRoleIdAndStatus` 파생 쿼리, `clearRoleId` 벌크 업데이트(`@Modifying`) 추가
+- [x] `DeleteRoleService`가 삭제 전 `clearRoleId` 호출하도록 수정
+- [x] `DeleteRoleServiceTest` 케이스 갱신(재직 중 구성원만 차단, 비활성 구성원은 자동 정리 후 삭제)
+- [x] 로컬 curl/DB로 end-to-end 검증(퇴사자만 보유한 역할 삭제 → 204 + role_id 정리 확인, 재직 중 구성원 보유 역할 → 여전히 409)
+- [x] `./gradlew build` 통과
+
+### 🧩 영향 범위
+
+| 계층 | 변경 내용 |
+| --- | --- |
+| Domain(users) | `UserRepository.existsByRoleId` → `existsActiveByRoleId`, `clearRoleId` 추가 |
+| Persistence(users) | `UserJpaRepository.existsByRoleIdAndStatus`/`clearRoleId` 추가, `UserRepositoryImpl` 구현 |
+| Application(users) | `DeleteRoleService`가 삭제 전 `clearRoleId` 호출하도록 수정 |
+
+---
+
 ## ✅ 2026-08-05 · 권한 카탈로그 조회 + 역할 권한 조립 API 구현 (`GET /api/permissions`, `PUT /api/roles/{roleId}/permissions`, 이슈 #84)
 
 ### 배경
