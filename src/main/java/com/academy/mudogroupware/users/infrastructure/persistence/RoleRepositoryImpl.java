@@ -70,7 +70,7 @@ public class RoleRepositoryImpl implements RoleRepository {
 
     @Override
     public List<Role> findAllByAcademyId(Long academyId) {
-        return roleJpaRepository.findAllByAcademyId(academyId).stream()
+        return roleJpaRepository.findAllByAcademyIdOrderByIdAsc(academyId).stream()
                 .map(this::toDomainWithoutPermissions)
                 .toList();
     }
