@@ -321,5 +321,6 @@ Response Body (완료 처리 시)
 
 ## 참고 문서
 
+- [COMMENT_API_FLOW.md](COMMENT_API_FLOW.md) — 댓글·멘션 CRUD API의 호출 흐름 상세
 - [TASK_API.md](TASK_API.md) — 업무(Task) 자체의 생성·수정·삭제 API 명세
 - [WORKSPACE_PERMISSIONS.md](WORKSPACE_PERMISSIONS.md) — 참여자 기반 권한 검증 정책과 `WORKSPACE:CREATE` TODO 현황
