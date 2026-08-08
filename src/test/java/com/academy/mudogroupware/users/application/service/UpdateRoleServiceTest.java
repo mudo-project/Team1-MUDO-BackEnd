@@ -30,7 +30,7 @@ class UpdateRoleServiceTest {
         assertThatThrownBy(() -> service.updateRole(new UpdateRoleCommand(1L, 10L, "조교", "설명")))
                 .isInstanceOf(RoleNotFoundException.class);
 
-        verify(roleRepository, never()).updateNameAndDescription(any(), any(), any());
+        verify(roleRepository, never()).updateNameAndDescription(any(), any(), any(), any());
     }
 
     @Test
@@ -55,7 +55,7 @@ class UpdateRoleServiceTest {
         assertThatThrownBy(() -> service.updateRole(new UpdateRoleCommand(1L, 10L, "조교", "설명")))
                 .isInstanceOf(RoleNameDuplicateException.class);
 
-        verify(roleRepository, never()).updateNameAndDescription(any(), any(), any());
+        verify(roleRepository, never()).updateNameAndDescription(any(), any(), any(), any());
     }
 
     @Test
@@ -68,6 +68,6 @@ class UpdateRoleServiceTest {
 
         service.updateRole(new UpdateRoleCommand(1L, 10L, "조교", "새 설명"));
 
-        verify(roleRepository).updateNameAndDescription(1L, "조교", "새 설명");
+        verify(roleRepository).updateNameAndDescription(1L, "조교", "새 설명", null);
     }
 }

@@ -29,6 +29,6 @@ public class UpdateRoleService implements UpdateRoleUseCase {
             throw new RoleNameDuplicateException();
         }
 
-        roleRepository.updateNameAndDescription(role.getId(), command.name(), command.description());
+        roleRepository.updateNameAndDescription(role.getId(), command.name(), command.description(), null);
     }
 }
