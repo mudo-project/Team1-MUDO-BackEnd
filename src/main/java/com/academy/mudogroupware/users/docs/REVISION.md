@@ -605,7 +605,7 @@ PR 1(목록)·PR 2(상세)에 이어지는 세 번째이자 마지막 PR. 승인
 - [x] 역할 생성 API — `POST /api/roles` 추가, DB 유니크 제약 백스톱 포함
 - [x] 권한 카탈로그 조회 API — `GET /api/permissions` 추가
 - [x] 역할 권한 조립 API — `PUT /api/roles/{roleId}/permissions` 추가(전체 교체 방식), 존재하지 않는 코드 400/역할 없음·다른 학원 404
-- [ ] 역할 수정·삭제, 목록/상세 조회 API — 미착수
+- [x] 역할 목록/상세/수정/삭제 API — `GET /api/roles`, `GET /api/roles/{roleId}`, `PUT /api/roles/{roleId}`, `DELETE /api/roles/{roleId}` 추가로 역할 관리 API 7개 완성
 - [x] `academy` 테이블 생성됨(다른 팀원, `V2.1.2`~`V2.1.4`) — `role.academy_id`, `users.academy_id` 모두 FK 연결 완료(`V4.1.3`)
 
 ## 📌 후속 문서
