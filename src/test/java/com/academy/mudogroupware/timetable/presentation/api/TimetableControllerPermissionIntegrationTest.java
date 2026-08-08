@@ -2,6 +2,7 @@ package com.academy.mudogroupware.timetable.presentation.api;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -76,6 +77,14 @@ class TimetableControllerPermissionIntegrationTest {
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void deleteTimetableSetReturns403WhenMissingManageAuthority() throws Exception {
+        mockMvc.perform(delete("/api/timetables/1")
+                        .with(authentication(authenticatedUser()))
+                        .with(csrf()))
                 .andExpect(status().isForbidden());
     }
 

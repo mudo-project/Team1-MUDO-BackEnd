@@ -5,6 +5,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -36,6 +37,7 @@ import com.academy.mudogroupware.timetable.application.query.TimetableSetSummary
 import com.academy.mudogroupware.timetable.application.usecase.CreateTimetableSetUseCase;
 import com.academy.mudogroupware.timetable.application.usecase.GetTimetableSetUseCase;
 import com.academy.mudogroupware.timetable.application.usecase.GetTimetableSetsUseCase;
+import com.academy.mudogroupware.timetable.application.usecase.DeleteTimetableSetUseCase;
 import com.academy.mudogroupware.timetable.application.usecase.UpdateTimetableSetUseCase;
 import com.academy.mudogroupware.timetable.domain.exception.TimetableSetNotFoundException;
 import com.academy.mudogroupware.timetable.domain.model.TimetableClassroom;
@@ -54,6 +56,7 @@ class TimetableControllerTest {
     @MockitoBean private GetTimetableSetsUseCase getTimetableSetsUseCase;
     @MockitoBean private GetTimetableSetUseCase getTimetableSetUseCase;
     @MockitoBean private UpdateTimetableSetUseCase updateTimetableSetUseCase;
+    @MockitoBean private DeleteTimetableSetUseCase deleteTimetableSetUseCase;
     @MockitoBean private JwtTokenProvider jwtTokenProvider;
     @MockitoBean private JwtAuthenticationConverter jwtAuthenticationConverter;
 
@@ -180,6 +183,14 @@ class TimetableControllerTest {
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void deleteTimetableSetReturns204() throws Exception {
+        mockMvc.perform(delete("/api/timetables/1")
+                        .with(authentication(authenticatedUser("TIMETABLE:MANAGE")))
+                        .with(csrf()))
                 .andExpect(status().isNoContent());
     }
 
