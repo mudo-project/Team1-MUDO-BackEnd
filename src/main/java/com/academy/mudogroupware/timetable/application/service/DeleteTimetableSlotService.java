@@ -5,10 +5,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.academy.mudogroupware.timetable.application.command.DeleteTimetableSlotCommand;
 import com.academy.mudogroupware.timetable.application.usecase.DeleteTimetableSlotUseCase;
+import com.academy.mudogroupware.timetable.domain.exception.TimetableSetNotFoundException;
 import com.academy.mudogroupware.timetable.domain.exception.TimetableSlotNotFoundException;
 import com.academy.mudogroupware.timetable.domain.exception.UnsupportedSlotScopeException;
 import com.academy.mudogroupware.timetable.domain.model.TimetableSlot;
 import com.academy.mudogroupware.timetable.domain.model.UpdateScope;
+import com.academy.mudogroupware.timetable.domain.repository.TimetableSetRepository;
 import com.academy.mudogroupware.timetable.domain.repository.TimetableSlotRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -18,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 @Transactional
 public class DeleteTimetableSlotService implements DeleteTimetableSlotUseCase {
 
+    private final TimetableSetRepository timetableSetRepository;
     private final TimetableSlotRepository timetableSlotRepository;
 
     @Override
@@ -25,6 +28,10 @@ public class DeleteTimetableSlotService implements DeleteTimetableSlotUseCase {
         if (command.scope() != UpdateScope.ALL) {
             throw new UnsupportedSlotScopeException();
         }
+
+        timetableSetRepository.findById(command.timetableSetId())
+                .filter(found -> found.getAcademyId().equals(command.academyId()))
+                .orElseThrow(TimetableSetNotFoundException::new);
 
         TimetableSlot slot = timetableSlotRepository.findById(command.timetableSlotId())
                 .filter(found -> found.getTimetableSetId().equals(command.timetableSetId()))

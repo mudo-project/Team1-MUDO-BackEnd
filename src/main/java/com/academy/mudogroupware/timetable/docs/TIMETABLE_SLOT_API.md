@@ -148,6 +148,7 @@ HTTP `200 OK`
 | HTTP 상태 | code | 발생 조건 |
 | --- | --- | --- |
 | `401 Unauthorized` | `COMMON_401_1` | Access Token이 없거나 유효하지 않은 경우 |
+| `404 Not Found` | `TIMETABLE_404_1` | 시간표 세트가 존재하지 않거나 다른 학원 소속인 경우 |
 | `404 Not Found` | `TIMETABLE_404_2` | 슬롯이 존재하지 않거나 다른 세트 소속인 경우 |
 | `500 Internal Server Error` | `COMMON_500_1` | 처리되지 않은 서버 오류 |
 
@@ -195,6 +196,7 @@ HTTP `204 No Content` (응답 본문 없음)
 | `400 Bad Request` | `TIMETABLE_400_4` | `scope`가 `ALL`이 아닌 경우(`THIS_OCCURRENCE`/`FROM_NOW`는 아직 지원하지 않음) |
 | `401 Unauthorized` | `COMMON_401_1` | Access Token이 없거나 유효하지 않은 경우 |
 | `403 Forbidden` | `COMMON_403_1` | `TIMETABLE:MANAGE` 권한이 없는 경우 |
+| `404 Not Found` | `TIMETABLE_404_1` | 시간표 세트가 존재하지 않거나 다른 학원 소속인 경우 |
 | `404 Not Found` | `TIMETABLE_404_2` | 슬롯이 존재하지 않는 경우 |
 | `409 Conflict` | `TIMETABLE_409_1` | 변경하려는 강의실/요일/시간이 다른 슬롯과 겹치는 경우 |
 | `500 Internal Server Error` | `COMMON_500_1` | 처리되지 않은 서버 오류 |
@@ -227,5 +229,6 @@ HTTP `204 No Content` (응답 본문 없음)
 | `400 Bad Request` | `TIMETABLE_400_4` | `scope`가 `ALL`이 아닌 경우 |
 | `401 Unauthorized` | `COMMON_401_1` | Access Token이 없거나 유효하지 않은 경우 |
 | `403 Forbidden` | `COMMON_403_1` | `TIMETABLE:MANAGE` 권한이 없는 경우 |
+| `404 Not Found` | `TIMETABLE_404_1` | 시간표 세트가 존재하지 않거나 다른 학원 소속인 경우 |
 | `404 Not Found` | `TIMETABLE_404_2` | 슬롯이 존재하지 않는 경우 |
 | `500 Internal Server Error` | `COMMON_500_1` | 처리되지 않은 서버 오류 |

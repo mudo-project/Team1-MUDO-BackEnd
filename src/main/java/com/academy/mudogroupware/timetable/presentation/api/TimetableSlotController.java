@@ -123,15 +123,17 @@ public class TimetableSlotController {
         @ApiResponse(responseCode = "204", description = "삭제 성공"),
         @ApiResponse(responseCode = "400", description = "scope가 ALL이 아닌 경우"),
         @ApiResponse(responseCode = "403", description = "TIMETABLE:MANAGE 권한이 없는 경우"),
-        @ApiResponse(responseCode = "404", description = "수업 슬롯이 존재하지 않는 경우")
+        @ApiResponse(responseCode = "404", description = "시간표 세트가 존재하지 않거나 다른 학원 소속이거나, 수업 슬롯이 존재하지 않는 경우")
     })
     @PreAuthorize("hasAuthority('TIMETABLE:MANAGE')")
     @DeleteMapping("/{timetableSlotId}")
     public ResponseEntity<Void> deleteSlot(
+            @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long timetableSetId,
             @PathVariable Long timetableSlotId,
             @RequestParam UpdateScope scope) {
-        deleteTimetableSlotUseCase.deleteSlot(new DeleteTimetableSlotCommand(timetableSetId, timetableSlotId, scope));
+        deleteTimetableSlotUseCase.deleteSlot(
+                new DeleteTimetableSlotCommand(authUser.academyId(), timetableSetId, timetableSlotId, scope));
         return ResponseEntity.noContent().build();
     }
 }
