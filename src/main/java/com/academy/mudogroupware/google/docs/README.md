@@ -68,7 +68,7 @@
 - `GOOGLE_OAUTH_SCOPE`는 `openid email` + `drive.file`/`documents`/`spreadsheets`까지 이미 요청한다. 기존에 `openid email`만으로 연동된 계정은 저장된 `scope`가 이 요구사항을 충족하지 못해 `GET /api/google/connections` 조회 시 `status=FAILED`로 나타나며, 프론트의 "재연결" 버튼(`authorize-url` 재호출)으로 재동의받으면 해소된다.
 - **주의:** 구글은 `email` scope를 요청해도 토큰 응답의 `scope` 필드에는 항상 정식 URL(`https://www.googleapis.com/auth/userinfo.email`)로 돌려준다. `deriveStatus`의 scope 비교는 문자열 비교라서, `GOOGLE_OAUTH_SCOPE`도 짧은 이름(`email`)이 아니라 이 정식 URL로 요청해야 비교가 항상 실패하는 문제를 피할 수 있다(`GoogleOAuthProperties.DEFAULT_SCOPE` 참고).
 - `GetGoogleAccessTokenUseCase.getAccessToken(academyId)`가 이 액세스 토큰(1시간 유효)을 반환한다. 템플릿 기능을 만들 도메인은 이 UseCase를 직접 호출해 Drive/Docs/Sheets API 호출에 재사용하면 된다(매 호출마다 새로 발급받는 흐름). 연동이 없거나(`GoogleAccountNotConnectedException`) scope가 부족하거나 만료됐으면(`GoogleAccountConnectionInvalidException`) 예외를 던지므로, 호출하는 도메인은 이 두 예외를 사용자에게 "구글 연동이 필요합니다/재연결이 필요합니다"로 안내하면 된다.
-- 이 기능은 `google` 도메인의 리프레시 토큰을 그대로 갖다 쓰는 게 아니라, `MODULES.md`의 도메인 간 조회 Port 정책에 따라 `template`(가칭) 도메인이 필요한 Port를 정의하고 `google` 도메인 담당자 동의하에 Adapter로 구현하는 방식을 검토한다.
+- `template`(가칭) 도메인은 `google` 도메인의 리프레시 토큰이나 Entity를 직접 참조하지 않고, 위 `GetGoogleAccessTokenUseCase` 하나만 호출한다. `MODULES.md`의 "도메인 간 조회 Port" 정책(요청 모듈이 Port를 정의하고 대상 모듈이 Adapter로 구현)은 요청 모듈이 이미 존재할 때를 전제한다 — 지금은 `template` 도메인 자체가 아직 없어 그 방향의 Port를 정의할 주체가 없으므로, `google` 도메인이 기존 5개 UseCase와 동일한 방식으로 먼저 공개해 둔 것이다. `template` 도메인이 실제로 만들어지면, 그 담당자가 이 UseCase를 그대로 쓸지 자체 Port로 감쌀지 결정한다.
 
 ## 세부 문서
 
