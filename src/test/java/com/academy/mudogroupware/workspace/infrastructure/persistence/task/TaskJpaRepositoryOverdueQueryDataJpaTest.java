@@ -111,7 +111,7 @@ class TaskJpaRepositoryOverdueQueryDataJpaTest {
     jdbcTemplate.update(
         "insert into recurring_task_template "
             + "(recurring_template_id, workspace_id, title, recurrence_type, recurrence_rule, created_by, created_at, updated_at) "
-            + "values (?, ?, 'daily', 'DAILY', '{}', 10, ?, ?)",
+            + "values (?, ?, 'weekly', 'WEEKLY', '{}', 10, ?, ?)",
         templateId,
         workspaceId,
         at(2026, 8, 1),
