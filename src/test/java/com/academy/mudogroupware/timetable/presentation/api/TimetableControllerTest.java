@@ -1,0 +1,108 @@
+package com.academy.mudogroupware.timetable.presentation.api;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+
+import com.academy.mudogroupware.global.infrastructure.security.jwt.JwtTokenProvider;
+import com.academy.mudogroupware.global.presentation.security.AuthUser;
+import com.academy.mudogroupware.global.presentation.security.JwtAuthenticationConverter;
+import com.academy.mudogroupware.timetable.application.command.CreateTimetableSetCommand;
+import com.academy.mudogroupware.timetable.application.usecase.CreateTimetableSetUseCase;
+
+// @WebMvcTest 슬라이스는 실제 SecurityConfig(@EnableMethodSecurity)를 로드하지 않아 @PreAuthorize가
+// 동작하지 않는다. TIMETABLE:MANAGE 없이 403이 반환되는지는 전체 컨텍스트 통합 테스트에서 검증한다.
+@WebMvcTest(TimetableController.class)
+class TimetableControllerTest {
+
+    private static final AuthUser AUTH_USER = new AuthUser(7L, "user", 1L, 3L, "MEMBER");
+
+    @Autowired private MockMvc mockMvc;
+
+    @MockitoBean private CreateTimetableSetUseCase createTimetableSetUseCase;
+    @MockitoBean private JwtTokenProvider jwtTokenProvider;
+    @MockitoBean private JwtAuthenticationConverter jwtAuthenticationConverter;
+
+    @Test
+    void createTimetableSetReturns201WithGeneratedId() throws Exception {
+        when(createTimetableSetUseCase.createTimetableSet(any(CreateTimetableSetCommand.class))).thenReturn(101L);
+        String body = """
+                {
+                  "name": "2026 여름특강",
+                  "startDate": "2026-07-20",
+                  "endDate": "2026-08-16",
+                  "operatingStartTime": "08:30",
+                  "operatingEndTime": "22:00",
+                  "operatingDays": ["MONDAY", "WEDNESDAY"],
+                  "slotUnitMinutes": 30,
+                  "classrooms": [
+                    {"floor": "6층", "codes": ["601", "602"]}
+                  ]
+                }
+                """;
+
+        mockMvc.perform(post("/api/timetables")
+                        .with(authentication(authenticatedUser("TIMETABLE:MANAGE")))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value(201))
+                .andExpect(jsonPath("$.code").value("TIMETABLE_201_1"))
+                .andExpect(jsonPath("$.data.timetableSetId").value(101));
+
+        verify(createTimetableSetUseCase).createTimetableSet(any(CreateTimetableSetCommand.class));
+    }
+
+    @Test
+    void createTimetableSetReturns400WhenNameIsBlank() throws Exception {
+        String body = """
+                {
+                  "name": "  ",
+                  "startDate": "2026-07-20",
+                  "endDate": "2026-08-16",
+                  "operatingStartTime": "08:30",
+                  "operatingEndTime": "22:00",
+                  "operatingDays": ["MONDAY"],
+                  "slotUnitMinutes": 30,
+                  "classrooms": [{"floor": "6층", "codes": ["601"]}]
+                }
+                """;
+
+        mockMvc.perform(post("/api/timetables")
+                        .with(authentication(authenticatedUser("TIMETABLE:MANAGE")))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_400_1"));
+    }
+
+    @Test
+    void createTimetableSetReturns401WhenUnauthenticated() throws Exception {
+        mockMvc.perform(post("/api/timetables").with(csrf()).contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    private Authentication authenticatedUser(String... authorities) {
+        return new UsernamePasswordAuthenticationToken(
+                AUTH_USER, null, List.of(authorities).stream().map(SimpleGrantedAuthority::new).toList());
+    }
+}
