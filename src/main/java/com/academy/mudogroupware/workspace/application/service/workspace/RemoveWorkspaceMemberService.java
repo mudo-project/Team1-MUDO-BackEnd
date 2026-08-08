@@ -7,9 +7,11 @@ import com.academy.mudogroupware.workspace.domain.exception.workspace.WorkspaceN
 import com.academy.mudogroupware.workspace.domain.model.workspace.Workspace;
 import com.academy.mudogroupware.workspace.domain.repository.workspace.WorkspaceRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class RemoveWorkspaceMemberService implements RemoveWorkspaceMemberUseCase {
@@ -19,6 +21,11 @@ public class RemoveWorkspaceMemberService implements RemoveWorkspaceMemberUseCas
   @Override
   @Transactional
   public void removeMember(RemoveWorkspaceMemberCommand command) {
+    log.info(
+        "event=workspace_member_remove_시작 workspaceId={}, targetUserId={}",
+        command.workspaceId(),
+        command.targetUserId());
+
     Workspace workspace =
         workspaceRepository
             .findByIdForUpdate(command.workspaceId())
@@ -33,5 +40,10 @@ public class RemoveWorkspaceMemberService implements RemoveWorkspaceMemberUseCas
     // 마지막 1인 제거·탈퇴 거부와 대상 미참여자 404는 도메인 모델이 판단한다.
     Workspace updated = workspace.removeMember(command.targetUserId());
     workspaceRepository.updateMembers(command.workspaceId(), updated.getMemberIds());
+
+    log.info(
+        "event=workspace_member_remove_완료 workspaceId={}, targetUserId={}",
+        command.workspaceId(),
+        command.targetUserId());
   }
 }

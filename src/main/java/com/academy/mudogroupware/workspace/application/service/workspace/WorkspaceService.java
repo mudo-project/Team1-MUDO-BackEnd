@@ -10,9 +10,11 @@ import com.academy.mudogroupware.workspace.domain.repository.workspace.Workspace
 import java.util.LinkedHashSet;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class WorkspaceService implements CreateWorkspaceUseCase {
@@ -23,6 +25,8 @@ public class WorkspaceService implements CreateWorkspaceUseCase {
   @Override
   @Transactional
   public Long createWorkspace(CreateWorkspaceCommand command) {
+    log.info("event=workspace_create_시작 academyId={}, name={}", command.academyId(), command.name());
+
     // ws 이름 저장
     String name = command.name().trim();
     // Domain 모델 생성
@@ -46,7 +50,11 @@ public class WorkspaceService implements CreateWorkspaceUseCase {
       throw new WorkspaceNameConflictException();
     }
 
-    return workspaceRepository.save(workspace).getId();
+    Long workspaceId = workspaceRepository.save(workspace).getId();
+
+    log.info(
+        "event=workspace_create_완료 academyId={}, workspaceId={}", command.academyId(), workspaceId);
+    return workspaceId;
   }
 
   // 참여자 처리

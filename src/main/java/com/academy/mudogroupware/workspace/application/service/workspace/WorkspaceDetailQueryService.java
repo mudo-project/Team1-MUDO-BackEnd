@@ -19,9 +19,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
@@ -49,6 +51,8 @@ public class WorkspaceDetailQueryService implements WorkspaceDetailQueryUseCase 
   public WorkspaceDetail getWorkspaceDetail(
       Long academyId, Long userId, Long workspaceId, LocalDate date, boolean canReadAll
   ) {
+    log.info("event=workspace_detail_query_시작 workspaceId={}, userId={}", workspaceId, userId);
+
     // 워크스페이스 존재 여부 확인
     String name = workspaceDetailQueryPort.findActiveWorkspaceName(workspaceId)
             .orElseThrow(WorkspaceNotFoundException::new);
@@ -107,6 +111,8 @@ public class WorkspaceDetailQueryService implements WorkspaceDetailQueryUseCase 
             )
             .toList();
 
+    log.info(
+        "event=workspace_detail_query_완료 workspaceId={}, taskCount={}", workspaceId, tasks.size());
     // 최종 워크스페이스 상세 조회 리턴
     return new WorkspaceDetail(
             workspaceId, name, members, tasks);

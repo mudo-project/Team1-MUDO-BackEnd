@@ -26,6 +26,8 @@ public class DelayOverdueTasksService implements DelayOverdueTasksUseCase {
 
   @Override
   public void delayOverdueTasks() {
+    log.info("event=task_delay_overdue_시작");
+
     LocalDate today = LocalDate.now(clock);
 
     List<Task> overdueRegularTasks = taskRepository.findOverdueRegularTasks(today);
@@ -36,7 +38,7 @@ public class DelayOverdueTasksService implements DelayOverdueTasksUseCase {
     overdueRecurringTasks.forEach(task -> transitionToDelayed(task, today));
 
     log.info(
-        "업무 자동 지연 처리 완료: 일반 {}건, 반복 {}건",
+        "event=task_delay_overdue_완료 regularCount={}, recurringCount={}",
         overdueRegularTasks.size(),
         overdueRecurringTasks.size());
   }

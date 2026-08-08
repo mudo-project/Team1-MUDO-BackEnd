@@ -9,9 +9,11 @@ import com.academy.mudogroupware.workspace.domain.repository.workspace.Workspace
 import java.time.Clock;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class DeleteWorkspaceService implements DeleteWorkspaceUseCase {
@@ -22,6 +24,8 @@ public class DeleteWorkspaceService implements DeleteWorkspaceUseCase {
   @Override
   @Transactional
   public void delete(DeleteWorkspaceCommand command) {
+    log.info("event=workspace_delete_시작 workspaceId={}", command.workspaceId());
+
     Workspace workspace =
         workspaceRepository
             .findByIdForUpdate(command.workspaceId())
@@ -34,5 +38,7 @@ public class DeleteWorkspaceService implements DeleteWorkspaceUseCase {
     }
 
     workspaceRepository.delete(command.workspaceId(), LocalDateTime.now(clock));
+
+    log.info("event=workspace_delete_완료 workspaceId={}", command.workspaceId());
   }
 }

@@ -7,9 +7,11 @@ import com.academy.mudogroupware.workspace.application.usecase.workspace.RecordW
 import java.time.Clock;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -21,10 +23,14 @@ public class WorkspaceRecentAccessService implements RecordWorkspaceRecentAccess
 
   @Override
   public void recordRecentAccess(Long academyId, Long userId, Long workspaceId, boolean canReadAll) {
+    log.info("event=workspace_recent_access_record_시작 workspaceId={}, userId={}", workspaceId, userId);
+
     if (!workspaceListQueryPort.existsAccessible(workspaceId, academyId, userId, canReadAll)) {
       throw new ForbiddenException();
     }
 
     workspaceRecentAccessPort.upsert(userId, workspaceId, LocalDateTime.now(clock));
+
+    log.info("event=workspace_recent_access_record_완료 workspaceId={}, userId={}", workspaceId, userId);
   }
 }

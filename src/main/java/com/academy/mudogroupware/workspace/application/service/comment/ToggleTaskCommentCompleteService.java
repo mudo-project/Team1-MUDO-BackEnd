@@ -15,9 +15,11 @@ import com.academy.mudogroupware.workspace.domain.repository.workspace.Workspace
 import java.time.Clock;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ToggleTaskCommentCompleteService implements ToggleTaskCommentCompleteUseCase {
@@ -30,6 +32,12 @@ public class ToggleTaskCommentCompleteService implements ToggleTaskCommentComple
   @Override
   @Transactional
   public TaskComment toggleComplete(ToggleTaskCommentCompleteCommand command) {
+    log.info(
+        "event=task_comment_toggle_complete_시작 workspaceId={}, taskId={}, commentId={}",
+        command.workspaceId(),
+        command.taskId(),
+        command.commentId());
+
     Workspace workspace =
         workspaceRepository
             .findById(command.workspaceId())
@@ -54,7 +62,14 @@ public class ToggleTaskCommentCompleteService implements ToggleTaskCommentComple
     }
 
     TaskComment toggled = comment.toggleComplete(command.requesterId(), LocalDateTime.now(clock));
+    TaskComment saved = taskCommentRepository.save(toggled);
 
-    return taskCommentRepository.save(toggled);
+    log.info(
+        "event=task_comment_toggle_complete_완료 workspaceId={}, taskId={}, commentId={}, completed={}",
+        command.workspaceId(),
+        command.taskId(),
+        command.commentId(),
+        saved.isCompleted());
+    return saved;
   }
 }

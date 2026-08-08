@@ -26,12 +26,17 @@ log.info(
     result);
 ```
 
-예외가 발생하면 잡아서 로그를 남긴 뒤 다시 던진다(`GlobalExceptionHandler` 처리는
-그대로 유지한다):
+`GlobalExceptionHandler`가 모든 `ApplicationException`을
+`event=exception_handled reason=... code=... traceId=...`로 이미 로깅한다. 따라서
+**`ApplicationException`을 던지는 일반적인 Service 메서드(권한 검증, 존재 확인 등)에는
+`_실패` try/catch를 추가하지 않는다** — 추가하면 같은 실패가 두 번 로깅된다.
+
+`_실패`는 `GlobalExceptionHandler`를 거치지 않는 흐름, 즉 컨트롤러 응답과 무관하게
+자체적으로 처리 결과를 로깅해야 하는 배치·스케줄러 로직에만 쓴다:
 
 ```java
 try {
-  // ... 메서드 로직 ...
+  // ... 배치 로직 ...
 } catch (RuntimeException e) {
   log.warn("event=<도메인>_<행위>_실패 key1={}, key2={}, reason={}", value1, value2, e.getMessage());
   throw e;
