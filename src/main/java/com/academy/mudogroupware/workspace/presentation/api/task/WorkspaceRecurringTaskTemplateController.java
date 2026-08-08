@@ -5,10 +5,14 @@ import com.academy.mudogroupware.global.presentation.api.common.SliceResponse;
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
 import com.academy.mudogroupware.workspace.application.usecase.task.CreateRecurringTaskTemplateUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.task.GetRecurringTaskTemplatesUseCase;
+import com.academy.mudogroupware.workspace.application.usecase.task.UpdateRecurringTaskTemplateUseCase;
+import com.academy.mudogroupware.workspace.domain.model.task.RecurringTaskTemplate;
 import com.academy.mudogroupware.workspace.presentation.api.common.WorkspaceResponseCode;
 import com.academy.mudogroupware.workspace.presentation.api.request.task.CreateRecurringTaskTemplateRequest;
+import com.academy.mudogroupware.workspace.presentation.api.request.task.UpdateRecurringTaskTemplateRequest;
 import com.academy.mudogroupware.workspace.presentation.api.response.task.CreateRecurringTaskTemplateResponse;
 import com.academy.mudogroupware.workspace.presentation.api.response.task.RecurringTaskTemplateListResponse;
+import com.academy.mudogroupware.workspace.presentation.api.response.task.UpdateRecurringTaskTemplateResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -22,6 +26,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -39,6 +44,7 @@ public class WorkspaceRecurringTaskTemplateController {
 
   private final CreateRecurringTaskTemplateUseCase createRecurringTaskTemplateUseCase;
   private final GetRecurringTaskTemplatesUseCase getRecurringTaskTemplatesUseCase;
+  private final UpdateRecurringTaskTemplateUseCase updateRecurringTaskTemplateUseCase;
 
   @Operation(
       summary = "반복 업무 템플릿 목록 조회",
@@ -85,5 +91,29 @@ public class WorkspaceRecurringTaskTemplateController {
             GlobalApiResponse.created(
                 WorkspaceResponseCode.RECURRING_TEMPLATE_CREATED,
                 CreateRecurringTaskTemplateResponse.from(templateId)));
+  }
+
+  @Operation(
+      summary = "반복 업무 템플릿 수정",
+      description = "현재 참여자만 수정할 수 있습니다. 제목 단독 또는 반복 주기(recurrenceType+recurrenceRule) 세트로 수정합니다.")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "템플릿 수정 성공"),
+    @ApiResponse(responseCode = "400", description = "제목·반복 주기 설정이 유효하지 않거나 아무 필드도 없음"),
+    @ApiResponse(responseCode = "403", description = "참여자가 아님"),
+    @ApiResponse(responseCode = "404", description = "워크스페이스 또는 템플릿이 존재하지 않음")
+  })
+  @PatchMapping("/{templateId}")
+  public ResponseEntity<GlobalApiResponse<UpdateRecurringTaskTemplateResponse>> updateTemplate(
+      @AuthenticationPrincipal AuthUser authUser,
+      @PathVariable Long workspaceId,
+      @PathVariable Long templateId,
+      @Valid @RequestBody UpdateRecurringTaskTemplateRequest request) {
+    RecurringTaskTemplate updated =
+        updateRecurringTaskTemplateUseCase.update(
+            request.toCommand(authUser, workspaceId, templateId));
+    return ResponseEntity.ok(
+        GlobalApiResponse.ok(
+            WorkspaceResponseCode.RECURRING_TEMPLATE_UPDATED,
+            UpdateRecurringTaskTemplateResponse.from(updated)));
   }
 }
