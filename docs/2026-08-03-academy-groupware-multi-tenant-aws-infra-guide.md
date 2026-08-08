@@ -201,20 +201,20 @@ ECS Capacity Provider가 제공하는 배치와 확장을 우선 사용하고, �
 
 | 항목 | 예시 | 실제 값 |
 |---|---|---|
-| AWS 계정 ID | `123456789012` | `<ACCOUNT_ID>` |
+| AWS 계정 ID | `123456789012` | `635249349258` |
 | 리전 | `ap-northeast-2` | `ap-northeast-2` |
 | 공유 IAM 사용자 | `team-user` | `team04-02` |
-| IAM 관리 제약 | 별도 관리자 역할 사용 | 루트·관리자 접근 및 요청 불가 |
-| GitHub 조직/사용자 | `team-mudo` | `<GITHUB_OWNER>` |
-| GitHub 저장소 | `Team1-MUDO-BackEnd` | `<GITHUB_REPO>` |
-| 서비스 기본 도메인 | `groupware.example.com` | `<BASE_DOMAIN>` |
-| 첫 학원 코드 | `academy-a` | `<TENANT_CODE>` |
-| 첫 학원 표시 이름 | `A학원` | `<TENANT_NAME>` |
-| 운영 DB 엔진 버전 | `MySQL 8.0.x` | `<MYSQL_VERSION>` |
-| 운영 EC2 아키텍처 | `X86_64` | `<CPU_ARCH>` |
-| 시작 인스턴스 유형 | `m7i.large` 예시 | `<INSTANCE_TYPE>` |
-| ASG 최대 인스턴스 수 | `4` 예시 | `<ASG_MAX>` |
-| RDS 시작 클래스 | 부하 테스트 후 결정 | `<DB_CLASS>` |
+| IAM 관리 제약 | 별도 관리자 역할 사용 | 루트·관리자 접근 및 요청 불가. `iam:ListUsers`·`iam:ListUserPolicies`·`kms:CreateKey`·`cloudtrail:LookupEvents` 등 일부 액션도 계정 정책상 차단됨 |
+| GitHub 조직/사용자 | `team-mudo` | `mudo-project` |
+| GitHub 저장소 | `Team1-MUDO-BackEnd` | `Team1-MUDO-BackEnd` |
+| 서비스 기본 도메인 | `groupware.example.com` | `ieum.store` |
+| 첫 학원 코드 | `academy-a` | `academy-a` |
+| 첫 학원 표시 이름 | `A학원` | `테스트학원A` |
+| 운영 DB 엔진 버전 | `MySQL 8.0.x` | `MySQL 8.4.5` (8.0 라인 Extended Support 전환으로 8.4 LTS 사용) |
+| 운영 EC2 아키텍처 | `X86_64` | `X86_64` |
+| 시작 인스턴스 유형 | `m7i.large` 예시 | `t3.small` (계정 정책상 인스턴스 크기 제한, `db.t3.small`/`t3.small`만 허용됨) |
+| ASG 최대 인스턴스 수 | `4` 예시 | `2` (min/desired 1, max 2 — binpack·오토스케일링 데모 목적) |
+| RDS 시작 클래스 | 부하 테스트 후 결정 | `db.t3.small`, Multi-AZ |
 | 모니터링 도메인 | `monitoring.groupware.example.com` | `<MONITORING_DOMAIN>` |
 | 모니터링 EC2 | `t4g.medium` 예시 | `<MONITORING_INSTANCE_TYPE>` |
 | 모니터링 EBS | gp3 100 GiB 예시 | `<MONITORING_VOLUME_SIZE>` |
@@ -290,6 +290,34 @@ prod 프로필에서 Flyway 자동 실행 비활성화 확인
 `/actuator/prometheus`가 ALB에서는 차단되고 Alloy의 컨테이너 내부 수집은 성공하는지 확인
 Alloy 중단·재시작 후 로그 위치와 메트릭 전송이 복구되는지 확인
 ```
+
+---
+
+### 3-2. 실제 인프라 구축 진행 현황 (2026-08-07~08 기준)
+
+이 계정(`635249349258`, `team04-02`)에서 실제로 진행한 내역이다. 계정 고유의 제약과 실수로 가이드 원문과 달라진 부분을 같이 적어둔다.
+
+| 장 | 상태 | 비고 |
+|---|---|---|
+| 5. IAM | ✅ 완료(변형) | 역할 전환 없이 공유 계정(`team04-02`)만 사용. `iam:ListUsers`, `iam:ListUserPolicies`, `kms:CreateKey`, `cloudtrail:LookupEvents`, `application-autoscaling:DescribeScalingActivities` 등 일부 액션이 계정 정책상 차단됨(원인 미확인) |
+| 6. 비용 한도 | ⬜ 미착수 | |
+| 7. VPC | ✅ 완료 | `mudo-prod-vpc`(10.40.0.0/16), 서브넷 6개, NAT 2개(가이드 초기 권장 1개보다 많음) |
+| 8. 도메인·ACM | ✅ 완료 | `ieum.store`를 가비아에서 구매(Route 53 직접 구매 아님) → Route 53 Hosted Zone 생성 후 가비아 네임서버를 Route 53 NS로 위임(가이드 원문엔 없는 단계) → ACM 인증서 발급 |
+| 9. ECR·로그·KMS·SSM | ✅ 완료(변형) | 커스텀 KMS 키(`alias/mudo-prod-ssm`) 생성 권한 없음(계정 제약) → SecureString은 AWS 관리형 키(`alias/aws/ssm`) 사용으로 대체 |
+| 10. RDS | ✅ 완료(변형) | `db.t3.small` Multi-AZ (`db.t3.medium` 이상은 계정 인스턴스 크기 제한으로 거부됨). 엔진 `MySQL 8.4.5`(8.0 라인이 Extended Support 유료 전환 상태라 회피). `max_connections=144` 확인 |
+| 11. ECS IAM 역할 | 🟡 부분 완료 | 인스턴스 역할·Task Execution Role·academy-a Task Role 완료. 모니터링 EC2 역할·Alloy 역할·GitHub OIDC 배포 역할은 각 해당 장에서 진행 예정 |
+| 12. ECS Cluster·ASG·Capacity Provider | ✅ 완료(변형) | ECS 콘솔 마법사(ASG 동시 생성)가 원인 불명의 권한 오류로 실패 → **시작 템플릿+ASG를 EC2 콘솔에서 직접 생성**하는 방식으로 우회. `t3.medium`이 계정 정책상 거부되어 `t3.small`로 축소. ASG는 `min 1 / desired 1 / max 2`(가이드 권장 2/2/4보다 작음, binpack·오토스케일링 데모 목적). AMI는 커뮤니티 AMI에서 `al2023-ami-ecs-hvm-*-x86_64`(AWS 공식)를 직접 검색해서 선택해야 함 — AWS Marketplace 이미지나 일반 Amazon Linux 이미지를 잘못 고르면 ECS Agent가 없어서 등록이 안 됨. 클러스터가 이전 실패 시도로 `INACTIVE` 상태로 남아있어 재생성(재활성화) 필요했음 |
+| 13. 런타임 프로필 | ✅ 완료(값 변경) | `shared-default`를 `t3.small`(2 vCPU/2GiB) 1대에 학원 2개가 binpack으로 들어가도록 축소: `cpu 850`(≈0.83 vCPU), `memoryReservation 800MiB`(≈0.78GiB), `memory 950MiB`(≈0.93GiB). **ECS 콘솔의 Task Definition 컨테이너 CPU/메모리 입력 필드는 units/MiB가 아니라 vCPU/GiB 소수값을 그대로 받는다** — 이 단위를 모르고 `850`을 그대로 넣었다가 "850 vCPU" 요구로 해석되어 Task가 영원히 배치 안 되는 문제를 겪었음. 반드시 소수(vCPU 0.83, GiB 0.78/0.93)로 입력 |
+| 14. Task Definition | ✅ 완료(임시) | academy-a만 생성. ECR에 실제 이미지가 아직 없어(20장 CI/CD 이전) `nginx:alpine` placeholder(명령어 재정의로 8080에서 200 응답) 사용. CD 활성화 후 실제 이미지로 교체 예정 |
+| 15. ALB·Target Group | ✅ 완료 | `mudo-prod-tg-academy-a`(8080), 리스너 규칙 3개(우선순위 1: `/actuator/prometheus*` 차단 403, 100: `academy-a.ieum.store` 호스트 헤더 전달, 기본값: 404) |
+| 16. ECS Service | ✅ 완료(인프라 스모크 테스트) | `mudo-prod-svc-academy-a`, 배치 전략 `binpack`(MEMORY), 원하는 태스크 1, 상태 검사 유예 60초. Target Healthy 확인, `https://academy-a.ieum.store/actuator/health` 200 확인. **단, 이 200 응답은 ALB→nginx placeholder 연결만 검증한 것**이며 실제 애플리케이션·DB·SSM·S3·Task Role·Flyway 동작은 검증되지 않았다. 애플리케이션 검증은 실제 ECR 이미지 배포(20장 CD 활성화) 이후 별도로 확인한다 |
+| 17. WAF | ✅ 완료(관찰 전용) | `mudo-prod-web-acl`, ALB에 연결. AWS 관리형 규칙 3개(Common, KnownBadInputs, SQLi) + Rate-based 규칙(2000/5분, 소스 IP 기준) 전부 Count 모드 — **차단은 아직 적용되지 않은 관찰 전용 상태**. 오탐 검증 기간 후 Block 전환 기준·롤백 절차는 별도 항목으로 트래킹 |
+| 18. S3 격리 | ✅ 완료 | 공유 버킷(`mudo-prod-staff-635249349258`) + `tenants/{code}/` prefix + IAM Resource 조건으로 확정(가이드 원문과 동일 방식). academy-a Task Role 정책을 prefix 기준(`tenants/academy-a/*`)으로 교체 완료 |
+| 19. WebSocket·Redis | ✅ 확인 완료(보류) | 코드 조사 결과 Redis 클라이언트 의존성·연동 코드가 아직 없음(WebSocket은 인메모리 SimpleBroker). ElastiCache는 만들지 않음 — 실제 Redis 코드 구현 시점에 다시 결정 |
+| 20. main 운영 CI/CD | ⬜ 미착수 | GitHub OIDC 역할·워크플로우 연결 예정, 오늘 목표 지점 |
+| 21. 모니터링 | ⬜ 미착수 | |
+| 22. 새 학원 온보딩 | 📄 문서화 완료 | academy-b/c 추가 절차를 별도 런북으로 정리해 아티팩트로 게시 |
+| 23. 자동 확장 검증 | ⬜ 미착수 | academy-b 추가로 binpack 확인 → academy-c 추가로 실제 스케일아웃 트리거 시나리오로 진행 예정 |
 
 ---
 

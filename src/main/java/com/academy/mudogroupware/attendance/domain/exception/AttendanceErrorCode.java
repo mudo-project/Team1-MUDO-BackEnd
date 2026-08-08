@@ -154,6 +154,10 @@ public enum AttendanceErrorCode implements ErrorCode {
             HttpStatus.BAD_REQUEST,
             "ATTENDANCE_400_12",
             "조회할 연도와 월이 올바르지 않습니다."),
+    ATTENDANCE_EMPLOYEE_NOT_FOUND(
+            HttpStatus.NOT_FOUND,
+            "ATTENDANCE_404_5",
+            "조회할 직원을 찾을 수 없습니다."),
     EMPLOYMENT_INFO_NOT_FOUND(
             HttpStatus.NOT_FOUND,
             "ATTENDANCE_404_3",

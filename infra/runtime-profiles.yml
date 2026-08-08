@@ -1,14 +1,17 @@
 runtime_profiles:
   shared-default:
     # 결제 플랜과 무관하게 모든 학원에 적용하는 공통 런타임 상한이다.
-    cpu: 1024
-    memory_reservation_mib: 1536
-    memory_limit_mib: 2048
-    tomcat_max_threads: 60
-    tomcat_queue_capacity: 100
-    hikari_max_pool_size: 10
+    # t3.small(2vCPU/2GiB) 1대에 학원 2개를 binpack으로 배치하기 위해 축소한 값.
+    # deploy_production.py의 용량 검사는 "현재 합 + 신규 1개 + 순차배포 여유 1개"까지 감안하므로
+    # 학원 2개(academy-a, b) 기준 3배 곱으로도 cell-1의 80% 예산(cpu 1638 / mem 1530MiB)을 넘지 않게 축소.
+    cpu: 500
+    memory_reservation_mib: 480
+    memory_limit_mib: 550
+    tomcat_max_threads: 30
+    tomcat_queue_capacity: 50
+    hikari_max_pool_size: 6
     hikari_connection_timeout_ms: 3000
-    async_core_pool_size: 2
-    async_max_pool_size: 4
-    async_queue_capacity: 40
-    heavy_job_max_concurrency: 2
+    async_core_pool_size: 1
+    async_max_pool_size: 2
+    async_queue_capacity: 20
+    heavy_job_max_concurrency: 1
