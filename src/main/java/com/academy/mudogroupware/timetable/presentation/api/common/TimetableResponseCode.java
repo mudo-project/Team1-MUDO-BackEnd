@@ -9,7 +9,8 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum TimetableResponseCode implements ResponseCode {
 
-    SET_CREATED("TIMETABLE_201_1", "시간표 세트 생성에 성공했습니다.");
+    SET_CREATED("TIMETABLE_201_1", "시간표 세트 생성에 성공했습니다."),
+    SET_LIST_RETRIEVED("TIMETABLE_200_1", "시간표 세트 목록 조회에 성공했습니다.");
 
     private final String code;
     private final String message;
