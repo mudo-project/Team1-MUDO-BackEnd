@@ -82,10 +82,20 @@ public interface TaskJpaRepository extends JpaRepository<TaskJpaEntity, Long> {
       @Param("completed") TaskStatus completed,
       @Param("delayed") TaskStatus delayed);
 
+  // 1단계: 락 없이 워크스페이스 소속만 먼저 확인한다. 일반 조회(MVCC 스냅샷)라 다른
+  // 트랜잭션이 그 행에 배타 락을 걸고 있어도 기다리지 않는다. 다른 워크스페이스의
+  // taskId는 여기서 걸러지므로 아래 lockById가 아예 실행되지 않는다 — 소유하지 않은
+  // 업무 행에 대한 락 경합 자체가 발생하지 않는다.
+  @Query(
+      "select count(t) > 0 from TaskJpaEntity t where t.id = :taskId and t.workspace.id = :workspaceId")
+  boolean existsByTaskIdAndWorkspaceId(
+      @Param("taskId") Long taskId, @Param("workspaceId") Long workspaceId);
+
+  // 2단계: 소속이 확인된 taskId에 대해서만 비관적 락을 건다. taskId는 PK이므로
+  // 단일 행 조회이고, 이 시점에는 이미 워크스페이스 소속이 확인된 뒤라 안전하다.
   @Lock(LockModeType.PESSIMISTIC_WRITE)
-  @Query("select t from TaskJpaEntity t where t.id = :taskId and t.workspace.id = :workspaceId")
-  Optional<TaskJpaEntity> findByIdForUpdate(
-      @Param("workspaceId") Long workspaceId, @Param("taskId") Long taskId);
+  @Query("select t from TaskJpaEntity t where t.id = :taskId")
+  Optional<TaskJpaEntity> lockById(@Param("taskId") Long taskId);
 
   // 아래 3개는 업무 하드 삭제 시 자식 행을 먼저 지우기 위한 벌크 삭제다.
   // 운영 MySQL에는 ON DELETE CASCADE가 걸려 있지만, @DataJpaTest의 H2 스키마는
