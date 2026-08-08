@@ -1,7 +1,7 @@
 package com.academy.mudogroupware.workspace.infrastructure.persistence.workspace;
 
 import com.academy.mudogroupware.global.infrastructure.config.MapStructConfig;
-import com.academy.mudogroupware.workspace.domain.model.Workspace;
+import com.academy.mudogroupware.workspace.domain.model.workspace.Workspace;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;

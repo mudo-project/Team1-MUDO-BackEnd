@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
 
 import com.academy.mudogroupware.global.infrastructure.config.TimeConfig;
-import com.academy.mudogroupware.workspace.application.query.WorkspaceListItem;
+import com.academy.mudogroupware.workspace.application.query.workspace.WorkspaceListItem;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;

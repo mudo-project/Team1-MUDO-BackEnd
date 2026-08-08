@@ -4,10 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
 
 import com.academy.mudogroupware.global.infrastructure.config.TimeConfig;
-import com.academy.mudogroupware.workspace.application.query.TaskCommentSummary;
-import com.academy.mudogroupware.workspace.application.query.WorkspaceTaskCandidate;
-import com.academy.mudogroupware.workspace.domain.model.TaskStatus;
-import com.academy.mudogroupware.workspace.infrastructure.persistence.task.TaskCommentJpaRepository;
+import com.academy.mudogroupware.workspace.application.query.comment.TaskCommentSummary;
+import com.academy.mudogroupware.workspace.application.query.task.WorkspaceTaskCandidate;
+import com.academy.mudogroupware.workspace.domain.model.task.TaskStatus;
+import com.academy.mudogroupware.workspace.infrastructure.persistence.comment.TaskCommentJpaRepository;
 import com.academy.mudogroupware.workspace.infrastructure.persistence.task.TaskJpaRepository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;

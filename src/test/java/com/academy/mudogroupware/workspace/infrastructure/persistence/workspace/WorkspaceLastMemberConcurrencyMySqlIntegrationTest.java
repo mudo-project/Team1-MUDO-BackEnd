@@ -3,9 +3,9 @@ package com.academy.mudogroupware.workspace.infrastructure.persistence.workspace
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.academy.mudogroupware.global.infrastructure.config.TimeConfig;
-import com.academy.mudogroupware.workspace.application.command.RemoveWorkspaceMemberCommand;
-import com.academy.mudogroupware.workspace.application.service.RemoveWorkspaceMemberService;
-import com.academy.mudogroupware.workspace.domain.exception.WorkspaceLastMemberException;
+import com.academy.mudogroupware.workspace.application.command.workspace.RemoveWorkspaceMemberCommand;
+import com.academy.mudogroupware.workspace.application.service.workspace.RemoveWorkspaceMemberService;
+import com.academy.mudogroupware.workspace.domain.exception.workspace.WorkspaceLastMemberException;
 import java.time.LocalDateTime;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;

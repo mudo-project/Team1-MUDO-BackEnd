@@ -1,10 +1,10 @@
 package com.academy.mudogroupware.workspace.infrastructure.persistence.workspace;
 
-import com.academy.mudogroupware.workspace.domain.model.Workspace;
-import com.academy.mudogroupware.workspace.domain.repository.WorkspaceRepository;
-import com.academy.mudogroupware.workspace.domain.exception.WorkspaceAlreadyActiveException;
-import com.academy.mudogroupware.workspace.domain.exception.WorkspaceNameConflictException;
-import com.academy.mudogroupware.workspace.domain.exception.WorkspaceNotFoundException;
+import com.academy.mudogroupware.workspace.domain.model.workspace.Workspace;
+import com.academy.mudogroupware.workspace.domain.repository.workspace.WorkspaceRepository;
+import com.academy.mudogroupware.workspace.domain.exception.workspace.WorkspaceAlreadyActiveException;
+import com.academy.mudogroupware.workspace.domain.exception.workspace.WorkspaceNameConflictException;
+import com.academy.mudogroupware.workspace.domain.exception.workspace.WorkspaceNotFoundException;
 import java.time.LocalDateTime;
 import java.util.LinkedHashSet;
 import java.util.Locale;

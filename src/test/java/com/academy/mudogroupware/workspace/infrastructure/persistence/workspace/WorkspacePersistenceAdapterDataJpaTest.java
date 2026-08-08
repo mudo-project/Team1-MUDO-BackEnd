@@ -4,9 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.academy.mudogroupware.global.infrastructure.config.TimeConfig;
-import com.academy.mudogroupware.workspace.domain.exception.WorkspaceAlreadyActiveException;
-import com.academy.mudogroupware.workspace.domain.exception.WorkspaceNameConflictException;
-import com.academy.mudogroupware.workspace.domain.model.Workspace;
+import com.academy.mudogroupware.workspace.domain.exception.workspace.WorkspaceAlreadyActiveException;
+import com.academy.mudogroupware.workspace.domain.exception.workspace.WorkspaceNameConflictException;
+import com.academy.mudogroupware.workspace.domain.model.workspace.Workspace;
 import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.Test;

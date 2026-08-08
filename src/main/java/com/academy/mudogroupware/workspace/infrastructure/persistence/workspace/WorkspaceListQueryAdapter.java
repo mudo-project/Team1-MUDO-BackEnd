@@ -1,7 +1,7 @@
 package com.academy.mudogroupware.workspace.infrastructure.persistence.workspace;
 
 import com.academy.mudogroupware.workspace.application.port.WorkspaceListQueryPort;
-import com.academy.mudogroupware.workspace.application.query.WorkspaceListItem;
+import com.academy.mudogroupware.workspace.application.query.workspace.WorkspaceListItem;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
