@@ -1,6 +1,7 @@
 package com.academy.mudogroupware.google.domain.model;
 
 import java.time.LocalDateTime;
+import java.util.Set;
 
 public final class GoogleAccountConnection {
 
@@ -64,8 +65,8 @@ public final class GoogleAccountConnection {
         this.failed = !valid;
     }
 
-    public GoogleConnectionStatus deriveStatus(LocalDateTime now) {
-        if (failed) {
+    public GoogleConnectionStatus deriveStatus(LocalDateTime now, Set<String> requiredScopes) {
+        if (failed || !hasAllScopes(requiredScopes)) {
             return GoogleConnectionStatus.FAILED;
         }
         if (!now.isBefore(tokenExpiresAt)) {
@@ -75,6 +76,16 @@ public final class GoogleAccountConnection {
             return GoogleConnectionStatus.EXPIRING;
         }
         return GoogleConnectionStatus.CONNECTED;
+    }
+
+    private boolean hasAllScopes(Set<String> requiredScopes) {
+        if (requiredScopes == null || requiredScopes.isEmpty()) {
+            return true;
+        }
+        Set<String> granted = scope == null || scope.isBlank()
+                ? Set.of()
+                : Set.of(scope.trim().split("\\s+"));
+        return granted.containsAll(requiredScopes);
     }
 
     public Long getId() {
