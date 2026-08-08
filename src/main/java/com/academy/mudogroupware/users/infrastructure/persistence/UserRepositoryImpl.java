@@ -1,11 +1,14 @@
 package com.academy.mudogroupware.users.infrastructure.persistence;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.Optional;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Repository;
 
+import com.academy.mudogroupware.users.domain.exception.RoleNotFoundException;
 import com.academy.mudogroupware.users.domain.exception.UserErrorCode;
 import com.academy.mudogroupware.users.domain.exception.UserException;
 import com.academy.mudogroupware.users.domain.model.User;
@@ -17,6 +20,8 @@ import lombok.RequiredArgsConstructor;
 @Repository
 @RequiredArgsConstructor
 public class UserRepositoryImpl implements UserRepository {
+
+    private static final String USERS_ROLE_FK_CONSTRAINT = "fk_users_role";
 
     private final UserJpaRepository userJpaRepository;
 
@@ -35,6 +40,14 @@ public class UserRepositoryImpl implements UserRepository {
         UserEntity entity = userJpaRepository.findById(userId)
                 .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
         entity.changeRole(roleId);
+        try {
+            userJpaRepository.flush();
+        } catch (DataIntegrityViolationException exception) {
+            if (containsConstraint(exception, USERS_ROLE_FK_CONSTRAINT)) {
+                throw new RoleNotFoundException(exception);
+            }
+            throw exception;
+        }
     }
 
     @Override
@@ -90,5 +103,18 @@ public class UserRepositoryImpl implements UserRepository {
                 entity.getPhone(), entity.getEmail(), entity.getRoleId(), entity.getStatus(), entity.isMustChangePw(),
                 entity.getAccountType(), entity.getAdminScope(), entity.getJoinedAt(), entity.getCreatedAt(),
                 entity.getUpdatedAt());
+    }
+
+    private boolean containsConstraint(Throwable throwable, String constraintName) {
+        Throwable current = throwable;
+        while (current != null) {
+            String message = current.getMessage();
+            if (message != null
+                    && message.toLowerCase(Locale.ROOT).contains(constraintName)) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 }
