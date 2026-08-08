@@ -1,7 +1,9 @@
 package com.academy.mudogroupware.student.infrastructure.persistence;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Repository;
 
@@ -45,12 +47,38 @@ public class EnrollmentRepositoryImpl implements EnrollmentRepository {
     }
 
     @Override
+    public Map<Long, Long> countActiveByStudentIds(Long academyId, List<Long> studentIds) {
+        if (studentIds == null || studentIds.isEmpty()) {
+            return Map.of();
+        }
+        return enrollmentJpaRepository.countByStudentIdsAndStatus(academyId, studentIds, EnrollmentStatus.ACTIVE)
+                .stream()
+                .collect(Collectors.toMap(
+                        EnrollmentJpaRepository.StudentEnrollmentCount::getStudentId,
+                        EnrollmentJpaRepository.StudentEnrollmentCount::getCount
+                ));
+    }
+
+    @Override
     public List<Enrollment> findActiveByLectureId(Long academyId, Long lectureId) {
         return enrollmentJpaRepository.findAllByAcademyIdAndLectureIdAndStatus(
                         academyId, lectureId, EnrollmentStatus.ACTIVE)
                 .stream()
                 .map(this::toDomain)
                 .toList();
+    }
+
+    @Override
+    public Map<Long, Long> countActiveByLectureIds(Long academyId, List<Long> lectureIds) {
+        if (lectureIds == null || lectureIds.isEmpty()) {
+            return Map.of();
+        }
+        return enrollmentJpaRepository.countByLectureIdsAndStatus(academyId, lectureIds, EnrollmentStatus.ACTIVE)
+                .stream()
+                .collect(Collectors.toMap(
+                        EnrollmentJpaRepository.LectureEnrollmentCount::getLectureId,
+                        EnrollmentJpaRepository.LectureEnrollmentCount::getCount
+                ));
     }
 
     private EnrollmentEntity toNewEntity(Enrollment enrollment) {

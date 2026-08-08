@@ -1,85 +1,247 @@
 # approval API
 
-기준일: 2026-08-06
+기준일: 2026-08-07
 
-## 결재 템플릿
+> 이 문서는 Spring Boot Controller, Response DTO, ErrorCode 구현 기준으로 작성한다.  
+> 모든 API는 `Authorization: Bearer {AccessToken}` 헤더가 필요하다.
 
-- `POST /api/approval-templates`
-- `GET /api/approval-templates`
-- `GET /api/approval-templates/{templateId}`
-- `PUT /api/approval-templates/{templateId}`
-- `DELETE /api/approval-templates/{templateId}`
+## 권한 정책
 
-## 결재 문서
+| 권한 코드 | 적용 기능 |
+| --- | --- |
+| `APPROVAL:SUBMIT` | 결재 신청, 결재 재상신 |
+| `APPROVAL:TEMPLATE_MANAGE` | 결재 템플릿 생성/수정/삭제 |
+| `APPROVAL:SUBMIT` 또는 `APPROVAL:TEMPLATE_MANAGE` | 결재 템플릿 목록/상세 조회 |
+| `APPROVAL:READ_ALL` | 소속 학원 전체 결재 문서 목록 조회, 전체 조회 권한자 상세 조회 |
 
-- `POST /api/approvals`
-- `GET /api/approvals/submitted`
-- `GET /api/approvals/pending`
-- `GET /api/approvals/{documentId}`
-- `PUT /api/approvals/{documentId}/lines`
-- `POST /api/approvals/{documentId}/decisions`
-- `POST /api/approvals/{documentId}/resubmit`
+---
 
-### 휴가 기간 선택 입력 (`POST /api/approvals`)
+## **1. 전체 결재 목록 조회**
 
-템플릿에 카테고리를 두지 않고, 결재 신청 요청 자체에 `leaveStartDate`/`leaveEndDate`(둘 다 `LocalDate`, 선택)를 추가로 받을 수 있다.
+`GET /api/approvals`
 
-- 둘 다 비어 있으면 일반 결재로 처리한다.
-- 둘 중 하나만 있거나 `leaveEndDate`가 `leaveStartDate`보다 빠르면 `400 APPROVAL_400_5`.
-- 둘 다 있으면 approval DB에는 저장하지 않고, 신청 시점에 `LeaveRequestSubmittedEvent`로 attendance에 전달한다. 결재가 최종 승인/반려 확정되면 `ApprovalDocumentDecidedEvent`가 발행돼 attendance가 팀 근태 조회에 반영한다(상세: `attendance/docs/LEAVE_INTEGRATION_PROPOSAL.md`).
+# **[request]**
 
-## 첨부파일 AI 요약
+Request Header
 
-`POST /api/approvals/{documentId}/attachments/{fileId}/summarize`
+| **name** | **description** |
+| --- | --- |
+| `Authorization` | `Bearer {AccessToken}` 형식의 사용자 인증 토큰입니다. |
 
-정책:
+Request Query Parameter
 
-- 요청자는 결재 문서의 작성자 또는 결재선 참여자여야 한다.
-- file 모듈의 `ApprovalAttachmentContentAdapter`가 `file_metadata`에서 `fileId -> objectKey/contentType`을 조회한다.
-- 텍스트 계열 contentType이면 S3에서 UTF-8 원문을 읽어 Gemini에 전달한다.
-- 파일 메타데이터가 없거나 미지원 contentType이면 `APPROVAL_409_7`로 실패한다.
-- Gemini 호출 실패는 `APPROVAL_502_1`로 실패한다.
-- placeholder 텍스트는 Gemini에 보내지 않는다.
+| **name** | **type** | **required** | **description** |
+| --- | --- | --- | --- |
+| `page` | `int` | `false` | 페이지 번호(0부터 시작). 기본값 `0`. |
+| `size` | `int` | `false` | 페이지 크기. 기본값 `20`. |
 
-성공 응답:
+# **[response]**
+
+### **성공코드**
+
+| **HTTP 상태** | **설명** |
+| --- | --- |
+| `200 OK` | 소속 학원의 전체 결재 목록 조회 성공 |
+
+Response Body
 
 ```json
-{
-  "status": 200,
-  "code": "APPROVAL_200_7",
-  "message": "첨부파일 요약 생성에 성공했습니다.",
-  "data": {
-    "fileId": 101,
-    "aiSummary": "요약 내용",
-    "summaryStatus": "COMPLETED",
-    "summarizedAt": "2026-08-06T15:00:00"
-  }
-}
+{"status":200,"code":"APPROVAL_200_8","message":"전체 결재 목록 조회에 성공했습니다.","data":{"content":[{"id":1,"title":"휴가 신청","templateName":"휴가 신청서","creatorName":"김직원","status":"IN_PROGRESS","currentApproverStepOrder":1,"currentApproverName":"박원장","createdAt":"2026-08-04T10:00:00"}],"page":0,"size":20,"hasNext":false}}
 ```
 
-## WebSocket 알림
+### **Response Field**
 
-- 연결 경로: `/ws`
-- 구독 경로: `/topic/approvals/users/{userId}`
-- 이벤트: 다음 결재자 차례가 되었을 때 `ApprovalLineActivatedEvent` 발행 후 STOMP 메시지 전송
+| **name** | **설명** |
+| --- | --- |
+| `status` | HTTP 상태 코드입니다. |
+| `code` | 서비스 응답 코드입니다. |
+| `message` | 응답 메시지입니다. |
+| `data.content[].id` | 결재 문서 ID입니다. |
+| `data.content[].title` | 결재 제목입니다. |
+| `data.content[].templateName` | 결재 템플릿 이름입니다. |
+| `data.content[].creatorName` | 결재 신청자 이름입니다. |
+| `data.content[].status` | 결재 문서 상태입니다. `IN_PROGRESS`, `APPROVED`, `REJECTED`, `CANCELLED` 중 하나입니다. |
+| `data.content[].currentApproverStepOrder` | 현재 결재 차례의 순번입니다. 완료/반려/취소된 문서는 `null`입니다. |
+| `data.content[].currentApproverName` | 현재 결재 차례의 결재자 이름입니다. 완료/반려/취소된 문서는 `null`입니다. |
+| `data.content[].createdAt` | 결재 신청 시각(KST)입니다. |
+| `data.page` | 현재 페이지 번호(0-based)입니다. |
+| `data.size` | 페이지 크기입니다. |
+| `data.hasNext` | 다음 페이지 존재 여부입니다. |
 
-## Web Push 구독 API
+### **실패 코드**
 
-- `POST /api/approvals/push-subscriptions`
-- `DELETE /api/approvals/push-subscriptions`
+| **HTTP 상태** | **code** | **message** | **설명** |
+| --- | --- | --- | --- |
+| `401 Unauthorized` | `COMMON_401_1` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않은 경우 |
+| `403 Forbidden` | `COMMON_403_1` | 접근 권한이 없습니다. | `APPROVAL:READ_ALL` 권한이 없는 경우 |
 
-이 API는 호환성 때문에 남아 있다. 실제 Web Push 발송은 구현하지 않고, 신규 화면은 WebSocket/STOMP를 사용한다.
+---
 
-## 주요 오류 코드
+## **2. 내 결재 이력 조회**
 
-| code | HTTP | 의미 |
-|---|---:|---|
-| `APPROVAL_403_1` | 403 | 결재 문서 조회 권한 없음 |
-| `APPROVAL_403_5` | 403 | 템플릿 접근 권한 없음 |
-| `APPROVAL_403_6` | 403 | 다른 학원 소속 사용자를 결재자로 지정 |
-| `APPROVAL_404_1` | 404 | 결재 템플릿 없음 |
-| `APPROVAL_404_2` | 404 | 결재 문서 없음 |
-| `APPROVAL_404_3` | 404 | 사용자 없음 |
-| `APPROVAL_404_4` | 404 | 첨부파일 없음 |
-| `APPROVAL_409_7` | 409 | 첨부파일 원문 조회 불가 |
-| `APPROVAL_502_1` | 502 | AI 요약 생성 실패 |
+`GET /api/approvals/me/history`
+
+# **[request]**
+
+Request Header
+
+| **name** | **description** |
+| --- | --- |
+| `Authorization` | `Bearer {AccessToken}` 형식의 사용자 인증 토큰입니다. |
+
+Request Query Parameter
+
+| **name** | **type** | **required** | **description** |
+| --- | --- | --- | --- |
+| `page` | `int` | `false` | 페이지 번호(0부터 시작). 기본값 `0`. |
+| `size` | `int` | `false` | 페이지 크기. 기본값 `20`. |
+
+# **[response]**
+
+### **성공코드**
+
+| **HTTP 상태** | **설명** |
+| --- | --- |
+| `200 OK` | 내가 승인/반려 처리한 결재 이력 조회 성공 |
+
+Response Body
+
+```json
+{"status":200,"code":"APPROVAL_200_9","message":"내 결재 이력 조회에 성공했습니다.","data":{"content":[{"id":1,"title":"휴가 신청","templateName":"휴가 신청서","creatorName":"김직원","status":"APPROVED","myStepOrder":1,"myLineStatus":"APPROVED","currentApproverStepOrder":null,"currentApproverName":null,"createdAt":"2026-08-04T10:00:00"}],"page":0,"size":20,"hasNext":false}}
+```
+
+### **Response Field**
+
+| **name** | **설명** |
+| --- | --- |
+| `status` | HTTP 상태 코드입니다. |
+| `code` | 서비스 응답 코드입니다. |
+| `message` | 응답 메시지입니다. |
+| `data.content[].id` | 결재 문서 ID입니다. |
+| `data.content[].title` | 결재 제목입니다. |
+| `data.content[].templateName` | 결재 템플릿 이름입니다. |
+| `data.content[].creatorName` | 결재 신청자 이름입니다. |
+| `data.content[].status` | 결재 문서 전체 상태입니다. |
+| `data.content[].myStepOrder` | 내가 담당한 결재 순번입니다. |
+| `data.content[].myLineStatus` | 내 결재선 처리 상태입니다. `APPROVED` 또는 `REJECTED`입니다. |
+| `data.content[].currentApproverStepOrder` | 현재 결재 차례의 순번입니다. 완료/반려/취소된 문서는 `null`입니다. |
+| `data.content[].currentApproverName` | 현재 결재 차례의 결재자 이름입니다. 완료/반려/취소된 문서는 `null`입니다. |
+| `data.content[].createdAt` | 결재 신청 시각(KST)입니다. |
+| `data.page` | 현재 페이지 번호(0-based)입니다. |
+| `data.size` | 페이지 크기입니다. |
+| `data.hasNext` | 다음 페이지 존재 여부입니다. |
+
+### **실패 코드**
+
+| **HTTP 상태** | **code** | **message** | **설명** |
+| --- | --- | --- | --- |
+| `401 Unauthorized` | `COMMON_401_1` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않은 경우 |
+
+---
+
+## **3. 결재 신청 취소**
+
+`POST /api/approvals/{documentId}/cancel`
+
+# **[request]**
+
+Request Header
+
+| **name** | **description** |
+| --- | --- |
+| `Authorization` | `Bearer {AccessToken}` 형식의 사용자 인증 토큰입니다. |
+
+Request Parameter
+
+| **name** | **description** |
+| --- | --- |
+| `documentId` | 취소할 결재 문서 ID입니다. |
+
+Request Body
+
+없음
+
+# **[response]**
+
+### **성공코드**
+
+| **HTTP 상태** | **설명** |
+| --- | --- |
+| `204 No Content` | 결재 신청 취소 성공 |
+
+Response Body
+
+없음
+
+### **Response Field**
+
+없음
+
+### **실패 코드**
+
+| **HTTP 상태** | **code** | **message** | **설명** |
+| --- | --- | --- | --- |
+| `401 Unauthorized` | `COMMON_401_1` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않은 경우 |
+| `403 Forbidden` | `APPROVAL_403_7` | 본인이 신청한 결재만 취소할 수 있습니다. | 신청자가 아닌 사용자가 취소를 요청한 경우 |
+| `404 Not Found` | `APPROVAL_404_2` | 결재 문서를 찾을 수 없습니다. | `documentId`에 해당하는 결재 문서가 없는 경우 |
+| `409 Conflict` | `APPROVAL_409_8` | 이미 처리가 시작된 결재는 취소할 수 없습니다. | 이미 승인/반려가 처리된 결재이거나 진행 중 상태가 아닌 경우 |
+
+---
+
+## **4. 내 결재 이력 삭제**
+
+`DELETE /api/approvals/me/history/{documentId}`
+
+# **[request]**
+
+Request Header
+
+| **name** | **description** |
+| --- | --- |
+| `Authorization` | `Bearer {AccessToken}` 형식의 사용자 인증 토큰입니다. |
+
+Request Parameter
+
+| **name** | **description** |
+| --- | --- |
+| `documentId` | 내 결재 이력에서 숨길 결재 문서 ID입니다. |
+
+Request Body
+
+없음
+
+# **[response]**
+
+### **성공코드**
+
+| **HTTP 상태** | **설명** |
+| --- | --- |
+| `204 No Content` | 내 결재 이력 삭제 성공 |
+
+Response Body
+
+없음
+
+### **Response Field**
+
+없음
+
+### **실패 코드**
+
+| **HTTP 상태** | **code** | **message** | **설명** |
+| --- | --- | --- | --- |
+| `401 Unauthorized` | `COMMON_401_1` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않은 경우 |
+| `403 Forbidden` | `APPROVAL_403_1` | 해당 결재를 조회할 권한이 없습니다. | 해당 결재 문서의 결재선 참여자가 아닌 경우 |
+| `404 Not Found` | `APPROVAL_404_2` | 결재 문서를 찾을 수 없습니다. | `documentId`에 해당하는 결재 문서가 없는 경우 |
+| `409 Conflict` | `APPROVAL_409_9` | 처리가 완료된 본인 결재 이력만 삭제할 수 있습니다. | 내가 아직 승인/반려 처리하지 않은 결재를 삭제하려는 경우 |
+
+---
+
+## 참고 상태값
+
+| **상태값** | **설명** |
+| --- | --- |
+| `IN_PROGRESS` | 결재 진행 중입니다. |
+| `APPROVED` | 최종 승인 완료 상태입니다. |
+| `REJECTED` | 반려 완료 상태입니다. |
+| `CANCELLED` | 신청자가 결재 처리 시작 전에 취소한 상태입니다. |

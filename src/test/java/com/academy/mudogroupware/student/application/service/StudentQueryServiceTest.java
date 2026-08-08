@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
 
@@ -62,6 +63,26 @@ class StudentQueryServiceTest {
         assertThat(detail.enrollments().get(0).lectureName()).isEqualTo("고1 수학");
     }
 
+    @Test
+    void getsStudentsWithActiveEnrollmentCountsInOneBatch() {
+        studentRepository.add(Student.restore(1L, 10L, "A", StudentGrade.HIGH_1, "School",
+                "010-0000-0001", "010-0000-0002", null, NOW, NOW));
+        studentRepository.add(Student.restore(2L, 10L, "B", StudentGrade.HIGH_1, "School",
+                "010-0000-0003", "010-0000-0004", null, NOW, NOW));
+        studentRepository.add(Student.restore(3L, 10L, "C", StudentGrade.HIGH_1, "School",
+                "010-0000-0005", "010-0000-0006", null, NOW, NOW));
+        enrollmentRepository.add(Enrollment.restore(1L, 10L, 1L, 100L, EnrollmentStatus.ACTIVE, NOW, null));
+        enrollmentRepository.add(Enrollment.restore(2L, 10L, 1L, 101L, EnrollmentStatus.ACTIVE, NOW, null));
+        enrollmentRepository.add(Enrollment.restore(3L, 10L, 2L, 102L, EnrollmentStatus.ACTIVE, NOW, null));
+
+        PageResult<StudentSummary> result = service.getStudents(10L, null, 0, 20);
+
+        assertThat(result.content()).extracting(StudentSummary::activeEnrollmentCount)
+                .containsExactly(2, 1, 0);
+        assertThat(enrollmentRepository.countActiveByStudentIdsCalls).isEqualTo(1);
+        assertThat(enrollmentRepository.findActiveByStudentIdCalls).isZero();
+    }
+
     private static final class FakeStudentRepository implements StudentRepository {
         private final List<Student> students = new ArrayList<>();
 
@@ -98,10 +119,17 @@ class StudentQueryServiceTest {
             List<Student> pageContent = hasNext ? content.subList(0, size) : content;
             return PageResult.of(pageContent, page, size, hasNext);
         }
+
+        @Override
+        public void markDeleted(Long id, LocalDateTime deletedAt) {
+            students.removeIf(student -> student.getId().equals(id));
+        }
     }
 
     private static final class FakeEnrollmentRepository implements EnrollmentRepository {
         private final List<Enrollment> enrollments = new ArrayList<>();
+        private int countActiveByStudentIdsCalls;
+        private int findActiveByStudentIdCalls;
 
         void add(Enrollment enrollment) {
             enrollments.add(enrollment);
@@ -133,11 +161,22 @@ class StudentQueryServiceTest {
 
         @Override
         public List<Enrollment> findActiveByStudentId(Long academyId, Long studentId) {
+            findActiveByStudentIdCalls++;
             return enrollments.stream()
                     .filter(enrollment -> enrollment.getAcademyId().equals(academyId))
                     .filter(enrollment -> enrollment.getStudentId().equals(studentId))
                     .filter(Enrollment::isActive)
                     .toList();
+        }
+
+        @Override
+        public Map<Long, Long> countActiveByStudentIds(Long academyId, List<Long> studentIds) {
+            countActiveByStudentIdsCalls++;
+            return enrollments.stream()
+                    .filter(enrollment -> enrollment.getAcademyId().equals(academyId))
+                    .filter(enrollment -> studentIds.contains(enrollment.getStudentId()))
+                    .filter(Enrollment::isActive)
+                    .collect(Collectors.groupingBy(Enrollment::getStudentId, Collectors.counting()));
         }
 
         @Override
@@ -147,6 +186,15 @@ class StudentQueryServiceTest {
                     .filter(enrollment -> enrollment.getLectureId().equals(lectureId))
                     .filter(Enrollment::isActive)
                     .toList();
+        }
+
+        @Override
+        public Map<Long, Long> countActiveByLectureIds(Long academyId, List<Long> lectureIds) {
+            return enrollments.stream()
+                    .filter(enrollment -> enrollment.getAcademyId().equals(academyId))
+                    .filter(enrollment -> lectureIds.contains(enrollment.getLectureId()))
+                    .filter(Enrollment::isActive)
+                    .collect(Collectors.groupingBy(Enrollment::getLectureId, Collectors.counting()));
         }
     }
 }

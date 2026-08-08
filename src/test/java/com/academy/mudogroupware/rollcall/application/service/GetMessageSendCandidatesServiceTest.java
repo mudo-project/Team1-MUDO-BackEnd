@@ -1,13 +1,15 @@
 package com.academy.mudogroupware.rollcall.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -45,11 +47,8 @@ class GetMessageSendCandidatesServiceTest {
                 new RosterEntryView(30L, "최예린", "HIGH_2", "010-3333-3333", null, null));
         when(getLectureRosterUseCase.getRoster(LECTURE_ID, ACADEMY_ID, DATE)).thenReturn(
                 new RosterView(LECTURE_ID, "수학 기초반", DATE, entries, new RosterSummaryView(3, 0, 1, 0, 1, 0)));
-        when(messageTemplateRepository.findByAcademyIdAndStatus(ACADEMY_ID, AttendanceStatus.ABSENT))
-                .thenReturn(Optional.of(MessageTemplate.create(ACADEMY_ID, "결석 안내", AttendanceStatus.ABSENT,
-                        "내용", 1L, NOW)));
-        when(messageTemplateRepository.findByAcademyIdAndStatus(ACADEMY_ID, AttendanceStatus.ONLINE))
-                .thenReturn(Optional.empty());
+        when(messageTemplateRepository.findByAcademyId(ACADEMY_ID)).thenReturn(List.of(
+                MessageTemplate.create(ACADEMY_ID, "결석 안내", AttendanceStatus.ABSENT, "내용", 1L, NOW)));
 
         var candidates = service.getCandidates(LECTURE_ID, ACADEMY_ID, DATE);
 
@@ -58,5 +57,7 @@ class GetMessageSendCandidatesServiceTest {
         assertThat(candidates.get(0).matchedTemplateName()).isEqualTo("결석 안내");
         assertThat(candidates.get(1).eligible()).isFalse();
         assertThat(candidates.get(1).matchedTemplateName()).isNull();
+        verify(messageTemplateRepository).findByAcademyId(ACADEMY_ID);
+        verify(messageTemplateRepository, never()).findByAcademyIdAndStatus(any(), any());
     }
 }

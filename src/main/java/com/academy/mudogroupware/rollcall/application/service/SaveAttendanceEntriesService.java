@@ -2,7 +2,10 @@ package com.academy.mudogroupware.rollcall.application.service;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,11 +36,15 @@ public class SaveAttendanceEntriesService implements SaveAttendanceEntriesUseCas
                 .orElseThrow(RollcallLectureNotFoundException::new);
 
         LocalDateTime now = LocalDateTime.now(clock);
+        Map<Long, AttendanceEntry> existingEntries = attendanceEntryRepository
+                .findByLectureIdAndDate(command.lectureId(), command.date())
+                .stream()
+                .collect(Collectors.toMap(AttendanceEntry::getStudentId, Function.identity(), (a, b) -> a));
+
         for (AttendanceEntryInput input : command.entries()) {
-            Optional<AttendanceEntry> existing = attendanceEntryRepository.findByLectureIdAndStudentIdAndDate(
-                    command.lectureId(), input.studentId(), command.date());
+            Optional<AttendanceEntry> existing = Optional.ofNullable(existingEntries.get(input.studentId()));
             if (existing.isPresent()) {
-                AttendanceEntry entry = existing.get();
+                AttendanceEntry entry = existing.orElseThrow();
                 entry.changeStatus(input.status(), input.note(), now);
                 attendanceEntryRepository.save(entry);
             } else {

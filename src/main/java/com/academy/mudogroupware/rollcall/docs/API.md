@@ -8,6 +8,7 @@
 `GET /api/rollcall/lectures/{lectureId}/attendance?date=2026-08-06`
 
 인증: 필요
+권한: `ROLLCALL:MANAGE`
 
 #### Response - `200 OK`
 
@@ -91,6 +92,7 @@
 `GET /api/rollcall/lectures/{lectureId}/attendance/export?date=2026-08-06`
 
 인증: 필요
+권한: `ROLLCALL:MANAGE`
 
 #### Response - `200 OK`
 
@@ -111,6 +113,7 @@ Content-Disposition: attachment; filename="attendance_1_2026-08-06.xlsx"
 `GET /api/rollcall/lectures/{lectureId}/attendance/message-candidates?date=2026-08-06`
 
 인증: 필요
+권한: `ROLLCALL:MANAGE`
 
 #### Response - `200 OK`
 
@@ -146,7 +149,7 @@ Content-Disposition: attachment; filename="attendance_1_2026-08-06.xlsx"
 `POST /api/rollcall/message-templates`
 
 인증: 필요
-권한: `ROLLCALL:MANAGE`
+권한: `ROLLCALL:TEMPLATE_MANAGE`
 
 #### Request
 
@@ -182,6 +185,7 @@ Content-Disposition: attachment; filename="attendance_1_2026-08-06.xlsx"
 `GET /api/rollcall/message-templates`
 
 인증: 필요
+권한: `ROLLCALL:MANAGE` 또는 `ROLLCALL:TEMPLATE_MANAGE`
 
 #### Response - `200 OK`
 
@@ -210,7 +214,7 @@ Content-Disposition: attachment; filename="attendance_1_2026-08-06.xlsx"
 `PATCH /api/rollcall/message-templates/{templateId}`
 
 인증: 필요
-권한: `ROLLCALL:MANAGE`
+권한: `ROLLCALL:TEMPLATE_MANAGE`
 
 #### Request
 
@@ -234,7 +238,7 @@ Content-Disposition: attachment; filename="attendance_1_2026-08-06.xlsx"
 `DELETE /api/rollcall/message-templates/{templateId}`
 
 인증: 필요
-권한: `ROLLCALL:MANAGE`
+권한: `ROLLCALL:TEMPLATE_MANAGE`
 
 #### Response - `204 No Content`
 

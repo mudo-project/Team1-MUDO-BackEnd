@@ -3,6 +3,7 @@ package com.academy.mudogroupware.notice.application.service;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,8 +38,14 @@ public class NoticeQueryService implements NoticeQueryUseCase {
     public PageResult<NoticeSummaryView> getNotices(Long requesterId, String keyword, int page, int size) {
         AuthorInfo requester = noticeAuthorDirectoryPort.getAuthor(requesterId);
 
-        return noticeRepository.findAll(requester.academyId(), keyword, page, size)
-                .map(notice -> toSummaryView(notice, requesterId));
+        PageResult<Notice> result = noticeRepository.findAll(requester.academyId(), keyword, page, size);
+        List<Notice> notices = result.content();
+        List<Long> authorIds = notices.stream().map(Notice::getAuthorUserId).distinct().toList();
+        List<Long> noticeIds = notices.stream().map(Notice::getId).toList();
+        Map<Long, AuthorInfo> authors = noticeAuthorDirectoryPort.getAuthors(authorIds);
+        Set<Long> readNoticeIds = noticeReadRepository.findReadNoticeIds(noticeIds, requesterId);
+
+        return result.map(notice -> toSummaryView(notice, authors, readNoticeIds));
     }
 
     @Override
@@ -106,17 +113,16 @@ public class NoticeQueryService implements NoticeQueryUseCase {
         return new NoticeReaderView(userId, name, role, readAt);
     }
 
-    private NoticeSummaryView toSummaryView(Notice notice, Long requesterId) {
-        AuthorInfo author = noticeAuthorDirectoryPort.getAuthor(notice.getAuthorUserId());
-        boolean read = noticeReadRepository.hasRead(notice.getId(), requesterId);
+    private NoticeSummaryView toSummaryView(Notice notice, Map<Long, AuthorInfo> authors, Set<Long> readNoticeIds) {
+        AuthorInfo author = authors.get(notice.getAuthorUserId());
 
         return new NoticeSummaryView(
                 notice.getId(),
                 notice.getTitle(),
-                author.name(),
-                author.role(),
+                author != null ? author.name() : null,
+                author != null ? author.role() : null,
                 notice.isPinned(),
-                read,
+                readNoticeIds.contains(notice.getId()),
                 !notice.getAttachments().isEmpty(),
                 notice.getCreatedAt()
         );

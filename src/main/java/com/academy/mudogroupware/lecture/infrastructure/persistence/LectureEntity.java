@@ -3,6 +3,8 @@ package com.academy.mudogroupware.lecture.infrastructure.persistence;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.hibernate.annotations.BatchSize;
+
 import com.academy.mudogroupware.global.infrastructure.persistence.CreatedAtEntity;
 import com.academy.mudogroupware.lecture.domain.model.FeeType;
 import com.academy.mudogroupware.lecture.domain.model.Grade;
@@ -63,6 +65,7 @@ public class LectureEntity extends CreatedAtEntity {
     private Integer feeAmount;
 
     @OneToMany(mappedBy = "lecture", cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 100)
     private List<LectureScheduleEntity> schedules = new ArrayList<>();
 
     @Builder

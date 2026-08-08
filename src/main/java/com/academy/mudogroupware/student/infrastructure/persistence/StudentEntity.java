@@ -1,6 +1,6 @@
 package com.academy.mudogroupware.student.infrastructure.persistence;
 
-import com.academy.mudogroupware.global.infrastructure.persistence.BaseTimeEntity;
+import com.academy.mudogroupware.global.infrastructure.persistence.SoftDeleteTimeEntity;
 import com.academy.mudogroupware.student.domain.model.StudentGrade;
 
 import jakarta.persistence.Column;
@@ -21,7 +21,7 @@ import lombok.Setter;
 @Table(name = "student")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class StudentEntity extends BaseTimeEntity {
+public class StudentEntity extends SoftDeleteTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

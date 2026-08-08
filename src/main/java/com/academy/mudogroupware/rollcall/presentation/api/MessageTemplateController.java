@@ -44,7 +44,7 @@ public class MessageTemplateController {
     private final DeleteMessageTemplateUseCase deleteMessageTemplateUseCase;
 
     @Operation(summary = "문자 템플릿 생성", description = "출결 상태 1개당 템플릿 1개만 만들 수 있다. 이미 있으면 409.")
-    @PreAuthorize("hasAuthority('ROLLCALL:MANAGE')")
+    @PreAuthorize("hasAuthority('ROLLCALL:TEMPLATE_MANAGE')")
     @PostMapping
     public ResponseEntity<GlobalApiResponse<MessageTemplateCreateResponse>> createTemplate(
             @AuthenticationPrincipal AuthUser authUser,
@@ -57,6 +57,7 @@ public class MessageTemplateController {
     }
 
     @Operation(summary = "문자 템플릿 목록 조회", description = "요청자 소속 학원의 문자 템플릿을 전부 조회한다.")
+    @PreAuthorize("hasAnyAuthority('ROLLCALL:MANAGE', 'ROLLCALL:TEMPLATE_MANAGE')")
     @GetMapping
     public ResponseEntity<GlobalApiResponse<List<MessageTemplateResponse>>> getTemplates(
             @AuthenticationPrincipal AuthUser authUser) {
@@ -68,7 +69,7 @@ public class MessageTemplateController {
     }
 
     @Operation(summary = "문자 템플릿 수정", description = "이름과 내용을 수정한다. 상태는 변경할 수 없다.")
-    @PreAuthorize("hasAuthority('ROLLCALL:MANAGE')")
+    @PreAuthorize("hasAuthority('ROLLCALL:TEMPLATE_MANAGE')")
     @PatchMapping("/{templateId}")
     public ResponseEntity<Void> updateTemplate(
             @AuthenticationPrincipal AuthUser authUser,
@@ -79,7 +80,7 @@ public class MessageTemplateController {
     }
 
     @Operation(summary = "문자 템플릿 삭제")
-    @PreAuthorize("hasAuthority('ROLLCALL:MANAGE')")
+    @PreAuthorize("hasAuthority('ROLLCALL:TEMPLATE_MANAGE')")
     @DeleteMapping("/{templateId}")
     public ResponseEntity<Void> deleteTemplate(
             @AuthenticationPrincipal AuthUser authUser,

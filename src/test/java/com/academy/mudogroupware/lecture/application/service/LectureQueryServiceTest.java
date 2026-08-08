@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.DayOfWeek;
@@ -56,8 +58,12 @@ class LectureQueryServiceTest {
     }
 
     private Lecture lecture(Long academyId) {
+        return lecture(1L, academyId, 30L);
+    }
+
+    private Lecture lecture(Long lectureId, Long academyId, Long teacherId) {
         LectureSchedule schedule = LectureSchedule.create(DayOfWeek.MONDAY, LocalTime.of(15, 0), LocalTime.of(17, 0));
-        return Lecture.create(academyId, "Math Basics", Grade.MIDDLE_3, 10L, 20L, 30L, 40L,
+        return Lecture.restore(lectureId, academyId, "Math Basics", Grade.MIDDLE_3, 10L, 20L, teacherId, 40L,
                 FeeType.PER_SESSION, 50000, List.of(schedule), NOW);
     }
 
@@ -106,10 +112,36 @@ class LectureQueryServiceTest {
                 .thenReturn(List.of(Classroom.restore(40L, 1L, "Room 101", NOW)));
         when(teacherDirectoryPort.findTeachers(1L, List.of(30L)))
                 .thenReturn(Map.of(30L, new TeacherInfo(30L, "Teacher Kim", 1L, "ACTIVE")));
-        when(enrolledStudentsPort.findByLectureId(1L, lecture.getId())).thenReturn(List.of());
+        when(enrolledStudentsPort.countByLectureIds(1L, List.of(lecture.getId())))
+                .thenReturn(Map.of(lecture.getId(), 0L));
 
         PageResult<LectureSummaryView> result = service.getLectures(1L, null, 0, 20);
 
         assertThat(result.content()).extracting(LectureSummaryView::teacherName).containsExactly("Teacher Kim");
+    }
+
+    @Test
+    void returnsSummariesWithStudentCountsInOneBatch() {
+        Lecture first = lecture(1L, 1L, 30L);
+        Lecture second = lecture(2L, 1L, 31L);
+        when(lectureRepository.findAll(1L, null, 0, 20))
+                .thenReturn(PageResult.of(List.of(first, second), 0, 20, false));
+        when(termRepository.findAllById(List.of(10L))).thenReturn(List.of(Term.restore(10L, 1L, "Winter", NOW)));
+        when(subjectRepository.findAllById(List.of(20L))).thenReturn(List.of(Subject.restore(20L, 1L, "Math", NOW)));
+        when(classroomRepository.findAllById(List.of(40L)))
+                .thenReturn(List.of(Classroom.restore(40L, 1L, "Room 101", NOW)));
+        when(teacherDirectoryPort.findTeachers(1L, List.of(30L, 31L)))
+                .thenReturn(Map.of(
+                        30L, new TeacherInfo(30L, "Teacher Kim", 1L, "ACTIVE"),
+                        31L, new TeacherInfo(31L, "Teacher Lee", 1L, "ACTIVE")));
+        when(enrolledStudentsPort.countByLectureIds(1L, List.of(1L, 2L)))
+                .thenReturn(Map.of(1L, 3L, 2L, 1L));
+
+        PageResult<LectureSummaryView> result = service.getLectures(1L, null, 0, 20);
+
+        assertThat(result.content()).extracting(LectureSummaryView::studentCount)
+                .containsExactly(3, 1);
+        verify(enrolledStudentsPort).countByLectureIds(1L, List.of(1L, 2L));
+        verify(enrolledStudentsPort, never()).findByLectureId(anyLong(), anyLong());
     }
 }

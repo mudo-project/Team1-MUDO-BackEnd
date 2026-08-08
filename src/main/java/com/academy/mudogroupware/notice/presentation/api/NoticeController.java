@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -37,7 +38,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
-// TODO: 작성 권한(원장/대표, 상황에 따라 직원)은 users.role 값 체계 확정되면 Application/Domain Policy에 반영
 @Tag(name = "공지사항", description = "공지사항 작성/조회/수정/삭제/고정 API")
 @RestController
 @RequestMapping("/api/notices")
@@ -51,6 +51,7 @@ public class NoticeController {
     private final NoticeQueryUseCase noticeQueryUseCase;
 
     @Operation(summary = "공지사항 작성", description = "제목·내용은 필수, 여러 개의 파일을 첨부할 수 있다.")
+    @PreAuthorize("hasAuthority('NOTICE:WRITE')")
     @PostMapping
     public ResponseEntity<GlobalApiResponse<NoticeCreateResponse>> createNotice(
             @AuthenticationPrincipal AuthUser authUser,
@@ -94,6 +95,7 @@ public class NoticeController {
     }
 
     @Operation(summary = "공지사항 수정", description = "작성자 본인만 가능.")
+    @PreAuthorize("hasAuthority('NOTICE:WRITE')")
     @PatchMapping("/{noticeId}")
     public ResponseEntity<Void> updateNotice(@AuthenticationPrincipal AuthUser authUser,
                                               @PathVariable Long noticeId,
@@ -102,7 +104,7 @@ public class NoticeController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "공지사항 삭제", description = "현재는 작성자 본인만 가능 (권한자 확대는 role 체계 확정 후).")
+    @Operation(summary = "공지사항 삭제", description = "작성자 본인만 가능.")
     @DeleteMapping("/{noticeId}")
     public ResponseEntity<Void> deleteNotice(@AuthenticationPrincipal AuthUser authUser,
                                               @PathVariable Long noticeId) {
@@ -110,7 +112,8 @@ public class NoticeController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "공지사항 고정", description = "작성자 본인만 가능.")
+    @Operation(summary = "공지사항 고정", description = "NOTICE:PIN 권한자가 같은 학원 공지를 고정한다.")
+    @PreAuthorize("hasAuthority('NOTICE:PIN')")
     @PostMapping("/{noticeId}/pin")
     public ResponseEntity<Void> pinNotice(@AuthenticationPrincipal AuthUser authUser,
                                            @PathVariable Long noticeId) {
@@ -118,7 +121,8 @@ public class NoticeController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "공지사항 고정 해제", description = "현재는 임시로 인증 사용자 전체 허용 (권한자 제한은 role 체계 확정 후).")
+    @Operation(summary = "공지사항 고정 해제", description = "NOTICE:PIN 권한자가 같은 학원 공지의 고정을 해제한다.")
+    @PreAuthorize("hasAuthority('NOTICE:PIN')")
     @DeleteMapping("/{noticeId}/pin")
     public ResponseEntity<Void> unpinNotice(@AuthenticationPrincipal AuthUser authUser,
                                              @PathVariable Long noticeId) {

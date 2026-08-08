@@ -4,7 +4,7 @@
 
 ```text
 AuthUser (JWT)
-→ SecurityConfig: POST /api/notices, 인증 확인
+→ SecurityConfig: POST /api/notices, 인증 및 `NOTICE:WRITE` 권한 확인
 → NoticeController.createNotice
 → AuthUser.userId 추출
 → CreateNoticeRequest → CreateNoticeCommand(attachments 포함)
@@ -73,15 +73,17 @@ AuthUser
 ```text
 AuthUser
 → NoticeController.pinNotice / unpinNotice
+→ @PreAuthorize("hasAuthority('NOTICE:PIN')")
 → PinNoticeService.pin(noticeId, requesterId)
-   → 작성자 본인 아니면 ForbiddenException
    → Notice.pin() → save
 → PinNoticeService.unpin(noticeId, requesterId)
-   → (임시) 별도 권한 검증 없이 Notice.unpin() → save
+   → Notice.unpin() → save
 → 204 No Content
 ```
 
-- 고정 해제는 원래 "권한 있는 사람들 모두" 가능해야 하지만, role 값 체계가 없어 지금은 제한 없이 열어뒀습니다. `users.role` 확정 후 검증을 추가해야 합니다.
+- 공지 수정은 `NOTICE:WRITE` 권한과 작성자 본인 검증을 함께 적용합니다.
+- 공지 삭제는 별도 관리자 권한 없이 작성자 본인 검증만 적용합니다.
+- 공지 고정/고정 해제는 `NOTICE:PIN` 권한으로 제한합니다.
 
 ---
 

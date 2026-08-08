@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.student.domain.repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -15,4 +16,7 @@ public interface StudentRepository {
     List<Student> findAllById(List<Long> ids);
 
     PageResult<Student> findAll(Long academyId, String keyword, int page, int size);
+
+    // 소프트 삭제된 학생은 findById/findAll 조회에서 제외된다(deleted_at is null 조건).
+    void markDeleted(Long id, LocalDateTime deletedAt);
 }

@@ -1,8 +1,19 @@
 # 학생 관리 Changelog
 
+## 2026-08-08 - 학생관리 권한 단순화
+
+- 학생관리 탭 접근, 목록/상세 조회, 학생 등록/수정, 수강 등록/종료를 `STUDENT:MANAGE` 하나로 통합했다.
+- 기존 조회/수강 등록 세부 권한은 실제 API에서 사용하지 않도록 정리했다.
+
+## 2026-08-08 - 학생 삭제(소프트 삭제) 추가
+
+- `DELETE /api/students/{studentId}`를 추가했다. `student` 테이블에 `deleted_at` 컬럼을 추가하고(`V1.5.3`) `SoftDeleteTimeEntity`를 상속해 소프트 삭제로 구현했다.
+- 삭제된 학생은 목록/상세 조회와 `findById` 기반 조회(수정 등)에서 제외된다.
+- 수강 이력(`student_enrollment`)은 삭제하지 않아 데이터 유실이 없다.
+
 ## 2026-08-06 - 권한 적용 및 결제 기능 범위 확정
 
-- `STUDENT:READ`/`STUDENT:MANAGE`/`ENROLLMENT:MANAGE` 권한 코드를 시드하고(`V1.4.6`) `StudentController`의 모든 엔드포인트에 `@PreAuthorize`를 적용했다.
+- 학생관리 권한 코드를 시드하고(`V1.4.6`) `StudentController`의 모든 엔드포인트에 `@PreAuthorize`를 적용했다.
 - 결제/POS/환불/영수증/미납 관리는 이번 범위에서 영구 제외로 확정했다(추가 구현 없음).
 
 ## 2026-08-05 - 학생 관리 백엔드 초기 구현

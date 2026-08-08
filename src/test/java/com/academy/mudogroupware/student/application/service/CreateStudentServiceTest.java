@@ -73,5 +73,10 @@ class CreateStudentServiceTest {
         public PageResult<Student> findAll(Long academyId, String keyword, int page, int size) {
             return PageResult.of(List.of(), page, size, false);
         }
+
+        @Override
+        public void markDeleted(Long id, java.time.LocalDateTime deletedAt) {
+            students.removeIf(student -> student.getId().equals(id));
+        }
     }
 }

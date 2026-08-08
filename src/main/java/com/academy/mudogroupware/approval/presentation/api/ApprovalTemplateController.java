@@ -2,6 +2,7 @@ package com.academy.mudogroupware.approval.presentation.api;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -33,7 +34,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
-// TODO: 템플릿 생성/수정/삭제는 행정직원만 가능해야 함 - users.role 값 체계 확정되면 Application/Domain Policy에 권한 판단 반영
 @Tag(name = "결재 템플릿", description = "결재 템플릿 생성/조회/수정/삭제 API")
 @RestController
 @RequestMapping("/api/approval-templates")
@@ -46,6 +46,7 @@ public class ApprovalTemplateController {
     private final ApprovalTemplateQueryUseCase approvalTemplateQueryUseCase;
 
     @Operation(summary = "결재 템플릿 생성", description = "이름과 기본 결재선(순서 있는 담당자 목록)을 지정해 템플릿을 만든다.")
+    @PreAuthorize("hasAuthority('APPROVAL:TEMPLATE_MANAGE')")
     @PostMapping
     public ResponseEntity<GlobalApiResponse<ApprovalTemplateCreateResponse>> createTemplate(
             @AuthenticationPrincipal AuthUser authUser,
@@ -57,6 +58,7 @@ public class ApprovalTemplateController {
     }
 
     @Operation(summary = "결재 템플릿 목록 조회", description = "요청자 소속 학원의 템플릿만 페이지 단위로 조회한다. 결재선 담당자 이름을 함께 반환한다.")
+    @PreAuthorize("hasAnyAuthority('APPROVAL:SUBMIT', 'APPROVAL:TEMPLATE_MANAGE')")
     @GetMapping
     public ResponseEntity<GlobalApiResponse<SliceResponse<ApprovalTemplateSummaryResponse>>> getTemplates(
             @AuthenticationPrincipal AuthUser authUser,
@@ -69,6 +71,7 @@ public class ApprovalTemplateController {
     }
 
     @Operation(summary = "결재 템플릿 상세 조회")
+    @PreAuthorize("hasAnyAuthority('APPROVAL:SUBMIT', 'APPROVAL:TEMPLATE_MANAGE')")
     @GetMapping("/{templateId}")
     public ResponseEntity<GlobalApiResponse<ApprovalTemplateDetailResponse>> getTemplateDetail(
             @AuthenticationPrincipal AuthUser authUser,
@@ -79,6 +82,7 @@ public class ApprovalTemplateController {
     }
 
     @Operation(summary = "결재 템플릿 수정", description = "이름·결재선을 요청 값으로 전체 교체한다.")
+    @PreAuthorize("hasAuthority('APPROVAL:TEMPLATE_MANAGE')")
     @PatchMapping("/{templateId}")
     public ResponseEntity<Void> updateTemplate(@AuthenticationPrincipal AuthUser authUser,
                                                 @PathVariable Long templateId,
@@ -88,6 +92,7 @@ public class ApprovalTemplateController {
     }
 
     @Operation(summary = "결재 템플릿 삭제")
+    @PreAuthorize("hasAuthority('APPROVAL:TEMPLATE_MANAGE')")
     @DeleteMapping("/{templateId}")
     public ResponseEntity<Void> deleteTemplate(@AuthenticationPrincipal AuthUser authUser,
                                                 @PathVariable Long templateId) {

@@ -47,6 +47,8 @@
 
 `GET /api/lectures?termId=&grade=&subjectId=&teacherId=&classroomId=&dayOfWeek=&page=0&size=20`
 
+권한: `LECTURE:READ` 또는 `LECTURE:MANAGE`
+
 ### Response
 
 ```json
@@ -85,6 +87,8 @@
 ## 3. 강의 상세 조회
 
 `GET /api/lectures/{lectureId}`
+
+권한: `LECTURE:READ` 또는 `LECTURE:MANAGE`
 
 ### Response
 

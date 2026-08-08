@@ -2,7 +2,9 @@ package com.academy.mudogroupware.notice.infrastructure.persistence;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.dao.DataIntegrityViolationException;
@@ -39,6 +41,14 @@ public class NoticeReadRepositoryImpl implements NoticeReadRepository {
     @Override
     public boolean hasRead(Long noticeId, Long userId) {
         return noticeReadJpaRepository.existsByNoticeIdAndUserId(noticeId, userId);
+    }
+
+    @Override
+    public Set<Long> findReadNoticeIds(List<Long> noticeIds, Long userId) {
+        if (noticeIds == null || noticeIds.isEmpty()) {
+            return Set.of();
+        }
+        return Set.copyOf(noticeReadJpaRepository.findReadNoticeIds(noticeIds, userId));
     }
 
     @Override

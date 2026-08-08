@@ -1,6 +1,7 @@
 package com.academy.mudogroupware.lecture.application.port;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Consumer: lecture (강의 상세의 수강생 목록, rollcall의 LectureEnrollmentPort 구현에도 재사용)
@@ -10,4 +11,6 @@ import java.util.List;
 public interface EnrolledStudentsPort {
 
     List<EnrolledStudentInfo> findByLectureId(Long academyId, Long lectureId);
+
+    Map<Long, Long> countByLectureIds(Long academyId, List<Long> lectureIds);
 }

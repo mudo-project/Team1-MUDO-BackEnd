@@ -75,7 +75,7 @@
 
 - **결제 연동 — 추후 별도 범위**: 실제 카드 결제, POS/단말기 연결, 결제 취소/환불, 영수증 발급은 이번 범위에서 제외한다. 현재 "결제하기" 버튼은 수강 등록을 확정하는 임시 버튼명으로만 사용한다.
 - **인증 사용자 정보**: `global.presentation.security.AuthUser` 사용.
-- **권한**: 학생 개인정보와 학부모 연락처를 다루므로 `STUDENT:READ`(조회)/`STUDENT:MANAGE`(등록·수정)/`ENROLLMENT:MANAGE`(수강 등록·종료) 권한 코드를 시드하고 `StudentController`에 `@PreAuthorize`를 적용했다(lecture/rollcall과 동일 패턴). 실제 role에 권한을 매핑하는 `role_permission` 구성은 admin의 role 관리 화면 몫이라 student 모듈은 관여하지 않는다.
+- **권한**: 학생 개인정보와 학부모 연락처를 다루므로 학생관리 탭 접근부터 목록/상세 조회, 학생 등록/수정, 수강 등록/종료까지 `STUDENT:MANAGE` 하나로 관리한다. 실제 role에 권한을 매핑하는 `role_permission` 구성은 admin의 role 관리 화면 몫이라 student 모듈은 관여하지 않는다.
 
 ## 발행·소비하는 Event
 

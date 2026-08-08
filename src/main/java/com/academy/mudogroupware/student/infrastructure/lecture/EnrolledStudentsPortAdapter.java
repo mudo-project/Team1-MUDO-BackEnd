@@ -43,4 +43,9 @@ public class EnrolledStudentsPortAdapter implements EnrolledStudentsPort {
                         student.getGrade().name(), student.getParentPhone()))
                 .toList();
     }
+
+    @Override
+    public Map<Long, Long> countByLectureIds(Long academyId, List<Long> lectureIds) {
+        return enrollmentRepository.countActiveByLectureIds(academyId, lectureIds);
+    }
 }
