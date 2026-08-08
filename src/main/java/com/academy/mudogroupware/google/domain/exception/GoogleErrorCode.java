@@ -23,6 +23,12 @@ public enum GoogleErrorCode implements ErrorCode {
             "연결된 구글 계정이 없습니다."
     ),
 
+    ACCOUNT_CONNECTION_INVALID(
+            HttpStatus.CONFLICT,
+            "GOOGLE_409_1",
+            "구글 계정 연동이 만료되었거나 필요한 권한이 부족합니다. 재연결이 필요합니다."
+    ),
+
     OAUTH_EXCHANGE_FAILED(
             HttpStatus.BAD_GATEWAY,
             "GOOGLE_502_1",
