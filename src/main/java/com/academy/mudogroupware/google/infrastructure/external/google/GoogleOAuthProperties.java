@@ -11,8 +11,11 @@ public record GoogleOAuthProperties(String clientId, String clientSecret, String
 
     // 템플릿 기능(드라이브·독스·시트)까지 포함한 scope다. 기존에 openid email만으로 연동된 계정은
     // GoogleAccountConnection.deriveStatus()가 이 값과 비교해 FAILED로 표시하고 재연결을 유도한다.
+    // "email"이 아니라 정식 URL(https://www.googleapis.com/auth/userinfo.email)로 요청한다 — 구글은
+    // 짧은 이름으로 요청해도 토큰 응답의 scope 필드에는 항상 정식 URL로 돌려주기 때문에, 우리가 요청할 때부터
+    // 정식 URL을 쓰지 않으면 deriveStatus의 문자열 비교가 영원히 실패한다(email != 정식 URL).
     private static final String DEFAULT_SCOPE =
-            "openid email https://www.googleapis.com/auth/drive.file "
+            "openid https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/drive.file "
             + "https://www.googleapis.com/auth/documents https://www.googleapis.com/auth/spreadsheets";
 
     public GoogleOAuthProperties(

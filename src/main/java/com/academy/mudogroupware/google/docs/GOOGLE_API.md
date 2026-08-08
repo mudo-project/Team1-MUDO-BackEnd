@@ -97,7 +97,7 @@ HTTP `200 OK`
   "data": {
     "googleEmail": "academy@mudo.co.kr",
     "connectedByUserId": 7,
-    "scope": "openid email",
+    "scope": "openid https://www.googleapis.com/auth/userinfo.email",
     "connectedAt": "2026-07-01T14:22:00",
     "tokenExpiresAt": "2026-08-30T14:22:00",
     "lastCheckedAt": "2026-08-03T09:00:00",
