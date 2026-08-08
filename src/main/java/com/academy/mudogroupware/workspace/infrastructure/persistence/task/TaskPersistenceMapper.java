@@ -1,7 +1,7 @@
 package com.academy.mudogroupware.workspace.infrastructure.persistence.task;
 
 import com.academy.mudogroupware.global.infrastructure.config.MapStructConfig;
-import com.academy.mudogroupware.workspace.domain.model.Task;
+import com.academy.mudogroupware.workspace.domain.model.task.Task;
 import com.academy.mudogroupware.workspace.infrastructure.persistence.workspace.WorkspaceJpaEntity;
 import org.mapstruct.Mapper;
 

@@ -1,7 +1,7 @@
 package com.academy.mudogroupware.workspace.infrastructure.persistence.task;
 
 import com.academy.mudogroupware.global.infrastructure.persistence.CreatedAtEntity;
-import com.academy.mudogroupware.workspace.domain.model.TaskStatus;
+import com.academy.mudogroupware.workspace.domain.model.task.TaskStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

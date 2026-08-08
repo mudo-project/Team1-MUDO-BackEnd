@@ -1,6 +1,6 @@
 package com.academy.mudogroupware.workspace.application.port;
 
-import com.academy.mudogroupware.workspace.application.query.WorkspaceListItem;
+import com.academy.mudogroupware.workspace.application.query.workspace.WorkspaceListItem;
 import java.util.List;
 
 public interface WorkspaceListQueryPort {

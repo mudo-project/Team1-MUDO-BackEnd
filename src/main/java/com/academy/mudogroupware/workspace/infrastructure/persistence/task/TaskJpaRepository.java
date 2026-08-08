@@ -1,6 +1,6 @@
 package com.academy.mudogroupware.workspace.infrastructure.persistence.task;
 
-import com.academy.mudogroupware.workspace.domain.model.TaskStatus;
+import com.academy.mudogroupware.workspace.domain.model.task.TaskStatus;
 import jakarta.persistence.LockModeType;
 import java.time.LocalDate;
 import java.time.LocalDateTime;

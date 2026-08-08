@@ -2,7 +2,7 @@ package com.academy.mudogroupware.workspace.infrastructure.persistence.task;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.academy.mudogroupware.workspace.domain.model.TaskStatus;
+import com.academy.mudogroupware.workspace.domain.model.task.TaskStatus;
 import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
 

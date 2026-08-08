@@ -1,6 +1,6 @@
 package com.academy.mudogroupware.workspace.infrastructure.scheduler;
 
-import com.academy.mudogroupware.workspace.application.usecase.DelayOverdueTasksUseCase;
+import com.academy.mudogroupware.workspace.application.usecase.task.DelayOverdueTasksUseCase;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;

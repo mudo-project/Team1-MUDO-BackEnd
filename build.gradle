@@ -62,8 +62,9 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-hateoas'
     // S3 대용량·병렬 전송이 필요할 때
     implementation 'software.amazon.awssdk:s3-transfer-manager'
-    // .env 파일 직접 로딩이 필요할 때
-    implementation 'me.paulschwarz:spring-dotenv:4.0.0'
+    // .env 파일 직접 로딩이 필요할 때 : key 기본값 아닌 시크릿값 넣으러면 5.1.0버전 사용해야함.
+//    implementation 'me.paulschwarz:spring-dotenv:4.0.0'
+    implementation 'me.paulschwarz:springboot4-dotenv:5.1.0'
     // Prometheus 메트릭 수집이 필요할 때
     runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
     // 재시도 기능이 필요할 때

@@ -4,8 +4,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
-import com.academy.mudogroupware.workspace.domain.exception.WorkspaceNameConflictException;
-import com.academy.mudogroupware.workspace.domain.model.Workspace;
+import com.academy.mudogroupware.workspace.domain.exception.workspace.WorkspaceNameConflictException;
+import com.academy.mudogroupware.workspace.domain.model.workspace.Workspace;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;

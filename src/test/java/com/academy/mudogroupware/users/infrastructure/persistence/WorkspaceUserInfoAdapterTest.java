@@ -7,7 +7,7 @@ import com.academy.mudogroupware.global.domain.auth.AccountType;
 import com.academy.mudogroupware.users.domain.model.User;
 import com.academy.mudogroupware.users.domain.model.UserStatus;
 import com.academy.mudogroupware.users.domain.repository.UserRepository;
-import com.academy.mudogroupware.workspace.application.query.WorkspaceMemberInfo;
+import com.academy.mudogroupware.workspace.application.query.workspace.WorkspaceMemberInfo;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
