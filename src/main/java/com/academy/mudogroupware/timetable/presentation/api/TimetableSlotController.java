@@ -77,14 +77,15 @@ public class TimetableSlotController {
     @Operation(summary = "수업 슬롯 상세 조회", description = "수업 슬롯 번호로 상세 정보를 조회합니다.")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "상세 조회 성공"),
-        @ApiResponse(responseCode = "404", description = "수업 슬롯이 존재하지 않거나 다른 세트 소속인 경우")
+        @ApiResponse(responseCode = "404", description = "시간표 세트가 존재하지 않거나 다른 학원 소속이거나, 수업 슬롯이 존재하지 않거나 다른 세트 소속인 경우")
     })
     @GetMapping("/{timetableSlotId}")
     public ResponseEntity<GlobalApiResponse<TimetableSlotResponse>> getSlot(
+            @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long timetableSetId,
             @PathVariable Long timetableSlotId) {
         TimetableSlotResponse response = TimetableSlotResponse.from(
-                getTimetableSlotUseCase.getSlot(timetableSetId, timetableSlotId));
+                getTimetableSlotUseCase.getSlot(authUser.academyId(), timetableSetId, timetableSlotId));
         return ResponseEntity.ok(GlobalApiResponse.ok(TimetableResponseCode.SLOT_DETAIL_RETRIEVED, response));
     }
 }

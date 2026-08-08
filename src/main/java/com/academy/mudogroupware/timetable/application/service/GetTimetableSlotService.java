@@ -5,8 +5,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.academy.mudogroupware.timetable.application.query.TimetableSlotView;
 import com.academy.mudogroupware.timetable.application.usecase.GetTimetableSlotUseCase;
+import com.academy.mudogroupware.timetable.domain.exception.TimetableSetNotFoundException;
 import com.academy.mudogroupware.timetable.domain.exception.TimetableSlotNotFoundException;
 import com.academy.mudogroupware.timetable.domain.model.TimetableSlot;
+import com.academy.mudogroupware.timetable.domain.repository.TimetableSetRepository;
 import com.academy.mudogroupware.timetable.domain.repository.TimetableSlotRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -16,10 +18,15 @@ import lombok.RequiredArgsConstructor;
 @Transactional(readOnly = true)
 public class GetTimetableSlotService implements GetTimetableSlotUseCase {
 
+    private final TimetableSetRepository timetableSetRepository;
     private final TimetableSlotRepository timetableSlotRepository;
 
     @Override
-    public TimetableSlotView getSlot(Long timetableSetId, Long timetableSlotId) {
+    public TimetableSlotView getSlot(Long academyId, Long timetableSetId, Long timetableSlotId) {
+        timetableSetRepository.findById(timetableSetId)
+                .filter(found -> found.getAcademyId().equals(academyId))
+                .orElseThrow(TimetableSetNotFoundException::new);
+
         TimetableSlot slot = timetableSlotRepository.findById(timetableSlotId)
                 .filter(found -> found.getTimetableSetId().equals(timetableSetId))
                 .orElseThrow(TimetableSlotNotFoundException::new);
