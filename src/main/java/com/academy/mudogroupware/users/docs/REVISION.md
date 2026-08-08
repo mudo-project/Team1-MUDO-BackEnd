@@ -1,5 +1,5 @@
 > 작성일: 2026-08-04
-> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청/승인 워크플로우(PR 1·2·3/3, "계정 발급 체계" 2단계) 완료, 역할 관리 API 7개(생성/목록/상세/수정/삭제/권한 조립/권한 카탈로그 조회) 완료, 사용자 역할 변경 API 완료 · 학원 관리자의 직원 계정 발급(계정 발급 체계 3단계) 미착수
+> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청/승인 워크플로우(PR 1·2·3/3, "계정 발급 체계" 2단계) 완료, 역할 관리 API 7개(생성/목록/상세/수정/삭제/권한 조립/권한 카탈로그 조회) 완료, 사용자 역할 변경 API 완료, 학원 구성원 검색 API 완료 · 학원 관리자의 직원 계정 발급(계정 발급 체계 3단계) 미착수
 
 ## 🎯 변경 목적
 
@@ -603,6 +603,42 @@ PR 1(목록)·PR 2(상세)에 이어지는 세 번째이자 마지막 PR. 승인
 | Application(users) | `ChangeUserRoleCommand`/`ChangeUserRoleUseCase`/`ChangeUserRoleService` 신규 |
 | Presentation(users) | `UserController`(신규, `PATCH /{userId}/role`), `ChangeUserRoleRequest` 신규 |
 | Migration | `V4.1.3`(`permission` 테이블에 `ACCOUNT:MANAGE` 시드) |
+
+---
+
+## ✅ 2026-08-08 · 학원 구성원 검색 API 구현 (`GET /api/users?keyword=`, 이슈 #218)
+
+### 배경
+
+`POST /api/workspaces/{workspaceId}/members`(워크스페이스 참여자 추가), `POST /api/workspaces`(워크스페이스 생성), 채팅방 생성(`CreateChatRoomRequest.participantIds`)이 전부 `Long` userId 배열을 직접 받는데, 프론트가 그 userId를 알아낼 방법이 `users` 도메인에 전혀 없었다. 근태 도메인의 `GET /api/attendance/employees/weekly?keyword=`가 이름 검색을 지원하긴 하지만 `ATTENDANCE:READ` 권한이 필요해서, 워크스페이스/채팅방을 만들려는 일반 직원이 그 권한을 갖고 있다는 보장이 없었다. 설계: `docs/superpowers/specs/2026-08-08-user-search-design.md`.
+
+### 확정된 정책
+
+- **권한 체크 없음.** 이 API를 쓰는 워크스페이스 생성/채팅방 생성 둘 다 현재 `@PreAuthorize`가 안 걸려있는 상태(둘 다 TODO)라, 검색만 특정 권한으로 묶으면 그 권한 없는 사람이 워크스페이스/채팅방은 만들 수 있는데 상대를 검색은 못 하는 모순이 생긴다. 로그인만 되면 호출 가능하게 뒀다.
+- **`accountType` 무관하게 전체 포함**(일반 직원 + 학원 관리자) — 원장도 워크스페이스/채팅방에 참여할 수 있어야 한다.
+- **`status = ACTIVE`인 계정만** 검색 대상 — 퇴사자를 새 워크스페이스/채팅방에 넣을 이유가 없다.
+- `keyword`가 없거나 빈 문자열이면 전체 목록을 반환한다 — 근태 주간 조회의 keyword 처리 방식(`keyword == null ? "" : keyword.trim()`)과 동일한 패턴.
+- 페이지네이션 없음 — 학원 하나의 구성원 수가 많지 않아 기존 `GET /api/roles`와 동일한 전례를 따른다.
+- 응답에 `username`도 함께 내려준다 — 동명이인 구분용(이름만으로는 같은 사람인지 구분 못 하는 경우 방지).
+
+### 완료 기준
+
+- [x] `UserJpaRepository`에 검색용 파생 쿼리 2개 추가(`findAllByAcademyIdAndStatusAndNameContainingIgnoreCase`, `findAllByAcademyIdAndStatus`)
+- [x] `UserRepository.searchByAcademyId(academyId, keyword)` + `UserRepositoryImpl` 구현
+- [x] `SearchUsersUseCase`/`SearchUsersService`(TDD, 3케이스: 키워드 매칭/키워드 없음(전체)/매칭 없음)
+- [x] `UserResponseCode.USER_SEARCHED`(`USER_200_3`), `UserSearchResponse` 추가
+- [x] `UserController`에 `GET /api/users?keyword=` 핸들러 추가(권한 체크 없음)
+- [x] 로컬 curl/DB로 end-to-end 검증(권한 없이 200 확인, 키워드 검색/전체 조회, 다른 학원 제외, `ACTIVE`만, `ADMIN`/`MEMBER` 둘 다 포함)
+- [x] `./gradlew build` 통과
+
+### 🧩 영향 범위
+
+| 계층 | 변경 내용 |
+| --- | --- |
+| Domain(users) | `UserRepository`에 `searchByAcademyId(Long academyId, String keyword)` 추가 |
+| Persistence(users) | `UserJpaRepository`에 검색용 파생 쿼리 2개 추가, `UserRepositoryImpl.searchByAcademyId` 구현 |
+| Application(users) | `SearchUsersUseCase`/`SearchUsersService` 신규 |
+| Presentation(users) | `UserController`에 `GET` 핸들러 추가, `UserResponseCode.USER_SEARCHED`(`USER_200_3`), `UserSearchResponse` 신규 |
 
 ---
 
