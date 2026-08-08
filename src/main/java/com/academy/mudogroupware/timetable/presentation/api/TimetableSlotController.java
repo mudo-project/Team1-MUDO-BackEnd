@@ -8,7 +8,9 @@ import com.academy.mudogroupware.timetable.application.usecase.CreateTimetableSl
 import com.academy.mudogroupware.timetable.application.usecase.GetTimetableSlotUseCase;
 import com.academy.mudogroupware.timetable.application.usecase.GetTimetableSlotsUseCase;
 import com.academy.mudogroupware.timetable.presentation.api.common.TimetableResponseCode;
+import com.academy.mudogroupware.timetable.application.usecase.UpdateTimetableSlotUseCase;
 import com.academy.mudogroupware.timetable.presentation.api.request.CreateTimetableSlotRequest;
+import com.academy.mudogroupware.timetable.presentation.api.request.UpdateTimetableSlotRequest;
 import com.academy.mudogroupware.timetable.presentation.api.response.CreateTimetableSlotResponse;
 import com.academy.mudogroupware.timetable.presentation.api.response.TimetableSlotResponse;
 
@@ -23,6 +25,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -38,6 +41,7 @@ public class TimetableSlotController {
     private final CreateTimetableSlotUseCase createTimetableSlotUseCase;
     private final GetTimetableSlotsUseCase getTimetableSlotsUseCase;
     private final GetTimetableSlotUseCase getTimetableSlotUseCase;
+    private final UpdateTimetableSlotUseCase updateTimetableSlotUseCase;
 
     @Operation(summary = "수업 슬롯 등록", description = "시간표 세트 안에 수업(요일/시간/강의실/강사/과목)을 등록합니다. 같은 강의실에 겹치는 시간대가 있으면 거절합니다.")
     @ApiResponses({
@@ -87,5 +91,23 @@ public class TimetableSlotController {
         TimetableSlotResponse response = TimetableSlotResponse.from(
                 getTimetableSlotUseCase.getSlot(authUser.academyId(), timetableSetId, timetableSlotId));
         return ResponseEntity.ok(GlobalApiResponse.ok(TimetableResponseCode.SLOT_DETAIL_RETRIEVED, response));
+    }
+
+    @Operation(summary = "수업 슬롯 수정", description = "수업 슬롯을 수정합니다. 현재는 scope=ALL(전체 적용)만 지원한다.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "204", description = "수정 성공"),
+        @ApiResponse(responseCode = "400", description = "요청값이 유효하지 않거나 scope가 ALL이 아닌 경우"),
+        @ApiResponse(responseCode = "403", description = "TIMETABLE:MANAGE 권한이 없는 경우"),
+        @ApiResponse(responseCode = "404", description = "수업 슬롯이 존재하지 않는 경우"),
+        @ApiResponse(responseCode = "409", description = "같은 강의실에 겹치는 시간대의 수업이 이미 있는 경우")
+    })
+    @PreAuthorize("hasAuthority('TIMETABLE:MANAGE')")
+    @PatchMapping("/{timetableSlotId}")
+    public ResponseEntity<Void> updateSlot(
+            @PathVariable Long timetableSetId,
+            @PathVariable Long timetableSlotId,
+            @Valid @RequestBody UpdateTimetableSlotRequest request) {
+        updateTimetableSlotUseCase.updateSlot(request.toCommand(timetableSetId, timetableSlotId));
+        return ResponseEntity.noContent().build();
     }
 }
