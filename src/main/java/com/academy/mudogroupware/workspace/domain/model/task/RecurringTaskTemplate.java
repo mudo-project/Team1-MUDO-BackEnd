@@ -2,6 +2,8 @@ package com.academy.mudogroupware.workspace.domain.model.task;
 
 import com.academy.mudogroupware.workspace.domain.exception.task.InvalidRecurrenceRuleException;
 import java.time.LocalDate;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.Getter;
@@ -28,7 +30,7 @@ public class RecurringTaskTemplate {
     this.workspaceId = workspaceId;
     this.title = title;
     this.recurrenceType = recurrenceType;
-    this.recurrenceRule = recurrenceRule;
+    this.recurrenceRule = copyOf(recurrenceRule);
     this.createdBy = createdBy;
   }
 
@@ -77,7 +79,8 @@ public class RecurringTaskTemplate {
           throw new InvalidRecurrenceRuleException();
         }
         for (Object day : days) {
-          if (!(day instanceof Number number) || number.intValue() < 1 || number.intValue() > 7) {
+          if (!(day instanceof Number number) || !isWholeNumber(number)
+              || number.intValue() < 1 || number.intValue() > 7) {
             throw new InvalidRecurrenceRuleException();
           }
         }
@@ -85,11 +88,24 @@ public class RecurringTaskTemplate {
       // 프론트 요청으로 매달 1일만 허용한다. 다른 날짜는 명시적으로 거부한다(2026-08-08).
       case MONTHLY -> {
         Object raw = rule.get("dayOfMonth");
-        if (!(raw instanceof Number number) || number.intValue() != 1) {
+        if (!(raw instanceof Number number) || !isWholeNumber(number) || number.intValue() != 1) {
           throw new InvalidRecurrenceRuleException();
         }
       }
     }
+  }
+
+  // 1.5처럼 소수부가 있는 값은 intValue()가 잘라버려 범위 검증을 우회할 수 있어 정수 여부를 먼저 확인한다.
+  private static boolean isWholeNumber(Number number) {
+    double value = number.doubleValue();
+    return !Double.isInfinite(value) && !Double.isNaN(value) && value == Math.floor(value);
+  }
+
+  // 호출자가 넘긴 Map/List를 그대로 들고 있으면 생성 이후 외부에서 변형할 수 있어 깊은 불변 복사본을 만든다.
+  private static Map<String, Object> copyOf(Map<String, Object> rule) {
+    Map<String, Object> copy = new HashMap<>();
+    rule.forEach((key, value) -> copy.put(key, value instanceof List<?> list ? List.copyOf(list) : value));
+    return Collections.unmodifiableMap(copy);
   }
 
   private List<Integer> daysOfWeek() {

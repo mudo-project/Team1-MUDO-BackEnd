@@ -97,6 +97,7 @@ class RecurringTaskTemplatePersistenceAdapterDataJpaTest {
 
     assertThat(recurringTaskTemplateRepository.findByWorkspaceIdAndId(WORKSPACE_ID, saved.getId()))
         .isEmpty();
+    assertThat(recurringTaskSkipRepository.exists(saved.getId(), scheduledFor)).isFalse();
   }
 
   @Test

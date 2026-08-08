@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.academy.mudogroupware.workspace.domain.exception.task.InvalidRecurrenceRuleException;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -46,6 +48,33 @@ class RecurringTaskTemplateTest {
   }
 
   @Test
+  void rejectsWeeklyTemplateWithZeroDay() {
+    assertThatThrownBy(
+            () ->
+                RecurringTaskTemplate.create(
+                    WORKSPACE_ID, "주간", RecurrenceType.WEEKLY, Map.of("daysOfWeek", List.of(0)), CREATOR_ID))
+        .isInstanceOf(InvalidRecurrenceRuleException.class);
+  }
+
+  @Test
+  void createsWeeklyTemplateWithDayOfWeekUpperBoundSeven() {
+    RecurringTaskTemplate template =
+        RecurringTaskTemplate.create(
+            WORKSPACE_ID, "주간", RecurrenceType.WEEKLY, Map.of("daysOfWeek", List.of(7)), CREATOR_ID);
+
+    assertThat(template.getRecurrenceType()).isEqualTo(RecurrenceType.WEEKLY);
+  }
+
+  @Test
+  void rejectsWeeklyTemplateWithNonIntegerDay() {
+    assertThatThrownBy(
+            () ->
+                RecurringTaskTemplate.create(
+                    WORKSPACE_ID, "주간", RecurrenceType.WEEKLY, Map.of("daysOfWeek", List.of(1.5)), CREATOR_ID))
+        .isInstanceOf(InvalidRecurrenceRuleException.class);
+  }
+
+  @Test
   void createsMonthlyTemplateWithDayOfMonth() {
     RecurringTaskTemplate template =
         RecurringTaskTemplate.create(
@@ -61,6 +90,37 @@ class RecurringTaskTemplateTest {
                 RecurringTaskTemplate.create(
                     WORKSPACE_ID, "수납", RecurrenceType.MONTHLY, Map.of("dayOfMonth", 2), CREATOR_ID))
         .isInstanceOf(InvalidRecurrenceRuleException.class);
+  }
+
+  @Test
+  void rejectsMonthlyTemplateWithNonIntegerDay() {
+    assertThatThrownBy(
+            () ->
+                RecurringTaskTemplate.create(
+                    WORKSPACE_ID, "수납", RecurrenceType.MONTHLY, Map.of("dayOfMonth", 1.5), CREATOR_ID))
+        .isInstanceOf(InvalidRecurrenceRuleException.class);
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void recurrenceRuleIsIsolatedFromCallerMutation() {
+    List<Object> daysOfWeek = new ArrayList<>(List.of(1, 3));
+    Map<String, Object> rule = new HashMap<>();
+    rule.put("daysOfWeek", daysOfWeek);
+    RecurringTaskTemplate template =
+        RecurringTaskTemplate.create(WORKSPACE_ID, "주간", RecurrenceType.WEEKLY, rule, CREATOR_ID);
+
+    // 생성 이후 호출자가 넘긴 원본 Map/List를 바꿔도 템플릿 내부 상태는 영향받지 않는다.
+    rule.put("daysOfWeek", List.of(9));
+    daysOfWeek.add(5);
+    assertThat(template.getRecurrenceRule().get("daysOfWeek")).isEqualTo(List.of(1, 3));
+
+    // 반환된 규칙 자체도 외부에서 변경할 수 없다.
+    assertThatThrownBy(() -> template.getRecurrenceRule().put("daysOfWeek", List.of(9)))
+        .isInstanceOf(UnsupportedOperationException.class);
+    assertThatThrownBy(
+            () -> ((List<Object>) template.getRecurrenceRule().get("daysOfWeek")).add(5))
+        .isInstanceOf(UnsupportedOperationException.class);
   }
 
   @Test
