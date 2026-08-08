@@ -1,5 +1,7 @@
 package com.academy.mudogroupware.calendar.presentation.api;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -17,8 +19,11 @@ import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import com.academy.mudogroupware.calendar.application.command.CreateCalendarEventCommand;
+import com.academy.mudogroupware.calendar.application.usecase.CreateCalendarEventUseCase;
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
 
 /**
@@ -34,6 +39,27 @@ class CalendarControllerPermissionIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @MockitoBean
+    private CreateCalendarEventUseCase createCalendarEventUseCase;
+
+    @Test
+    void createEventReturns201WhenManageAuthorityGranted() throws Exception {
+        when(createCalendarEventUseCase.createEvent(any(CreateCalendarEventCommand.class))).thenReturn(101L);
+        String body = """
+                {
+                  "title": "제목",
+                  "eventStartAt": "2026-08-03T10:00:00"
+                }
+                """;
+
+        mockMvc.perform(post("/api/calendars")
+                        .with(authentication(authenticatedUser("CALENDAR:MANAGE")))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isCreated());
+    }
 
     @Test
     void createEventReturns403WhenMissingManageAuthority() throws Exception {
