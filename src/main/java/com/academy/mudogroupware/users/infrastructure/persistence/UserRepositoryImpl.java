@@ -6,6 +6,8 @@ import java.util.Optional;
 
 import org.springframework.stereotype.Repository;
 
+import com.academy.mudogroupware.users.domain.exception.UserErrorCode;
+import com.academy.mudogroupware.users.domain.exception.UserException;
 import com.academy.mudogroupware.users.domain.model.User;
 import com.academy.mudogroupware.users.domain.model.UserStatus;
 import com.academy.mudogroupware.users.domain.repository.UserRepository;
@@ -26,6 +28,13 @@ public class UserRepositoryImpl implements UserRepository {
     @Override
     public void clearRoleId(Long roleId) {
         userJpaRepository.clearRoleId(roleId);
+    }
+
+    @Override
+    public void changeRole(Long userId, Long roleId) {
+        UserEntity entity = userJpaRepository.findById(userId)
+                .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+        entity.changeRole(roleId);
     }
 
     @Override
