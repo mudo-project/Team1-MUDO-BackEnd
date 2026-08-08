@@ -25,14 +25,14 @@ Request Body
 {
   "title": "9월 시간표 초안",
   "content": "수학A반 월·수·금 4시",
-  "color": "YELLOW"
+  "color": "MUSTARD"
 }
 ```
 | name | type | required | 설명 |
 | --- | --- | --- | --- |
 | `title` | `String` | `true` | 메모 제목. 공백 불가, 최대 100자. |
 | `content` | `String` | `false` | 메모 내용. |
-| `color` | `String` | `true` | 메모 색상. `RED`, `YELLOW`, `GREEN`, `BLUE`, `PURPLE` 중 하나. |
+| `color` | `String` | `true` | 메모 색상 키(팔레트 RGB 매핑은 FE 담당). `ROSE`, `MUSTARD`, `SAGE`, `BLUE`, `LAVENDER`, `PINK`, `SLATE`, `PEACH`, `TEAL`, `OLIVE`, `CLAY`, `INDIGO` 중 하나. |
 
 # **[response]**
 
@@ -107,7 +107,7 @@ Response Body
       "id": 1,
       "title": "9월 시간표 초안",
       "content": "수학A반 월·수·금 4시",
-      "color": "YELLOW",
+      "color": "MUSTARD",
       "positionX": null,
       "positionY": null,
       "width": null,
@@ -212,7 +212,7 @@ Request Body
 ```
 | name | type | required | 설명 |
 | --- | --- | --- | --- |
-| `color` | `String` | `true` | 변경할 색상. `RED`, `YELLOW`, `GREEN`, `BLUE`, `PURPLE` 중 하나. |
+| `color` | `String` | `true` | 변경할 색상 키(팔레트 RGB 매핑은 FE 담당). `ROSE`, `MUSTARD`, `SAGE`, `BLUE`, `LAVENDER`, `PINK`, `SLATE`, `PEACH`, `TEAL`, `OLIVE`, `CLAY`, `INDIGO` 중 하나. |
 
 # **[response]**
 
