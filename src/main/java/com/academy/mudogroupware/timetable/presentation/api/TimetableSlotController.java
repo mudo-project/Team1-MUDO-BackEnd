@@ -98,16 +98,17 @@ public class TimetableSlotController {
         @ApiResponse(responseCode = "204", description = "수정 성공"),
         @ApiResponse(responseCode = "400", description = "요청값이 유효하지 않거나 scope가 ALL이 아닌 경우"),
         @ApiResponse(responseCode = "403", description = "TIMETABLE:MANAGE 권한이 없는 경우"),
-        @ApiResponse(responseCode = "404", description = "수업 슬롯이 존재하지 않는 경우"),
+        @ApiResponse(responseCode = "404", description = "시간표 세트가 존재하지 않거나 다른 학원 소속이거나, 수업 슬롯이 존재하지 않는 경우"),
         @ApiResponse(responseCode = "409", description = "같은 강의실에 겹치는 시간대의 수업이 이미 있는 경우")
     })
     @PreAuthorize("hasAuthority('TIMETABLE:MANAGE')")
     @PatchMapping("/{timetableSlotId}")
     public ResponseEntity<Void> updateSlot(
+            @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long timetableSetId,
             @PathVariable Long timetableSlotId,
             @Valid @RequestBody UpdateTimetableSlotRequest request) {
-        updateTimetableSlotUseCase.updateSlot(request.toCommand(timetableSetId, timetableSlotId));
+        updateTimetableSlotUseCase.updateSlot(request.toCommand(authUser.academyId(), timetableSetId, timetableSlotId));
         return ResponseEntity.noContent().build();
     }
 }

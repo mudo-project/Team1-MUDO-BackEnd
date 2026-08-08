@@ -9,6 +9,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,11 +19,15 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.academy.mudogroupware.timetable.application.command.UpdateTimetableSlotCommand;
 import com.academy.mudogroupware.timetable.domain.exception.ClassroomTimeConflictException;
+import com.academy.mudogroupware.timetable.domain.exception.TimetableSetNotFoundException;
 import com.academy.mudogroupware.timetable.domain.exception.TimetableSlotNotFoundException;
 import com.academy.mudogroupware.timetable.domain.exception.UnsupportedSlotScopeException;
 import com.academy.mudogroupware.timetable.domain.model.ClassType;
+import com.academy.mudogroupware.timetable.domain.model.TimetableClassroom;
+import com.academy.mudogroupware.timetable.domain.model.TimetableSet;
 import com.academy.mudogroupware.timetable.domain.model.TimetableSlot;
 import com.academy.mudogroupware.timetable.domain.model.UpdateScope;
+import com.academy.mudogroupware.timetable.domain.repository.TimetableSetRepository;
 import com.academy.mudogroupware.timetable.domain.repository.TimetableSlotRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -31,13 +36,14 @@ class UpdateTimetableSlotServiceTest {
     private static final LocalDate FROM = LocalDate.of(2026, 7, 20);
     private static final LocalDate UNTIL = LocalDate.of(2026, 8, 16);
 
+    @Mock private TimetableSetRepository timetableSetRepository;
     @Mock private TimetableSlotRepository timetableSlotRepository;
 
     private UpdateTimetableSlotService service;
 
     @BeforeEach
     void setUp() {
-        service = new UpdateTimetableSlotService(timetableSlotRepository);
+        service = new UpdateTimetableSlotService(timetableSetRepository, timetableSlotRepository);
     }
 
     private TimetableSlot existingSlot() {
@@ -46,13 +52,20 @@ class UpdateTimetableSlotServiceTest {
                 "고3", "정T", "미적분", FROM, UNTIL, null, null);
     }
 
+    private TimetableSet timetableSet(Long academyId) {
+        return TimetableSet.restore(
+                1L, academyId, "이름", FROM, UNTIL, LocalTime.of(8, 30), LocalTime.of(22, 0),
+                Set.of(DayOfWeek.MONDAY), 30, List.of(new TimetableClassroom("6층", "601")), null, null);
+    }
+
     @Test
     void updateSlotAppliesNewValuesWhenScopeIsAll() {
+        when(timetableSetRepository.findById(1L)).thenReturn(Optional.of(timetableSet(1L)));
         TimetableSlot slot = existingSlot();
         when(timetableSlotRepository.findById(100L)).thenReturn(Optional.of(slot));
         when(timetableSlotRepository.findAllByTimetableSetIdAndClassroomCode(1L, "602")).thenReturn(List.of());
         UpdateTimetableSlotCommand command = new UpdateTimetableSlotCommand(
-                1L, 100L, UpdateScope.ALL, ClassType.SPECIAL, DayOfWeek.TUESDAY, "602",
+                1L, 1L, 100L, UpdateScope.ALL, ClassType.SPECIAL, DayOfWeek.TUESDAY, "602",
                 LocalTime.of(13, 0), LocalTime.of(15, 0), "고2", "오T", "물리");
 
         service.updateSlot(command);
@@ -63,7 +76,7 @@ class UpdateTimetableSlotServiceTest {
     @Test
     void updateSlotThrowsWhenScopeIsNotAll() {
         UpdateTimetableSlotCommand command = new UpdateTimetableSlotCommand(
-                1L, 100L, UpdateScope.THIS_OCCURRENCE, ClassType.CLASS, DayOfWeek.MONDAY, "601",
+                1L, 1L, 100L, UpdateScope.THIS_OCCURRENCE, ClassType.CLASS, DayOfWeek.MONDAY, "601",
                 LocalTime.of(9, 0), LocalTime.of(11, 0), "고3", "정T", "미적분");
 
         assertThatThrownBy(() -> service.updateSlot(command))
@@ -71,10 +84,33 @@ class UpdateTimetableSlotServiceTest {
     }
 
     @Test
+    void updateSlotThrowsWhenTimetableSetNotFound() {
+        when(timetableSetRepository.findById(999L)).thenReturn(Optional.empty());
+        UpdateTimetableSlotCommand command = new UpdateTimetableSlotCommand(
+                1L, 999L, 100L, UpdateScope.ALL, ClassType.CLASS, DayOfWeek.MONDAY, "601",
+                LocalTime.of(9, 0), LocalTime.of(11, 0), "고3", "정T", "미적분");
+
+        assertThatThrownBy(() -> service.updateSlot(command))
+                .isInstanceOf(TimetableSetNotFoundException.class);
+    }
+
+    @Test
+    void updateSlotThrowsWhenTimetableSetBelongsToDifferentAcademy() {
+        when(timetableSetRepository.findById(1L)).thenReturn(Optional.of(timetableSet(2L)));
+        UpdateTimetableSlotCommand command = new UpdateTimetableSlotCommand(
+                1L, 1L, 100L, UpdateScope.ALL, ClassType.CLASS, DayOfWeek.MONDAY, "601",
+                LocalTime.of(9, 0), LocalTime.of(11, 0), "고3", "정T", "미적분");
+
+        assertThatThrownBy(() -> service.updateSlot(command))
+                .isInstanceOf(TimetableSetNotFoundException.class);
+    }
+
+    @Test
     void updateSlotThrowsWhenNotFound() {
+        when(timetableSetRepository.findById(1L)).thenReturn(Optional.of(timetableSet(1L)));
         when(timetableSlotRepository.findById(999L)).thenReturn(Optional.empty());
         UpdateTimetableSlotCommand command = new UpdateTimetableSlotCommand(
-                1L, 999L, UpdateScope.ALL, ClassType.CLASS, DayOfWeek.MONDAY, "601",
+                1L, 1L, 999L, UpdateScope.ALL, ClassType.CLASS, DayOfWeek.MONDAY, "601",
                 LocalTime.of(9, 0), LocalTime.of(11, 0), "고3", "정T", "미적분");
 
         assertThatThrownBy(() -> service.updateSlot(command))
@@ -83,6 +119,7 @@ class UpdateTimetableSlotServiceTest {
 
     @Test
     void updateSlotThrowsWhenNewTimeConflictsWithAnotherSlot() {
+        when(timetableSetRepository.findById(1L)).thenReturn(Optional.of(timetableSet(1L)));
         TimetableSlot slot = existingSlot();
         when(timetableSlotRepository.findById(100L)).thenReturn(Optional.of(slot));
         TimetableSlot other = TimetableSlot.restore(
@@ -91,7 +128,7 @@ class UpdateTimetableSlotServiceTest {
         when(timetableSlotRepository.findAllByTimetableSetIdAndClassroomCode(1L, "602")).thenReturn(List.of(other));
 
         UpdateTimetableSlotCommand command = new UpdateTimetableSlotCommand(
-                1L, 100L, UpdateScope.ALL, ClassType.SPECIAL, DayOfWeek.TUESDAY, "602",
+                1L, 1L, 100L, UpdateScope.ALL, ClassType.SPECIAL, DayOfWeek.TUESDAY, "602",
                 LocalTime.of(14, 0), LocalTime.of(16, 0), "고2", "오T", "물리");
 
         assertThatThrownBy(() -> service.updateSlot(command))

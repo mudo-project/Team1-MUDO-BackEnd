@@ -8,10 +8,12 @@ import org.springframework.transaction.annotation.Transactional;
 import com.academy.mudogroupware.timetable.application.command.UpdateTimetableSlotCommand;
 import com.academy.mudogroupware.timetable.application.usecase.UpdateTimetableSlotUseCase;
 import com.academy.mudogroupware.timetable.domain.exception.ClassroomTimeConflictException;
+import com.academy.mudogroupware.timetable.domain.exception.TimetableSetNotFoundException;
 import com.academy.mudogroupware.timetable.domain.exception.TimetableSlotNotFoundException;
 import com.academy.mudogroupware.timetable.domain.exception.UnsupportedSlotScopeException;
 import com.academy.mudogroupware.timetable.domain.model.TimetableSlot;
 import com.academy.mudogroupware.timetable.domain.model.UpdateScope;
+import com.academy.mudogroupware.timetable.domain.repository.TimetableSetRepository;
 import com.academy.mudogroupware.timetable.domain.repository.TimetableSlotRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -21,6 +23,7 @@ import lombok.RequiredArgsConstructor;
 @Transactional
 public class UpdateTimetableSlotService implements UpdateTimetableSlotUseCase {
 
+    private final TimetableSetRepository timetableSetRepository;
     private final TimetableSlotRepository timetableSlotRepository;
 
     @Override
@@ -28,6 +31,10 @@ public class UpdateTimetableSlotService implements UpdateTimetableSlotUseCase {
         if (command.scope() != UpdateScope.ALL) {
             throw new UnsupportedSlotScopeException();
         }
+
+        timetableSetRepository.findById(command.timetableSetId())
+                .filter(found -> found.getAcademyId().equals(command.academyId()))
+                .orElseThrow(TimetableSetNotFoundException::new);
 
         TimetableSlot slot = timetableSlotRepository.findById(command.timetableSlotId())
                 .filter(found -> found.getTimetableSetId().equals(command.timetableSetId()))
