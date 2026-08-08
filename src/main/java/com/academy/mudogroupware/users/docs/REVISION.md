@@ -1,5 +1,5 @@
 > 작성일: 2026-08-04
-> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청/승인 워크플로우(PR 1·2·3/3, "계정 발급 체계" 2단계) 완료, 역할 관리 API 7개(생성/목록/상세/수정/삭제/권한 조립/권한 카탈로그 조회) 완료 · 학원 관리자의 직원 계정 발급(계정 발급 체계 3단계) 미착수
+> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청/승인 워크플로우(PR 1·2·3/3, "계정 발급 체계" 2단계) 완료, 역할 관리 API 7개(생성/목록/상세/수정/삭제/권한 조립/권한 카탈로그 조회) 완료, 사용자 역할 변경 API 완료 · 학원 관리자의 직원 계정 발급(계정 발급 체계 3단계) 미착수
 
 ## 🎯 변경 목적
 
@@ -567,6 +567,42 @@ PR 1(목록)·PR 2(상세)에 이어지는 세 번째이자 마지막 PR. 승인
 - [x] `AssignRolePermissionsServiceTest`(4가지 분기), `RoleRepositoryImplDataJpaTest`(실제 DB) 작성 및 통과
 - [x] 로컬 curl/DB로 end-to-end 검증(카탈로그 조회, 권한 조립 성공/존재하지 않는 코드 400/남의 학원·없는 역할 404)
 - [x] `./gradlew build` 통과
+
+---
+
+## ✅ 2026-08-08 · 사용자 역할 변경 API 구현 (`PATCH /api/users/{userId}/role`, 이슈 #208)
+
+### 배경
+
+역할 CRUD(생성/목록/상세/수정/삭제/권한조립/카탈로그조회) 7개가 develop에 머지 완료됐다. 그런데 역할 삭제 정책을 "재직 중(ACTIVE)인 구성원이 이 역할을 쓰고 있으면 삭제를 막는다"로 정하면서(`existsActiveByRoleId`), 실제로 구성원의 역할을 다른 역할로 바꾸는 방법이 시스템에 전혀 없다는 게 드러났다 — 역할을 삭제하려면 그 역할을 쓰는 사람들을 먼저 다른 역할로 옮겨야 하는데, 그 기능 자체가 없었다. 설계: `docs/superpowers/specs/2026-08-08-user-role-change-design.md`.
+
+### 확정된 정책
+
+- **대상은 일반 직원 계정(`accountType=MEMBER`)만.** 학원 관리자(`admin_scope=ACADEMY`) 계정은 애초에 카탈로그 역할을 쓰는 구조가 아니고(권한 로직 자체가 아직 미연동 상태), 이 API의 대상이 아니다.
+- **역할 해제(`roleId`를 `null`로 만들기)는 이 API 스코프가 아니다.** 재직 중인 계정을 "역할 없음"으로 만들면 로그인은 되지만 모든 `@PreAuthorize` 엔드포인트에서 403이 나는 사실상 먹통 계정이 된다(권한 조회가 `roleId=null`이면 즉시 빈 권한을 반환하기 때문). `roleId`가 `null`이 되는 경우는 계속 시스템이 내부적으로 처리하는 것(퇴사자 역할 삭제 시 `clearRoleId`의 자동 정리)으로만 남긴다.
+- **신규 권한 코드 `ACCOUNT:MANAGE` 도입.** 2026-08-08 팀 회의에서 "관련 있는 행위는 백엔드에서 하나의 코드로 묶어둔다"는 원칙으로 정리됨(예전 "백엔드는 세분화, 프론트가 그룹 토글로 묶어 보여준다" 원칙은 폐기). 역할 변경은 역할 정의(`ROLE:*`)가 아니라 계정 관리(`ACCOUNT:*`) 리소스에 속한다고 판단 — 이미 시드된 `ACCOUNT:CREATE`(학원 직원 계정 발급, 아직 구현 API 없음)와 같은 리소스. `V4.1.3` 마이그레이션으로 시드.
+- **`RoleRepository.updateNameAndDescription()`/`AcademyRepository.assignUser()`와 동일한 관리 엔티티 직접 mutate 패턴을 재사용.** `UserEntity.changeRole(Long roleId)` package-private mutator를 추가하고, `UserRepositoryImpl.changeRole()`이 managed entity를 로드해 mutator만 호출한다(`save()` 호출 없이 트랜잭션 커밋 시점 dirty-checking으로 반영). `User` 도메인 객체에 불변 with-copy 메서드(`withRoleId`)는 추가하지 않았다 — 실제 수정 흐름이 이 메서드를 거치지 않아 아무도 안 부르는 죽은 코드가 될 것이기 때문(`Role.withPermissionCodes()`에서 이미 겪은 실수를 반복하지 않음).
+- **검증(대상 계정/역할의 존재·학원 스코프 확인)은 서비스 계층에서 기존 `findById()`(불변 도메인 객체 반환)로 먼저 하고, 통과하면 mutate 메서드를 호출하는 2단계 구조.** 대상 계정 미존재/다른 학원/관리자 계정(MEMBER 아님)은 전부 동일하게 `404 USER_404_1`로 응답 — 다른 학원 계정 존재 여부나 관리자 계정 여부가 노출되지 않도록.
+- 이 코드베이스 최초의 "개별 계정 관리" 컨트롤러(`UserController`)를 신설했다 — 지금까지는 로그인/로그아웃/역할·권한 카탈로그 컨트롤러만 있었음.
+
+### 완료 기준
+
+- [x] `permission` 카탈로그에 `ACCOUNT:MANAGE` 추가(`V4.1.3`), 로컬 DB 적용 확인
+- [x] `UserEntity.changeRole(roleId)` mutator, `UserRepository.changeRole(userId, roleId)` + `UserRepositoryImpl` 구현
+- [x] `ChangeUserRoleCommand`/`ChangeUserRoleUseCase`/`ChangeUserRoleService`(TDD, 6케이스: 대상 미존재/다른 학원/비MEMBER, 역할 미존재/다른 학원, 정상 변경)
+- [x] `UserController` 신설, `PATCH /api/users/{userId}/role` 핸들러 추가(`ACCOUNT:MANAGE` 필요)
+- [x] 로컬 curl/DB로 end-to-end 검증(정상 변경 204 + DB 반영 확인, 대상 계정 다른 학원 404, 역할 미존재/다른 학원 404, 권한 없는 계정 403)
+- [x] `./gradlew build` 통과
+
+### 🧩 영향 범위
+
+| 계층 | 변경 내용 |
+| --- | --- |
+| Domain(users) | `UserRepository`에 `changeRole(Long userId, Long roleId)` 추가 |
+| Persistence(users) | `UserEntity.changeRole(Long roleId)` mutator 추가, `UserRepositoryImpl.changeRole` 구현 |
+| Application(users) | `ChangeUserRoleCommand`/`ChangeUserRoleUseCase`/`ChangeUserRoleService` 신규 |
+| Presentation(users) | `UserController`(신규, `PATCH /{userId}/role`), `ChangeUserRoleRequest` 신규 |
+| Migration | `V4.1.3`(`permission` 테이블에 `ACCOUNT:MANAGE` 시드) |
 
 ---
 

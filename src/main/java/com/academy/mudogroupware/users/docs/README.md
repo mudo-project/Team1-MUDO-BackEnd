@@ -27,6 +27,7 @@
 - `GetAcademyApplicationUseCase`
 - `ApproveAcademyApplicationUseCase`
 - `RejectAcademyApplicationUseCase`
+- `ChangeUserRoleUseCase`
 
 ## 다른 모듈에 제공하는 Adapter
 
