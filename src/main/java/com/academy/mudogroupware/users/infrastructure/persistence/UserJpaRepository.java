@@ -35,4 +35,9 @@ public interface UserJpaRepository extends JpaRepository<UserEntity, Long> {
             Long academyId, UserStatus status, String keyword);
 
     List<UserEntity> findAllByAcademyIdAndStatus(Long academyId, UserStatus status);
+
+    @Query("select u.roleId as roleId, count(u) as count from UserEntity u "
+            + "where u.status = com.academy.mudogroupware.users.domain.model.UserStatus.ACTIVE "
+            + "and u.roleId in :roleIds group by u.roleId")
+    List<RoleMemberCountRow> countActiveByRoleIdIn(@Param("roleIds") Set<Long> roleIds);
 }

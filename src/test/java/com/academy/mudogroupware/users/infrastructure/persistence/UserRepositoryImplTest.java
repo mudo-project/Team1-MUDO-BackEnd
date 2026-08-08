@@ -1,12 +1,16 @@
 package com.academy.mudogroupware.users.infrastructure.persistence;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -40,6 +44,33 @@ class UserRepositoryImplTest {
         doThrow(violation).when(jpaRepository).flush();
 
         assertThatThrownBy(() -> adapter.changeRole(1L, 5L)).isSameAs(violation);
+    }
+
+    @Test
+    void countActiveByRoleIdsReturnsCountsGroupedByRoleId() {
+        UserJpaRepository jpaRepository = mock(UserJpaRepository.class);
+        UserRepositoryImpl adapter = new UserRepositoryImpl(jpaRepository);
+        RoleMemberCountRow row1 = mock(RoleMemberCountRow.class);
+        when(row1.getRoleId()).thenReturn(5L);
+        when(row1.getCount()).thenReturn(3L);
+        RoleMemberCountRow row2 = mock(RoleMemberCountRow.class);
+        when(row2.getRoleId()).thenReturn(7L);
+        when(row2.getCount()).thenReturn(1L);
+        when(jpaRepository.countActiveByRoleIdIn(Set.of(5L, 7L))).thenReturn(List.of(row1, row2));
+
+        Map<Long, Long> result = adapter.countActiveByRoleIds(Set.of(5L, 7L));
+
+        assertThat(result).containsExactlyInAnyOrderEntriesOf(Map.of(5L, 3L, 7L, 1L));
+    }
+
+    @Test
+    void countActiveByRoleIdsReturnsEmptyMapWhenRoleIdsEmpty() {
+        UserJpaRepository jpaRepository = mock(UserJpaRepository.class);
+        UserRepositoryImpl adapter = new UserRepositoryImpl(jpaRepository);
+
+        Map<Long, Long> result = adapter.countActiveByRoleIds(Set.of());
+
+        assertThat(result).isEmpty();
     }
 
     private UserEntity userEntity() {
