@@ -8,6 +8,16 @@ import com.academy.mudogroupware.users.domain.model.User;
 
 public interface UserRepository {
 
+    boolean existsActiveByRoleId(Long roleId);
+
+    void clearRoleId(Long roleId);
+
+    void changeRole(Long userId, Long roleId);
+
+    List<User> searchByAcademyId(Long academyId, String keyword);
+
+    User save(User user);
+
     Optional<User> findByUsername(String username);
 
     Optional<User> findById(Long id);

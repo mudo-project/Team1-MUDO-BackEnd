@@ -3,9 +3,9 @@ package com.academy.mudogroupware.workspace.infrastructure.persistence.workspace
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.academy.mudogroupware.global.infrastructure.config.TimeConfig;
-import com.academy.mudogroupware.workspace.application.command.RemoveWorkspaceMemberCommand;
-import com.academy.mudogroupware.workspace.application.service.RemoveWorkspaceMemberService;
-import com.academy.mudogroupware.workspace.domain.exception.WorkspaceLastMemberException;
+import com.academy.mudogroupware.workspace.application.command.workspace.RemoveWorkspaceMemberCommand;
+import com.academy.mudogroupware.workspace.application.service.workspace.RemoveWorkspaceMemberService;
+import com.academy.mudogroupware.workspace.domain.exception.workspace.WorkspaceLastMemberException;
 import java.time.LocalDateTime;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -15,8 +15,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
-import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.annotation.DirtiesContext;

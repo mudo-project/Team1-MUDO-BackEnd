@@ -1,6 +1,7 @@
 package com.academy.mudogroupware.users.infrastructure.persistence;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
@@ -9,6 +10,7 @@ import java.util.stream.Collectors;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Repository;
 
+import com.academy.mudogroupware.users.domain.exception.RoleInUseException;
 import com.academy.mudogroupware.users.domain.exception.RoleNameDuplicateException;
 import com.academy.mudogroupware.users.domain.exception.RoleNotFoundException;
 import com.academy.mudogroupware.users.domain.model.Role;
@@ -21,6 +23,7 @@ import lombok.RequiredArgsConstructor;
 public class RoleRepositoryImpl implements RoleRepository {
 
     private static final String ACADEMY_NAME_UNIQUE_CONSTRAINT = "uk_role_academy_name";
+    private static final String USERS_ROLE_FK_CONSTRAINT = "fk_users_role";
 
     private final RoleJpaRepository roleJpaRepository;
     private final PermissionJpaRepository permissionJpaRepository;
@@ -41,7 +44,7 @@ public class RoleRepositoryImpl implements RoleRepository {
         try {
             return toDomain(roleJpaRepository.saveAndFlush(entity));
         } catch (DataIntegrityViolationException exception) {
-            if (isRoleNameConflict(exception)) {
+            if (containsConstraint(exception, ACADEMY_NAME_UNIQUE_CONSTRAINT)) {
                 throw new RoleNameDuplicateException(exception);
             }
             throw exception;
@@ -67,6 +70,52 @@ public class RoleRepositoryImpl implements RoleRepository {
         role.getPermissions().addAll(permissions);
     }
 
+    @Override
+    public List<Role> findAllByAcademyId(Long academyId) {
+        return roleJpaRepository.findAllByAcademyIdOrderByIdAsc(academyId).stream()
+                .map(this::toDomainWithoutPermissions)
+                .toList();
+    }
+
+    @Override
+    public boolean existsByAcademyIdAndNameAndIdNot(Long academyId, String name, Long excludedRoleId) {
+        return roleJpaRepository.existsByAcademyIdAndNameAndIdNot(academyId, name, excludedRoleId);
+    }
+
+    @Override
+    public void updateNameAndDescription(Long roleId, String name, String description) {
+        RoleEntity entity = roleJpaRepository.findWithPermissionsById(roleId)
+                .orElseThrow(RoleNotFoundException::new);
+        entity.update(name, description);
+        try {
+            roleJpaRepository.flush();
+        } catch (DataIntegrityViolationException exception) {
+            if (containsConstraint(exception, ACADEMY_NAME_UNIQUE_CONSTRAINT)) {
+                throw new RoleNameDuplicateException(exception);
+            }
+            throw exception;
+        }
+    }
+
+    @Override
+    public void deleteById(Long roleId) {
+        try {
+            roleJpaRepository.deleteById(roleId);
+            roleJpaRepository.flush();
+        } catch (DataIntegrityViolationException exception) {
+            if (containsConstraint(exception, USERS_ROLE_FK_CONSTRAINT)) {
+                throw new RoleInUseException(exception);
+            }
+            throw exception;
+        }
+    }
+
+    private Role toDomainWithoutPermissions(RoleEntity entity) {
+        return Role.restore(
+                entity.getId(), entity.getAcademyId(), entity.getName(), entity.getDescription(),
+                entity.getCreatedAt(), Set.of());
+    }
+
     private Role toDomain(RoleEntity entity) {
         Set<String> permissionCodes = entity.getPermissions().stream()
                 .map(PermissionEntity::getCode)
@@ -76,12 +125,12 @@ public class RoleRepositoryImpl implements RoleRepository {
                 entity.getCreatedAt(), permissionCodes);
     }
 
-    private boolean isRoleNameConflict(Throwable throwable) {
+    private boolean containsConstraint(Throwable throwable, String constraintName) {
         Throwable current = throwable;
         while (current != null) {
             String message = current.getMessage();
             if (message != null
-                    && message.toLowerCase(Locale.ROOT).contains(ACADEMY_NAME_UNIQUE_CONSTRAINT)) {
+                    && message.toLowerCase(Locale.ROOT).contains(constraintName)) {
                 return true;
             }
             current = current.getCause();

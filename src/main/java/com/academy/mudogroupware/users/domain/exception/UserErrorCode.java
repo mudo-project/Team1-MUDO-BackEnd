@@ -15,9 +15,11 @@ public enum UserErrorCode implements ErrorCode {
     REFRESH_TOKEN_NOT_FOUND(HttpStatus.UNAUTHORIZED, "USER_401_2", "리프레시 토큰이 없습니다."),
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_404_1", "사용자를 찾을 수 없습니다."),
     ROLE_NAME_DUPLICATE(HttpStatus.CONFLICT, "USER_409_1", "이미 존재하는 역할 이름입니다."),
+    ROLE_IN_USE(HttpStatus.CONFLICT, "USER_409_2", "이 역할을 사용 중인 구성원이 있어 삭제할 수 없습니다."),
     INVALID_PERMISSION_CODE(HttpStatus.BAD_REQUEST, "USER_400_1", "존재하지 않는 권한 코드입니다."),
     ROLE_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_404_2", "역할을 찾을 수 없습니다."),
-    ACADEMY_APPLICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_404_3", "신청서를 찾을 수 없습니다.");
+    ACADEMY_APPLICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_404_3", "신청서를 찾을 수 없습니다."),
+    ACADEMY_APPLICATION_ALREADY_REVIEWED(HttpStatus.CONFLICT, "USER_409_5", "이미 검토된 신청서입니다.");
 
     private final HttpStatus httpStatus;
     private final String code;

@@ -1,6 +1,6 @@
 package com.academy.mudogroupware.workspace.infrastructure.persistence.task;
 
-import com.academy.mudogroupware.workspace.domain.repository.RecurringTaskSkipRepository;
+import com.academy.mudogroupware.workspace.domain.repository.task.RecurringTaskSkipRepository;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;

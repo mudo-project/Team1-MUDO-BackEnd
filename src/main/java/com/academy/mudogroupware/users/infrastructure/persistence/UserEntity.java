@@ -95,4 +95,8 @@ public class UserEntity {
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
+
+    void changeRole(Long roleId) {
+        this.roleId = roleId;
+    }
 }

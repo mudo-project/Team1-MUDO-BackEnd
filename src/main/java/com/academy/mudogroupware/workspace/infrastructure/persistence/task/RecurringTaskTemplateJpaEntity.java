@@ -1,7 +1,7 @@
 package com.academy.mudogroupware.workspace.infrastructure.persistence.task;
 
 import com.academy.mudogroupware.global.infrastructure.persistence.BaseTimeEntity;
-import com.academy.mudogroupware.workspace.domain.model.RecurrenceType;
+import com.academy.mudogroupware.workspace.domain.model.task.RecurrenceType;
 import com.academy.mudogroupware.workspace.infrastructure.persistence.workspace.WorkspaceJpaEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

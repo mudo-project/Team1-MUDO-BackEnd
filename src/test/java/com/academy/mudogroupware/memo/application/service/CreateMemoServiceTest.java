@@ -42,7 +42,7 @@ class CreateMemoServiceTest {
                     memo.getCreatedAt(), memo.getUpdatedAt());
         });
 
-        Long memoId = service.createMemo(new CreateMemoCommand(10L, "제목", "내용", MemoColor.YELLOW));
+        Long memoId = service.createMemo(new CreateMemoCommand(10L, "제목", "내용", MemoColor.MUSTARD));
 
         assertEquals(1L, memoId);
     }
@@ -58,7 +58,7 @@ class CreateMemoServiceTest {
                     memo.getCreatedAt(), memo.getUpdatedAt());
         });
 
-        Long memoId = service.createMemo(new CreateMemoCommand(10L, "제목", "내용", MemoColor.YELLOW));
+        Long memoId = service.createMemo(new CreateMemoCommand(10L, "제목", "내용", MemoColor.MUSTARD));
 
         assertEquals(200L, memoId);
     }
@@ -69,7 +69,7 @@ class CreateMemoServiceTest {
         when(memoRepository.countByUserId(10L)).thenReturn(200L);
 
         MemoException exception = assertThrows(MemoException.class,
-                () -> service.createMemo(new CreateMemoCommand(10L, "제목", "내용", MemoColor.YELLOW)));
+                () -> service.createMemo(new CreateMemoCommand(10L, "제목", "내용", MemoColor.MUSTARD)));
 
         assertEquals(MemoErrorCode.MEMO_LIMIT_EXCEEDED, exception.getErrorCode());
         verify(memoRepository, never()).save(any(Memo.class));

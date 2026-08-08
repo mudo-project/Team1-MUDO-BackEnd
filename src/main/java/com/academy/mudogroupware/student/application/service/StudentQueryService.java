@@ -33,9 +33,12 @@ public class StudentQueryService implements StudentQueryUseCase {
 
     @Override
     public PageResult<StudentSummary> getStudents(Long academyId, String keyword, int page, int size) {
-        return studentRepository.findAll(academyId, keyword, page, size)
-                .map(student -> toSummary(student, enrollmentRepository
-                        .findActiveByStudentId(academyId, student.getId()).size()));
+        PageResult<Student> result = studentRepository.findAll(academyId, keyword, page, size);
+        List<Long> studentIds = result.content().stream().map(Student::getId).toList();
+        Map<Long, Long> activeEnrollmentCounts = enrollmentRepository.countActiveByStudentIds(academyId, studentIds);
+
+        return result.map(student -> toSummary(student,
+                activeEnrollmentCounts.getOrDefault(student.getId(), 0L).intValue()));
     }
 
     @Override

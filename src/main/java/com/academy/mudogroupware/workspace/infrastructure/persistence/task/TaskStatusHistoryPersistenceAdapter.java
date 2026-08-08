@@ -1,7 +1,7 @@
 package com.academy.mudogroupware.workspace.infrastructure.persistence.task;
 
-import com.academy.mudogroupware.workspace.domain.model.TaskStatusHistory;
-import com.academy.mudogroupware.workspace.domain.repository.TaskStatusHistoryRepository;
+import com.academy.mudogroupware.workspace.domain.model.task.TaskStatusHistory;
+import com.academy.mudogroupware.workspace.domain.repository.task.TaskStatusHistoryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 

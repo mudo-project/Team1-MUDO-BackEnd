@@ -1,9 +1,13 @@
 package com.academy.mudogroupware.users.presentation.api;
 
+import java.util.List;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -13,12 +17,20 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.academy.mudogroupware.global.presentation.api.common.GlobalApiResponse;
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
+import com.academy.mudogroupware.users.application.command.DeleteRoleCommand;
 import com.academy.mudogroupware.users.application.usecase.AssignRolePermissionsUseCase;
 import com.academy.mudogroupware.users.application.usecase.CreateRoleUseCase;
+import com.academy.mudogroupware.users.application.usecase.DeleteRoleUseCase;
+import com.academy.mudogroupware.users.application.usecase.GetRoleUseCase;
+import com.academy.mudogroupware.users.application.usecase.ListRolesUseCase;
+import com.academy.mudogroupware.users.application.usecase.UpdateRoleUseCase;
 import com.academy.mudogroupware.users.presentation.api.common.RoleResponseCode;
 import com.academy.mudogroupware.users.presentation.api.request.AssignRolePermissionsRequest;
 import com.academy.mudogroupware.users.presentation.api.request.CreateRoleRequest;
+import com.academy.mudogroupware.users.presentation.api.request.UpdateRoleRequest;
 import com.academy.mudogroupware.users.presentation.api.response.RoleCreateResponse;
+import com.academy.mudogroupware.users.presentation.api.response.RoleDetailResponse;
+import com.academy.mudogroupware.users.presentation.api.response.RoleListResponse;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +42,10 @@ public class RoleController {
 
     private final CreateRoleUseCase createRoleUseCase;
     private final AssignRolePermissionsUseCase assignRolePermissionsUseCase;
+    private final ListRolesUseCase listRolesUseCase;
+    private final GetRoleUseCase getRoleUseCase;
+    private final UpdateRoleUseCase updateRoleUseCase;
+    private final DeleteRoleUseCase deleteRoleUseCase;
 
     @PreAuthorize("hasAuthority('ROLE:MANAGE')")
     @PostMapping
@@ -40,6 +56,44 @@ public class RoleController {
         RoleCreateResponse data = RoleCreateResponse.from(roleId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(GlobalApiResponse.created(RoleResponseCode.ROLE_CREATED, data));
+    }
+
+    @PreAuthorize("hasAuthority('ROLE:MANAGE')")
+    @GetMapping
+    public ResponseEntity<GlobalApiResponse<List<RoleListResponse>>> list(
+            @AuthenticationPrincipal AuthUser authUser) {
+        List<RoleListResponse> data = listRolesUseCase.listRoles(authUser.academyId()).stream()
+                .map(RoleListResponse::from)
+                .toList();
+        return ResponseEntity.ok(GlobalApiResponse.ok(RoleResponseCode.ROLE_LIST_FOUND, data));
+    }
+
+    @PreAuthorize("hasAuthority('ROLE:MANAGE')")
+    @GetMapping("/{roleId}")
+    public ResponseEntity<GlobalApiResponse<RoleDetailResponse>> get(
+            @AuthenticationPrincipal AuthUser authUser,
+            @PathVariable Long roleId) {
+        RoleDetailResponse data = RoleDetailResponse.from(getRoleUseCase.getRole(roleId, authUser.academyId()));
+        return ResponseEntity.ok(GlobalApiResponse.ok(RoleResponseCode.ROLE_DETAIL_FOUND, data));
+    }
+
+    @PreAuthorize("hasAuthority('ROLE:MANAGE')")
+    @PutMapping("/{roleId}")
+    public ResponseEntity<Void> update(
+            @AuthenticationPrincipal AuthUser authUser,
+            @PathVariable Long roleId,
+            @Valid @RequestBody UpdateRoleRequest request) {
+        updateRoleUseCase.updateRole(request.toCommand(roleId, authUser.academyId()));
+        return ResponseEntity.noContent().build();
+    }
+
+    @PreAuthorize("hasAuthority('ROLE:MANAGE')")
+    @DeleteMapping("/{roleId}")
+    public ResponseEntity<Void> delete(
+            @AuthenticationPrincipal AuthUser authUser,
+            @PathVariable Long roleId) {
+        deleteRoleUseCase.deleteRole(new DeleteRoleCommand(roleId, authUser.academyId()));
+        return ResponseEntity.noContent().build();
     }
 
     @PreAuthorize("hasAuthority('ROLE:MANAGE')")

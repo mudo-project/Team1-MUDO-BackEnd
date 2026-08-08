@@ -1,5 +1,5 @@
 > 작성일: 2026-08-04
-> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, 역할 생성 + 권한 조립 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청 목록/상세 조회(PR 1·2/3) 완료 · 역할 수정·삭제·목록/상세 조회, 학원 신청 승인/반려(PR 3/3), 학원 관리자의 직원 계정 발급(계정 발급 체계 3단계) 미착수
+> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청/승인 워크플로우(PR 1·2·3/3, "계정 발급 체계" 2단계) 완료, 역할 관리 API 7개(생성/목록/상세/수정/삭제/권한 조립/권한 카탈로그 조회) 완료, 사용자 역할 변경 API 완료, 학원 구성원 검색 API 완료 · 학원 관리자의 직원 계정 발급(계정 발급 체계 3단계) 미착수
 
 ## 🎯 변경 목적
 
@@ -307,6 +307,242 @@ PR 1(목록 조회)이 develop에 머지된 뒤 그 위에서 이어가는 두 �
 
 ---
 
+## ✅ 2026-08-07 · 역할 목록 조회 API 구현 (`GET /api/roles`, 이슈 #183, 역할 CRUD 4개 중 1번째)
+
+### 배경
+
+역할 생성(#59)과 권한 조립(#84)만 있고 조회가 안 되는 상태라 프론트 "역할 설정" 화면이 실제로 동작하지 않았다. 역할 관리 API 7개 중 남은 4개(목록/상세/수정/삭제)를 "1 이슈 = 1 PR = 1 기능" 원칙에 따라 나눠 진행하며, 이 PR은 목록 조회다. 설계: `docs/superpowers/specs/2026-08-06-role-crud-design.md`, 계획: `docs/superpowers/plans/2026-08-07-role-crud.md`.
+
+### 확정된 정책
+
+- `RoleRepository.findAllByAcademyId()`는 목록 응답이 권한 정보를 안 내려주므로, 기존 `toDomain()`(항상 `permissions` LAZY 컬렉션을 건드림)을 재사용하지 않고 권한 없이 매핑하는 별도 `toDomainWithoutPermissions()`를 뒀다 — 안 그러면 역할마다 권한 조회 쿼리가 추가로 나가는 N+1이 생긴다.
+- 원래 스펙에는 `Role.withNameAndDescription()`을 추가하기로 돼 있었으나, 실제 수정 흐름(다음 PR)은 `RoleRepository.updateNameAndDescription()`(관리 엔티티 직접 mutate)만 쓰고 이 메서드를 호출하지 않아 스코프에서 뺐다. 확인해보니 같은 패턴으로 먼저 추가됐던 `Role.withPermissionCodes()`도 코드베이스 어디에서도 호출되지 않는 죽은 코드였다 — 같은 실수를 반복하지 않기로 했다.
+
+### 완료 기준
+
+- [x] `RoleJpaRepository.findAllByAcademyId` 추가
+- [x] `RoleRepository.findAllByAcademyId` 추가, `RoleRepositoryImpl`에 구현(`toDomainWithoutPermissions` 포함)
+- [x] `ListRolesUseCase`/`ListRolesService`(TDD)
+- [x] `RoleResponseCode.ROLE_LIST_FOUND`(`ROLE_200_1`), `RoleListResponse`
+- [x] `RoleController`에 `GET` 목록 핸들러 추가
+- [x] 로컬 curl end-to-end 검증
+- [x] `./gradlew build` 통과
+
+### 🧩 영향 범위
+
+| 계층 | 변경 내용 |
+| --- | --- |
+| Domain(users) | `RoleRepository.findAllByAcademyId(Long)` 추가 |
+| Persistence(users) | `RoleJpaRepository.findAllByAcademyId` 추가, `RoleRepositoryImpl`에 구현 + `toDomainWithoutPermissions` 신규 |
+| Application(users) | `ListRolesUseCase`/`ListRolesService` 신규 |
+| Presentation(users) | `RoleController`에 `GET /api/roles` 핸들러 추가, `RoleResponseCode.ROLE_LIST_FOUND`, `RoleListResponse` 신규 |
+
+---
+
+## ✅ 2026-08-07 · 역할 상세 조회 API 구현 (`GET /api/roles/{roleId}`, 이슈 #185, 역할 CRUD 4개 중 2번째)
+
+### 배경
+
+역할 목록 조회(#183, PR #184)에서는 이름/설명만 내려주고 `permissionCodes`를 뺐다 — 실제로 어떤 권한이 담겼는지 확인하려면 별도 상세 조회가 필요하다. 계획: `docs/superpowers/plans/2026-08-07-role-crud.md` Task 6.
+
+### 확정된 정책
+
+- 리포지토리 변경이 없다. 기존 `RoleRepository.findById()`(권한 조립 API가 이미 쓰고 있던, `permissions`까지 채워서 반환하는 조회)를 그대로 재사용한다 — 목록 조회 때와 달리 상세 조회는 애초에 권한 정보가 필요하므로 별도 매퍼가 필요 없다.
+- 역할이 아예 없는 경우와 다른 학원 소유인 경우를 동일하게 `RoleNotFoundException`(`404 USER_404_2`)으로 처리한다 — 권한 조립 API(`updatePermissions`)에서 이미 확립된 정책을 그대로 따른다.
+- PR #184(역할 목록 조회)가 develop에 머지되기 전에 그 브랜치(`feature/users/role-list`) 위에서 이어 작업했다 — `RoleController.java`를 두 PR이 함께 수정하므로, develop에서 병렬로 브랜치를 따면 머지 충돌이 난다.
+
+### 완료 기준
+
+- [x] `GetRoleUseCase`/`GetRoleService`(TDD, 3케이스: 정상 조회/미존재 404/다른 학원 소유 404)
+- [x] `RoleResponseCode.ROLE_DETAIL_FOUND`(`ROLE_200_2`), `RoleDetailResponse`(`permissionCodes` 포함)
+- [x] `RoleController`에 `GET /{roleId}` 핸들러 추가
+- [x] 로컬 curl end-to-end 검증
+- [x] `./gradlew build` 통과
+
+### 🧩 영향 범위
+
+| 계층 | 변경 내용 |
+| --- | --- |
+| Domain(users) | 없음(기존 `RoleRepository.findById` 재사용) |
+| Application(users) | `GetRoleUseCase`/`GetRoleService` 신규 |
+| Presentation(users) | `RoleController`에 `GET /api/roles/{roleId}` 핸들러 추가, `RoleResponseCode.ROLE_DETAIL_FOUND`, `RoleDetailResponse` 신규 |
+
+---
+
+## ✅ 2026-08-07 · 역할 수정 API 구현 (`PUT /api/roles/{roleId}`, 이슈 #187, 역할 CRUD 4개 중 3번째)
+
+### 배경
+
+역할 생성 후 이름/설명을 잘못 지었거나 바꾸고 싶으면 지금까지는 방법이 없었다(삭제 API도 아직 없어 재생성도 불가능). 계획: `docs/superpowers/plans/2026-08-07-role-crud.md` Task 1, Task 2 나머지, Task 7.
+
+### 확정된 정책
+
+- **이름/설명 수정은 `RoleRepository.updatePermissions()`와 동일한 관리(managed) 엔티티 직접 mutate 패턴을 쓴다.** `RoleEntity.update(name, description)`을 package-private으로 추가하고, `RoleRepositoryImpl.updateNameAndDescription()`이 `findWithPermissionsById()`로 로드한 관리 엔티티를 직접 mutate한다. 트랜잭션 커밋 시점에 dirty-checking으로 반영되므로 `@Transactional`이 걸린 서비스 계층에서만 호출해야 한다.
+- **원래 스펙에 있던 `Role.withNameAndDescription()`(불변 도메인 객체의 with-copy 메서드)은 추가하지 않는다.** 실제 흐름이 `RoleRepository.updateNameAndDescription()`(관리 엔티티 mutate)만 쓰고 도메인 객체의 with-copy 메서드를 전혀 거치지 않기 때문이다. 같은 패턴으로 먼저 추가됐던 `Role.withPermissionCodes()`가 코드베이스 어디서도 호출되지 않는 죽은 코드였던 것이 확인돼(역할 목록 조회 PR에서), 같은 실수를 반복하지 않기로 했다.
+- **이름 중복 검사는 자기 자신을 제외한다(`existsByAcademyIdAndNameAndIdNot`).** 이름을 바꾸지 않고 설명만 고치는 수정 요청이 "자기 자신과 이름이 겹친다"는 이유로 거부되면 안 되기 때문이다.
+- **권한 목록(`permissionCodes`)은 이 API의 스코프가 아니다.** 기존 `PUT /api/roles/{roleId}/permissions`(권한 조립)를 그대로 쓴다 — 이름/설명 수정과 권한 조립은 서로 다른 빈도로, 다른 화면에서 일어나는 별개의 연산이라고 판단했다.
+
+### 완료 기준
+
+- [x] `RoleEntity.update(name, description)` 추가
+- [x] `RoleRepository`/`RoleJpaRepository`/`RoleRepositoryImpl`에 `existsByAcademyIdAndNameAndIdNot`/`updateNameAndDescription` 추가, `RoleRepositoryImplDataJpaTest`에 케이스 추가
+- [x] `UpdateRoleCommand`/`UpdateRoleUseCase`/`UpdateRoleService`(TDD, 4케이스: 미존재 404/다른 학원 404/이름 중복 409/정상 수정)
+- [x] `UpdateRoleRequest`
+- [x] `RoleController`에 `PUT /{roleId}` 핸들러 추가
+- [x] 로컬 curl end-to-end 검증(정상 수정 204/이름 중복 409/자기 이름 유지 204/권한 없음 403)
+- [x] `./gradlew build` 통과
+
+### 🧩 영향 범위
+
+| 계층 | 변경 내용 |
+| --- | --- |
+| Persistence(users) | `RoleEntity.update(name, description)` 추가, `RoleJpaRepository.existsByAcademyIdAndNameAndIdNot` 추가, `RoleRepositoryImpl`에 `existsByAcademyIdAndNameAndIdNot`/`updateNameAndDescription` 구현 |
+| Domain(users) | `RoleRepository`에 `existsByAcademyIdAndNameAndIdNot`/`updateNameAndDescription` 추가 |
+| Application(users) | `UpdateRoleCommand`/`UpdateRoleUseCase`/`UpdateRoleService` 신규 |
+| Presentation(users) | `RoleController`에 `PUT /api/roles/{roleId}` 핸들러 추가, `UpdateRoleRequest` 신규 |
+
+---
+
+## ✅ 2026-08-07 · 역할 삭제 API 구현 (`DELETE /api/roles/{roleId}`, 이슈 #189, 역할 CRUD 4개 중 4번째)
+
+### 배경
+
+역할 관리 API 7개 중 마지막 하나. 이 PR로 생성/목록/상세/수정/삭제/권한 조립/권한 카탈로그 조회가 모두 갖춰진다. 계획: `docs/superpowers/plans/2026-08-07-role-crud.md` Task 3, Task 4, Task 8.
+
+### 확정된 정책
+
+- **삭제 전에 `UserRepository.existsByRoleId(roleId)`로 배정된 구성원이 있는지 명시적으로 체크한다.** DB의 FK 제약(예: `ON DELETE RESTRICT`)에 기대는 대신 애플리케이션 레이어에서 먼저 검사해, "왜 삭제가 안 되는지" 사용자가 이해할 수 있는 전용 에러 코드(`USER_409_2`)로 안내한다. FK 예외를 잡아서 변환하는 방식보다 이 방식이 의도를 명확히 드러낸다.
+- **`ROLE_IN_USE`는 학원 범위를 따로 확인하지 않는다.** 애초에 `academyId`로 스코프가 걸린 역할(`findById` 필터)만 이 지점까지 도달하므로, 그 역할을 쓰는 사용자는 같은 학원 소속일 수밖에 없다.
+
+### 완료 기준
+
+- [x] `UserErrorCode.ROLE_IN_USE`(`USER_409_2`) + `RoleInUseException`
+- [x] `RoleRepository.deleteById` 추가, `RoleRepositoryImpl` 구현(`RoleJpaRepository`가 상속하는 `JpaRepository.deleteById` 재사용)
+- [x] `UserRepository`/`UserJpaRepository`/`UserRepositoryImpl`에 `existsByRoleId` 추가
+- [x] `DeleteRoleCommand`/`DeleteRoleUseCase`/`DeleteRoleService`(TDD, 4케이스: 미존재 404/다른 학원 404/사용 중 409/정상 삭제)
+- [x] `RoleController`에 `DELETE /{roleId}` 핸들러 추가
+- [x] 로컬 curl end-to-end 검증(사용 중인 역할 삭제 시도 409, 미사용 역할 삭제 204, 미존재 404, 권한 없음 403)
+- [x] `./gradlew build` 통과
+
+### 🧩 영향 범위
+
+| 계층 | 변경 내용 |
+| --- | --- |
+| Domain(users) | `UserErrorCode.ROLE_IN_USE` 추가, `RoleInUseException` 신규, `RoleRepository.deleteById`/`UserRepository.existsByRoleId` 추가 |
+| Persistence(users) | `RoleRepositoryImpl.deleteById`/`UserRepositoryImpl.existsByRoleId` 구현, `UserJpaRepository.existsByRoleId` 추가 |
+| Application(users) | `DeleteRoleCommand`/`DeleteRoleUseCase`/`DeleteRoleService` 신규 |
+| Presentation(users) | `RoleController`에 `DELETE /api/roles/{roleId}` 핸들러 추가 |
+
+---
+
+## ✅ 2026-08-07 · 역할 수정/삭제 동시성 방어 보강 (셀프 리뷰)
+
+### 배경
+
+역할 CRUD 4개 PR을 다 올린 뒤 직접 코드 리뷰를 하다가, `updateNameAndDescription()`/`deleteById()`가 애플리케이션 레벨 사전 체크(이름 중복/사용 중 확인)만 믿고 있고, 그 체크와 실제 쓰기 사이의 TOCTOU(check-then-act) 틈에서 DB 제약조건(유니크 제약 `uk_role_academy_name`, FK `fk_users_role`)에 걸리면 그 예외를 잡아주는 코드가 없어서 문서화된 409 대신 원시 500이 나가는 걸 발견했다. `save()`는 이미 `saveAndFlush()`를 `DataIntegrityViolationException`으로 감싸는 방어 로직이 있는데, 나중에 추가된 두 메서드에는 이 패턴이 빠져 있었다.
+
+### 확정된 정책
+
+- **`RoleRepositoryImpl`의 모든 쓰기 경로(`save`/`updateNameAndDescription`/`deleteById`)가 동일한 방어 패턴을 따른다**: 변경 직후 `roleJpaRepository.flush()`를 명시적으로 호출해 SQL을 즉시 실행시키고, `DataIntegrityViolationException`을 잡아 메시지에 특정 제약조건 이름이 포함되어 있는지 확인한 뒤 알맞은 도메인 예외로 변환한다. `entity.update(...)`나 `deleteById(...)`만으로는 Hibernate가 SQL을 트랜잭션 커밋 시점까지 미루기 때문에, 명시적 flush 없이는 이 메서드 안에서 예외를 잡을 수 없다.
+- **이건 애플리케이션 레벨 사전 체크(`existsByAcademyIdAndNameAndIdNot`/`existsByRoleId`)를 대체하는 게 아니라 보강한다.** 사전 체크는 여전히 정상 경로에서 빠른 실패와 명확한 흐름을 제공하고, DB 제약조건 catch는 사전 체크와 실제 쓰기 사이의 경합 상황을 잡아주는 마지막 방어선이다.
+- **`RoleInUseException`에 `Throwable cause`를 받는 생성자를 추가**해 `RoleNameDuplicateException`과 동일한 패턴을 따르게 했다.
+- **경합 자체는 순차 curl로 재현이 안 되므로, 실제 MySQL이 던지는 것과 동일한 형식의 예외 메시지를 강제로 발생시키는 Mockito 단위 테스트(`RoleRepositoryImplTest`)로 검증했다** — `save()`에 이미 있던 것과 같은 스타일.
+
+### 완료 기준
+
+- [x] `RoleRepositoryImpl.updateNameAndDescription()`에 flush + `DataIntegrityViolationException` catch 추가
+- [x] `RoleRepositoryImpl.deleteById()`에 flush + `DataIntegrityViolationException` catch 추가
+- [x] `RoleInUseException(Throwable cause)` 생성자 추가
+- [x] `isRoleNameConflict` → `containsConstraint(Throwable, String)`로 일반화해 3곳(`save`/`updateNameAndDescription`/`deleteById`)에서 재사용
+- [x] `RoleRepositoryImplTest`에 4케이스 추가(이름 중복 변환/무관한 위반 통과, 사용 중 변환/무관한 위반 통과)
+- [x] `./gradlew build` 통과, 로컬 curl로 회귀 없음 확인
+
+### 🧩 영향 범위
+
+| 계층 | 변경 내용 |
+| --- | --- |
+| Domain(users) | `RoleInUseException(Throwable cause)` 생성자 추가 |
+| Persistence(users) | `RoleRepositoryImpl.updateNameAndDescription`/`deleteById`에 flush+catch 추가, `containsConstraint` 헬퍼로 일반화 |
+| Test(users) | `RoleRepositoryImplTest`에 4케이스 추가 |
+
+---
+
+## ✅ 2026-08-07 · 역할 삭제 정책을 "재직 중인 구성원 기준"으로 조정
+
+### 배경
+
+역할 삭제(`existsByRoleId`)가 상태와 관계없이 role_id를 참조하는 계정이 하나라도 있으면 무조건 막는 구조였는데, 이 시스템엔 계정을 물리적으로 삭제하는 기능이 없다(퇴사 처리는 `status=RESIGNED`로 바꾸는 소프트 딜리트뿐). 그러면 한 번이라도 누군가에게 배정된 역할은 그 사람이 퇴사해도 `role_id`가 그대로 남아있어 **영원히 삭제할 수 없는** 역할이 생긴다는 문제가 발견됐다.
+
+### 확정된 정책
+
+- **삭제를 막는 기준을 `ACTIVE` 상태 구성원으로 좁혔다** (`existsByRoleId` → `existsActiveByRoleId`). 퇴사자(`RESIGNED`)/비활성(`INACTIVE`) 계정이 이 역할을 들고 있어도 삭제를 막지 않는다 — 어차피 로그인이 제한된 계정이라 역할 정보가 실질적 권한에 영향을 주지 않는다.
+- **삭제 시 그 역할을 들고 있던 나머지(비활성) 계정들의 `role_id`를 명시적으로 NULL 처리한다** (`UserRepository.clearRoleId`). DB의 `fk_users_role` FK가 `RESTRICT`라 role_id를 참조하는 행이 남아있으면 삭제 자체가 실패하기 때문에, 역할을 지우기 전에 반드시 이 정리가 선행되어야 한다.
+- FK를 `ON DELETE SET NULL`로 마이그레이션하는 대안도 검토했으나, 그러면 계정의 role_id가 조용히 NULL이 되어 "왜 이렇게 됐는지" 코드만 봐서는 추적하기 어려워진다고 판단해 애플리케이션 레벨에서 명시적으로 처리하는 쪽을 택했다.
+- `ACTIVE` 여부 확인이 먼저 통과했다는 건 이 시점에 이 역할을 쓰는 사람이 전부 비활성 상태라는 뜻이므로, `clearRoleId`는 상태를 다시 필터링하지 않고 해당 `role_id`를 가진 모든 행을 정리한다.
+
+### 완료 기준
+
+- [x] `UserRepository.existsByRoleId` → `existsActiveByRoleId`로 변경, `clearRoleId` 추가
+- [x] `UserJpaRepository.existsByRoleIdAndStatus` 파생 쿼리, `clearRoleId` 벌크 업데이트(`@Modifying`) 추가
+- [x] `DeleteRoleService`가 삭제 전 `clearRoleId` 호출하도록 수정
+- [x] `DeleteRoleServiceTest` 케이스 갱신(재직 중 구성원만 차단, 비활성 구성원은 자동 정리 후 삭제)
+- [x] 로컬 curl/DB로 end-to-end 검증(퇴사자만 보유한 역할 삭제 → 204 + role_id 정리 확인, 재직 중 구성원 보유 역할 → 여전히 409)
+- [x] `./gradlew build` 통과
+
+### 🧩 영향 범위
+
+| 계층 | 변경 내용 |
+| --- | --- |
+| Domain(users) | `UserRepository.existsByRoleId` → `existsActiveByRoleId`, `clearRoleId` 추가 |
+| Persistence(users) | `UserJpaRepository.existsByRoleIdAndStatus`/`clearRoleId` 추가, `UserRepositoryImpl` 구현 |
+| Application(users) | `DeleteRoleService`가 삭제 전 `clearRoleId` 호출하도록 수정 |
+
+---
+
+## ✅ 2026-08-07 · 학원 신청 승인/반려 API 구현 (`POST .../approve`, `POST .../reject`, 이슈 #165, PR 3/3)
+
+### 배경
+
+PR 1(목록)·PR 2(상세)에 이어지는 세 번째이자 마지막 PR. 승인 시점에 academy와 최초 관리자 계정을 함께 발급하는 핵심 트랜잭션을 구현한다. "계정 발급 체계" 2단계(학원 신청/승인 워크플로우)가 이 PR로 완료된다.
+
+### 확정된 정책
+
+- **academy↔user 순환참조는 "academy를 `user_id=NULL`로 먼저 만들고 나중에 채우는" 순서로 푼다.** `users.academy_id`가 `NOT NULL`이라 user를 academy보다 먼저 만들 수 없다 — SUPER ADMIN 인증 연결(PR #156) 때 수동 시드로 이미 검증한 것과 동일한 원리를 승인 트랜잭션에 그대로 적용했다.
+- **`AcademyRepository.save()`는 생성 전용, `assignUser()`/`AcademyApplicationRepository`의 `markApproved()`/`markRejected()`는 관리 엔티티 직접 mutate.** `academy`/`academy_application` 둘 다 `updated_at`이 `ON UPDATE CURRENT_TIMESTAMP`인데, detached 도메인 객체를 다시 `save()`(merge)하면 Hibernate가 로드 시점의 `updated_at` 값을 그대로 UPDATE문에 실어보내 MySQL의 자동 갱신을 덮어써버린다. 기존 `RoleRepository.save()`(생성 전용)/`updatePermissions()`(관리 엔티티 직접 mutate) 분리 패턴을 그대로 따라 이 문제를 피했다.
+- **임시 비밀번호는 승인 응답에 평문으로 한 번만 내려준다.** 이메일 발송 인프라가 없어 SUPER ADMIN이 신청자에게 수동으로 전달해야 한다 — 이메일 발송이 생기면 이 응답 필드는 제거될 예정.
+- **`ensurePending()` 가드**로 이미 검토된(승인/반려) 신청서의 재승인/재반려를 막는다(`AcademyApplicationAlreadyReviewedException`, `USER_409_5`).
+- SecurityConfig의 approve/reject 경로는 목록/상세와 동일하게 `PLATFORM:SUPER_ADMIN` 필터체인 인가를 재사용한다.
+
+### 완료 기준
+
+- [x] `AcademyStatus` enum, `Academy` 도메인 모델(`create`/`restore`)
+- [x] `User.create(...)` 팩토리 추가(최초의 사용자 생성 경로)
+- [x] `AcademyRepository`(신규) + `AcademyManagementJpaRepository`/`AcademyManagementRepositoryImpl`(빈 이름 충돌 회피 명명), `AcademyManagementRepositoryImplDataJpaTest`(더티체킹 검증)
+- [x] `UserRepository.save(User)` 추가 + 구현
+- [x] `AcademyApplication.ensurePending()`, `AcademyApplicationRepository.markApproved`/`markRejected` + 구현
+- [x] `AcademyApplicationAlreadyReviewedException` + `UserErrorCode.ACADEMY_APPLICATION_ALREADY_REVIEWED`(`USER_409_5`)
+- [x] `ApproveAcademyApplicationService`(TDD, 핵심 순환참조 트랜잭션)/`RejectAcademyApplicationService`(TDD)
+- [x] `AcademyApplicationController` approve/reject 엔드포인트
+- [x] `SecurityConfig`에 approve/reject 경로 규칙 추가
+- [x] `AcademyApplicationApprovedEvent` 정의 및 발행
+- [x] 서비스 단위 테스트 2세트 + `AcademyApplicationSecurityIntegrationTest`에 approve/reject 401/403/200(204) 케이스 추가
+- [x] 로컬 curl end-to-end 검증(승인 → 임시 비밀번호로 로그인 성공 → 그 계정으로 SUPER ADMIN 전용 엔드포인트 호출 시 403 → 반려 플로우까지 확인)
+- [x] `./gradlew build` 통과
+
+### 🧩 영향 범위
+
+| 계층 | 변경 내용 |
+| --- | --- |
+| Domain(users) | `AcademyStatus` enum, `Academy` 도메인 모델 신규. `User.create()` 팩토리 추가. `AcademyApplication.ensurePending()` 추가. `AcademyApplicationAlreadyReviewedException` 신규, `UserErrorCode.ACADEMY_APPLICATION_ALREADY_REVIEWED`(`USER_409_5`) 추가 |
+| Domain(users) | `AcademyRepository` 인터페이스 신규(`save`/`assignUser`). `AcademyApplicationRepository`에 `markApproved`/`markRejected` 추가. `UserRepository`에 `save` 추가 |
+| Persistence(users) | `AcademyEntity`/`AcademyManagementJpaRepository`/`AcademyManagementRepositoryImpl` 신규. `AcademyApplicationEntity`에 `markApproved`/`markRejected` mutator 추가. `UserRepositoryImpl.save` 구현 |
+| Application(users) | `ApproveAcademyApplicationService`/`RejectAcademyApplicationService` 및 대응 Command/UseCase/Result 신규 |
+| Presentation(users) | `AcademyApplicationController`에 approve/reject 핸들러 추가, `AcademyApplicationResponseCode.ACADEMY_APPLICATION_200_3`, `RejectAcademyApplicationRequest`/`AcademyApplicationApproveResponse` 신규 |
+| Domain event(users) | `AcademyApplicationApprovedEvent` 신규(리스너 없음, 알림 발송 인프라 부재) |
+| Security(global) | `SecurityConfig`에 approve/reject 경로 접근 규칙 추가 |
+
+---
+
 ## ✅ 2026-08-05 · 권한 카탈로그 조회 + 역할 권한 조립 API 구현 (`GET /api/permissions`, `PUT /api/roles/{roleId}/permissions`, 이슈 #84)
 
 ### 배경
@@ -331,6 +567,78 @@ PR 1(목록 조회)이 develop에 머지된 뒤 그 위에서 이어가는 두 �
 - [x] `AssignRolePermissionsServiceTest`(4가지 분기), `RoleRepositoryImplDataJpaTest`(실제 DB) 작성 및 통과
 - [x] 로컬 curl/DB로 end-to-end 검증(카탈로그 조회, 권한 조립 성공/존재하지 않는 코드 400/남의 학원·없는 역할 404)
 - [x] `./gradlew build` 통과
+
+---
+
+## ✅ 2026-08-08 · 사용자 역할 변경 API 구현 (`PATCH /api/users/{userId}/role`, 이슈 #208)
+
+### 배경
+
+역할 CRUD(생성/목록/상세/수정/삭제/권한조립/카탈로그조회) 7개가 develop에 머지 완료됐다. 그런데 역할 삭제 정책을 "재직 중(ACTIVE)인 구성원이 이 역할을 쓰고 있으면 삭제를 막는다"로 정하면서(`existsActiveByRoleId`), 실제로 구성원의 역할을 다른 역할로 바꾸는 방법이 시스템에 전혀 없다는 게 드러났다 — 역할을 삭제하려면 그 역할을 쓰는 사람들을 먼저 다른 역할로 옮겨야 하는데, 그 기능 자체가 없었다. 설계: `docs/superpowers/specs/2026-08-08-user-role-change-design.md`.
+
+### 확정된 정책
+
+- **대상은 일반 직원 계정(`accountType=MEMBER`)만.** 학원 관리자(`admin_scope=ACADEMY`) 계정은 애초에 카탈로그 역할을 쓰는 구조가 아니고(권한 로직 자체가 아직 미연동 상태), 이 API의 대상이 아니다.
+- **역할 해제(`roleId`를 `null`로 만들기)는 이 API 스코프가 아니다.** 재직 중인 계정을 "역할 없음"으로 만들면 로그인은 되지만 모든 `@PreAuthorize` 엔드포인트에서 403이 나는 사실상 먹통 계정이 된다(권한 조회가 `roleId=null`이면 즉시 빈 권한을 반환하기 때문). `roleId`가 `null`이 되는 경우는 계속 시스템이 내부적으로 처리하는 것(퇴사자 역할 삭제 시 `clearRoleId`의 자동 정리)으로만 남긴다.
+- **신규 권한 코드 `ACCOUNT:MANAGE` 도입.** 2026-08-08 팀 회의에서 "관련 있는 행위는 백엔드에서 하나의 코드로 묶어둔다"는 원칙으로 정리됨(예전 "백엔드는 세분화, 프론트가 그룹 토글로 묶어 보여준다" 원칙은 폐기). 역할 변경은 역할 정의(`ROLE:*`)가 아니라 계정 관리(`ACCOUNT:*`) 리소스에 속한다고 판단 — 이미 시드된 `ACCOUNT:CREATE`(학원 직원 계정 발급, 아직 구현 API 없음)와 같은 리소스. `V4.1.3` 마이그레이션으로 시드.
+- **`RoleRepository.updateNameAndDescription()`/`AcademyRepository.assignUser()`와 동일한 관리 엔티티 직접 mutate 패턴을 재사용.** `UserEntity.changeRole(Long roleId)` package-private mutator를 추가하고, `UserRepositoryImpl.changeRole()`이 managed entity를 로드해 mutator만 호출한다(`save()` 호출 없이 트랜잭션 커밋 시점 dirty-checking으로 반영). `User` 도메인 객체에 불변 with-copy 메서드(`withRoleId`)는 추가하지 않았다 — 실제 수정 흐름이 이 메서드를 거치지 않아 아무도 안 부르는 죽은 코드가 될 것이기 때문(`Role.withPermissionCodes()`에서 이미 겪은 실수를 반복하지 않음).
+- **검증(대상 계정/역할의 존재·학원 스코프 확인)은 서비스 계층에서 기존 `findById()`(불변 도메인 객체 반환)로 먼저 하고, 통과하면 mutate 메서드를 호출하는 2단계 구조.** 대상 계정 미존재/다른 학원/관리자 계정(MEMBER 아님)은 전부 동일하게 `404 USER_404_1`로 응답 — 다른 학원 계정 존재 여부나 관리자 계정 여부가 노출되지 않도록.
+- 이 코드베이스 최초의 "개별 계정 관리" 컨트롤러(`UserController`)를 신설했다 — 지금까지는 로그인/로그아웃/역할·권한 카탈로그 컨트롤러만 있었음.
+
+### 완료 기준
+
+- [x] `permission` 카탈로그에 `ACCOUNT:MANAGE` 추가(`V4.1.3`), 로컬 DB 적용 확인
+- [x] `UserEntity.changeRole(roleId)` mutator, `UserRepository.changeRole(userId, roleId)` + `UserRepositoryImpl` 구현
+- [x] `ChangeUserRoleCommand`/`ChangeUserRoleUseCase`/`ChangeUserRoleService`(TDD, 6케이스: 대상 미존재/다른 학원/비MEMBER, 역할 미존재/다른 학원, 정상 변경)
+- [x] `UserController` 신설, `PATCH /api/users/{userId}/role` 핸들러 추가(`ACCOUNT:MANAGE` 필요)
+- [x] 로컬 curl/DB로 end-to-end 검증(정상 변경 204 + DB 반영 확인, 대상 계정 다른 학원 404, 역할 미존재/다른 학원 404, 권한 없는 계정 403)
+- [x] `./gradlew build` 통과
+
+### 🧩 영향 범위
+
+| 계층 | 변경 내용 |
+| --- | --- |
+| Domain(users) | `UserRepository`에 `changeRole(Long userId, Long roleId)` 추가 |
+| Persistence(users) | `UserEntity.changeRole(Long roleId)` mutator 추가, `UserRepositoryImpl.changeRole` 구현 |
+| Application(users) | `ChangeUserRoleCommand`/`ChangeUserRoleUseCase`/`ChangeUserRoleService` 신규 |
+| Presentation(users) | `UserController`(신규, `PATCH /{userId}/role`), `ChangeUserRoleRequest` 신규 |
+| Migration | `V4.1.3`(`permission` 테이블에 `ACCOUNT:MANAGE` 시드) |
+
+---
+
+## ✅ 2026-08-08 · 학원 구성원 검색 API 구현 (`GET /api/users?keyword=`, 이슈 #218)
+
+### 배경
+
+`POST /api/workspaces/{workspaceId}/members`(워크스페이스 참여자 추가), `POST /api/workspaces`(워크스페이스 생성), 채팅방 생성(`CreateChatRoomRequest.participantIds`)이 전부 `Long` userId 배열을 직접 받는데, 프론트가 그 userId를 알아낼 방법이 `users` 도메인에 전혀 없었다. 근태 도메인의 `GET /api/attendance/employees/weekly?keyword=`가 이름 검색을 지원하긴 하지만 `ATTENDANCE:READ` 권한이 필요해서, 워크스페이스/채팅방을 만들려는 일반 직원이 그 권한을 갖고 있다는 보장이 없었다. 설계: `docs/superpowers/specs/2026-08-08-user-search-design.md`.
+
+### 확정된 정책
+
+- **권한 체크 없음.** 이 API를 쓰는 워크스페이스 생성/채팅방 생성 둘 다 현재 `@PreAuthorize`가 안 걸려있는 상태(둘 다 TODO)라, 검색만 특정 권한으로 묶으면 그 권한 없는 사람이 워크스페이스/채팅방은 만들 수 있는데 상대를 검색은 못 하는 모순이 생긴다. 로그인만 되면 호출 가능하게 뒀다.
+- **`accountType` 무관하게 전체 포함**(일반 직원 + 학원 관리자) — 원장도 워크스페이스/채팅방에 참여할 수 있어야 한다.
+- **`status = ACTIVE`인 계정만** 검색 대상 — 퇴사자를 새 워크스페이스/채팅방에 넣을 이유가 없다.
+- `keyword`가 없거나 빈 문자열이면 전체 목록을 반환한다 — 근태 주간 조회의 keyword 처리 방식(`keyword == null ? "" : keyword.trim()`)과 동일한 패턴.
+- 페이지네이션 없음 — 학원 하나의 구성원 수가 많지 않아 기존 `GET /api/roles`와 동일한 전례를 따른다.
+- 응답에 `username`도 함께 내려준다 — 동명이인 구분용(이름만으로는 같은 사람인지 구분 못 하는 경우 방지).
+
+### 완료 기준
+
+- [x] `UserJpaRepository`에 검색용 파생 쿼리 2개 추가(`findAllByAcademyIdAndStatusAndNameContainingIgnoreCase`, `findAllByAcademyIdAndStatus`)
+- [x] `UserRepository.searchByAcademyId(academyId, keyword)` + `UserRepositoryImpl` 구현
+- [x] `SearchUsersUseCase`/`SearchUsersService`(TDD, 3케이스: 키워드 매칭/키워드 없음(전체)/매칭 없음)
+- [x] `UserResponseCode.USER_SEARCHED`(`USER_200_3`), `UserSearchResponse` 추가
+- [x] `UserController`에 `GET /api/users?keyword=` 핸들러 추가(권한 체크 없음)
+- [x] 로컬 curl/DB로 end-to-end 검증(권한 없이 200 확인, 키워드 검색/전체 조회, 다른 학원 제외, `ACTIVE`만, `ADMIN`/`MEMBER` 둘 다 포함)
+- [x] `./gradlew build` 통과
+
+### 🧩 영향 범위
+
+| 계층 | 변경 내용 |
+| --- | --- |
+| Domain(users) | `UserRepository`에 `searchByAcademyId(Long academyId, String keyword)` 추가 |
+| Persistence(users) | `UserJpaRepository`에 검색용 파생 쿼리 2개 추가, `UserRepositoryImpl.searchByAcademyId` 구현 |
+| Application(users) | `SearchUsersUseCase`/`SearchUsersService` 신규 |
+| Presentation(users) | `UserController`에 `GET` 핸들러 추가, `UserResponseCode.USER_SEARCHED`(`USER_200_3`), `UserSearchResponse` 신규 |
 
 ---
 
@@ -369,7 +677,7 @@ PR 1(목록 조회)이 develop에 머지된 뒤 그 위에서 이어가는 두 �
 - [x] 역할 생성 API — `POST /api/roles` 추가, DB 유니크 제약 백스톱 포함
 - [x] 권한 카탈로그 조회 API — `GET /api/permissions` 추가
 - [x] 역할 권한 조립 API — `PUT /api/roles/{roleId}/permissions` 추가(전체 교체 방식), 존재하지 않는 코드 400/역할 없음·다른 학원 404
-- [ ] 역할 수정·삭제, 목록/상세 조회 API — 미착수
+- [x] 역할 목록/상세/수정/삭제 API — `GET /api/roles`, `GET /api/roles/{roleId}`, `PUT /api/roles/{roleId}`, `DELETE /api/roles/{roleId}` 추가로 역할 관리 API 7개 완성
 - [x] `academy` 테이블 생성됨(다른 팀원, `V2.1.2`~`V2.1.4`) — `role.academy_id`, `users.academy_id` 모두 FK 연결 완료(`V4.1.3`)
 
 ## 📌 후속 문서

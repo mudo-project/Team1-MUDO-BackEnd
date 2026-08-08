@@ -7,7 +7,7 @@ import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
 
 import com.academy.mudogroupware.users.domain.model.Role;
@@ -63,5 +63,16 @@ class RoleRepositoryImplDataJpaTest {
 
         Role found = roleRepository.findById(saved.getId()).orElseThrow();
         assertThat(found.getPermissionCodes()).isEmpty();
+    }
+
+    @Test
+    void updateNameAndDescriptionUpdatesManagedEntity() {
+        Role saved = roleRepository.save(Role.create(1L, "강사", "설명", LocalDateTime.now()));
+
+        roleRepository.updateNameAndDescription(saved.getId(), "조교", "새 설명");
+        Role found = roleRepository.findById(saved.getId()).orElseThrow();
+
+        assertThat(found.getName()).isEqualTo("조교");
+        assertThat(found.getDescription()).isEqualTo("새 설명");
     }
 }

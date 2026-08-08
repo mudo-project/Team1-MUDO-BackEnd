@@ -173,7 +173,7 @@ PATCH /api/workspaces/{workspaceId}/tasks/{taskId}
   → UpdateTaskService
   → WorkspaceRepository.findById (락 없음)
   → WorkspacePersistenceAdapter
-  → TaskRepository.findByIdForUpdate (비관적 락)
+  → TaskRepository.findByIdForUpdate (락 없는 소속 확인 → 비관적 락, 2단계)
   → TaskPersistenceAdapter
   → Task.changeDueAt / Task.changeStatus (Domain Model)
   → TaskRepository.save
@@ -191,9 +191,9 @@ PATCH /api/workspaces/{workspaceId}/tasks/{taskId}
 
 `UpdateTaskService`는 업무 생성 API와 동일한 순서를 따른다 — `WorkspaceRepository.findById`(락 없음)로 조회 후 없으면 `WorkspaceNotFoundException`(`404_1`), 참여자가 아니면 `WorkspaceAccessDeniedException`(`403_1`).
 
-### 3. 업무 조회와 소속 검증 (비관적 락)
+### 3. 업무 조회 (워크스페이스 범위 2단계 조회)
 
-`TaskRepository.findByIdForUpdate`로 수정 대상 업무를 **비관적 락**으로 조회한다. 삭제 API의 `findByIdForUpdate`와 같은 락을 공유하는 대상이므로, 삭제와 수정이 동시에 들어오면 뒤에 도착한 트랜잭션이 먼저 완료된 트랜잭션의 결과(삭제됐다면 빈 `Optional`, 즉 `TaskNotFoundException` → `404_3`)를 보게 된다. 다른 워크스페이스 소속이면(`!task.belongsTo(workspaceId)`) 존재를 노출하지 않기 위해 `403`이 아니라 `404_3`으로 응답한다.
+`TaskRepository.findByIdForUpdate(workspaceId, taskId)`는 내부적으로 2단계로 동작한다(`TaskPersistenceAdapter`). ① `TaskJpaRepository.existsByTaskIdAndWorkspaceId`로 **락 없이** 워크스페이스 소속을 먼저 확인한다 — 일반 조회(MVCC 스냅샷)라 다른 트랜잭션이 그 업무 행에 배타 락을 걸고 있어도 기다리지 않는다. 소속이 아니면 그 즉시 빈 결과를 반환하고 `orElseThrow`에서 `TaskNotFoundException`(`404_3`)이 발생한다 — 존재를 노출하지 않기 위해 `403`이 아니라 `404_3`으로 응답한다는 정책은 그대로다. ② 소속이 확인된 taskId에 대해서만 `TaskJpaRepository.lockById`로 비관적 락을 건다. 다른 워크스페이스의 taskId로는 ①에서 걸러져 ②(락 조회)가 아예 실행되지 않으므로, 무관한 워크스페이스 간 락 경합이 발생하지 않는다. 삭제 API의 `lockById`와 같은 락을 공유하는 대상이므로, 삭제와 수정이 동시에 들어오면(같은 워크스페이스·같은 업무) 뒤에 도착한 트랜잭션이 먼저 완료된 트랜잭션의 결과(삭제됐다면 빈 `Optional`)를 보게 된다.
 
 ### 4. 상태·마감일 반영
 
@@ -219,7 +219,7 @@ DELETE /api/workspaces/{workspaceId}/tasks/{taskId}
   → DeleteTaskService
   → WorkspaceRepository.findById (락 없음)
   → WorkspacePersistenceAdapter
-  → TaskRepository.findByIdForUpdate (비관적 락)
+  → TaskRepository.findByIdForUpdate (락 없는 소속 확인 → 비관적 락, 2단계)
   → TaskPersistenceAdapter
   → RecurringTaskSkipRepository.saveIfAbsent (반복 업무만)
   → RecurringTaskSkipPersistenceAdapter
@@ -231,9 +231,9 @@ DELETE /api/workspaces/{workspaceId}/tasks/{taskId}
 
 `DeleteTaskService`도 업무 생성·수정과 동일한 순서 — 존재 확인(`404_1`) → 참여자 확인(`403_1`).
 
-### 2. 업무 조회와 소속 검증 (비관적 락)
+### 2. 업무 조회 (워크스페이스 범위 2단계 조회)
 
-`TaskRepository.findByIdForUpdate`로 삭제 대상을 비관적 락으로 조회한다. 없으면 `TaskNotFoundException`(`404_3`), 다른 워크스페이스 소속이면 마찬가지로 `404_3`(존재를 노출하지 않음). 이 락이 수정 API의 동시 요청과 경합을 직렬화한다.
+`TaskRepository.findByIdForUpdate(workspaceId, taskId)`는 내부적으로 2단계로 동작한다(`TaskPersistenceAdapter`) — 수정 API의 §3과 동일한 메커니즘이다. ① `TaskJpaRepository.existsByTaskIdAndWorkspaceId`로 락 없이 워크스페이스 소속을 먼저 확인하고(다른 트랜잭션의 배타 락을 기다리지 않음), 소속이 아니면 즉시 `TaskNotFoundException`(`404_3`)이 발생한다 — 존재를 노출하지 않기 위해 `403`이 아니라 `404_3`으로 응답한다는 정책은 그대로다. ② 소속이 확인된 taskId에 대해서만 `TaskJpaRepository.lockById`로 비관적 락을 건다. 다른 워크스페이스의 taskId로는 ②가 실행되지 않으므로 락 경합이 발생하지 않는다. 수정 API의 `lockById`와 같은 락을 공유하는 대상이므로, 이 락이 수정 API의 동시 요청과(같은 워크스페이스·같은 업무일 때) 경합을 직렬화한다.
 
 ### 3. 반복 업무 skip 기록 (조건부)
 

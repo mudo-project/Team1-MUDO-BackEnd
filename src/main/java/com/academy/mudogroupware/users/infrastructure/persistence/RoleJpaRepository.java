@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.users.infrastructure.persistence;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -20,4 +21,8 @@ public interface RoleJpaRepository extends JpaRepository<RoleEntity, Long> {
     Optional<RoleEntity> findWithPermissionsByIdForUpdate(Long roleId);
 
     boolean existsByAcademyIdAndName(Long academyId, String name);
+
+    List<RoleEntity> findAllByAcademyIdOrderByIdAsc(Long academyId);
+
+    boolean existsByAcademyIdAndNameAndIdNot(Long academyId, String name, Long id);
 }

@@ -1,11 +1,11 @@
 package com.academy.mudogroupware.workspace.infrastructure.persistence.workspace;
 
 import com.academy.mudogroupware.workspace.application.port.WorkspaceDetailQueryPort;
-import com.academy.mudogroupware.workspace.application.query.TaskCommentSummary;
-import com.academy.mudogroupware.workspace.application.query.WorkspaceTaskCandidate;
-import com.academy.mudogroupware.workspace.domain.model.TaskStatus;
-import com.academy.mudogroupware.workspace.infrastructure.persistence.task.TaskCommentJpaRepository;
-import com.academy.mudogroupware.workspace.infrastructure.persistence.task.TaskCommentJpaRepository.TaskCommentSummaryRow;
+import com.academy.mudogroupware.workspace.application.query.comment.TaskCommentSummary;
+import com.academy.mudogroupware.workspace.application.query.task.WorkspaceTaskCandidate;
+import com.academy.mudogroupware.workspace.domain.model.task.TaskStatus;
+import com.academy.mudogroupware.workspace.infrastructure.persistence.comment.TaskCommentJpaRepository;
+import com.academy.mudogroupware.workspace.infrastructure.persistence.comment.TaskCommentJpaRepository.TaskCommentSummaryRow;
 import com.academy.mudogroupware.workspace.infrastructure.persistence.task.TaskJpaEntity;
 import com.academy.mudogroupware.workspace.infrastructure.persistence.task.TaskJpaRepository;
 import java.time.LocalDate;

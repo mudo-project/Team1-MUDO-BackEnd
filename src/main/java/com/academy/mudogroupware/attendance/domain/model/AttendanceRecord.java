@@ -103,6 +103,36 @@ public final class AttendanceRecord {
                 type, status, createdAt, checkedOutAt);
     }
 
+    public static AttendanceRecord createFromCorrection(Long academyId, Long userId,
+                                                         LocalDate workDate,
+                                                         LocalDateTime clockInAt,
+                                                         String clockInNote,
+                                                         LocalDateTime clockOutAt,
+                                                         String clockOutNote,
+                                                         AttendanceStatus status,
+                                                         LocalDateTime now) {
+        return new AttendanceRecord(null, academyId, userId, workDate, clockInAt, clockInNote,
+                clockOutAt, clockOutNote,
+                clockOutAt == null ? null : ClockOutType.NORMAL, status, now, now);
+    }
+
+    public AttendanceRecord applyCorrection(LocalDateTime correctedClockInAt,
+                                             String correctedClockInNote,
+                                             LocalDateTime correctedClockOutAt,
+                                             String correctedClockOutNote,
+                                             AttendanceStatus correctedStatus,
+                                             LocalDateTime now) {
+        if (correctedClockInAt == null
+                || correctedClockOutAt != null && correctedClockOutAt.isBefore(correctedClockInAt)) {
+            throw new AttendanceException(AttendanceErrorCode.INVALID_ATTENDANCE_RECORD);
+        }
+        return new AttendanceRecord(id, academyId, userId, workDate, correctedClockInAt,
+                correctedClockInNote, correctedClockOutAt, correctedClockOutNote,
+                correctedClockOutAt == null ? null
+                        : (clockOutType == null ? ClockOutType.NORMAL : clockOutType),
+                correctedStatus, createdAt, now);
+    }
+
     private static String normalizeNote(String note) {
         if (note == null) {
             return null;

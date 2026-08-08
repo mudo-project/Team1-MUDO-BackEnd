@@ -30,6 +30,18 @@ class PinNoticeServiceTest {
     }
 
     @Test
+    void pinSucceedsWhenRequesterIsSameAcademyEvenIfNotAuthor() {
+        Notice notice = noticeOfAcademy(1L);
+        when(noticeRepository.findById(1L)).thenReturn(Optional.of(notice));
+        when(noticeAuthorDirectoryPort.getAuthor(99L)).thenReturn(new AuthorInfo(99L, "공지관리자", "STAFF", 1L));
+
+        service.pin(1L, 99L);
+
+        assertThat(notice.isPinned()).isTrue();
+        verify(noticeRepository).save(notice);
+    }
+
+    @Test
     void unpinSucceedsWhenRequesterIsSameAcademy() {
         Notice notice = noticeOfAcademy(1L);
         when(noticeRepository.findById(1L)).thenReturn(Optional.of(notice));

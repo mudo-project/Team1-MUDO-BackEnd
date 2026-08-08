@@ -1,9 +1,9 @@
 package com.academy.mudogroupware.workspace.infrastructure.persistence.task;
 
-import com.academy.mudogroupware.workspace.domain.exception.TaskNotFoundException;
-import com.academy.mudogroupware.workspace.domain.model.Task;
-import com.academy.mudogroupware.workspace.domain.model.TaskStatus;
-import com.academy.mudogroupware.workspace.domain.repository.TaskRepository;
+import com.academy.mudogroupware.workspace.domain.exception.task.TaskNotFoundException;
+import com.academy.mudogroupware.workspace.domain.model.task.Task;
+import com.academy.mudogroupware.workspace.domain.model.task.TaskStatus;
+import com.academy.mudogroupware.workspace.domain.repository.task.TaskRepository;
 import com.academy.mudogroupware.workspace.infrastructure.persistence.workspace.WorkspaceJpaEntity;
 import com.academy.mudogroupware.workspace.infrastructure.persistence.workspace.WorkspaceJpaRepository;
 import java.time.LocalDate;
@@ -34,8 +34,14 @@ public class TaskPersistenceAdapter implements TaskRepository {
   }
 
   @Override
-  public Optional<Task> findByIdForUpdate(Long taskId) {
-    return taskJpaRepository.findByIdForUpdate(taskId).map(taskPersistenceMapper::toDomain);
+  public Optional<Task> findByIdForUpdate(Long workspaceId, Long taskId) {
+    // 1단계: 락 없이 워크스페이스 소속을 먼저 확인한다. 다른 워크스페이스의 taskId는
+    // 여기서 걸러지므로 아래 lockById가 호출되지 않고, 실제 락 경합이 발생하지 않는다.
+    if (!taskJpaRepository.existsByTaskIdAndWorkspaceId(taskId, workspaceId)) {
+      return Optional.empty();
+    }
+    // 2단계: 소속이 확인된 taskId에 대해서만 비관적 락을 건다.
+    return taskJpaRepository.lockById(taskId).map(taskPersistenceMapper::toDomain);
   }
 
   @Override

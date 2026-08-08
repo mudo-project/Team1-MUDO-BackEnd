@@ -3,6 +3,8 @@ package com.academy.mudogroupware.approval.infrastructure.persistence;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.hibernate.annotations.BatchSize;
+
 import com.academy.mudogroupware.global.infrastructure.persistence.BaseTimeEntity;
 
 import jakarta.persistence.CascadeType;
@@ -55,6 +57,7 @@ public class ApprovalTemplateEntity extends BaseTimeEntity {
 
     @OneToMany(mappedBy = "template", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("stepOrder asc")
+    @BatchSize(size = 100)
     private List<ApprovalTemplateLineEntity> lines = new ArrayList<>();
 
     @Builder

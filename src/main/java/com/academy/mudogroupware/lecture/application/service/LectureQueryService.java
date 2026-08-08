@@ -60,9 +60,8 @@ public class LectureQueryService implements LectureQueryUseCase {
                 Classroom::getId, Classroom::getName);
         Map<Long, TeacherInfo> teachers = teacherDirectoryPort.findTeachers(
                 academyId, distinctIds(lectures, Lecture::getTeacherId));
-        Map<Long, Integer> studentCounts = lectures.stream()
-                .collect(Collectors.toMap(Lecture::getId,
-                        l -> enrolledStudentsPort.findByLectureId(academyId, l.getId()).size()));
+        Map<Long, Long> studentCounts = enrolledStudentsPort.countByLectureIds(
+                academyId, distinctIds(lectures, Lecture::getId));
 
         return result.map(lecture -> new LectureSummaryView(
                 lecture.getId(),
@@ -74,7 +73,7 @@ public class LectureQueryService implements LectureQueryUseCase {
                 teacherName(teachers, lecture.getTeacherId()),
                 classroomNames.get(lecture.getClassroomId()),
                 toScheduleViews(lecture),
-                studentCounts.getOrDefault(lecture.getId(), 0)));
+                studentCounts.getOrDefault(lecture.getId(), 0L).intValue()));
     }
 
     @Override

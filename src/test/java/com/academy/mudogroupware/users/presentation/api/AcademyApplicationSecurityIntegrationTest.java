@@ -1,9 +1,12 @@
 package com.academy.mudogroupware.users.presentation.api;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -13,13 +16,21 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import com.academy.mudogroupware.global.domain.auth.AccountType;
+import com.academy.mudogroupware.global.presentation.security.AuthUser;
+import com.academy.mudogroupware.users.application.command.ApproveAcademyApplicationCommand;
+import com.academy.mudogroupware.users.application.command.RejectAcademyApplicationCommand;
+import com.academy.mudogroupware.users.application.result.ApproveAcademyApplicationResult;
+import com.academy.mudogroupware.users.application.usecase.ApproveAcademyApplicationUseCase;
 import com.academy.mudogroupware.users.application.usecase.GetAcademyApplicationUseCase;
 import com.academy.mudogroupware.users.application.usecase.ListAcademyApplicationsUseCase;
+import com.academy.mudogroupware.users.application.usecase.RejectAcademyApplicationUseCase;
 import com.academy.mudogroupware.users.domain.exception.AcademyApplicationNotFoundException;
 import com.academy.mudogroupware.users.domain.model.AcademyApplication;
 import com.academy.mudogroupware.users.domain.model.AcademyApplicationStatus;
@@ -36,6 +47,9 @@ import com.academy.mudogroupware.users.domain.model.AcademyApplicationStatus;
 @AutoConfigureMockMvc
 class AcademyApplicationSecurityIntegrationTest {
 
+    private static final AuthUser SUPER_ADMIN_PRINCIPAL =
+            new AuthUser(99L, "superadmin", null, null, "SUPER_ADMIN", AccountType.ADMIN, null);
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -44,6 +58,12 @@ class AcademyApplicationSecurityIntegrationTest {
 
     @MockitoBean
     private GetAcademyApplicationUseCase getAcademyApplicationUseCase;
+
+    @MockitoBean
+    private ApproveAcademyApplicationUseCase approveAcademyApplicationUseCase;
+
+    @MockitoBean
+    private RejectAcademyApplicationUseCase rejectAcademyApplicationUseCase;
 
     @Test
     void listIsUnauthorizedWithoutAuthentication() throws Exception {
@@ -113,5 +133,79 @@ class AcademyApplicationSecurityIntegrationTest {
         mockMvc.perform(get("/api/academy-applications/99").with(authentication(superAdmin)))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("USER_404_3"));
+    }
+
+    @Test
+    void approveIsUnauthorizedWithoutAuthentication() throws Exception {
+        mockMvc.perform(post("/api/academy-applications/1/approve").with(csrf()))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void approveIsForbiddenForAuthenticatedNonSuperAdmin() throws Exception {
+        TestingAuthenticationToken nonSuperAdmin =
+                new TestingAuthenticationToken("teacher", null, "WORKSPACE:READ");
+
+        mockMvc.perform(post("/api/academy-applications/1/approve")
+                        .with(authentication(nonSuperAdmin))
+                        .with(csrf()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void approveIsOkForPlatformSuperAdmin() throws Exception {
+        when(approveAcademyApplicationUseCase.approve(any()))
+                .thenReturn(new ApproveAcademyApplicationResult(10L, 20L, "TempPass123!"));
+        TestingAuthenticationToken superAdmin =
+                new TestingAuthenticationToken(SUPER_ADMIN_PRINCIPAL, null, "PLATFORM:SUPER_ADMIN");
+
+        mockMvc.perform(post("/api/academy-applications/1/approve")
+                        .with(authentication(superAdmin))
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("ACADEMY_APPLICATION_200_3"))
+                .andExpect(jsonPath("$.data.academyId").value(10))
+                .andExpect(jsonPath("$.data.userId").value(20))
+                .andExpect(jsonPath("$.data.temporaryPassword").value("TempPass123!"));
+
+        verify(approveAcademyApplicationUseCase).approve(new ApproveAcademyApplicationCommand(1L, 99L));
+    }
+
+    @Test
+    void rejectIsUnauthorizedWithoutAuthentication() throws Exception {
+        mockMvc.perform(post("/api/academy-applications/1/reject")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"rejectReason\":\"사유\"}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void rejectIsForbiddenForAuthenticatedNonSuperAdmin() throws Exception {
+        TestingAuthenticationToken nonSuperAdmin =
+                new TestingAuthenticationToken("teacher", null, "WORKSPACE:READ");
+
+        mockMvc.perform(post("/api/academy-applications/1/reject")
+                        .with(authentication(nonSuperAdmin))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"rejectReason\":\"사유\"}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void rejectIsNoContentForPlatformSuperAdmin() throws Exception {
+        TestingAuthenticationToken superAdmin =
+                new TestingAuthenticationToken(SUPER_ADMIN_PRINCIPAL, null, "PLATFORM:SUPER_ADMIN");
+
+        mockMvc.perform(post("/api/academy-applications/1/reject")
+                        .with(authentication(superAdmin))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"rejectReason\":\"사업자번호 확인 불가\"}"))
+                .andExpect(status().isNoContent());
+
+        verify(rejectAcademyApplicationUseCase)
+                .reject(new RejectAcademyApplicationCommand(1L, 99L, "사업자번호 확인 불가"));
     }
 }

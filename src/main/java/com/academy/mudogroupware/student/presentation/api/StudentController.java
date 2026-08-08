@@ -5,6 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -17,8 +18,10 @@ import org.springframework.web.bind.annotation.RestController;
 import com.academy.mudogroupware.global.presentation.api.common.GlobalApiResponse;
 import com.academy.mudogroupware.global.presentation.api.common.SliceResponse;
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
+import com.academy.mudogroupware.student.application.command.DeleteStudentCommand;
 import com.academy.mudogroupware.student.application.command.EndEnrollmentCommand;
 import com.academy.mudogroupware.student.application.usecase.CreateStudentUseCase;
+import com.academy.mudogroupware.student.application.usecase.DeleteStudentUseCase;
 import com.academy.mudogroupware.student.application.usecase.EndEnrollmentUseCase;
 import com.academy.mudogroupware.student.application.usecase.EnrollStudentUseCase;
 import com.academy.mudogroupware.student.application.usecase.StudentQueryUseCase;
@@ -50,6 +53,7 @@ public class StudentController {
 
     private final CreateStudentUseCase createStudentUseCase;
     private final UpdateStudentUseCase updateStudentUseCase;
+    private final DeleteStudentUseCase deleteStudentUseCase;
     private final StudentQueryUseCase studentQueryUseCase;
     private final EnrollStudentUseCase enrollStudentUseCase;
     private final EndEnrollmentUseCase endEnrollmentUseCase;
@@ -73,7 +77,7 @@ public class StudentController {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "학생 목록 조회 성공")
     })
-    @PreAuthorize("hasAuthority('STUDENT:READ')")
+    @PreAuthorize("hasAuthority('STUDENT:MANAGE')")
     @GetMapping
     public ResponseEntity<GlobalApiResponse<SliceResponse<StudentSummaryResponse>>> getStudents(
             @AuthenticationPrincipal AuthUser authUser,
@@ -90,7 +94,7 @@ public class StudentController {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "학생 상세 조회 성공")
     })
-    @PreAuthorize("hasAuthority('STUDENT:READ')")
+    @PreAuthorize("hasAuthority('STUDENT:MANAGE')")
     @GetMapping("/{studentId}")
     public ResponseEntity<GlobalApiResponse<StudentDetailResponse>> getStudentDetail(
             @AuthenticationPrincipal AuthUser authUser,
@@ -114,11 +118,24 @@ public class StudentController {
         return ResponseEntity.noContent().build();
     }
 
+    @Operation(summary = "학생 삭제", description = "학생을 소프트 삭제한다. 삭제된 학생은 목록/상세 조회에 노출되지 않는다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "학생 삭제 성공")
+    })
+    @PreAuthorize("hasAuthority('STUDENT:MANAGE')")
+    @DeleteMapping("/{studentId}")
+    public ResponseEntity<Void> deleteStudent(
+            @AuthenticationPrincipal AuthUser authUser,
+            @PathVariable Long studentId) {
+        deleteStudentUseCase.deleteStudent(new DeleteStudentCommand(authUser.academyId(), studentId));
+        return ResponseEntity.noContent().build();
+    }
+
     @Operation(summary = "학생 수강 등록", description = "\"결제하기\" 버튼 흐름에서 실제 결제 없이 학생을 강의에 등록한다.")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "학생 수강 등록 성공")
     })
-    @PreAuthorize("hasAuthority('ENROLLMENT:MANAGE')")
+    @PreAuthorize("hasAuthority('STUDENT:MANAGE')")
     @PostMapping("/{studentId}/enrollments")
     public ResponseEntity<GlobalApiResponse<EnrollmentCreateResponse>> enroll(
             @AuthenticationPrincipal AuthUser authUser,
@@ -134,7 +151,7 @@ public class StudentController {
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "학생 수강 종료 성공")
     })
-    @PreAuthorize("hasAuthority('ENROLLMENT:MANAGE')")
+    @PreAuthorize("hasAuthority('STUDENT:MANAGE')")
     @PatchMapping("/{studentId}/enrollments/{enrollmentId}/end")
     public ResponseEntity<Void> endEnrollment(
             @AuthenticationPrincipal AuthUser authUser,

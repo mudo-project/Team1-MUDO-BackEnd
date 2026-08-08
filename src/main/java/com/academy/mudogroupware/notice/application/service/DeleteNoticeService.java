@@ -18,7 +18,6 @@ public class DeleteNoticeService implements DeleteNoticeUseCase {
 
     private final NoticeRepository noticeRepository;
 
-    // TODO: 삭제는 "작성자 본인 + 권한을 가진 사람들"도 가능해야 함 - users.role 값 체계 확정되면 추가
     @Override
     public void deleteNotice(Long noticeId, Long requesterId) {
         Notice notice = noticeRepository.findById(noticeId)

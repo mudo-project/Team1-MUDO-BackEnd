@@ -6,7 +6,7 @@
 ## 1. 공지사항 작성
 
 `POST /api/notices`
-권한: (미정 — 원래는 원장/대표, 상황에 따라 직원도 가능하도록 "권한"으로 설정 예정. `users.role` 값 체계 확정 전까지 인증만 요구)
+권한: `NOTICE:WRITE`
 
 #### Request
 
@@ -147,7 +147,7 @@
 ## 5. 공지사항 수정
 
 `PATCH /api/notices/{noticeId}`
-권한: 작성자 본인만
+권한: `NOTICE:WRITE` + 작성자 본인만
 
 #### Request
 
@@ -162,7 +162,7 @@
 ## 6. 공지사항 삭제
 
 `DELETE /api/notices/{noticeId}`
-권한: 작성자 본인만 (원래는 "작성자 본인 + 권한을 가진 사람들"까지 허용 예정 — 인가정책 확정 전까지 보류)
+권한: 작성자 본인만
 
 #### Response · `204 No Content`
 
@@ -171,14 +171,14 @@
 ## 7. 공지사항 고정
 
 `POST /api/notices/{noticeId}/pin`
-권한: 작성자 본인만
+권한: `NOTICE:PIN`
 
 #### Response · `204 No Content`
 
 ## 8. 공지사항 고정 해제
 
 `DELETE /api/notices/{noticeId}/pin`
-권한: 임시로 인증 사용자 전체 허용 (원래는 "권한을 가진 사람들 모두" — 인가정책 확정 전까지 제한 없이 열어둠)
+권한: `NOTICE:PIN`
 
 #### Response · `204 No Content`
 
@@ -195,7 +195,7 @@ notice 도메인 규칙 위반은 `NoticeErrorCode`(→ `NoticeException`)로 �
 | `NOTICE_403_1` | 403 | 해당 공지사항을 조회할 권한이 없습니다. |
 | `NOTICE_403_2` | 403 | 작성자 본인만 공지사항을 수정할 수 있습니다. |
 | `NOTICE_403_3` | 403 | 작성자 본인만 공지사항을 삭제할 수 있습니다. |
-| `NOTICE_403_4` | 403 | 작성자 본인만 공지사항을 고정할 수 있습니다. |
+| `NOTICE_403_5` | 403 | 다른 학원의 공지사항에는 접근할 수 없습니다. |
 | `NOTICE_404_1` | 404 | 공지사항을 찾을 수 없습니다. |
 | `NOTICE_404_2` | 404 | 사용자를 찾을 수 없습니다. |
 

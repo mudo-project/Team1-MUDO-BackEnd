@@ -3,7 +3,7 @@ package com.academy.mudogroupware.workspace.infrastructure.scheduler;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
 
-import com.academy.mudogroupware.workspace.application.usecase.DelayOverdueTasksUseCase;
+import com.academy.mudogroupware.workspace.application.usecase.task.DelayOverdueTasksUseCase;
 import java.lang.reflect.Method;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

@@ -57,7 +57,7 @@
 
 - ~~강의 검색 API의 실제 lecture 모듈 연결~~ → PR #116에서 완료. `LectureCatalogPortAdapter`(lecture)가 `LectureCatalogPort`(student 정의)를 구현.
 - ~~rollcall/lecture에서 사용할 student 공개 Port의 실제 코드~~ → `EnrolledStudentsPortAdapter`(student)가 `EnrolledStudentsPort`(lecture 정의)를 구현, rollcall의 `LectureEnrollmentPort`도 이를 재사용.
-- ~~users 권한 시드 변경 및 `@PreAuthorize` 적용~~ → `V1.4.6__seed_student_permissions.sql`로 `STUDENT:READ`/`STUDENT:MANAGE`/`ENROLLMENT:MANAGE` 시드, `StudentController`에 `@PreAuthorize` 적용 완료. lecture/rollcall과 동일하게 permission 코드만 시드하고, 실제 role 매핑(`role_permission`)은 admin이 role 관리 화면에서 처리한다.
+- ~~users 권한 시드 변경 및 `@PreAuthorize` 적용~~ → 학생관리 업무는 조회/수정/수강 등록을 실제로 같은 담당자가 처리하므로 `STUDENT:MANAGE` 하나로 통합했다. 기존 조회/수강 등록 세부 권한은 실제 API 권한으로 사용하지 않는다. 실제 role 매핑(`role_permission`)은 admin의 role 관리 화면에서 처리한다.
 
 ## 남은 연동 작업
 

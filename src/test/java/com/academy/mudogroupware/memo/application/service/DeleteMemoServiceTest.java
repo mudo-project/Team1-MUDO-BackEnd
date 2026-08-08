@@ -30,7 +30,7 @@ class DeleteMemoServiceTest {
     @Test
     void deletesMemoWhenOwner() {
         DeleteMemoService service = new DeleteMemoService(memoRepository);
-        Memo memo = Memo.create(10L, "제목", "내용", MemoColor.YELLOW, LocalDateTime.now());
+        Memo memo = Memo.create(10L, "제목", "내용", MemoColor.MUSTARD, LocalDateTime.now());
         when(memoRepository.findById(1L)).thenReturn(Optional.of(memo));
 
         service.deleteMemo(new DeleteMemoCommand(1L, 10L));
@@ -41,7 +41,7 @@ class DeleteMemoServiceTest {
     @Test
     void rejectsDeleteWhenNotOwner() {
         DeleteMemoService service = new DeleteMemoService(memoRepository);
-        Memo memo = Memo.create(10L, "제목", "내용", MemoColor.YELLOW, LocalDateTime.now());
+        Memo memo = Memo.create(10L, "제목", "내용", MemoColor.MUSTARD, LocalDateTime.now());
         when(memoRepository.findById(1L)).thenReturn(Optional.of(memo));
 
         MemoException exception = assertThrows(MemoException.class,

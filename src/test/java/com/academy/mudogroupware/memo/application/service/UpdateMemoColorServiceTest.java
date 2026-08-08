@@ -33,7 +33,7 @@ class UpdateMemoColorServiceTest {
     @Test
     void updatesColorWhenOwner() {
         UpdateMemoColorService service = new UpdateMemoColorService(memoRepository, clock);
-        Memo memo = Memo.create(10L, "제목", "내용", MemoColor.YELLOW, LocalDateTime.now());
+        Memo memo = Memo.create(10L, "제목", "내용", MemoColor.MUSTARD, LocalDateTime.now());
         when(memoRepository.findById(1L)).thenReturn(Optional.of(memo));
 
         service.updateColor(new UpdateMemoColorCommand(1L, 10L, MemoColor.BLUE));
@@ -44,7 +44,7 @@ class UpdateMemoColorServiceTest {
     @Test
     void rejectsUpdateWhenNotOwner() {
         UpdateMemoColorService service = new UpdateMemoColorService(memoRepository, clock);
-        Memo memo = Memo.create(10L, "제목", "내용", MemoColor.YELLOW, LocalDateTime.now());
+        Memo memo = Memo.create(10L, "제목", "내용", MemoColor.MUSTARD, LocalDateTime.now());
         when(memoRepository.findById(1L)).thenReturn(Optional.of(memo));
 
         MemoException exception = assertThrows(MemoException.class,

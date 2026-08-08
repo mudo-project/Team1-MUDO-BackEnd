@@ -51,7 +51,7 @@ class MemoControllerTest {
         when(createMemoUseCase.createMemo(any())).thenReturn(1L);
 
         ResponseEntity<GlobalApiResponse<MemoCreateResponse>> response = controller.createMemo(AUTH_USER,
-                new CreateMemoRequest("제목", "내용", MemoColor.YELLOW));
+                new CreateMemoRequest("제목", "내용", MemoColor.MUSTARD));
 
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
         assertEquals(1L, response.getBody().data().id());
@@ -59,7 +59,7 @@ class MemoControllerTest {
 
     @Test
     void getMemosReturnsListFromUseCase() {
-        Memo memo = Memo.create(10L, "제목", "내용", MemoColor.YELLOW, LocalDateTime.now());
+        Memo memo = Memo.create(10L, "제목", "내용", MemoColor.MUSTARD, LocalDateTime.now());
         when(memoQueryUseCase.getMemos(10L, MemoSortOrder.NEWEST)).thenReturn(List.of(memo));
 
         ResponseEntity<GlobalApiResponse<List<MemoResponse>>> response = controller.getMemos(AUTH_USER,

@@ -33,7 +33,7 @@ class UpdateMemoPositionServiceTest {
     @Test
     void updatesPositionAndSizeWhenOwner() {
         UpdateMemoPositionService service = new UpdateMemoPositionService(memoRepository, clock);
-        Memo memo = Memo.create(10L, "제목", "내용", MemoColor.YELLOW, LocalDateTime.now());
+        Memo memo = Memo.create(10L, "제목", "내용", MemoColor.MUSTARD, LocalDateTime.now());
         when(memoRepository.findById(1L)).thenReturn(Optional.of(memo));
 
         service.updatePosition(new UpdateMemoPositionCommand(1L, 10L, 10, 20, 200, 150));
@@ -47,7 +47,7 @@ class UpdateMemoPositionServiceTest {
     @Test
     void rejectsUpdateWhenNotOwner() {
         UpdateMemoPositionService service = new UpdateMemoPositionService(memoRepository, clock);
-        Memo memo = Memo.create(10L, "제목", "내용", MemoColor.YELLOW, LocalDateTime.now());
+        Memo memo = Memo.create(10L, "제목", "내용", MemoColor.MUSTARD, LocalDateTime.now());
         when(memoRepository.findById(1L)).thenReturn(Optional.of(memo));
 
         MemoException exception = assertThrows(MemoException.class,

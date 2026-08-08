@@ -2,7 +2,9 @@ package com.academy.mudogroupware.rollcall.application.service;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -69,11 +71,14 @@ class SaveAttendanceEntriesServiceTest {
     void createsNewEntryWhenNoneExists() {
         when(lectureEnrollmentPort.findLecture(LECTURE_ID))
                 .thenReturn(Optional.of(new LectureRef(LECTURE_ID, "수학 기초반", ACADEMY_ID)));
+        when(attendanceEntryRepository.findByLectureIdAndDate(LECTURE_ID, DATE)).thenReturn(List.of());
         when(attendanceEntryRepository.findByLectureIdAndStudentIdAndDate(LECTURE_ID, 5L, DATE))
                 .thenReturn(Optional.empty());
 
         service.saveEntries(command(List.of(new AttendanceEntryInput(5L, AttendanceStatus.PRESENT, null))));
 
+        verify(attendanceEntryRepository).findByLectureIdAndDate(LECTURE_ID, DATE);
+        verify(attendanceEntryRepository, never()).findByLectureIdAndStudentIdAndDate(eq(LECTURE_ID), any(), eq(DATE));
         verify(attendanceEntryRepository).save(any(AttendanceEntry.class));
     }
 
@@ -83,11 +88,14 @@ class SaveAttendanceEntriesServiceTest {
                 .thenReturn(Optional.of(new LectureRef(LECTURE_ID, "수학 기초반", ACADEMY_ID)));
         AttendanceEntry existing = AttendanceEntry.create(ACADEMY_ID, LECTURE_ID, 5L, DATE, AttendanceStatus.PRESENT,
                 null, NOW.minusDays(1));
+        when(attendanceEntryRepository.findByLectureIdAndDate(LECTURE_ID, DATE)).thenReturn(List.of(existing));
         when(attendanceEntryRepository.findByLectureIdAndStudentIdAndDate(LECTURE_ID, 5L, DATE))
                 .thenReturn(Optional.of(existing));
 
         service.saveEntries(command(List.of(new AttendanceEntryInput(5L, AttendanceStatus.LATE, null))));
 
+        verify(attendanceEntryRepository).findByLectureIdAndDate(LECTURE_ID, DATE);
+        verify(attendanceEntryRepository, never()).findByLectureIdAndStudentIdAndDate(eq(LECTURE_ID), any(), eq(DATE));
         verify(attendanceEntryRepository, times(1)).save(existing);
     }
 }

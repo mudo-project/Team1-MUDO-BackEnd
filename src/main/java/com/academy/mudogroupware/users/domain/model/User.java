@@ -53,6 +53,13 @@ public final class User {
                 accountType, adminScope, joinedAt, createdAt, updatedAt);
     }
 
+    public static User create(Long academyId, String username, String password, String name, String phone,
+                               String email, AccountType accountType, AdminScope adminScope,
+                               LocalDateTime joinedAt) {
+        return new User(null, academyId, username, password, name, phone, email, null, UserStatus.ACTIVE, true,
+                accountType, adminScope, joinedAt, joinedAt, joinedAt);
+    }
+
     public void ensureLoginAllowed() {
         if (status != UserStatus.ACTIVE) {
             throw new UserException(UserErrorCode.LOGIN_RESTRICTED);
