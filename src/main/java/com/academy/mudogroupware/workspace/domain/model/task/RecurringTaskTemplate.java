@@ -61,7 +61,6 @@ public class RecurringTaskTemplate {
   // 오늘이 이 템플릿의 발생일인지 판단한다. recurrenceRule 해석은 이 도메인 안에서만 이뤄진다.
   public boolean isDueOn(LocalDate today) {
     return switch (recurrenceType) {
-      case DAILY -> true;
       case WEEKLY -> daysOfWeek().contains(today.getDayOfWeek().getValue());
       case MONTHLY -> dayOfMonth() == today.getDayOfMonth();
     };
@@ -72,11 +71,6 @@ public class RecurringTaskTemplate {
       throw new InvalidRecurrenceRuleException();
     }
     switch (type) {
-      case DAILY -> {
-        if (!rule.isEmpty()) {
-          throw new InvalidRecurrenceRuleException();
-        }
-      }
       case WEEKLY -> {
         Object raw = rule.get("daysOfWeek");
         if (!(raw instanceof List<?> days) || days.isEmpty()) {
@@ -88,9 +82,10 @@ public class RecurringTaskTemplate {
           }
         }
       }
+      // 프론트 요청으로 매달 1일만 허용한다. 다른 날짜는 명시적으로 거부한다(2026-08-08).
       case MONTHLY -> {
         Object raw = rule.get("dayOfMonth");
-        if (!(raw instanceof Number number) || number.intValue() < 1 || number.intValue() > 31) {
+        if (!(raw instanceof Number number) || number.intValue() != 1) {
           throw new InvalidRecurrenceRuleException();
         }
       }

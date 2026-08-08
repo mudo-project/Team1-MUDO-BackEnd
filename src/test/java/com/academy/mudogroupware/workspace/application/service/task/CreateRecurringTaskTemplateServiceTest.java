@@ -72,7 +72,7 @@ class CreateRecurringTaskTemplateServiceTest {
                 service()
                     .create(
                         new CreateRecurringTaskTemplateCommand(
-                            WORKSPACE_ID, OUTSIDER_ID, "제목", RecurrenceType.DAILY, Map.of())))
+                            WORKSPACE_ID, OUTSIDER_ID, "제목", RecurrenceType.WEEKLY, Map.of("daysOfWeek", List.of(1)))))
         .isInstanceOf(WorkspaceNotFoundException.class);
 
     verify(recurringTaskTemplateRepository, never()).save(any());
@@ -87,7 +87,7 @@ class CreateRecurringTaskTemplateServiceTest {
                 service()
                     .create(
                         new CreateRecurringTaskTemplateCommand(
-                            WORKSPACE_ID, OUTSIDER_ID, "제목", RecurrenceType.DAILY, Map.of())))
+                            WORKSPACE_ID, OUTSIDER_ID, "제목", RecurrenceType.WEEKLY, Map.of("daysOfWeek", List.of(1)))))
         .isInstanceOf(WorkspaceAccessDeniedException.class);
 
     verify(recurringTaskTemplateRepository, never()).save(any());

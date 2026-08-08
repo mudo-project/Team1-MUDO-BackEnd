@@ -19,7 +19,7 @@ public record CreateRecurringTaskTemplateRequest(
         RecurrenceType recurrenceType,
     @Schema(
             description =
-                "주기별 부가 정보. DAILY={}, WEEKLY={\"daysOfWeek\":[1,3,5]}, MONTHLY={\"dayOfMonth\":1}",
+                "주기별 부가 정보. WEEKLY={\"daysOfWeek\":[1,3,5]}(월=1~일=7), MONTHLY={\"dayOfMonth\":1}(1만 허용)",
             example = "{\"daysOfWeek\":[1]}")
         @NotNull(message = "반복 주기 설정은 필수입니다.")
         Map<String, Object> recurrenceRule) {

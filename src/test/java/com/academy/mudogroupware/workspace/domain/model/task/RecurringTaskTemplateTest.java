@@ -15,24 +15,6 @@ class RecurringTaskTemplateTest {
   private static final long CREATOR_ID = 10L;
 
   @Test
-  void createsDailyTemplateWithEmptyRule() {
-    RecurringTaskTemplate template =
-        RecurringTaskTemplate.create(WORKSPACE_ID, "  일일 점검  ", RecurrenceType.DAILY, Map.of(), CREATOR_ID);
-
-    assertThat(template.getTitle()).isEqualTo("일일 점검");
-    assertThat(template.getRecurrenceType()).isEqualTo(RecurrenceType.DAILY);
-  }
-
-  @Test
-  void rejectsDailyTemplateWithNonEmptyRule() {
-    assertThatThrownBy(
-            () ->
-                RecurringTaskTemplate.create(
-                    WORKSPACE_ID, "일일 점검", RecurrenceType.DAILY, Map.of("dayOfMonth", 1), CREATOR_ID))
-        .isInstanceOf(InvalidRecurrenceRuleException.class);
-  }
-
-  @Test
   void createsWeeklyTemplateWithDaysOfWeek() {
     RecurringTaskTemplate template =
         RecurringTaskTemplate.create(
@@ -73,11 +55,11 @@ class RecurringTaskTemplateTest {
   }
 
   @Test
-  void rejectsMonthlyTemplateWithOutOfRangeDay() {
+  void rejectsMonthlyTemplateWithDayOfMonthOtherThanOne() {
     assertThatThrownBy(
             () ->
                 RecurringTaskTemplate.create(
-                    WORKSPACE_ID, "수납", RecurrenceType.MONTHLY, Map.of("dayOfMonth", 32), CREATOR_ID))
+                    WORKSPACE_ID, "수납", RecurrenceType.MONTHLY, Map.of("dayOfMonth", 2), CREATOR_ID))
         .isInstanceOf(InvalidRecurrenceRuleException.class);
   }
 
@@ -85,23 +67,15 @@ class RecurringTaskTemplateTest {
   void changeRecurrenceReplacesTitleAndRule() {
     RecurringTaskTemplate template =
         RecurringTaskTemplate.restore(
-            1L, WORKSPACE_ID, "기존 제목", RecurrenceType.DAILY, Map.of(), CREATOR_ID);
+            1L, WORKSPACE_ID, "기존 제목", RecurrenceType.WEEKLY, Map.of("daysOfWeek", List.of(1)), CREATOR_ID);
 
     RecurringTaskTemplate changed =
         template.changeRecurrence(
-            "새 제목", RecurrenceType.MONTHLY, Map.of("dayOfMonth", 15));
+            "새 제목", RecurrenceType.MONTHLY, Map.of("dayOfMonth", 1));
 
     assertThat(changed.getId()).isEqualTo(1L);
     assertThat(changed.getTitle()).isEqualTo("새 제목");
     assertThat(changed.getRecurrenceType()).isEqualTo(RecurrenceType.MONTHLY);
-  }
-
-  @Test
-  void isDueOnDailyIsAlwaysTrue() {
-    RecurringTaskTemplate template =
-        RecurringTaskTemplate.restore(1L, WORKSPACE_ID, "매일", RecurrenceType.DAILY, Map.of(), CREATOR_ID);
-
-    assertThat(template.isDueOn(LocalDate.of(2026, 8, 10))).isTrue();
   }
 
   @Test

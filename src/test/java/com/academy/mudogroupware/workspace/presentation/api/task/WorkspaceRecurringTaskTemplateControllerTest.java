@@ -65,7 +65,8 @@ class WorkspaceRecurringTaskTemplateControllerTest {
                 .with(authentication(auth()))
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"title\":\"   \",\"recurrenceType\":\"DAILY\",\"recurrenceRule\":{}}"))
+                .content(
+                    "{\"title\":\"   \",\"recurrenceType\":\"WEEKLY\",\"recurrenceRule\":{\"daysOfWeek\":[1]}}"))
         .andExpect(status().isBadRequest());
 
     verifyNoInteractions(createRecurringTaskTemplateUseCase);
@@ -96,7 +97,8 @@ class WorkspaceRecurringTaskTemplateControllerTest {
                 .with(authentication(auth()))
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"title\":\"제목\",\"recurrenceType\":\"DAILY\",\"recurrenceRule\":{}}"))
+                .content(
+                    "{\"title\":\"제목\",\"recurrenceType\":\"WEEKLY\",\"recurrenceRule\":{\"daysOfWeek\":[1]}}"))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.code").value("WORKSPACE_404_1"));
   }
@@ -112,7 +114,8 @@ class WorkspaceRecurringTaskTemplateControllerTest {
                 .with(authentication(auth()))
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"title\":\"제목\",\"recurrenceType\":\"DAILY\",\"recurrenceRule\":{}}"))
+                .content(
+                    "{\"title\":\"제목\",\"recurrenceType\":\"WEEKLY\",\"recurrenceRule\":{\"daysOfWeek\":[1]}}"))
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.code").value("WORKSPACE_403_1"));
   }

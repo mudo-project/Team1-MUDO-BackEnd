@@ -72,11 +72,11 @@ class RecurringTaskTemplatePersistenceAdapterDataJpaTest {
     RecurringTaskTemplate saved =
         recurringTaskTemplateRepository.save(
             RecurringTaskTemplate.create(
-                WORKSPACE_ID, "기존 제목", RecurrenceType.DAILY, Map.of(), CREATOR_ID));
+                WORKSPACE_ID, "기존 제목", RecurrenceType.WEEKLY, Map.of("daysOfWeek", List.of(1)), CREATOR_ID));
 
     RecurringTaskTemplate updated =
         recurringTaskTemplateRepository.save(
-            saved.changeRecurrence("새 제목", RecurrenceType.MONTHLY, Map.of("dayOfMonth", 5)));
+            saved.changeRecurrence("새 제목", RecurrenceType.MONTHLY, Map.of("dayOfMonth", 1)));
 
     assertThat(updated.getId()).isEqualTo(saved.getId());
     assertThat(updated.getTitle()).isEqualTo("새 제목");
@@ -89,7 +89,7 @@ class RecurringTaskTemplatePersistenceAdapterDataJpaTest {
     RecurringTaskTemplate saved =
         recurringTaskTemplateRepository.save(
             RecurringTaskTemplate.create(
-                WORKSPACE_ID, "삭제 대상", RecurrenceType.DAILY, Map.of(), CREATOR_ID));
+                WORKSPACE_ID, "삭제 대상", RecurrenceType.WEEKLY, Map.of("daysOfWeek", List.of(1)), CREATOR_ID));
     LocalDateTime scheduledFor = LocalDateTime.of(2026, 8, 10, 0, 0);
     recurringTaskSkipRepository.saveIfAbsent(saved.getId(), scheduledFor);
 
@@ -104,9 +104,10 @@ class RecurringTaskTemplatePersistenceAdapterDataJpaTest {
     insertWorkspace(WORKSPACE_ID);
     insertWorkspace(2L);
     recurringTaskTemplateRepository.save(
-        RecurringTaskTemplate.create(WORKSPACE_ID, "A", RecurrenceType.DAILY, Map.of(), CREATOR_ID));
+        RecurringTaskTemplate.create(
+            WORKSPACE_ID, "A", RecurrenceType.WEEKLY, Map.of("daysOfWeek", List.of(1)), CREATOR_ID));
     recurringTaskTemplateRepository.save(
-        RecurringTaskTemplate.create(2L, "B", RecurrenceType.DAILY, Map.of(), CREATOR_ID));
+        RecurringTaskTemplate.create(2L, "B", RecurrenceType.WEEKLY, Map.of("daysOfWeek", List.of(1)), CREATOR_ID));
 
     assertThat(recurringTaskTemplateRepository.findAll()).hasSize(2);
   }
