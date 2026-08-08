@@ -33,6 +33,11 @@ public record UpdateRecurringTaskTemplateRequest(
     return (recurrenceType == null) == (recurrenceRule == null);
   }
 
+  @AssertTrue(message = "제목은 공백일 수 없습니다.")
+  public boolean isTitleNotBlank() {
+    return title == null || !title.isEmpty();
+  }
+
   public UpdateRecurringTaskTemplateCommand toCommand(
       AuthUser authUser, Long workspaceId, Long templateId) {
     return new UpdateRecurringTaskTemplateCommand(

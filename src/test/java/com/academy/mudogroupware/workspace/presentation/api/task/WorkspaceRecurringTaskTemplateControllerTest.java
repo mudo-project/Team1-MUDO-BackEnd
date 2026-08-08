@@ -226,7 +226,8 @@ class WorkspaceRecurringTaskTemplateControllerTest {
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{}"))
-        .andExpect(status().isBadRequest());
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("COMMON_400_1"));
 
     verifyNoInteractions(updateRecurringTaskTemplateUseCase);
   }
@@ -240,6 +241,21 @@ class WorkspaceRecurringTaskTemplateControllerTest {
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"recurrenceType\":\"WEEKLY\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("COMMON_400_1"));
+
+    verifyNoInteractions(updateRecurringTaskTemplateUseCase);
+  }
+
+  @Test
+  void updateTemplateRejectsBlankTitle() throws Exception {
+    mockMvc
+        .perform(
+            patch("/api/workspaces/1/recurring-templates/1")
+                .with(authentication(auth()))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"   \"}"))
         .andExpect(status().isBadRequest());
 
     verifyNoInteractions(updateRecurringTaskTemplateUseCase);

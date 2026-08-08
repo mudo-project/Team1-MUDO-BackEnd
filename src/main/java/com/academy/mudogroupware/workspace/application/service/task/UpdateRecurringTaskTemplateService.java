@@ -39,9 +39,11 @@ public class UpdateRecurringTaskTemplateService implements UpdateRecurringTaskTe
       throw new WorkspaceAccessDeniedException();
     }
 
-    // 락 없이 조회한다 — 삭제 API가 아직 없어 수정-삭제 동시 경합이 존재하지 않는다.
-    // 삭제 API를 추가할 때 findByWorkspaceIdAndIdForUpdate(비관적 락)로 전환하고
-    // 두 Service가 그 조회를 공유하도록 바꿔야 한다(Task.findByIdForUpdate와 동일 패턴).
+    // 락 없이 조회한다 — 동시에 두 PATCH가 들어오면 lost update가 발생할 수 있지만
+    // 템플릿 1건 단위라 영향이 작아 허용한다. 삭제 API가 아직 없어 수정-삭제 동시 경합은
+    // 오늘은 존재하지 않는다. 삭제 API를 추가할 때 findByWorkspaceIdAndIdForUpdate(비관적 락)로
+    // 전환하고 두 Service가 그 조회를 공유하도록 바꿔야 한다(Task.findByIdForUpdate와 동일 패턴) —
+    // 그때 update-update lost update도 함께 재검토한다.
     RecurringTaskTemplate template =
         recurringTaskTemplateRepository
             .findByWorkspaceIdAndId(command.workspaceId(), command.templateId())

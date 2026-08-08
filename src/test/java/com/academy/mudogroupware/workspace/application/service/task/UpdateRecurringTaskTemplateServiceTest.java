@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.academy.mudogroupware.workspace.application.command.task.UpdateRecurringTaskTemplateCommand;
+import com.academy.mudogroupware.workspace.domain.exception.task.InvalidRecurrenceRuleException;
 import com.academy.mudogroupware.workspace.domain.exception.task.RecurringTaskTemplateNotFoundException;
 import com.academy.mudogroupware.workspace.domain.exception.workspace.WorkspaceAccessDeniedException;
 import com.academy.mudogroupware.workspace.domain.exception.workspace.WorkspaceNotFoundException;
@@ -74,6 +75,22 @@ class UpdateRecurringTaskTemplateServiceTest {
     assertThat(updated.getTitle()).isEqualTo("기존 제목");
     assertThat(updated.getRecurrenceType()).isEqualTo(RecurrenceType.MONTHLY);
     assertThat(updated.getRecurrenceRule()).isEqualTo(Map.of("dayOfMonth", 1));
+  }
+
+  @Test
+  void rejectsMismatchedRecurrenceRule() {
+    givenWorkspaceWithMember();
+    givenExistingTemplate();
+
+    assertThatThrownBy(
+            () ->
+                service()
+                    .update(
+                        new UpdateRecurringTaskTemplateCommand(
+                            WORKSPACE_ID, TEMPLATE_ID, MEMBER_ID, null, RecurrenceType.MONTHLY, Map.of("dayOfMonth", 15))))
+        .isInstanceOf(InvalidRecurrenceRuleException.class);
+
+    verify(recurringTaskTemplateRepository, never()).save(any());
   }
 
   @Test
