@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.workspace.domain.repository.task;
 
+import com.academy.mudogroupware.global.domain.common.page.PageResult;
 import com.academy.mudogroupware.workspace.domain.model.task.RecurringTaskTemplate;
 import java.util.List;
 import java.util.Optional;
@@ -13,7 +14,8 @@ public interface RecurringTaskTemplateRepository {
   // 접근할 수 없도록 조회 자체를 워크스페이스 범위로 제한한다.
   Optional<RecurringTaskTemplate> findByWorkspaceIdAndId(Long workspaceId, Long templateId);
 
-  List<RecurringTaskTemplate> findAllByWorkspaceId(Long workspaceId);
+  // 최신 생성순으로 정렬한 페이지 결과를 반환한다.
+  PageResult<RecurringTaskTemplate> findAllByWorkspaceId(Long workspaceId, int page, int size);
 
   // 생성 스케줄러가 전체 워크스페이스의 템플릿을 스캔할 때 쓴다.
   List<RecurringTaskTemplate> findAll();
