@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.academy.mudogroupware.google.application.port.GoogleOAuthCallException;
 import com.academy.mudogroupware.google.application.port.GoogleOAuthPort;
 import com.academy.mudogroupware.google.application.port.GoogleTokenExchangeResult;
+import com.academy.mudogroupware.google.application.port.RequiredGoogleScopePort;
 import com.academy.mudogroupware.google.application.usecase.GetGoogleAccessTokenUseCase;
 import com.academy.mudogroupware.google.domain.exception.GoogleAccountConnectionInvalidException;
 import com.academy.mudogroupware.google.domain.exception.GoogleAccountNotConnectedException;
@@ -16,7 +17,6 @@ import com.academy.mudogroupware.google.domain.exception.GoogleOAuthFailedExcept
 import com.academy.mudogroupware.google.domain.model.GoogleAccountConnection;
 import com.academy.mudogroupware.google.domain.model.GoogleConnectionStatus;
 import com.academy.mudogroupware.google.domain.repository.GoogleAccountConnectionRepository;
-import com.academy.mudogroupware.google.infrastructure.external.google.GoogleOAuthProperties;
 
 import lombok.RequiredArgsConstructor;
 
@@ -28,7 +28,7 @@ public class GetGoogleAccessTokenService implements GetGoogleAccessTokenUseCase 
     private final GoogleAccountConnectionRepository googleAccountConnectionRepository;
     private final GoogleOAuthPort googleOAuthPort;
     private final Clock clock;
-    private final GoogleOAuthProperties googleOAuthProperties;
+    private final RequiredGoogleScopePort requiredGoogleScopePort;
 
     @Override
     public String getAccessToken(Long academyId) {
@@ -36,7 +36,7 @@ public class GetGoogleAccessTokenService implements GetGoogleAccessTokenUseCase 
                 .orElseThrow(GoogleAccountNotConnectedException::new);
 
         GoogleConnectionStatus status = connection.deriveStatus(
-                LocalDateTime.now(clock), googleOAuthProperties.scopeSet());
+                LocalDateTime.now(clock), requiredGoogleScopePort.requiredScopes());
         if (status == GoogleConnectionStatus.FAILED || status == GoogleConnectionStatus.EXPIRED) {
             throw new GoogleAccountConnectionInvalidException();
         }

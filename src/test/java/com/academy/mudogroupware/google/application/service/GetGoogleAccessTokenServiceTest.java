@@ -19,10 +19,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.academy.mudogroupware.google.application.port.GoogleOAuthCallException;
 import com.academy.mudogroupware.google.application.port.GoogleOAuthPort;
 import com.academy.mudogroupware.google.application.port.GoogleTokenExchangeResult;
 import com.academy.mudogroupware.google.domain.exception.GoogleAccountConnectionInvalidException;
 import com.academy.mudogroupware.google.domain.exception.GoogleAccountNotConnectedException;
+import com.academy.mudogroupware.google.domain.exception.GoogleOAuthFailedException;
 import com.academy.mudogroupware.google.domain.model.GoogleAccountConnection;
 import com.academy.mudogroupware.google.domain.repository.GoogleAccountConnectionRepository;
 import com.academy.mudogroupware.google.infrastructure.external.google.GoogleOAuthProperties;
@@ -92,5 +94,18 @@ class GetGoogleAccessTokenServiceTest {
         String accessToken = service.getAccessToken(1L);
 
         assertThat(accessToken).isEqualTo("new-access-token");
+    }
+
+    @Test
+    void getAccessTokenWrapsGoogleOAuthCallExceptionWhenRefreshFails() {
+        GoogleAccountConnection connection = GoogleAccountConnection.restore(
+                10L, 1L, "academy@mudo.co.kr", 7L, "openid email drive.file", "refresh-token",
+                CONNECTED_AT, CONNECTED_AT.plusDays(60), CONNECTED_AT, false);
+        when(googleAccountConnectionRepository.findByAcademyId(1L)).thenReturn(Optional.of(connection));
+        when(googleOAuthPort.refreshAccessToken("refresh-token"))
+                .thenThrow(new GoogleOAuthCallException("구글 토큰 발급에 실패했습니다."));
+
+        assertThatThrownBy(() -> service.getAccessToken(1L))
+                .isInstanceOf(GoogleOAuthFailedException.class);
     }
 }

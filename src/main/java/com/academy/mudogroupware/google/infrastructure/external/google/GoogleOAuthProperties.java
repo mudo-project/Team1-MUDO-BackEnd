@@ -1,13 +1,17 @@
 package com.academy.mudogroupware.google.infrastructure.external.google;
 
+import java.util.Arrays;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import com.academy.mudogroupware.google.application.port.RequiredGoogleScopePort;
+
 @Component
 public record GoogleOAuthProperties(String clientId, String clientSecret, String redirectUri, String scope,
-                                     String frontendRedirectUri) {
+                                     String frontendRedirectUri) implements RequiredGoogleScopePort {
 
     // 템플릿 기능(드라이브·독스·시트)까지 포함한 scope다. 기존에 openid email만으로 연동된 계정은
     // GoogleAccountConnection.deriveStatus()가 이 값과 비교해 FAILED로 표시하고 재연결을 유도한다.
@@ -31,7 +35,14 @@ public record GoogleOAuthProperties(String clientId, String clientSecret, String
         this.frontendRedirectUri = frontendRedirectUri;
     }
 
-    public Set<String> scopeSet() {
-        return Set.of(scope.trim().split("\\s+"));
+    @Override
+    public Set<String> requiredScopes() {
+        Set<String> scopes = Arrays.stream(scope.trim().split("\\s+"))
+                .filter(token -> !token.isBlank())
+                .collect(Collectors.toUnmodifiableSet());
+        if (scopes.isEmpty()) {
+            throw new IllegalStateException("GOOGLE_OAUTH_SCOPE가 비어 있습니다.");
+        }
+        return scopes;
     }
 }
