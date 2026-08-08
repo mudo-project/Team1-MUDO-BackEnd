@@ -11,6 +11,7 @@ import com.academy.mudogroupware.google.application.query.GoogleAccountConnectio
 import com.academy.mudogroupware.google.application.usecase.GetGoogleAccountConnectionUseCase;
 import com.academy.mudogroupware.google.domain.model.GoogleAccountConnection;
 import com.academy.mudogroupware.google.domain.repository.GoogleAccountConnectionRepository;
+import com.academy.mudogroupware.google.infrastructure.external.google.GoogleOAuthProperties;
 
 import lombok.RequiredArgsConstructor;
 
@@ -21,6 +22,7 @@ public class GetGoogleAccountConnectionService implements GetGoogleAccountConnec
 
     private final GoogleAccountConnectionRepository googleAccountConnectionRepository;
     private final Clock clock;
+    private final GoogleOAuthProperties googleOAuthProperties;
 
     @Override
     public Optional<GoogleAccountConnectionView> getConnection(Long academyId) {
@@ -36,6 +38,6 @@ public class GetGoogleAccountConnectionService implements GetGoogleAccountConnec
                 connection.getConnectedAt(),
                 connection.getTokenExpiresAt(),
                 connection.getLastCheckedAt(),
-                connection.deriveStatus(now));
+                connection.deriveStatus(now, googleOAuthProperties.scopeSet()));
     }
 }

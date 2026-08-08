@@ -4,12 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.LocalDateTime;
+import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
 class GoogleAccountConnectionTest {
 
     private static final LocalDateTime CONNECTED_AT = LocalDateTime.of(2026, 7, 1, 14, 22);
+    private static final Set<String> GRANTED_SCOPE_REQUIREMENT = Set.of("scope");
 
     @Test
     void connectBuildsConnectionWithSixtyDayExpiry() {
@@ -43,7 +45,7 @@ class GoogleAccountConnectionTest {
         GoogleAccountConnection connection = GoogleAccountConnection.connect(
                 1L, "a@b.com", 7L, "scope", "token", CONNECTED_AT);
 
-        assertThat(connection.deriveStatus(CONNECTED_AT.plusDays(1)))
+        assertThat(connection.deriveStatus(CONNECTED_AT.plusDays(1), GRANTED_SCOPE_REQUIREMENT))
                 .isEqualTo(GoogleConnectionStatus.CONNECTED);
     }
 
@@ -54,7 +56,7 @@ class GoogleAccountConnectionTest {
 
         LocalDateTime withinWarningWindow = connection.getTokenExpiresAt().minusDays(1);
 
-        assertThat(connection.deriveStatus(withinWarningWindow))
+        assertThat(connection.deriveStatus(withinWarningWindow, GRANTED_SCOPE_REQUIREMENT))
                 .isEqualTo(GoogleConnectionStatus.EXPIRING);
     }
 
@@ -63,7 +65,7 @@ class GoogleAccountConnectionTest {
         GoogleAccountConnection connection = GoogleAccountConnection.connect(
                 1L, "a@b.com", 7L, "scope", "token", CONNECTED_AT);
 
-        assertThat(connection.deriveStatus(connection.getTokenExpiresAt().plusSeconds(1)))
+        assertThat(connection.deriveStatus(connection.getTokenExpiresAt().plusSeconds(1), GRANTED_SCOPE_REQUIREMENT))
                 .isEqualTo(GoogleConnectionStatus.EXPIRED);
     }
 
@@ -72,7 +74,7 @@ class GoogleAccountConnectionTest {
         GoogleAccountConnection connection = GoogleAccountConnection.connect(
                 1L, "a@b.com", 7L, "scope", "token", CONNECTED_AT);
 
-        assertThat(connection.deriveStatus(connection.getTokenExpiresAt().minusDays(3)))
+        assertThat(connection.deriveStatus(connection.getTokenExpiresAt().minusDays(3), GRANTED_SCOPE_REQUIREMENT))
                 .isEqualTo(GoogleConnectionStatus.EXPIRING);
     }
 
@@ -81,7 +83,7 @@ class GoogleAccountConnectionTest {
         GoogleAccountConnection connection = GoogleAccountConnection.connect(
                 1L, "a@b.com", 7L, "scope", "token", CONNECTED_AT);
 
-        assertThat(connection.deriveStatus(connection.getTokenExpiresAt()))
+        assertThat(connection.deriveStatus(connection.getTokenExpiresAt(), GRANTED_SCOPE_REQUIREMENT))
                 .isEqualTo(GoogleConnectionStatus.EXPIRED);
     }
 
@@ -91,8 +93,29 @@ class GoogleAccountConnectionTest {
                 1L, "a@b.com", 7L, "scope", "token", CONNECTED_AT);
         connection.markCheckResult(CONNECTED_AT.plusDays(1), false);
 
-        assertThat(connection.deriveStatus(CONNECTED_AT.plusDays(1)))
+        assertThat(connection.deriveStatus(CONNECTED_AT.plusDays(1), GRANTED_SCOPE_REQUIREMENT))
                 .isEqualTo(GoogleConnectionStatus.FAILED);
+    }
+
+    @Test
+    void deriveStatusReturnsFailedWhenRequiredScopeIsMissing() {
+        GoogleAccountConnection connection = GoogleAccountConnection.connect(
+                1L, "a@b.com", 7L, "openid email", "token", CONNECTED_AT);
+
+        GoogleConnectionStatus status = connection.deriveStatus(
+                CONNECTED_AT.plusDays(1), Set.of("openid", "email", "drive.file"));
+
+        assertThat(status).isEqualTo(GoogleConnectionStatus.FAILED);
+    }
+
+    @Test
+    void deriveStatusIgnoresScopeCheckWhenRequiredScopesEmpty() {
+        GoogleAccountConnection connection = GoogleAccountConnection.connect(
+                1L, "a@b.com", 7L, "openid email", "token", CONNECTED_AT);
+
+        GoogleConnectionStatus status = connection.deriveStatus(CONNECTED_AT.plusDays(1), Set.of());
+
+        assertThat(status).isEqualTo(GoogleConnectionStatus.CONNECTED);
     }
 
     @Test

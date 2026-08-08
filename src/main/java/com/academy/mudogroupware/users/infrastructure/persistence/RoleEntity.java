@@ -39,21 +39,27 @@ public class RoleEntity {
     @Column(length = 255)
     private String description;
 
+    @Column(length = 20)
+    private String color;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
     @Builder
-    private RoleEntity(Long id, Long academyId, String name, String description, LocalDateTime createdAt) {
+    private RoleEntity(Long id, Long academyId, String name, String description, String color,
+                        LocalDateTime createdAt) {
         this.id = id;
         this.academyId = academyId;
         this.name = name;
         this.description = description;
+        this.color = color;
         this.createdAt = createdAt;
     }
 
-    void update(String name, String description) {
+    void update(String name, String description, String color) {
         this.name = name;
         this.description = description;
+        this.color = color;
     }
 
     @ManyToMany(fetch = FetchType.LAZY)
