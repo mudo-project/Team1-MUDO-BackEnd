@@ -4,6 +4,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -32,6 +33,7 @@ import com.academy.mudogroupware.timetable.application.query.TimetableSlotView;
 import com.academy.mudogroupware.timetable.application.usecase.CreateTimetableSlotUseCase;
 import com.academy.mudogroupware.timetable.application.usecase.GetTimetableSlotUseCase;
 import com.academy.mudogroupware.timetable.application.usecase.GetTimetableSlotsUseCase;
+import com.academy.mudogroupware.timetable.application.usecase.DeleteTimetableSlotUseCase;
 import com.academy.mudogroupware.timetable.application.usecase.UpdateTimetableSlotUseCase;
 import com.academy.mudogroupware.timetable.domain.exception.TimetableSlotNotFoundException;
 import com.academy.mudogroupware.timetable.domain.model.ClassType;
@@ -47,6 +49,7 @@ class TimetableSlotControllerTest {
     @MockitoBean private GetTimetableSlotsUseCase getTimetableSlotsUseCase;
     @MockitoBean private GetTimetableSlotUseCase getTimetableSlotUseCase;
     @MockitoBean private UpdateTimetableSlotUseCase updateTimetableSlotUseCase;
+    @MockitoBean private DeleteTimetableSlotUseCase deleteTimetableSlotUseCase;
     @MockitoBean private JwtTokenProvider jwtTokenProvider;
     @MockitoBean private JwtAuthenticationConverter jwtAuthenticationConverter;
 
@@ -139,6 +142,14 @@ class TimetableSlotControllerTest {
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void deleteSlotReturns204() throws Exception {
+        mockMvc.perform(delete("/api/timetables/1/slots/100?scope=ALL")
+                        .with(authentication(authenticatedUser("TIMETABLE:MANAGE")))
+                        .with(csrf()))
                 .andExpect(status().isNoContent());
     }
 
