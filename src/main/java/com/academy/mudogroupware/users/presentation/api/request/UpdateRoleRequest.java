@@ -7,10 +7,11 @@ import jakarta.validation.constraints.Size;
 
 public record UpdateRoleRequest(
         @NotBlank @Size(max = 50) String name,
-        @Size(max = 255) String description
+        @Size(max = 255) String description,
+        String color
 ) {
 
     public UpdateRoleCommand toCommand(Long roleId, Long academyId) {
-        return new UpdateRoleCommand(roleId, academyId, name, description);
+        return new UpdateRoleCommand(roleId, academyId, name, description, color);
     }
 }

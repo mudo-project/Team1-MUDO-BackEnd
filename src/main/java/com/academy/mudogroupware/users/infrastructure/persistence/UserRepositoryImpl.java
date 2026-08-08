@@ -2,8 +2,10 @@ package com.academy.mudogroupware.users.infrastructure.persistence;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Repository;
@@ -58,6 +60,15 @@ public class UserRepositoryImpl implements UserRepository {
                 : userJpaRepository.findAllByAcademyIdAndStatusAndNameContainingIgnoreCase(
                         academyId, UserStatus.ACTIVE, normalizedKeyword);
         return entities.stream().map(this::toDomain).toList();
+    }
+
+    @Override
+    public Map<Long, Long> countActiveByRoleIds(Set<Long> roleIds) {
+        if (roleIds.isEmpty()) {
+            return Map.of();
+        }
+        return userJpaRepository.countActiveByRoleIdIn(roleIds).stream()
+                .collect(Collectors.toMap(RoleMemberCountRow::getRoleId, RoleMemberCountRow::getCount));
     }
 
     @Override

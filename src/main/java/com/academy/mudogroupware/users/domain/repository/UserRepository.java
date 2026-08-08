@@ -1,6 +1,7 @@
 package com.academy.mudogroupware.users.domain.repository;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.Optional;
 
@@ -15,6 +16,8 @@ public interface UserRepository {
     void changeRole(Long userId, Long roleId);
 
     List<User> searchByAcademyId(Long academyId, String keyword);
+
+    Map<Long, Long> countActiveByRoleIds(Set<Long> roleIds);
 
     User save(User user);
 

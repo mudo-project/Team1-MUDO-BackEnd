@@ -642,6 +642,44 @@ PR 1(목록)·PR 2(상세)에 이어지는 세 번째이자 마지막 PR. 승인
 
 ---
 
+## ✅ 2026-08-08 · 역할 색상(color) + 인원수(memberCount) 추가 (이슈 #226)
+
+### 배경
+
+프론트 역할 설정 화면에 color(뱃지 색상)와 memberCount(역할별 인원수)가 있는데 백엔드 `role` 테이블/API엔 둘 다 없던 기존 갭. 역할 CRUD가 끝나면 사용자에게 상기하기로 해뒀던 항목을 이번에 함께 처리했다. 설계: `docs/superpowers/specs/2026-08-08-role-color-design.md`.
+
+### 확정된 정책
+
+- **`color`는 `name`/`description`과 완전히 동일한 경로로 흐른다.** 역할 생성/수정 요청에서 받고, 목록/상세 응답에 그대로 내려준다. 형식 검증(hex 등)은 하지 않는다 — 팀 결정으로 프론트 책임.
+- **`Role.create()`/`Role.restore()`는 기존 6-인자 시그니처를 유지한 채 7-인자(color 포함) 오버로드를 추가하는 방식으로 확장했다.** 코드베이스에 이 두 메서드 호출부가 11곳 있었는데(대부분 테스트), 전부 고치는 대신 이전에 `AuthUser`가 같은 이유로 delegating 생성자를 쓴 전례를 그대로 따라 기존 호출부를 안 건드렸다.
+- **`memberCount`는 `role` 테이블 컬럼이 아니라 매 조회 시 `users` 테이블에서 계산하는 파생값이다.** `status = ACTIVE`인 구성원만 센다(역할 삭제 정책의 `existsActiveByRoleId`와 동일한 기준). 인원 배정이 바뀔 때마다 캐시를 동기화해야 하는 컬럼을 만드는 대신, 학원 규모상 매번 계산해도 부담 없다고 판단했다.
+- **`memberCount`는 `Role` 도메인 모델에 넣지 않았다.** 다른 애그리거트(User)의 파생 통계를 순수 도메인 객체에 섞으면 `updatePermissions()` 등 count와 무관한 흐름까지 불필요하게 count 조회를 끌고 다니게 된다. 대신 attendance 도메인의 `WeeklyEmployeeAttendanceView`와 같은 패턴으로 응용 계층에 `RoleView(Role role, long memberCount)`를 신설해 `ListRolesUseCase`/`GetRoleUseCase`가 이걸 반환하도록 바꿨다.
+- **`UserRepository.countActiveByRoleIds(Set<Long>)`는 역할 여러 개를 한 번에 집계하는 배치 쿼리다.** 역할 목록 조회에서 역할 N개마다 개별 쿼리를 날리는 N+1을 피하기 위해, GROUP BY로 한 번에 가져와 `Map<Long, Long>`으로 변환한다. 상세 조회(역할 하나)도 같은 메서드를 `Set.of(roleId)`로 호출해서 재사용한다.
+
+### 완료 기준
+
+- [x] `role.color` 컬럼 마이그레이션(`V4.1.4`) 적용
+- [x] `Role` 도메인 모델에 `color` + 7-인자 오버로드 추가(6-인자 하위호환 유지)
+- [x] `RoleEntity`/`RoleRepository`/`RoleRepositoryImpl`에 `color` 배관(`updateNameAndDescription` 4-인자로 확장)
+- [x] `UserRepository.countActiveByRoleIds` 추가(TDD, N+1 없이 배치 집계)
+- [x] `RoleView` 신설, `ListRolesUseCase`/`GetRoleUseCase` 반환 타입을 `RoleView` 기반으로 변경(TDD)
+- [x] 역할 생성/수정 API에 `color` 추가(TDD)
+- [x] `RoleListResponse`/`RoleDetailResponse`에 `color`/`memberCount` 반영
+- [x] 로컬 curl로 end-to-end 검증(생성/목록/상세/수정 전부, 역할 배정 후 memberCount 실제 증가 확인)
+- [x] `./gradlew build` 통과
+
+### 🧩 영향 범위
+
+| 계층 | 변경 내용 |
+| --- | --- |
+| Domain(users) | `Role`에 `color` 필드 + 7-인자 `create`/`restore` 오버로드 추가. `UserRepository`에 `countActiveByRoleIds(Set<Long>)` 추가 |
+| Persistence(users) | `RoleEntity`에 `color` 컬럼 + `update()` 3-인자 확장. `RoleJpaRepository`는 무변경, `RoleRepositoryImpl`에 `color` 배관. `UserJpaRepository`에 집계 쿼리 + `RoleMemberCountRow` 프로젝션 신규, `UserRepositoryImpl.countActiveByRoleIds` 구현 |
+| Application(users) | `RoleView` 신규(`application/query`). `ListRolesUseCase`/`GetRoleUseCase` 반환 타입을 `RoleView` 기반으로 변경. `CreateRoleCommand`/`UpdateRoleCommand`에 `color` 추가 |
+| Presentation(users) | `CreateRoleRequest`/`UpdateRoleRequest`에 `color` 추가. `RoleListResponse`/`RoleDetailResponse`에 `color`/`memberCount` 추가(`from(RoleView)`로 팩토리 시그니처 변경, `RoleController` 자체는 무변경) |
+| Migration | `V4.1.4`(`role` 테이블에 `color VARCHAR(20) NULL` 컬럼 추가) |
+
+---
+
 ## 🧩 영향 범위
 
 | 계층 | 변경 내용 |
