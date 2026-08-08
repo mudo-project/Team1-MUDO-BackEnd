@@ -12,6 +12,8 @@ public interface UserRepository {
 
     void clearRoleId(Long roleId);
 
+    void changeRole(Long userId, Long roleId);
+
     User save(User user);
 
     Optional<User> findByUsername(String username);
