@@ -1,9 +1,16 @@
 package com.academy.mudogroupware.memo.domain.model;
 
 public enum MemoColor {
-    RED,
-    YELLOW,
-    GREEN,
+    ROSE,
+    MUSTARD,
+    SAGE,
     BLUE,
-    PURPLE
+    LAVENDER,
+    PINK,
+    SLATE,
+    PEACH,
+    TEAL,
+    OLIVE,
+    CLAY,
+    INDIGO
 }
