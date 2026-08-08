@@ -1,6 +1,6 @@
 # 🔁 반복 업무 템플릿 API 호출 흐름
 
-> `TASK_API_FLOW.md`가 업무 생성·수정·삭제 흐름을 문서화하듯, 이 문서는 반복 업무 템플릿 생성·목록 조회 API의 호출 흐름을 다룬다.
+> `TASK_API_FLOW.md`가 업무 생성·수정·삭제 흐름을 문서화하듯, 이 문서는 반복 업무 템플릿 생성·목록 조회·수정 API의 호출 흐름을 다룬다.
 
 ## 🆕 반복 업무 템플릿 생성 API 흐름
 
@@ -84,6 +84,51 @@ JPQL은 `order by t.createdAt desc, t.id desc`로 정렬한다. `createdAt`만�
 `RecurringTaskTemplatePersistenceAdapter`가 `Slice`를 공용 `PageResult<RecurringTaskTemplate>`로 변환해 Service·UseCase 계층까지 Spring Data 타입이 노출되지 않도록 한다. Controller는 `SliceResponse.from(pageResult, RecurringTaskTemplateListResponse::from)`으로 응답 DTO 목록과 페이지 메타데이터(`content`, `page`, `size`, `hasNext`)를 조립한다. 이 패턴은 `notice` 도메인의 목록 조회와 동일하다.
 
 성공하면 Controller가 `GlobalApiResponse.ok(WorkspaceResponseCode.RECURRING_TEMPLATE_LIST_RETRIEVED, ...)`로 HTTP `200 OK`를 반환한다.
+
+---
+
+## ✏️ 반복 업무 템플릿 수정 API 흐름
+
+```text
+PATCH /api/workspaces/{workspaceId}/recurring-templates/{templateId}
+  → Security Filter
+  → AuthUser
+  → WorkspaceRecurringTaskTemplateController
+  → UpdateRecurringTaskTemplateRequest
+  → UpdateRecurringTaskTemplateCommand
+  → UpdateRecurringTaskTemplateUseCase
+  → UpdateRecurringTaskTemplateService
+  → WorkspaceRepository.findById (락 없음)
+  → WorkspacePersistenceAdapter
+  → RecurringTaskTemplateRepository.findByWorkspaceIdAndId (락 없음)
+  → RecurringTaskTemplate.changeRecurrence (Domain Model, 반복 규칙 재검증)
+  → RecurringTaskTemplateRepository.save
+  → RecurringTaskTemplatePersistenceAdapter
+  → RecurringTaskTemplateJpaRepository
+```
+
+### 1. 요청 검증과 Command 변환
+
+`UpdateRecurringTaskTemplateRequest`는 두 가지를 `@AssertTrue`로 검증한다.
+
+- `isAtLeastOneFieldPresent()`: `title`·`recurrenceType`·`recurrenceRule`을 모두 생략하면 `400`.
+- `isRecurrencePairComplete()`: `recurrenceType`과 `recurrenceRule`은 항상 함께 오거나 함께 없어야 한다 — 하나만 보내면 `400`. `recurrenceType`이 바뀌면 `recurrenceRule`의 유효한 모양도 함께 바뀌므로(예: `WEEKLY`→`MONTHLY`), 두 값을 독립적으로 부분 수정하게 두지 않는다.
+
+Compact Constructor에서 `title`이 있으면 미리 trim한다. 검증을 통과하면 `toCommand(authUser, workspaceId, templateId)`가 `UpdateRecurringTaskTemplateCommand`로 변환한다.
+
+### 2. 워크스페이스 존재 확인과 참여자 검증
+
+`UpdateRecurringTaskTemplateService`는 생성·목록 조회 API와 동일한 순서를 따른다 — `WorkspaceRepository.findById`(락 없음)로 조회 후 없으면 `WorkspaceNotFoundException`(`404_1`), 참여자가 아니면 `WorkspaceAccessDeniedException`(`403_1`).
+
+### 3. 템플릿 조회와 값 병합
+
+`RecurringTaskTemplateRepository.findByWorkspaceIdAndId(workspaceId, templateId)`로 조회한다(락 없음 — 삭제 API가 아직 없어 삭제와의 동시 경합이 존재하지 않는다). 없으면 `RecurringTaskTemplateNotFoundException`(`404_5`).
+
+`command.title()`이 `null`이면 기존 제목을 유지하고, `command.recurrenceType()`이 `null`이면 기존 `recurrenceType`·`recurrenceRule`을 그대로 다시 넘긴다(Request 검증으로 인해 `recurrenceType`이 `null`이면 `recurrenceRule`도 항상 `null`이다). 병합된 값으로 `template.changeRecurrence(newTitle, newType, newRule)`을 호출한다 — 이 메서드는 내부적으로 새 `RecurringTaskTemplate` 인스턴스를 만들며 생성자와 동일한 `validateRule`을 다시 실행하므로, 값이 바뀌지 않은 경우에도 기존 규칙이 여전히 유효한지 재검증된다.
+
+### 4. 저장과 응답
+
+`RecurringTaskTemplateRepository.save`는 `id`가 있으므로 `RecurringTaskTemplatePersistenceAdapter`가 기존 엔티티를 조회해 `changeRecurrence`로 갱신한다(생성과 같은 `save` 메서드, 분기만 다름). 성공하면 Controller가 `GlobalApiResponse.ok(WorkspaceResponseCode.RECURRING_TEMPLATE_UPDATED, ...)`로 HTTP `200 OK`와 반영된 `templateId`·`title`·`recurrenceType`·`recurrenceRule`을 반환한다.
 
 ## 📚 관련 문서
 

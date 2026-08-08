@@ -1,6 +1,6 @@
 # 반복 업무 템플릿(Recurring Task Template) API 명세
 
-> `TASK_API.md`가 업무 생성·수정·삭제를 모아 문서화하듯, 이 문서는 반복 업무 템플릿의 생성·목록 조회 API를 모은다.
+> `TASK_API.md`가 업무 생성·수정·삭제를 모아 문서화하듯, 이 문서는 반복 업무 템플릿의 생성·목록 조회·수정 API를 모은다.
 
 ---
 
@@ -174,8 +174,105 @@ Response Body
 
 ---
 
+## 반복 업무 템플릿 수정
+
+### Endpoint
+
+`PATCH /api/workspaces/{workspaceId}/recurring-templates/{templateId}`
+
+# **[request]**
+
+### Request Header
+
+| name | description |
+| --- | --- |
+| `Authorization` | `Bearer {accessToken}` |
+| `Content-Type` | `application/json` |
+
+### Path Variable
+
+| name | description |
+| --- | --- |
+| `workspaceId` | 템플릿이 속한 워크스페이스 번호 |
+| `templateId` | 수정할 템플릿 번호 |
+
+### Request Parameter
+
+없음
+
+Request Body
+
+```json
+{
+  "title": "주간 출결 현황 정리(수정)",
+  "recurrenceType": "MONTHLY",
+  "recurrenceRule": {
+    "dayOfMonth": 1
+  }
+}
+```
+
+| name | 설명 |
+| --- | --- |
+| `title` | 새 템플릿 제목. 선택. 보내면 앞뒤 공백 제거 후 최대 200자이며, 공백만 남으면 거부한다. |
+| `recurrenceType` | 새 반복 주기 타입. 선택이지만 `recurrenceRule`과 항상 함께 보내야 한다. |
+| `recurrenceRule` | 새 주기별 부가 정보. 선택이지만 `recurrenceType`과 항상 함께 보내야 한다. 검증 규칙은 생성 API와 동일. |
+
+`title`과 `recurrenceType`+`recurrenceRule` 세트는 각각 독립적으로 선택이며, 최소 하나는 있어야 한다. 한쪽만 보내면 다른 쪽은 기존 값이 그대로 유지된다. `recurrenceType`·`recurrenceRule` 중 하나만 보내면 `400`이다.
+
+# **[response]**
+
+### 성공코드
+
+| HTTP 상태 | 설명 |
+| --- | --- |
+| `200 OK` | 템플릿 수정 성공 |
+
+Response Body
+
+```json
+{
+  "status": 200,
+  "code": "WORKSPACE_200_10",
+  "message": "반복 업무 템플릿 수정에 성공했습니다.",
+  "data": {
+    "templateId": 1,
+    "title": "주간 출결 현황 정리(수정)",
+    "recurrenceType": "MONTHLY",
+    "recurrenceRule": { "dayOfMonth": 1 }
+  }
+}
+```
+
+| name | 설명 |
+| --- | --- |
+| `status` | HTTP 상태 코드 |
+| `code` | 서비스 응답 코드 |
+| `message` | 응답 메시지 |
+| `data.templateId` | 템플릿 번호 |
+| `data.title` | 반영된 템플릿 제목 |
+| `data.recurrenceType` | 반영된 반복 주기 타입 |
+| `data.recurrenceRule` | 반영된 반복 주기 부가 정보 |
+
+### 실패 코드
+
+| HTTP 상태 | code | message | 설명 |
+| --- | --- | --- | --- |
+| `400 Bad Request` | `COMMON_400_1` | 입력값이 올바르지 않습니다. | `title`·`recurrenceType`·`recurrenceRule`을 모두 생략했거나, `recurrenceType`·`recurrenceRule` 중 하나만 보냈거나, `title`이 공백만으로 이루어진 경우 |
+| `400 Bad Request` | `WORKSPACE_400_7` | 반복 주기 설정이 올바르지 않습니다. | `recurrenceRule`이 주기 타입과 맞지 않는 경우(생성 API와 동일한 검증) |
+| `401 Unauthorized` | `COMMON_401_1` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않은 경우 |
+| `403 Forbidden` | `WORKSPACE_403_1` | 워크스페이스에 접근할 권한이 없습니다. | 요청자가 참여자가 아닌 경우 |
+| `404 Not Found` | `WORKSPACE_404_1` | 워크스페이스를 찾을 수 없습니다. | 워크스페이스가 없거나 삭제된 경우 |
+| `404 Not Found` | `WORKSPACE_404_5` | 반복 업무 템플릿을 찾을 수 없습니다. | 템플릿이 없거나 해당 워크스페이스 소속이 아닌 경우 |
+
+> 존재 확인(`404`)을 참여자 검증(`403`)보다 먼저 수행한다 — 생성·목록 조회 API와 동일한 순서.
+> 다른 워크스페이스에 속한 템플릿 번호를 보내도 `WORKSPACE_404_5`로 응답한다(조회 자체가 `findByWorkspaceIdAndId`로 워크스페이스 범위에 제한됨).
+> 동시 수정에 대한 비관적 락은 사용하지 않는다 — 삭제 API가 아직 없어 삭제와의 경합이 발생할 수 없기 때문이다(업무(Task) 수정 API와 달리).
+
+---
+
 ## 참고 문서
 
 - [TASK_API.md](TASK_API.md) — 업무(Task) API 명세
-- [RECURRING_TASK_API_FLOW.md](RECURRING_TASK_API_FLOW.md) — 반복 업무 템플릿 생성·목록 조회 API 호출 흐름
+- [RECURRING_TASK_API_FLOW.md](RECURRING_TASK_API_FLOW.md) — 반복 업무 템플릿 생성·목록 조회·수정 API 호출 흐름
 - [BUSINESS_RULES.md](BUSINESS_RULES.md) — 업무 상태 결정·전이 규칙

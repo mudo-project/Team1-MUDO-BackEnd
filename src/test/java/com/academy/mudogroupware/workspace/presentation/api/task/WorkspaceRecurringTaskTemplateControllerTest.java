@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -18,8 +19,12 @@ import com.academy.mudogroupware.global.infrastructure.security.jwt.JwtTokenProv
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
 import com.academy.mudogroupware.global.presentation.security.JwtAuthenticationConverter;
 import com.academy.mudogroupware.workspace.application.command.task.CreateRecurringTaskTemplateCommand;
+import com.academy.mudogroupware.workspace.application.command.task.UpdateRecurringTaskTemplateCommand;
 import com.academy.mudogroupware.workspace.application.usecase.task.CreateRecurringTaskTemplateUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.task.GetRecurringTaskTemplatesUseCase;
+import com.academy.mudogroupware.workspace.application.usecase.task.UpdateRecurringTaskTemplateUseCase;
+import com.academy.mudogroupware.workspace.domain.exception.task.InvalidRecurrenceRuleException;
+import com.academy.mudogroupware.workspace.domain.exception.task.RecurringTaskTemplateNotFoundException;
 import com.academy.mudogroupware.workspace.domain.exception.workspace.WorkspaceAccessDeniedException;
 import com.academy.mudogroupware.workspace.domain.exception.workspace.WorkspaceNotFoundException;
 import com.academy.mudogroupware.workspace.domain.model.task.RecurrenceType;
@@ -44,6 +49,7 @@ class WorkspaceRecurringTaskTemplateControllerTest {
 
   @MockitoBean private CreateRecurringTaskTemplateUseCase createRecurringTaskTemplateUseCase;
   @MockitoBean private GetRecurringTaskTemplatesUseCase getRecurringTaskTemplatesUseCase;
+  @MockitoBean private UpdateRecurringTaskTemplateUseCase updateRecurringTaskTemplateUseCase;
   @MockitoBean private JwtTokenProvider jwtTokenProvider;
   @MockitoBean private JwtAuthenticationConverter jwtAuthenticationConverter;
 
@@ -187,6 +193,121 @@ class WorkspaceRecurringTaskTemplateControllerTest {
                     "{\"title\":\"제목\",\"recurrenceType\":\"WEEKLY\",\"recurrenceRule\":{\"daysOfWeek\":[1]}}"))
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.code").value("WORKSPACE_403_1"));
+  }
+
+  @Test
+  void updateTemplateReturnsUpdatedFields() throws Exception {
+    RecurringTaskTemplate updated =
+        RecurringTaskTemplate.restore(
+            1L, 1L, "새 제목", RecurrenceType.WEEKLY, Map.of("daysOfWeek", List.of(1)), 10L);
+    when(updateRecurringTaskTemplateUseCase.update(any(UpdateRecurringTaskTemplateCommand.class)))
+        .thenReturn(updated);
+
+    mockMvc
+        .perform(
+            patch("/api/workspaces/1/recurring-templates/1")
+                .with(authentication(auth()))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"새 제목\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.code").value("WORKSPACE_200_10"))
+        .andExpect(jsonPath("$.data.templateId").value(1))
+        .andExpect(jsonPath("$.data.title").value("새 제목"));
+
+    verify(updateRecurringTaskTemplateUseCase).update(any(UpdateRecurringTaskTemplateCommand.class));
+  }
+
+  @Test
+  void updateTemplateRejectsEmptyBody() throws Exception {
+    mockMvc
+        .perform(
+            patch("/api/workspaces/1/recurring-templates/1")
+                .with(authentication(auth()))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("COMMON_400_1"));
+
+    verifyNoInteractions(updateRecurringTaskTemplateUseCase);
+  }
+
+  @Test
+  void updateTemplateRejectsRecurrenceTypeWithoutRule() throws Exception {
+    mockMvc
+        .perform(
+            patch("/api/workspaces/1/recurring-templates/1")
+                .with(authentication(auth()))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"recurrenceType\":\"WEEKLY\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("COMMON_400_1"));
+
+    verifyNoInteractions(updateRecurringTaskTemplateUseCase);
+  }
+
+  @Test
+  void updateTemplateRejectsBlankTitle() throws Exception {
+    mockMvc
+        .perform(
+            patch("/api/workspaces/1/recurring-templates/1")
+                .with(authentication(auth()))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"   \"}"))
+        .andExpect(status().isBadRequest());
+
+    verifyNoInteractions(updateRecurringTaskTemplateUseCase);
+  }
+
+  @Test
+  void updateTemplatePropagatesTemplateNotFound() throws Exception {
+    when(updateRecurringTaskTemplateUseCase.update(any(UpdateRecurringTaskTemplateCommand.class)))
+        .thenThrow(new RecurringTaskTemplateNotFoundException());
+
+    mockMvc
+        .perform(
+            patch("/api/workspaces/1/recurring-templates/1")
+                .with(authentication(auth()))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"새 제목\"}"))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("WORKSPACE_404_5"));
+  }
+
+  @Test
+  void updateTemplatePropagatesAccessDenied() throws Exception {
+    when(updateRecurringTaskTemplateUseCase.update(any(UpdateRecurringTaskTemplateCommand.class)))
+        .thenThrow(new WorkspaceAccessDeniedException());
+
+    mockMvc
+        .perform(
+            patch("/api/workspaces/1/recurring-templates/1")
+                .with(authentication(auth()))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"새 제목\"}"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("WORKSPACE_403_1"));
+  }
+
+  @Test
+  void updateTemplatePropagatesInvalidRecurrenceRule() throws Exception {
+    when(updateRecurringTaskTemplateUseCase.update(any(UpdateRecurringTaskTemplateCommand.class)))
+        .thenThrow(new InvalidRecurrenceRuleException());
+
+    mockMvc
+        .perform(
+            patch("/api/workspaces/1/recurring-templates/1")
+                .with(authentication(auth()))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"recurrenceType\":\"MONTHLY\",\"recurrenceRule\":{\"dayOfMonth\":15}}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("WORKSPACE_400_7"));
   }
 
   private Authentication auth() {
