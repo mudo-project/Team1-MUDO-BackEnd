@@ -30,4 +30,9 @@ public interface UserJpaRepository extends JpaRepository<UserEntity, Long> {
             @Param("userIds") Set<Long> userIds);
 
     List<UserEntity> findAllByStatusAndJoinedAtIsNotNull(UserStatus status);
+
+    List<UserEntity> findAllByAcademyIdAndStatusAndNameContainingIgnoreCase(
+            Long academyId, UserStatus status, String keyword);
+
+    List<UserEntity> findAllByAcademyIdAndStatus(Long academyId, UserStatus status);
 }
