@@ -57,7 +57,7 @@ class TaskPersistenceAdapterDataJpaTest {
     insertWorkspace(WORKSPACE_ID);
     insertTask(1L, WORKSPACE_ID, TaskStatus.IN_PROGRESS, TODAY);
 
-    Optional<Task> found = taskRepository.findByIdForUpdate(1L);
+    Optional<Task> found = taskRepository.findByIdForUpdate(WORKSPACE_ID, 1L);
 
     assertThat(found).isPresent();
     assertThat(found.get().getStatus()).isEqualTo(TaskStatus.IN_PROGRESS);
@@ -71,7 +71,7 @@ class TaskPersistenceAdapterDataJpaTest {
     insertRecurringTemplate(100L, WORKSPACE_ID);
     insertRecurringTask(2L, WORKSPACE_ID, 100L, TaskStatus.WAITING, TODAY.atTime(9, 0));
 
-    Optional<Task> found = taskRepository.findByIdForUpdate(2L);
+    Optional<Task> found = taskRepository.findByIdForUpdate(WORKSPACE_ID, 2L);
 
     assertThat(found).isPresent();
     assertThat(found.get().isRecurring()).isTrue();
@@ -82,18 +82,29 @@ class TaskPersistenceAdapterDataJpaTest {
 
   @Test
   void findByIdForUpdateReturnsEmptyForMissingTask() {
-    assertThat(taskRepository.findByIdForUpdate(999L)).isEmpty();
+    insertWorkspace(WORKSPACE_ID);
+    assertThat(taskRepository.findByIdForUpdate(WORKSPACE_ID, 999L)).isEmpty();
+  }
+
+  @Test
+  void findByIdForUpdateReturnsEmptyWhenTaskBelongsToAnotherWorkspace() {
+    long otherWorkspaceId = 2L;
+    insertWorkspace(WORKSPACE_ID);
+    insertWorkspace(otherWorkspaceId);
+    insertTask(1L, otherWorkspaceId, TaskStatus.IN_PROGRESS, TODAY);
+
+    assertThat(taskRepository.findByIdForUpdate(WORKSPACE_ID, 1L)).isEmpty();
   }
 
   @Test
   void savingExistingTaskUpdatesStatusAndDueAt() {
     insertWorkspace(WORKSPACE_ID);
     insertTask(1L, WORKSPACE_ID, TaskStatus.DELAYED, TODAY.minusDays(1));
-    Task loaded = taskRepository.findByIdForUpdate(1L).orElseThrow();
+    Task loaded = taskRepository.findByIdForUpdate(WORKSPACE_ID, 1L).orElseThrow();
 
     taskRepository.save(loaded.changeStatus(TaskStatus.IN_PROGRESS, TODAY.plusDays(1), TODAY));
 
-    Task reloaded = taskRepository.findByIdForUpdate(1L).orElseThrow();
+    Task reloaded = taskRepository.findByIdForUpdate(WORKSPACE_ID, 1L).orElseThrow();
     assertThat(reloaded.getStatus()).isEqualTo(TaskStatus.IN_PROGRESS);
     assertThat(reloaded.getDueAt()).isEqualTo(TODAY.plusDays(1));
   }

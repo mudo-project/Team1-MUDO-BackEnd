@@ -9,7 +9,6 @@ import static org.mockito.Mockito.when;
 
 import com.academy.mudogroupware.workspace.application.command.CreateTaskCommentCommand;
 import com.academy.mudogroupware.workspace.domain.exception.InvalidMentionedUserException;
-import com.academy.mudogroupware.workspace.domain.exception.TaskNotFoundException;
 import com.academy.mudogroupware.workspace.domain.exception.WorkspaceAccessDeniedException;
 import com.academy.mudogroupware.workspace.domain.exception.WorkspaceNotFoundException;
 import com.academy.mudogroupware.workspace.domain.model.Task;
@@ -40,7 +39,6 @@ class CreateTaskCommentServiceTest {
   private static final ZoneId KST = ZoneId.of("Asia/Seoul");
   private static final Clock FIXED_CLOCK = Clock.fixed(Instant.parse("2026-08-07T01:00:00Z"), KST);
   private static final long WORKSPACE_ID = 1L;
-  private static final long OTHER_WORKSPACE_ID = 2L;
   private static final long TASK_ID = 101L;
   private static final long MEMBER_ID = 10L;
   private static final long MENTIONED_MEMBER_ID = 11L;
@@ -86,7 +84,7 @@ class CreateTaskCommentServiceTest {
                         new CreateTaskCommentCommand(WORKSPACE_ID, TASK_ID, MEMBER_ID, "내용", List.of())))
         .isInstanceOf(WorkspaceNotFoundException.class);
 
-    verify(taskRepository, never()).findByIdForUpdate(any());
+    verify(taskRepository, never()).findByIdForUpdate(any(), any());
   }
 
   @Test
@@ -100,22 +98,7 @@ class CreateTaskCommentServiceTest {
                         new CreateTaskCommentCommand(WORKSPACE_ID, TASK_ID, OUTSIDER_ID, "내용", List.of())))
         .isInstanceOf(WorkspaceAccessDeniedException.class);
 
-    verify(taskRepository, never()).findByIdForUpdate(any());
-  }
-
-  @Test
-  void rejectsTaskFromAnotherWorkspace() {
-    givenWorkspaceWithMembers(MEMBER_ID);
-    givenTask(OTHER_WORKSPACE_ID);
-
-    assertThatThrownBy(
-            () ->
-                service()
-                    .createComment(
-                        new CreateTaskCommentCommand(WORKSPACE_ID, TASK_ID, MEMBER_ID, "내용", List.of())))
-        .isInstanceOf(TaskNotFoundException.class);
-
-    verify(taskCommentRepository, never()).save(any());
+    verify(taskRepository, never()).findByIdForUpdate(any(), any());
   }
 
   @Test
@@ -148,6 +131,6 @@ class CreateTaskCommentServiceTest {
         Task.restore(
             TASK_ID, owningWorkspaceId, null, "업무", TaskStatus.WAITING, LocalDate.of(2026, 8, 10),
             null, MEMBER_ID);
-    when(taskRepository.findByIdForUpdate(TASK_ID)).thenReturn(Optional.of(task));
+    when(taskRepository.findByIdForUpdate(WORKSPACE_ID, TASK_ID)).thenReturn(Optional.of(task));
   }
 }

@@ -231,16 +231,6 @@ class TaskTest {
         .isInstanceOf(InvalidTaskStatusTransitionException.class);
   }
 
-  // --- belongsTo ---
-
-  @Test
-  void belongsToMatchesOwningWorkspaceOnly() {
-    Task task = regular(TaskStatus.WAITING, TOMORROW);
-
-    assertThat(task.belongsTo(WORKSPACE_ID)).isTrue();
-    assertThat(task.belongsTo(WORKSPACE_ID + 1)).isFalse();
-  }
-
   private Task regular(TaskStatus status, LocalDate dueAt) {
     return Task.restore(1L, WORKSPACE_ID, null, "일반 업무", status, dueAt, null, CREATOR_ID);
   }

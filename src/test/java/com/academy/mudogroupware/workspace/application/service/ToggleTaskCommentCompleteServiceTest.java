@@ -121,7 +121,7 @@ class ToggleTaskCommentCompleteServiceTest {
         Task.restore(
             TASK_ID, owningWorkspaceId, null, "업무", TaskStatus.WAITING, LocalDate.of(2026, 8, 10),
             null, MEMBER_ID);
-    when(taskRepository.findByIdForUpdate(TASK_ID)).thenReturn(Optional.of(task));
+    when(taskRepository.findByIdForUpdate(WORKSPACE_ID, TASK_ID)).thenReturn(Optional.of(task));
   }
 
   private void givenComment(boolean completed, Long completedBy, LocalDateTime completedAt) {

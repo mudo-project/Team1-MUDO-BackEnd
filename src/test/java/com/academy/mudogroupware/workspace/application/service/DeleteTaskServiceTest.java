@@ -31,7 +31,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class DeleteTaskServiceTest {
 
   private static final long WORKSPACE_ID = 1L;
-  private static final long OTHER_WORKSPACE_ID = 2L;
   private static final long TASK_ID = 101L;
   private static final long TEMPLATE_ID = 100L;
   private static final long MEMBER_ID = 10L;
@@ -76,7 +75,7 @@ class DeleteTaskServiceTest {
             () -> service().deleteTask(new DeleteTaskCommand(WORKSPACE_ID, TASK_ID, MEMBER_ID)))
         .isInstanceOf(WorkspaceNotFoundException.class);
 
-    verify(taskRepository, never()).findByIdForUpdate(any());
+    verify(taskRepository, never()).findByIdForUpdate(any(), any());
     verify(taskRepository, never()).delete(any());
   }
 
@@ -88,26 +87,14 @@ class DeleteTaskServiceTest {
             () -> service().deleteTask(new DeleteTaskCommand(WORKSPACE_ID, TASK_ID, OUTSIDER_ID)))
         .isInstanceOf(WorkspaceAccessDeniedException.class);
 
-    verify(taskRepository, never()).findByIdForUpdate(any());
+    verify(taskRepository, never()).findByIdForUpdate(any(), any());
     verify(taskRepository, never()).delete(any());
   }
 
   @Test
   void rejectsMissingTask() {
     givenWorkspaceWithMember();
-    when(taskRepository.findByIdForUpdate(TASK_ID)).thenReturn(Optional.empty());
-
-    assertThatThrownBy(
-            () -> service().deleteTask(new DeleteTaskCommand(WORKSPACE_ID, TASK_ID, MEMBER_ID)))
-        .isInstanceOf(TaskNotFoundException.class);
-
-    verify(taskRepository, never()).delete(any());
-  }
-
-  @Test
-  void rejectsTaskFromAnotherWorkspace() {
-    givenWorkspaceWithMember();
-    givenRegularTask(OTHER_WORKSPACE_ID);
+    when(taskRepository.findByIdForUpdate(WORKSPACE_ID, TASK_ID)).thenReturn(Optional.empty());
 
     assertThatThrownBy(
             () -> service().deleteTask(new DeleteTaskCommand(WORKSPACE_ID, TASK_ID, MEMBER_ID)))
@@ -127,7 +114,7 @@ class DeleteTaskServiceTest {
         Task.restore(
             TASK_ID, owningWorkspaceId, null, "일반 업무", TaskStatus.WAITING,
             LocalDate.of(2026, 8, 10), null, MEMBER_ID);
-    when(taskRepository.findByIdForUpdate(TASK_ID)).thenReturn(Optional.of(task));
+    when(taskRepository.findByIdForUpdate(WORKSPACE_ID, TASK_ID)).thenReturn(Optional.of(task));
   }
 
   private void givenRecurringTask(long owningWorkspaceId) {
@@ -135,6 +122,6 @@ class DeleteTaskServiceTest {
         Task.restore(
             TASK_ID, owningWorkspaceId, TEMPLATE_ID, "반복 업무", TaskStatus.WAITING, null,
             SCHEDULED_FOR, MEMBER_ID);
-    when(taskRepository.findByIdForUpdate(TASK_ID)).thenReturn(Optional.of(task));
+    when(taskRepository.findByIdForUpdate(WORKSPACE_ID, TASK_ID)).thenReturn(Optional.of(task));
   }
 }

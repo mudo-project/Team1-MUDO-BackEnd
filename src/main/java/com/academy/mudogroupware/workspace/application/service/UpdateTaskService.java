@@ -40,13 +40,12 @@ public class UpdateTaskService implements UpdateTaskUseCase {
       throw new WorkspaceAccessDeniedException();
     }
 
-    // 비관적 락으로 삭제와의 경합을 막는다.
+    // 비관적 락으로 삭제와의 경합을 막는다. 조회 자체가 워크스페이스 범위로 제한되므로
+    // 다른 워크스페이스의 taskId는 이 시점에 빈 결과로 걸러진다.
     Task task =
-        taskRepository.findByIdForUpdate(command.taskId()).orElseThrow(TaskNotFoundException::new);
-    // 다른 워크스페이스의 업무는 존재 자체를 노출하지 않고 404로 응답한다.
-    if (!task.belongsTo(command.workspaceId())) {
-      throw new TaskNotFoundException();
-    }
+        taskRepository
+            .findByIdForUpdate(command.workspaceId(), command.taskId())
+            .orElseThrow(TaskNotFoundException::new);
 
     TaskStatus previousStatus = task.getStatus();
     LocalDate today = LocalDate.now(clock);
