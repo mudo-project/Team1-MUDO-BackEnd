@@ -5,6 +5,7 @@ import java.net.URI;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -34,7 +35,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
-// TODO: 권한 모듈의 관리자 전용 검증이 준비되면 @PreAuthorize를 추가한다(users.role 값 체계 확정 전까지는 인증만 검사).
 @Tag(name = "구글 연동", description = "학원 명의 구글 계정 연동(OAuth) 관리 API")
 @RestController
 @RequestMapping("/api/google/connections")
@@ -53,8 +53,10 @@ public class GoogleAccountConnectionController {
     @Operation(summary = "구글 계정 연동 시작", description = "구글 OAuth 동의 화면으로 이동할 인증 URL을 발급합니다. "
             + "switchAccount=true이면 계정 교체를 위해 구글 계정 선택 화면을 강제로 띄웁니다.")
     @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "인증 URL 발급 성공")
+        @ApiResponse(responseCode = "200", description = "인증 URL 발급 성공"),
+        @ApiResponse(responseCode = "403", description = "원장(academy 관리자) 계정이 아닌 경우")
     })
+    @PreAuthorize("hasAuthority('ACADEMY:OWNER')")
     @PostMapping("/authorize-url")
     public ResponseEntity<GlobalApiResponse<GoogleAuthorizationUrlResponse>> startConnection(
             @AuthenticationPrincipal AuthUser authUser,
@@ -88,8 +90,10 @@ public class GoogleAccountConnectionController {
 
     @Operation(summary = "구글 연동 상태 조회", description = "현재 학원의 구글 계정 연동 상태를 조회합니다. 연동된 계정이 없으면 data가 null입니다.")
     @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "조회 성공")
+        @ApiResponse(responseCode = "200", description = "조회 성공"),
+        @ApiResponse(responseCode = "403", description = "원장(academy 관리자) 계정이 아닌 경우")
     })
+    @PreAuthorize("hasAuthority('ACADEMY:OWNER')")
     @GetMapping
     public ResponseEntity<GlobalApiResponse<GoogleAccountConnectionResponse>> getConnection(
             @AuthenticationPrincipal AuthUser authUser) {
@@ -103,8 +107,10 @@ public class GoogleAccountConnectionController {
     @Operation(summary = "구글 연동 상태 확인", description = "저장된 리프레시 토큰으로 구글에 실제 유효성을 확인합니다.")
     @ApiResponses({
         @ApiResponse(responseCode = "204", description = "확인 성공"),
+        @ApiResponse(responseCode = "403", description = "원장(academy 관리자) 계정이 아닌 경우"),
         @ApiResponse(responseCode = "404", description = "연동된 구글 계정이 없는 경우")
     })
+    @PreAuthorize("hasAuthority('ACADEMY:OWNER')")
     @PostMapping("/check")
     public ResponseEntity<Void> checkConnection(@AuthenticationPrincipal AuthUser authUser) {
         checkGoogleAccountConnectionUseCase.check(new CheckGoogleConnectionCommand(authUser.academyId()));
@@ -114,8 +120,10 @@ public class GoogleAccountConnectionController {
     @Operation(summary = "구글 연동 해제", description = "구글 계정 연동을 해제하고 저장된 토큰을 폐기합니다.")
     @ApiResponses({
         @ApiResponse(responseCode = "204", description = "해제 성공"),
+        @ApiResponse(responseCode = "403", description = "원장(academy 관리자) 계정이 아닌 경우"),
         @ApiResponse(responseCode = "404", description = "연동된 구글 계정이 없는 경우")
     })
+    @PreAuthorize("hasAuthority('ACADEMY:OWNER')")
     @DeleteMapping
     public ResponseEntity<Void> disconnect(@AuthenticationPrincipal AuthUser authUser) {
         disconnectGoogleAccountUseCase.disconnect(new DisconnectGoogleAccountCommand(authUser.academyId()));

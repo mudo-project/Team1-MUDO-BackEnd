@@ -89,11 +89,11 @@ class JwtAuthenticationConverterTest {
     }
 
     @Test
-    void academyScopedAdminStillUsesRoleLookupForNow() {
+    void academyScopedAdminUsesRoleLookupAndGetsOwnerAuthority() {
         JwtAuthenticationConverter converter = new JwtAuthenticationConverter(
                 roleId -> new RolePermissionInfo("학원관리자", Set.of("ACCOUNT:CREATE")),
                 () -> {
-                    throw new AssertionError("ACADEMY-scope 관리자는 아직 플랫폼 권한 포트를 쓰지 않음");
+                    throw new AssertionError("ACADEMY-scope 관리자는 플랫폼 권한 포트를 쓰지 않음");
                 });
 
         Authentication authentication = converter.toAuthentication(
@@ -101,6 +101,6 @@ class JwtAuthenticationConverterTest {
 
         assertThat(authentication.getAuthorities())
                 .extracting(GrantedAuthority::getAuthority)
-                .containsExactly("ACCOUNT:CREATE");
+                .containsExactlyInAnyOrder("ACCOUNT:CREATE", "ACADEMY:OWNER");
     }
 }
