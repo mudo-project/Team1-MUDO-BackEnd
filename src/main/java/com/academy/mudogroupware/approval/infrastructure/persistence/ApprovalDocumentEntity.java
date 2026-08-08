@@ -4,6 +4,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.hibernate.annotations.BatchSize;
+
 import com.academy.mudogroupware.approval.domain.model.ApprovalContentType;
 import com.academy.mudogroupware.approval.domain.model.ApprovalStatus;
 
@@ -66,9 +68,11 @@ public class ApprovalDocumentEntity {
 
     @OneToMany(mappedBy = "approvalDocument", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("stepOrder asc")
+    @BatchSize(size = 100)
     private List<ApprovalDocumentLineEntity> lines = new ArrayList<>();
 
     @OneToMany(mappedBy = "approvalDocument", cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 100)
     private List<ApprovalAttachmentEntity> attachments = new ArrayList<>();
 
     @Builder

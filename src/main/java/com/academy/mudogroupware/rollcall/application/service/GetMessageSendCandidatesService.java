@@ -2,7 +2,9 @@ package com.academy.mudogroupware.rollcall.application.service;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,6 +14,7 @@ import com.academy.mudogroupware.rollcall.application.query.RosterEntryView;
 import com.academy.mudogroupware.rollcall.application.query.RosterView;
 import com.academy.mudogroupware.rollcall.application.usecase.GetLectureRosterUseCase;
 import com.academy.mudogroupware.rollcall.application.usecase.GetMessageSendCandidatesUseCase;
+import com.academy.mudogroupware.rollcall.domain.model.AttendanceStatus;
 import com.academy.mudogroupware.rollcall.domain.model.MessageTemplate;
 import com.academy.mudogroupware.rollcall.domain.repository.MessageTemplateRepository;
 
@@ -28,18 +31,22 @@ public class GetMessageSendCandidatesService implements GetMessageSendCandidates
     @Override
     public List<MessageSendCandidateView> getCandidates(Long lectureId, Long academyId, LocalDate date) {
         RosterView roster = getLectureRosterUseCase.getRoster(lectureId, academyId, date);
+        Map<AttendanceStatus, MessageTemplate> templatesByStatus = messageTemplateRepository.findByAcademyId(academyId).stream()
+                .collect(Collectors.toMap(MessageTemplate::getStatus, Function.identity(), (a, b) -> a));
 
         return roster.entries().stream()
                 .filter(entry -> entry.status() != null)
-                .map(entry -> toCandidate(academyId, entry))
+                .map(entry -> toCandidate(entry, templatesByStatus))
                 .toList();
     }
 
-    private MessageSendCandidateView toCandidate(Long academyId, RosterEntryView entry) {
-        Optional<MessageTemplate> template = messageTemplateRepository.findByAcademyIdAndStatus(academyId,
-                entry.status());
+    private MessageSendCandidateView toCandidate(
+            RosterEntryView entry,
+            Map<AttendanceStatus, MessageTemplate> templatesByStatus
+    ) {
+        MessageTemplate template = templatesByStatus.get(entry.status());
         return new MessageSendCandidateView(entry.studentId(), entry.studentName(), entry.status(),
-                entry.parentPhone(), template.map(MessageTemplate::getId).orElse(null),
-                template.map(MessageTemplate::getName).orElse(null), template.isPresent());
+                entry.parentPhone(), template != null ? template.getId() : null,
+                template != null ? template.getName() : null, template != null);
     }
 }

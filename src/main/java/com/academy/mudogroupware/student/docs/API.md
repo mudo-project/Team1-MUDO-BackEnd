@@ -174,7 +174,30 @@
 
 ---
 
-## 5. 학생 수강 등록
+## 5. 학생 삭제
+
+`DELETE /api/students/{studentId}`
+
+인증: 필요
+
+#### Path Variable
+
+| 이름 | 설명 |
+|---|---|
+| `studentId` | 삭제할 학생 ID |
+
+#### Response - `204 No Content`
+
+#### 규칙
+
+- 소프트 삭제다. `student.deleted_at`에 삭제 시각을 기록할 뿐 row를 지우지 않는다.
+- 삭제된 학생은 이후 목록/상세/수정/삭제 요청에서 `404`(`STUDENT_404_1`)로 취급된다.
+- 학생이 요청자 학원 소속이 아니면 `403`을 반환한다.
+- 수강 이력(`student_enrollment`)은 그대로 남아 있으므로 데이터 유실이 없다.
+
+---
+
+## 6. 학생 수강 등록
 
 `POST /api/students/{studentId}/enrollments`
 
@@ -210,7 +233,7 @@
 
 ---
 
-## 6. 학생 수강 종료
+## 7. 학생 수강 종료
 
 `PATCH /api/students/{studentId}/enrollments/{enrollmentId}/end`
 

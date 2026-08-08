@@ -48,6 +48,7 @@ public class RollcallController {
 
     @Operation(summary = "강의 출결부 조회",
             description = "지정한 날짜의 강의 수강생 로스터와 출결 상태, 하단 요약(총원/출석/결석/지각/인강/기타)을 조회한다.")
+    @PreAuthorize("hasAuthority('ROLLCALL:MANAGE')")
     @GetMapping
     public ResponseEntity<GlobalApiResponse<RosterResponse>> getRoster(
             @AuthenticationPrincipal AuthUser authUser,
@@ -73,6 +74,7 @@ public class RollcallController {
     @Operation(summary = "출결부 엑셀 다운로드",
             description = "번호/학생명/학년/출결상태/비고와 하단 요약이 포함된 .xlsx 파일을 다운로드한다. "
                     + "출결 상태가 비어 있어도 다운로드할 수 있다.")
+    @PreAuthorize("hasAuthority('ROLLCALL:MANAGE')")
     @GetMapping("/export")
     public ResponseEntity<byte[]> exportSheet(
             @AuthenticationPrincipal AuthUser authUser,
@@ -93,6 +95,7 @@ public class RollcallController {
     @Operation(summary = "문자 발송 대상 조회",
             description = "학생별 출결 상태에 매칭되는 문자 템플릿을 조회한다. 매칭되는 템플릿이 없으면 발송 불가로 표시된다. "
                     + "실제 문자 발송은 이번 범위가 아니다.")
+    @PreAuthorize("hasAuthority('ROLLCALL:MANAGE')")
     @GetMapping("/message-candidates")
     public ResponseEntity<GlobalApiResponse<List<MessageSendCandidateResponse>>> getMessageCandidates(
             @AuthenticationPrincipal AuthUser authUser,

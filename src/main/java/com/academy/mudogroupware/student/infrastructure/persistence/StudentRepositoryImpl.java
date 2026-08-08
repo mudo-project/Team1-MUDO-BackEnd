@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.student.infrastructure.persistence;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -27,7 +28,7 @@ public class StudentRepositoryImpl implements StudentRepository {
 
     @Override
     public Optional<Student> findById(Long id) {
-        return studentJpaRepository.findById(id).map(this::toDomain);
+        return studentJpaRepository.findByIdAndDeletedAtIsNull(id).map(this::toDomain);
     }
 
     @Override
@@ -41,6 +42,11 @@ public class StudentRepositoryImpl implements StudentRepository {
                 academyId, keyword, PageRequest.of(page, size));
         List<Student> content = slice.getContent().stream().map(this::toDomain).toList();
         return PageResult.of(content, slice.getNumber(), slice.getSize(), slice.hasNext());
+    }
+
+    @Override
+    public void markDeleted(Long id, LocalDateTime deletedAt) {
+        studentJpaRepository.markDeleted(id, deletedAt);
     }
 
     private StudentEntity toNewEntity(Student student) {

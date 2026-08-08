@@ -32,16 +32,21 @@ public class ApprovalTemplateQueryService implements ApprovalTemplateQueryUseCas
     @Override
     public PageResult<ApprovalTemplateSummaryView> getTemplates(Long requesterId, int page, int size) {
         ApproverInfo requester = approverDirectoryPort.getApprover(requesterId);
-        return approvalTemplateRepository.findAll(requester.academyId(), page, size)
-                .map(this::toSummaryView);
-    }
-
-    private ApprovalTemplateSummaryView toSummaryView(ApprovalTemplate template) {
-        List<Long> approverIds = template.getLines().stream()
+        PageResult<ApprovalTemplate> result = approvalTemplateRepository.findAll(requester.academyId(), page, size);
+        List<Long> approverIds = result.content().stream()
+                .flatMap(template -> template.getLines().stream())
                 .map(ApprovalTemplateLine::getApproverId)
+                .distinct()
                 .toList();
         Map<Long, ApproverInfo> approvers = approverDirectoryPort.getApprovers(approverIds);
 
+        return result.map(template -> toSummaryView(template, approvers));
+    }
+
+    private ApprovalTemplateSummaryView toSummaryView(
+            ApprovalTemplate template,
+            Map<Long, ApproverInfo> approvers
+    ) {
         List<ApprovalTemplateLineView> lines = template.getLines().stream()
                 .map(line -> toLineView(line, approvers))
                 .toList();

@@ -2,6 +2,8 @@ package com.academy.mudogroupware.approval.application.service;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +21,7 @@ import com.academy.mudogroupware.approval.domain.model.ApprovalDocument;
 import com.academy.mudogroupware.approval.domain.model.ApprovalDocumentLine;
 import com.academy.mudogroupware.approval.domain.model.ApprovalLineStatus;
 import com.academy.mudogroupware.approval.domain.model.ApprovalStatus;
+import com.academy.mudogroupware.approval.domain.model.ApprovalTemplate;
 import com.academy.mudogroupware.approval.domain.exception.ApprovalErrorCode;
 import com.academy.mudogroupware.approval.domain.exception.ApprovalException;
 import com.academy.mudogroupware.approval.domain.repository.ApprovalDocumentRepository;
@@ -38,37 +41,54 @@ public class ApprovalQueryService implements ApprovalQueryUseCase {
 
     @Override
     public PageResult<ApprovalSummaryView> getMyApprovals(Long userId, int page, int size) {
-        return approvalDocumentRepository.findAllByApproverId(userId, page, size)
-                .map(document -> toSummaryView(document, userId));
+        PageResult<ApprovalDocument> result = approvalDocumentRepository.findAllByApproverId(userId, page, size);
+        SummaryLookup lookup = buildSummaryLookup(result.content());
+        return result.map(document -> toSummaryView(document, userId, lookup));
+    }
+
+    @Override
+    public PageResult<ApprovalSubmittedSummaryView> getAllApprovals(Long academyId, int page, int size) {
+        PageResult<ApprovalDocument> result = approvalDocumentRepository.findAllByAcademyId(academyId, page, size);
+        SummaryLookup lookup = buildSummaryLookup(result.content());
+        return result.map(document -> toSubmittedSummaryView(document, lookup));
+    }
+
+    @Override
+    public PageResult<ApprovalSummaryView> getMyApprovalHistory(Long userId, int page, int size) {
+        PageResult<ApprovalDocument> result = approvalDocumentRepository.findHistoryByApproverId(userId, page, size);
+        SummaryLookup lookup = buildSummaryLookup(result.content());
+        return result.map(document -> toSummaryView(document, userId, lookup));
     }
 
     @Override
     public PageResult<ApprovalSubmittedSummaryView> getMySubmittedApprovals(Long userId, int page, int size) {
-        return approvalDocumentRepository.findAllByCreatorId(userId, page, size)
-                .map(this::toSubmittedSummaryView);
+        PageResult<ApprovalDocument> result = approvalDocumentRepository.findAllByCreatorId(userId, page, size);
+        SummaryLookup lookup = buildSummaryLookup(result.content());
+        return result.map(document -> toSubmittedSummaryView(document, lookup));
     }
 
     @Override
     public long getMyPendingCount(Long userId) {
-        return approvalDocumentRepository.findAllByApproverId(userId).stream()
-                .filter(document -> document.getStatus() == ApprovalStatus.IN_PROGRESS)
-                .filter(document -> document.getLines().stream()
-                        .anyMatch(line -> line.getApproverId().equals(userId)
-                                && line.getStatus() == ApprovalLineStatus.PENDING))
-                .count();
+        return approvalDocumentRepository.countPendingByApproverId(userId);
     }
 
     @Override
-    public ApprovalDetailView getApprovalDetail(Long documentId, Long requesterId) {
+    public ApprovalDetailView getApprovalDetail(Long documentId, Long requesterId, Long requesterAcademyId,
+                                                boolean canReadAll) {
         ApprovalDocument approvalDocument = approvalDocumentRepository.findById(documentId)
                 .orElseThrow(() -> new ApprovalException(ApprovalErrorCode.DOCUMENT_NOT_FOUND));
 
-        if (!approvalDocument.isApprover(requesterId) && !approvalDocument.getCreatorId().equals(requesterId)) {
+        boolean canReadAsParticipant = approvalDocument.isApprover(requesterId)
+                || approvalDocument.getCreatorId().equals(requesterId);
+        boolean canReadAsAcademyManager = canReadAll && approvalDocument.getAcademyId().equals(requesterAcademyId);
+        if (!canReadAsParticipant && !canReadAsAcademyManager) {
             throw new ApprovalException(ApprovalErrorCode.DOCUMENT_ACCESS_DENIED);
         }
 
-        List<Long> approverIds = approvalDocument.getLines().stream()
-                .map(ApprovalDocumentLine::getApproverId)
+        List<Long> approverIds = Stream.concat(
+                        approvalDocument.getLines().stream().map(ApprovalDocumentLine::getApproverId),
+                        Stream.of(approvalDocument.getCreatorId()))
+                .distinct()
                 .toList();
         Map<Long, ApproverInfo> approvers = approverDirectoryPort.getApprovers(approverIds);
 
@@ -88,14 +108,18 @@ public class ApprovalQueryService implements ApprovalQueryUseCase {
                 approvalDocument.getContent().getText(),
                 attachments,
                 approvalDocument.getCreatorId(),
-                findApproverName(approvalDocument.getCreatorId()),
+                approverName(approvers, approvalDocument.getCreatorId()),
                 approvalDocument.getStatus(),
                 approvalDocument.getCreatedAt(),
                 lines
         );
     }
 
-    private ApprovalSummaryView toSummaryView(ApprovalDocument approvalDocument, Long userId) {
+    private ApprovalSummaryView toSummaryView(
+            ApprovalDocument approvalDocument,
+            Long userId,
+            SummaryLookup lookup
+    ) {
         ApprovalDocumentLine myLine = approvalDocument.getLines().stream()
                 .filter(line -> line.getApproverId().equals(userId))
                 .findFirst()
@@ -106,28 +130,31 @@ public class ApprovalQueryService implements ApprovalQueryUseCase {
         return new ApprovalSummaryView(
                 approvalDocument.getId(),
                 approvalDocument.getTitle(),
-                findTemplateName(approvalDocument.getTemplateId()),
-                findApproverName(approvalDocument.getCreatorId()),
+                templateName(lookup, approvalDocument.getTemplateId()),
+                approverName(lookup, approvalDocument.getCreatorId()),
                 approvalDocument.getStatus(),
                 myLine.getStepOrder(),
                 myLine.getStatus(),
                 currentLine != null ? currentLine.getStepOrder() : null,
-                currentLine != null ? findApproverName(currentLine.getApproverId()) : null,
+                currentLine != null ? approverName(lookup, currentLine.getApproverId()) : null,
                 approvalDocument.getCreatedAt()
         );
     }
 
-    private ApprovalSubmittedSummaryView toSubmittedSummaryView(ApprovalDocument approvalDocument) {
+    private ApprovalSubmittedSummaryView toSubmittedSummaryView(
+            ApprovalDocument approvalDocument,
+            SummaryLookup lookup
+    ) {
         ApprovalDocumentLine currentLine = findCurrentPendingLine(approvalDocument);
 
         return new ApprovalSubmittedSummaryView(
                 approvalDocument.getId(),
                 approvalDocument.getTitle(),
-                findTemplateName(approvalDocument.getTemplateId()),
-                findApproverName(approvalDocument.getCreatorId()),
+                templateName(lookup, approvalDocument.getTemplateId()),
+                approverName(lookup, approvalDocument.getCreatorId()),
                 approvalDocument.getStatus(),
                 currentLine != null ? currentLine.getStepOrder() : null,
-                currentLine != null ? findApproverName(currentLine.getApproverId()) : null,
+                currentLine != null ? approverName(lookup, currentLine.getApproverId()) : null,
                 approvalDocument.getCreatedAt()
         );
     }
@@ -157,10 +184,47 @@ public class ApprovalQueryService implements ApprovalQueryUseCase {
     }
 
     private ApprovalDocumentLine findCurrentPendingLine(ApprovalDocument approvalDocument) {
+        if (approvalDocument.getStatus() != ApprovalStatus.IN_PROGRESS) {
+            return null;
+        }
         return approvalDocument.getLines().stream()
                 .filter(line -> line.getStatus() == ApprovalLineStatus.PENDING)
                 .findFirst()
                 .orElse(null);
+    }
+
+    private String approverName(Map<Long, ApproverInfo> approvers, Long userId) {
+        ApproverInfo approverInfo = approvers.get(userId);
+        return approverInfo != null ? approverInfo.name() : null;
+    }
+
+    private SummaryLookup buildSummaryLookup(List<ApprovalDocument> documents) {
+        List<Long> templateIds = documents.stream()
+                .map(ApprovalDocument::getTemplateId)
+                .distinct()
+                .toList();
+        Map<Long, String> templateNames = approvalTemplateRepository.findAllById(templateIds).stream()
+                .collect(Collectors.toMap(ApprovalTemplate::getId, ApprovalTemplate::getName, (a, b) -> a));
+
+        List<Long> userIds = documents.stream()
+                .flatMap(document -> Stream.concat(
+                        Stream.of(document.getCreatorId()),
+                        document.currentPendingApproverId().stream()
+                ))
+                .distinct()
+                .toList();
+        Map<Long, ApproverInfo> approvers = approverDirectoryPort.getApprovers(userIds);
+
+        return new SummaryLookup(templateNames, approvers);
+    }
+
+    private String templateName(SummaryLookup lookup, Long templateId) {
+        return lookup.templateNames().get(templateId);
+    }
+
+    private String approverName(SummaryLookup lookup, Long userId) {
+        ApproverInfo approverInfo = lookup.approvers().get(userId);
+        return approverInfo != null ? approverInfo.name() : null;
     }
 
     private String findTemplateName(Long templateId) {
@@ -169,8 +233,9 @@ public class ApprovalQueryService implements ApprovalQueryUseCase {
                 .orElse(null);
     }
 
-    private String findApproverName(Long userId) {
-        ApproverInfo approverInfo = approverDirectoryPort.getApprovers(List.of(userId)).get(userId);
-        return approverInfo != null ? approverInfo.name() : null;
+    private record SummaryLookup(
+            Map<Long, String> templateNames,
+            Map<Long, ApproverInfo> approvers
+    ) {
     }
 }

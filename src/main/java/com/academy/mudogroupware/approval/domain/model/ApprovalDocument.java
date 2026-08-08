@@ -129,8 +129,25 @@ public final class ApprovalDocument {
         this.lines.addAll(newLines);
     }
 
+    public void cancel() {
+        if (this.status != ApprovalStatus.IN_PROGRESS) {
+            throw new ApprovalException(ApprovalErrorCode.CANCEL_NOT_ALLOWED);
+        }
+        if (hasAnyDecidedLine()) {
+            throw new ApprovalException(ApprovalErrorCode.CANCEL_NOT_ALLOWED);
+        }
+        this.status = ApprovalStatus.CANCELLED;
+    }
+
     public boolean isApprover(Long userId) {
         return lines.stream().anyMatch(line -> line.getApproverId().equals(userId));
+    }
+
+    public boolean hasDecidedLine(Long userId) {
+        return lines.stream()
+                .filter(line -> line.getApproverId().equals(userId))
+                .anyMatch(line -> line.getStatus() == ApprovalLineStatus.APPROVED
+                        || line.getStatus() == ApprovalLineStatus.REJECTED);
     }
 
     public Optional<Long> currentPendingApproverId() {
@@ -168,6 +185,11 @@ public final class ApprovalDocument {
 
     private boolean isAllApproved() {
         return lines.stream().allMatch(line -> line.getStatus() == ApprovalLineStatus.APPROVED);
+    }
+
+    private boolean hasAnyDecidedLine() {
+        return lines.stream().anyMatch(line -> line.getStatus() == ApprovalLineStatus.APPROVED
+                || line.getStatus() == ApprovalLineStatus.REJECTED);
     }
 
     public Long getId() {

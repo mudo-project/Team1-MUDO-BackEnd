@@ -8,7 +8,9 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
 
@@ -95,6 +97,11 @@ class EnrollStudentServiceTest {
                 Long academyId, String keyword, int page, int size) {
             return com.academy.mudogroupware.global.domain.common.page.PageResult.of(List.of(), page, size, false);
         }
+
+        @Override
+        public void markDeleted(Long id, LocalDateTime deletedAt) {
+            students.removeIf(student -> student.getId().equals(id));
+        }
     }
 
     private static final class FakeEnrollmentRepository implements EnrollmentRepository {
@@ -138,12 +145,30 @@ class EnrollStudentServiceTest {
         }
 
         @Override
+        public Map<Long, Long> countActiveByStudentIds(Long academyId, List<Long> studentIds) {
+            return enrollments.stream()
+                    .filter(enrollment -> enrollment.getAcademyId().equals(academyId))
+                    .filter(enrollment -> studentIds.contains(enrollment.getStudentId()))
+                    .filter(Enrollment::isActive)
+                    .collect(Collectors.groupingBy(Enrollment::getStudentId, Collectors.counting()));
+        }
+
+        @Override
         public List<Enrollment> findActiveByLectureId(Long academyId, Long lectureId) {
             return enrollments.stream()
                     .filter(enrollment -> enrollment.getAcademyId().equals(academyId))
                     .filter(enrollment -> enrollment.getLectureId().equals(lectureId))
                     .filter(Enrollment::isActive)
                     .toList();
+        }
+
+        @Override
+        public Map<Long, Long> countActiveByLectureIds(Long academyId, List<Long> lectureIds) {
+            return enrollments.stream()
+                    .filter(enrollment -> enrollment.getAcademyId().equals(academyId))
+                    .filter(enrollment -> lectureIds.contains(enrollment.getLectureId()))
+                    .filter(Enrollment::isActive)
+                    .collect(Collectors.groupingBy(Enrollment::getLectureId, Collectors.counting()));
         }
     }
 }

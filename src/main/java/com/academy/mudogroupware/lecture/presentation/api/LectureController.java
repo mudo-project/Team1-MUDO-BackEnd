@@ -59,6 +59,7 @@ public class LectureController {
 
     @Operation(summary = "강의 목록 조회",
             description = "시즌/학년/과목/선생님/교실/요일 필터와 페이지 단위로 요청자 소속 학원의 강의 목록을 조회한다.")
+    @PreAuthorize("hasAnyAuthority('LECTURE:READ', 'LECTURE:MANAGE')")
     @GetMapping
     public ResponseEntity<GlobalApiResponse<SliceResponse<LectureSummaryResponse>>> getLectures(
             @AuthenticationPrincipal AuthUser authUser,
@@ -78,6 +79,7 @@ public class LectureController {
     }
 
     @Operation(summary = "강의 상세 조회", description = "강의 기본 정보와 수강생 목록을 조회한다. 다른 학원의 강의를 조회하면 403.")
+    @PreAuthorize("hasAnyAuthority('LECTURE:READ', 'LECTURE:MANAGE')")
     @GetMapping("/{lectureId}")
     public ResponseEntity<GlobalApiResponse<LectureDetailResponse>> getLectureDetail(
             @AuthenticationPrincipal AuthUser authUser,

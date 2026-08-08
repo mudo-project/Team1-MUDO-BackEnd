@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Repository;
 
@@ -35,11 +36,25 @@ public class ApprovalTemplateRepositoryImpl implements ApprovalTemplateRepositor
     }
 
     @Override
+    public List<ApprovalTemplate> findAllById(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+        return approvalTemplateJpaRepository.findAllByIdInAndType(ids, ApprovalTemplateEntity.TYPE).stream()
+                .map(this::toDomain)
+                .toList();
+    }
+
+    @Override
     public PageResult<ApprovalTemplate> findAll(Long academyId, int page, int size) {
         Slice<ApprovalTemplateEntity> slice = approvalTemplateJpaRepository.findAllByTypeAndAcademyId(
-                ApprovalTemplateEntity.TYPE, academyId, PageRequest.of(page, size));
+                ApprovalTemplateEntity.TYPE, academyId, PageRequest.of(page, size, latestFirstSort()));
         List<ApprovalTemplate> content = slice.getContent().stream().map(this::toDomain).toList();
         return PageResult.of(content, slice.getNumber(), slice.getSize(), slice.hasNext());
+    }
+
+    private Sort latestFirstSort() {
+        return Sort.by(Sort.Direction.DESC, "createdAt", "id");
     }
 
     @Override
