@@ -42,6 +42,9 @@ import com.academy.mudogroupware.global.infrastructure.security.jwt.JwtTokenProv
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
 import com.academy.mudogroupware.global.presentation.security.JwtAuthenticationConverter;
 
+// @WebMvcTest 슬라이스는 실제 SecurityConfig(@EnableMethodSecurity)를 로드하지 않아 @PreAuthorize가
+// 동작하지 않는다. CALENDAR:MANAGE 권한 없이 403이 반환되는지는
+// CalendarControllerPermissionIntegrationTest(전체 컨텍스트)에서 검증한다.
 @WebMvcTest(CalendarController.class)
 class CalendarControllerTest {
 
@@ -75,7 +78,7 @@ class CalendarControllerTest {
 
         mockMvc
                 .perform(post("/api/calendars")
-                        .with(authentication(authenticatedUser()))
+                        .with(authentication(authenticatedUser("CALENDAR:MANAGE")))
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
@@ -252,7 +255,7 @@ class CalendarControllerTest {
     void deleteEventReturns204() throws Exception {
         mockMvc
                 .perform(delete("/api/calendars/101")
-                        .with(authentication(authenticatedUser()))
+                        .with(authentication(authenticatedUser("CALENDAR:MANAGE")))
                         .with(csrf()))
                 .andExpect(status().isNoContent());
 
@@ -266,7 +269,7 @@ class CalendarControllerTest {
 
         mockMvc
                 .perform(delete("/api/calendars/999")
-                        .with(authentication(authenticatedUser()))
+                        .with(authentication(authenticatedUser("CALENDAR:MANAGE")))
                         .with(csrf()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("CALENDAR_404_1"));
@@ -297,7 +300,7 @@ class CalendarControllerTest {
 
         mockMvc
                 .perform(patch("/api/calendars/101")
-                        .with(authentication(authenticatedUser()))
+                        .with(authentication(authenticatedUser("CALENDAR:MANAGE")))
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
@@ -342,7 +345,7 @@ class CalendarControllerTest {
 
         mockMvc
                 .perform(patch("/api/calendars/999")
-                        .with(authentication(authenticatedUser()))
+                        .with(authentication(authenticatedUser("CALENDAR:MANAGE")))
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
