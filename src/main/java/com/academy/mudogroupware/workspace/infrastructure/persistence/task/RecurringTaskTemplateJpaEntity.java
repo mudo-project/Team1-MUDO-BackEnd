@@ -47,9 +47,6 @@ public class RecurringTaskTemplateJpaEntity extends BaseTimeEntity {
   @Column(name = "recurrence_rule", nullable = false, columnDefinition = "json")
   private Map<String, Object> recurrenceRule;
 
-  @Column(name = "is_active", nullable = false)
-  private boolean active;
-
   @Column(name = "created_by", nullable = false, updatable = false)
   private Long createdBy;
 
@@ -63,7 +60,6 @@ public class RecurringTaskTemplateJpaEntity extends BaseTimeEntity {
     this.title = title;
     this.recurrenceType = recurrenceType;
     this.recurrenceRule = recurrenceRule;
-    this.active = true;
     this.createdBy = createdBy;
   }
 
@@ -75,5 +71,13 @@ public class RecurringTaskTemplateJpaEntity extends BaseTimeEntity {
       Long createdBy) {
     return new RecurringTaskTemplateJpaEntity(
         workspace, title, recurrenceType, recurrenceRule, createdBy);
+  }
+
+  // 도메인 모델이 검증한 제목·주기를 그대로 반영한다.
+  public void changeRecurrence(
+      String title, RecurrenceType recurrenceType, Map<String, Object> recurrenceRule) {
+    this.title = title;
+    this.recurrenceType = recurrenceType;
+    this.recurrenceRule = recurrenceRule;
   }
 }
