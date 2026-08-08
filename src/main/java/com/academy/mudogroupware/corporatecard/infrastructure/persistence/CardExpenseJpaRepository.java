@@ -11,6 +11,7 @@ import jakarta.persistence.LockModeType;
 
 public interface CardExpenseJpaRepository extends JpaRepository<CardExpenseJpaEntity, Long> {
     Optional<CardExpenseJpaEntity> findByTransaction_Id(Long transactionId);
+    java.util.List<CardExpenseJpaEntity> findAllByTransaction_IdIn(java.util.List<Long> transactionIds);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select e from CardExpenseJpaEntity e join fetch e.transaction t join fetch t.card c where t.id = :transactionId and c.academyId = :academyId")

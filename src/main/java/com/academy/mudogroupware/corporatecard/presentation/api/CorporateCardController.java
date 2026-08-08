@@ -12,6 +12,7 @@ import com.academy.mudogroupware.corporatecard.application.service.CorporateCard
 import com.academy.mudogroupware.corporatecard.presentation.api.request.SubmitCardExpenseRequest;
 import com.academy.mudogroupware.corporatecard.presentation.api.response.CardExpenseResponse;
 import com.academy.mudogroupware.corporatecard.presentation.api.response.CorporateCardTransactionResponse;
+import com.academy.mudogroupware.corporatecard.presentation.api.response.CorporateCardTransactionPageResponse;
 import com.academy.mudogroupware.global.presentation.api.common.GlobalApiResponse;
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
 
@@ -30,9 +31,15 @@ public class CorporateCardController {
     @Operation(summary = "법인카드 사용내역 조회")
     @PreAuthorize("hasAuthority('CORPORATE_CARD:EXPENSE')")
     @GetMapping
-    public GlobalApiResponse<List<CorporateCardTransactionResponse>> getTransactions(@AuthenticationPrincipal AuthUser authUser) {
+    public GlobalApiResponse<CorporateCardTransactionPageResponse> getTransactions(
+            @AuthenticationPrincipal AuthUser authUser,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        if (page < 0 || size < 1 || size > 100) {
+            throw new IllegalArgumentException("page는 0 이상, size는 1~100이어야 합니다.");
+        }
         return GlobalApiResponse.ok("CORPORATE_CARD_TRANSACTIONS_RETRIEVED", "법인카드 사용내역 조회가 완료되었습니다.",
-                service.getTransactions(authUser.academyId()).stream().map(CorporateCardTransactionResponse::from).toList());
+                CorporateCardTransactionPageResponse.from(service.getTransactions(authUser.academyId(), page, size)));
     }
 
     @Operation(summary = "법인카드 사용내역 상세 조회")
