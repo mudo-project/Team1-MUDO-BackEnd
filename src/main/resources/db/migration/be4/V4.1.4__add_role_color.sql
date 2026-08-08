@@ -1,0 +1,1 @@
+ALTER TABLE role ADD COLUMN color VARCHAR(20) NULL AFTER description;
