@@ -6,6 +6,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -35,6 +36,7 @@ import com.academy.mudogroupware.timetable.application.query.TimetableSetSummary
 import com.academy.mudogroupware.timetable.application.usecase.CreateTimetableSetUseCase;
 import com.academy.mudogroupware.timetable.application.usecase.GetTimetableSetUseCase;
 import com.academy.mudogroupware.timetable.application.usecase.GetTimetableSetsUseCase;
+import com.academy.mudogroupware.timetable.application.usecase.UpdateTimetableSetUseCase;
 import com.academy.mudogroupware.timetable.domain.exception.TimetableSetNotFoundException;
 import com.academy.mudogroupware.timetable.domain.model.TimetableClassroom;
 import com.academy.mudogroupware.timetable.domain.model.TimetableSetStatus;
@@ -51,6 +53,7 @@ class TimetableControllerTest {
     @MockitoBean private CreateTimetableSetUseCase createTimetableSetUseCase;
     @MockitoBean private GetTimetableSetsUseCase getTimetableSetsUseCase;
     @MockitoBean private GetTimetableSetUseCase getTimetableSetUseCase;
+    @MockitoBean private UpdateTimetableSetUseCase updateTimetableSetUseCase;
     @MockitoBean private JwtTokenProvider jwtTokenProvider;
     @MockitoBean private JwtAuthenticationConverter jwtAuthenticationConverter;
 
@@ -155,6 +158,29 @@ class TimetableControllerTest {
                         .with(authentication(authenticatedUser())))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("TIMETABLE_404_1"));
+    }
+
+    @Test
+    void updateTimetableSetReturns204() throws Exception {
+        String body = """
+                {
+                  "name": "새 이름",
+                  "startDate": "2026-09-01",
+                  "endDate": "2026-12-31",
+                  "operatingStartTime": "09:00",
+                  "operatingEndTime": "21:00",
+                  "operatingDays": ["TUESDAY"],
+                  "slotUnitMinutes": 10,
+                  "classrooms": [{"floor": "3층", "codes": ["301"]}]
+                }
+                """;
+
+        mockMvc.perform(patch("/api/timetables/1")
+                        .with(authentication(authenticatedUser("TIMETABLE:MANAGE")))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isNoContent());
     }
 
     private Authentication authenticatedUser(String... authorities) {

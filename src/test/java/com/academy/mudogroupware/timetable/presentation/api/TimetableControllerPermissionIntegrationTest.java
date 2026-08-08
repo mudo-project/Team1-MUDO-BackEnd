@@ -2,6 +2,7 @@ package com.academy.mudogroupware.timetable.presentation.api;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -48,6 +49,29 @@ class TimetableControllerPermissionIntegrationTest {
                 """;
 
         mockMvc.perform(post("/api/timetables")
+                        .with(authentication(authenticatedUser()))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void updateTimetableSetReturns403WhenMissingManageAuthority() throws Exception {
+        String body = """
+                {
+                  "name": "이름",
+                  "startDate": "2026-07-20",
+                  "endDate": "2026-08-16",
+                  "operatingStartTime": "08:30",
+                  "operatingEndTime": "22:00",
+                  "operatingDays": ["MONDAY"],
+                  "slotUnitMinutes": 30,
+                  "classrooms": [{"floor": "6층", "codes": ["601"]}]
+                }
+                """;
+
+        mockMvc.perform(patch("/api/timetables/1")
                         .with(authentication(authenticatedUser()))
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
