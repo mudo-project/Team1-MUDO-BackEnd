@@ -214,7 +214,7 @@ Request Body
 
 | name | 설명 |
 | --- | --- |
-| `title` | 새 템플릿 제목. 선택. 보내면 앞뒤 공백 제거 후 최대 200자. |
+| `title` | 새 템플릿 제목. 선택. 보내면 앞뒤 공백 제거 후 최대 200자이며, 공백만 남으면 거부한다. |
 | `recurrenceType` | 새 반복 주기 타입. 선택이지만 `recurrenceRule`과 항상 함께 보내야 한다. |
 | `recurrenceRule` | 새 주기별 부가 정보. 선택이지만 `recurrenceType`과 항상 함께 보내야 한다. 검증 규칙은 생성 API와 동일. |
 
@@ -258,7 +258,7 @@ Response Body
 
 | HTTP 상태 | code | message | 설명 |
 | --- | --- | --- | --- |
-| `400 Bad Request` | `COMMON_400_1` | 입력값이 올바르지 않습니다. | `title`·`recurrenceType`·`recurrenceRule`을 모두 생략했거나, `recurrenceType`·`recurrenceRule` 중 하나만 보낸 경우 |
+| `400 Bad Request` | `COMMON_400_1` | 입력값이 올바르지 않습니다. | `title`·`recurrenceType`·`recurrenceRule`을 모두 생략했거나, `recurrenceType`·`recurrenceRule` 중 하나만 보냈거나, `title`이 공백만으로 이루어진 경우 |
 | `400 Bad Request` | `WORKSPACE_400_7` | 반복 주기 설정이 올바르지 않습니다. | `recurrenceRule`이 주기 타입과 맞지 않는 경우(생성 API와 동일한 검증) |
 | `401 Unauthorized` | `COMMON_401_1` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않은 경우 |
 | `403 Forbidden` | `WORKSPACE_403_1` | 워크스페이스에 접근할 권한이 없습니다. | 요청자가 참여자가 아닌 경우 |

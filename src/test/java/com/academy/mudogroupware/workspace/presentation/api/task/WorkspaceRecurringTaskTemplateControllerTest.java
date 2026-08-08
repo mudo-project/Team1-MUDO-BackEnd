@@ -23,6 +23,7 @@ import com.academy.mudogroupware.workspace.application.command.task.UpdateRecurr
 import com.academy.mudogroupware.workspace.application.usecase.task.CreateRecurringTaskTemplateUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.task.GetRecurringTaskTemplatesUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.task.UpdateRecurringTaskTemplateUseCase;
+import com.academy.mudogroupware.workspace.domain.exception.task.InvalidRecurrenceRuleException;
 import com.academy.mudogroupware.workspace.domain.exception.task.RecurringTaskTemplateNotFoundException;
 import com.academy.mudogroupware.workspace.domain.exception.workspace.WorkspaceAccessDeniedException;
 import com.academy.mudogroupware.workspace.domain.exception.workspace.WorkspaceNotFoundException;
@@ -275,6 +276,38 @@ class WorkspaceRecurringTaskTemplateControllerTest {
                 .content("{\"title\":\"새 제목\"}"))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.code").value("WORKSPACE_404_5"));
+  }
+
+  @Test
+  void updateTemplatePropagatesAccessDenied() throws Exception {
+    when(updateRecurringTaskTemplateUseCase.update(any(UpdateRecurringTaskTemplateCommand.class)))
+        .thenThrow(new WorkspaceAccessDeniedException());
+
+    mockMvc
+        .perform(
+            patch("/api/workspaces/1/recurring-templates/1")
+                .with(authentication(auth()))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"새 제목\"}"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("WORKSPACE_403_1"));
+  }
+
+  @Test
+  void updateTemplatePropagatesInvalidRecurrenceRule() throws Exception {
+    when(updateRecurringTaskTemplateUseCase.update(any(UpdateRecurringTaskTemplateCommand.class)))
+        .thenThrow(new InvalidRecurrenceRuleException());
+
+    mockMvc
+        .perform(
+            patch("/api/workspaces/1/recurring-templates/1")
+                .with(authentication(auth()))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"recurrenceType\":\"MONTHLY\",\"recurrenceRule\":{\"dayOfMonth\":15}}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("WORKSPACE_400_7"));
   }
 
   private Authentication auth() {
