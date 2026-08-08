@@ -27,7 +27,7 @@ class UpdateRoleServiceTest {
         when(roleRepository.findById(1L)).thenReturn(Optional.empty());
         UpdateRoleService service = new UpdateRoleService(roleRepository);
 
-        assertThatThrownBy(() -> service.updateRole(new UpdateRoleCommand(1L, 10L, "조교", "설명")))
+        assertThatThrownBy(() -> service.updateRole(new UpdateRoleCommand(1L, 10L, "조교", "설명", "#FFFFFF")))
                 .isInstanceOf(RoleNotFoundException.class);
 
         verify(roleRepository, never()).updateNameAndDescription(any(), any(), any(), any());
@@ -40,7 +40,7 @@ class UpdateRoleServiceTest {
         when(roleRepository.findById(1L)).thenReturn(Optional.of(role));
         UpdateRoleService service = new UpdateRoleService(roleRepository);
 
-        assertThatThrownBy(() -> service.updateRole(new UpdateRoleCommand(1L, 10L, "조교", "설명")))
+        assertThatThrownBy(() -> service.updateRole(new UpdateRoleCommand(1L, 10L, "조교", "설명", "#FFFFFF")))
                 .isInstanceOf(RoleNotFoundException.class);
     }
 
@@ -52,22 +52,22 @@ class UpdateRoleServiceTest {
         when(roleRepository.existsByAcademyIdAndNameAndIdNot(10L, "조교", 1L)).thenReturn(true);
         UpdateRoleService service = new UpdateRoleService(roleRepository);
 
-        assertThatThrownBy(() -> service.updateRole(new UpdateRoleCommand(1L, 10L, "조교", "설명")))
+        assertThatThrownBy(() -> service.updateRole(new UpdateRoleCommand(1L, 10L, "조교", "설명", "#FFFFFF")))
                 .isInstanceOf(RoleNameDuplicateException.class);
 
         verify(roleRepository, never()).updateNameAndDescription(any(), any(), any(), any());
     }
 
     @Test
-    void updatesNameAndDescriptionWhenValid() {
+    void updatesNameDescriptionAndColorWhenValid() {
         RoleRepository roleRepository = mock(RoleRepository.class);
         Role role = Role.restore(1L, 10L, "강사", "설명", LocalDateTime.now(), Set.of());
         when(roleRepository.findById(1L)).thenReturn(Optional.of(role));
         when(roleRepository.existsByAcademyIdAndNameAndIdNot(10L, "조교", 1L)).thenReturn(false);
         UpdateRoleService service = new UpdateRoleService(roleRepository);
 
-        service.updateRole(new UpdateRoleCommand(1L, 10L, "조교", "새 설명"));
+        service.updateRole(new UpdateRoleCommand(1L, 10L, "조교", "새 설명", "#000000"));
 
-        verify(roleRepository).updateNameAndDescription(1L, "조교", "새 설명", null);
+        verify(roleRepository).updateNameAndDescription(1L, "조교", "새 설명", "#000000");
     }
 }
