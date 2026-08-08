@@ -14,10 +14,13 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -31,6 +34,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/workspaces/{workspaceId}/recurring-templates")
 @RequiredArgsConstructor
+@Validated
 public class WorkspaceRecurringTaskTemplateController {
 
   private final CreateRecurringTaskTemplateUseCase createRecurringTaskTemplateUseCase;
@@ -41,6 +45,7 @@ public class WorkspaceRecurringTaskTemplateController {
       description = "현재 참여자만 조회할 수 있습니다. 최신 생성순으로 페이지 단위(기본 20개)로 반환합니다.")
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "목록 조회 성공"),
+    @ApiResponse(responseCode = "400", description = "page 또는 size 값이 유효하지 않음"),
     @ApiResponse(responseCode = "403", description = "참여자가 아님"),
     @ApiResponse(responseCode = "404", description = "워크스페이스가 존재하지 않거나 삭제됨")
   })
@@ -48,8 +53,8 @@ public class WorkspaceRecurringTaskTemplateController {
   public ResponseEntity<GlobalApiResponse<SliceResponse<RecurringTaskTemplateListResponse>>> getTemplates(
       @AuthenticationPrincipal AuthUser authUser,
       @PathVariable Long workspaceId,
-      @RequestParam(defaultValue = "0") int page,
-      @RequestParam(defaultValue = "20") int size) {
+      @RequestParam(defaultValue = "0") @Min(0) int page,
+      @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
     SliceResponse<RecurringTaskTemplateListResponse> response =
         SliceResponse.from(
             getRecurringTaskTemplatesUseCase.getTemplates(

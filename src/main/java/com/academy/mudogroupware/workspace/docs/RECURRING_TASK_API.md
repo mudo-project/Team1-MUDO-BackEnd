@@ -115,8 +115,8 @@ Response Body
 
 | name | type | required | default | description |
 | --- | --- | --- | --- | --- |
-| `page` | int | false | `0` | 조회할 페이지 번호(0부터 시작) |
-| `size` | int | false | `20` | 페이지당 조회 개수 |
+| `page` | int | false | `0` | 조회할 페이지 번호(0부터 시작). `0` 미만이면 `400`. |
+| `size` | int | false | `20` | 페이지당 조회 개수. `1`~`100` 범위를 벗어나면 `400`. |
 
 # **[response]**
 
@@ -155,7 +155,7 @@ Response Body
 | `status` | HTTP 상태 코드 |
 | `code` | 서비스 응답 코드 |
 | `message` | 응답 메시지 |
-| `data.content` | 템플릿 목록. 각 항목은 생성 API 응답과 동일한 필드(`templateId`, `title`, `recurrenceType`, `recurrenceRule`, `createdBy`)를 담는다. |
+| `data.content` | 템플릿 목록. 각 항목은 `templateId`(템플릿 번호), `title`(제목), `recurrenceType`(반복 주기 타입), `recurrenceRule`(주기별 부가 정보), `createdBy`(생성자 사용자 번호)를 담는다. |
 | `data.page` | 현재 페이지 번호 |
 | `data.size` | 요청한 페이지 크기 |
 | `data.hasNext` | 다음 페이지 존재 여부. 전체 개수(count)는 계산하지 않는다. |
@@ -164,13 +164,13 @@ Response Body
 
 | HTTP 상태 | code | message | 설명 |
 | --- | --- | --- | --- |
+| `400 Bad Request` | `COMMON_400_1` | 입력값이 올바르지 않습니다. | `page`가 0 미만이거나 `size`가 1~100 범위를 벗어난 경우 |
 | `401 Unauthorized` | `COMMON_401_1` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않은 경우 |
 | `403 Forbidden` | `WORKSPACE_403_1` | 워크스페이스에 접근할 권한이 없습니다. | 요청자가 참여자가 아닌 경우 |
 | `404 Not Found` | `WORKSPACE_404_1` | 워크스페이스를 찾을 수 없습니다. | 워크스페이스가 없거나 삭제된 경우 |
 
 > 존재 확인을 권한 확인보다 먼저 수행한다 — 생성 API와 동일한 순서.
 > 정렬 기준은 생성일 내림차순(`createdAt desc`)이며, 같은 시각에 생성된 템플릿이 있을 경우 템플릿 번호 내림차순(`id desc`)을 2차 기준으로 사용해 페이지 간 순서가 흔들리지 않도록 한다.
-> `page`·`size`에 대한 별도 입력 검증(음수, 상한 등)은 아직 없다 — 프로젝트의 다른 목록 조회 API(`공지사항 목록 조회`)와 동일한 수준이다.
 
 ---
 

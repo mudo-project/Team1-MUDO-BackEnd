@@ -75,7 +75,7 @@ GET /api/workspaces/{workspaceId}/recurring-templates?page=0&size=20
 
 검증을 통과하면 `RecurringTaskTemplateRepository.findAllByWorkspaceId(workspaceId, page, size)`에 위임한다. `RecurringTaskTemplatePersistenceAdapter`는 `PageRequest.of(page, size)`로 `Pageable`을 만들어 `RecurringTaskTemplateJpaRepository`의 `Slice` 반환 메서드를 호출한다.
 
-JPQL은 `order by t.createdAt desc, t.id desc`로 정렬한다. `createdAt`만으로는 짧은 간격으로 연달아 생성된 템플릿의 타임스탬프가 동일하게 저장될 수 있어(시스템 시계 해상도 문제) 정렬 순서가 조회마다 달라질 수 있다. `id`(고유하고 항상 생성 순서와 일치)를 2차 정렬 기준으로 추가해 정렬 결과를 항상 동일하게(결정적으로) 만든다 — `AttendanceCorrectionRequestRepositoryImpl`이 `requestedAt desc, id desc`로 쓰는 것과 같은 패턴이다.
+JPQL은 `order by t.createdAt desc, t.id desc`로 정렬한다. `createdAt`만으로는 짧은 간격으로 연달아 생성된 템플릿의 타임스탬프가 동일하게 저장될 수 있어(시스템 시계 해상도 문제) 정렬 순서가 조회마다 달라질 수 있다. `id`는 생성·커밋 순서를 보장하지는 않지만 항상 고유한 값이므로, 이를 2차 정렬 기준으로 추가하면 `createdAt`이 같은 행들 사이에서도 정렬 결과가 항상 동일하게(결정적으로) 유지된다 — `AttendanceCorrectionRequestRepositoryImpl`이 `requestedAt desc, id desc`로 쓰는 것과 같은 패턴이다.
 
 전체 개수(count) 쿼리는 실행하지 않는다. `Slice.hasNext()`는 `size + 1`건을 조회해 다음 페이지 존재 여부만 판단하는 방식으로 동작하므로, 전체 개수가 필요 없는 이 조회에 적합하다(`docs/API_CONTRACT.md`의 페이지네이션 규칙 참고).
 

@@ -147,6 +147,32 @@ class RecurringTaskTemplatePersistenceAdapterDataJpaTest {
     assertThat(secondPage.hasNext()).isFalse();
   }
 
+  @Test
+  void findAllByWorkspaceIdBreaksCreatedAtTieByIdDescending() {
+    insertWorkspace(WORKSPACE_ID);
+    RecurringTaskTemplate lowerId =
+        recurringTaskTemplateRepository.save(
+            RecurringTaskTemplate.create(
+                WORKSPACE_ID, "동시 생성 A", RecurrenceType.WEEKLY, Map.of("daysOfWeek", List.of(1)), CREATOR_ID));
+    RecurringTaskTemplate higherId =
+        recurringTaskTemplateRepository.save(
+            RecurringTaskTemplate.create(
+                WORKSPACE_ID, "동시 생성 B", RecurrenceType.WEEKLY, Map.of("daysOfWeek", List.of(1)), CREATOR_ID));
+    // 두 템플릿의 created_at을 강제로 동일하게 만들어, id가 없으면 정렬이 비결정적임을 검증한다.
+    LocalDateTime sameInstant = LocalDateTime.of(2026, 8, 9, 0, 0);
+    jdbcTemplate.update(
+        "update recurring_task_template set created_at = ? where recurring_template_id in (?, ?)",
+        sameInstant, lowerId.getId(), higherId.getId());
+
+    PageResult<RecurringTaskTemplate> firstPage =
+        recurringTaskTemplateRepository.findAllByWorkspaceId(WORKSPACE_ID, 0, 1);
+    PageResult<RecurringTaskTemplate> secondPage =
+        recurringTaskTemplateRepository.findAllByWorkspaceId(WORKSPACE_ID, 1, 1);
+
+    assertThat(firstPage.content()).extracting(RecurringTaskTemplate::getId).containsExactly(higherId.getId());
+    assertThat(secondPage.content()).extracting(RecurringTaskTemplate::getId).containsExactly(lowerId.getId());
+  }
+
   private void insertWorkspace(long workspaceId) {
     LocalDateTime now = LocalDateTime.now();
     jdbcTemplate.update(

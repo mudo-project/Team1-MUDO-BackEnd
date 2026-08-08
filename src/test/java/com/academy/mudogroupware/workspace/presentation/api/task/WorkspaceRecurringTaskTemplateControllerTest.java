@@ -66,6 +66,25 @@ class WorkspaceRecurringTaskTemplateControllerTest {
   }
 
   @Test
+  void getTemplatesRejectsInvalidPageAndSize() throws Exception {
+    mockMvc
+        .perform(
+            get("/api/workspaces/1/recurring-templates")
+                .param("page", "-1")
+                .with(authentication(auth())))
+        .andExpect(status().isBadRequest());
+
+    mockMvc
+        .perform(
+            get("/api/workspaces/1/recurring-templates")
+                .param("size", "0")
+                .with(authentication(auth())))
+        .andExpect(status().isBadRequest());
+
+    verifyNoInteractions(getRecurringTaskTemplatesUseCase);
+  }
+
+  @Test
   void getTemplatesPropagatesWorkspaceNotFound() throws Exception {
     when(getRecurringTaskTemplatesUseCase.getTemplates(anyLong(), anyLong(), anyInt(), anyInt()))
         .thenThrow(new WorkspaceNotFoundException());
