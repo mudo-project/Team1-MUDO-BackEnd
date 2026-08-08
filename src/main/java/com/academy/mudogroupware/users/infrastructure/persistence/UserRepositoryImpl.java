@@ -51,6 +51,16 @@ public class UserRepositoryImpl implements UserRepository {
     }
 
     @Override
+    public List<User> searchByAcademyId(Long academyId, String keyword) {
+        String normalizedKeyword = keyword == null ? "" : keyword.trim();
+        List<UserEntity> entities = normalizedKeyword.isEmpty()
+                ? userJpaRepository.findAllByAcademyIdAndStatus(academyId, UserStatus.ACTIVE)
+                : userJpaRepository.findAllByAcademyIdAndStatusAndNameContainingIgnoreCase(
+                        academyId, UserStatus.ACTIVE, normalizedKeyword);
+        return entities.stream().map(this::toDomain).toList();
+    }
+
+    @Override
     public User save(User user) {
         UserEntity entity = UserEntity.builder()
                 .academyId(user.getAcademyId())

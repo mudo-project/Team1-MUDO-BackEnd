@@ -14,6 +14,8 @@ public interface UserRepository {
 
     void changeRole(Long userId, Long roleId);
 
+    List<User> searchByAcademyId(Long academyId, String keyword);
+
     User save(User user);
 
     Optional<User> findByUsername(String username);

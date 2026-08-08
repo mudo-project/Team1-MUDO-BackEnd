@@ -488,6 +488,39 @@
 
 ---
 
+## 16. 학원 구성원 검색
+
+`GET /api/users?keyword=`
+권한: 없음 (로그인만 되면 호출 가능)
+
+### Request
+
+| name | type | required | 설명 |
+| --- | --- | --- | --- |
+| `keyword` | String | false | 이름 부분 일치 검색(대소문자 무관). 없으면 전체 목록 반환 |
+
+### Response · `200 OK`
+
+```json
+{
+  "status": 200,
+  "code": "USER_200_3",
+  "message": "구성원 검색에 성공했습니다.",
+  "data": [
+    { "userId": 12, "name": "김강사", "username": "kim_teacher01" }
+  ]
+}
+```
+
+### 검증 및 정책
+
+- `academyId`는 요청으로 받지 않고 인증된 사용자 기준으로 서버가 결정합니다 — 다른 학원 구성원은 결과에 나오지 않습니다.
+- `accountType` 무관하게 전체 포함합니다(일반 직원 + 학원 관리자).
+- `status = ACTIVE`인 계정만 검색 대상입니다.
+- 워크스페이스 생성/멤버 추가, 채팅방 생성 API가 받는 `memberIds`/`participantIds`에 채워 넣을 userId를 찾는 용도입니다.
+
+---
+
 ## ⚠️ 주요 오류
 
 | HTTP | 코드 | 상황 |
