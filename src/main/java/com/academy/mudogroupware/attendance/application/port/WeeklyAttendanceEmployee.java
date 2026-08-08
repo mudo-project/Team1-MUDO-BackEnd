@@ -1,0 +1,14 @@
+package com.academy.mudogroupware.attendance.application.port;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
+import com.academy.mudogroupware.attendance.domain.model.AttendanceStatus;
+
+public record WeeklyAttendanceEmployee(
+        Long userId,
+        String name,
+        LocalDate workDate,
+        LocalDateTime clockInAt,
+        AttendanceStatus attendanceStatus) {
+}

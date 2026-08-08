@@ -1,0 +1,48 @@
+package com.academy.mudogroupware.attendance.infrastructure.query;
+
+import java.sql.Timestamp;
+import java.time.LocalDate;
+import java.util.List;
+
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
+
+import com.academy.mudogroupware.attendance.application.port.WeeklyAttendanceEmployee;
+import com.academy.mudogroupware.attendance.application.port.WeeklyAttendanceQueryPort;
+import com.academy.mudogroupware.attendance.domain.model.AttendanceStatus;
+
+import lombok.RequiredArgsConstructor;
+
+@Repository
+@RequiredArgsConstructor
+public class WeeklyAttendanceQueryAdapter implements WeeklyAttendanceQueryPort {
+
+    private static final String FIND_EMPLOYEES = """
+            SELECT u.id, u.name, ar.work_date, ar.clock_in_at, ar.status
+            FROM users u
+            LEFT JOIN attendance_record ar
+              ON ar.academy_id = u.academy_id
+             AND ar.user_id = u.id
+             AND ar.work_date BETWEEN ? AND ?
+            WHERE u.academy_id = ?
+              AND u.status = 'ACTIVE'
+              AND u.id <> ?
+            ORDER BY u.name ASC, u.id ASC, ar.work_date ASC
+            """;
+
+    private final JdbcTemplate jdbcTemplate;
+
+    @Override
+    public List<WeeklyAttendanceEmployee> findEmployees(
+            Long academyId, Long ownerUserId, LocalDate startDate, LocalDate endDate) {
+        return jdbcTemplate.query(FIND_EMPLOYEES, (rs, rowNum) -> {
+            Timestamp clockIn = rs.getTimestamp("clock_in_at");
+            String status = rs.getString("status");
+            return new WeeklyAttendanceEmployee(
+                    rs.getLong("id"), rs.getString("name"),
+                    rs.getDate("work_date") == null ? null : rs.getDate("work_date").toLocalDate(),
+                    clockIn == null ? null : clockIn.toLocalDateTime(),
+                    status == null ? null : AttendanceStatus.valueOf(status));
+        }, startDate, endDate, academyId, ownerUserId);
+    }
+}
