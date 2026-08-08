@@ -42,6 +42,9 @@ import com.academy.mudogroupware.google.application.usecase.StartGoogleAccountCo
 import com.academy.mudogroupware.google.domain.exception.GoogleAccountNotConnectedException;
 import com.academy.mudogroupware.google.domain.model.GoogleConnectionStatus;
 
+// @WebMvcTest 슬라이스는 실제 SecurityConfig(@EnableMethodSecurity)를 로드하지 않아 @PreAuthorize가
+// 동작하지 않는다. ACADEMY:OWNER 권한 없이 403이 반환되는지는
+// GoogleAccountConnectionSecurityIntegrationTest(전체 컨텍스트)에서 검증한다.
 @WebMvcTest(GoogleAccountConnectionController.class)
 class GoogleAccountConnectionControllerTest {
 
@@ -63,7 +66,7 @@ class GoogleAccountConnectionControllerTest {
                 .thenReturn("https://accounts.google.com/o/oauth2/v2/auth?state=abc");
 
         mockMvc.perform(post("/api/google/connections/authorize-url")
-                        .with(authentication(authenticatedUser()))
+                        .with(authentication(authenticatedUser("ACADEMY:OWNER")))
                         .with(csrf())
                         .param("switchAccount", "true"))
                 .andExpect(status().isOk())
@@ -124,7 +127,7 @@ class GoogleAccountConnectionControllerTest {
     void getConnectionReturns200WithNullDataWhenNotConnected() throws Exception {
         when(getGoogleAccountConnectionUseCase.getConnection(1L)).thenReturn(Optional.empty());
 
-        mockMvc.perform(get("/api/google/connections").with(authentication(authenticatedUser())))
+        mockMvc.perform(get("/api/google/connections").with(authentication(authenticatedUser("ACADEMY:OWNER"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("GOOGLE_200_2"))
                 .andExpect(jsonPath("$.data").doesNotExist());
@@ -138,7 +141,7 @@ class GoogleAccountConnectionControllerTest {
                 GoogleConnectionStatus.CONNECTED);
         when(getGoogleAccountConnectionUseCase.getConnection(1L)).thenReturn(Optional.of(view));
 
-        mockMvc.perform(get("/api/google/connections").with(authentication(authenticatedUser())))
+        mockMvc.perform(get("/api/google/connections").with(authentication(authenticatedUser("ACADEMY:OWNER"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.googleEmail").value("academy@mudo.co.kr"))
                 .andExpect(jsonPath("$.data.status").value("CONNECTED"));
@@ -147,7 +150,7 @@ class GoogleAccountConnectionControllerTest {
     @Test
     void checkConnectionReturns204() throws Exception {
         mockMvc.perform(post("/api/google/connections/check")
-                        .with(authentication(authenticatedUser()))
+                        .with(authentication(authenticatedUser("ACADEMY:OWNER")))
                         .with(csrf()))
                 .andExpect(status().isNoContent());
 
@@ -160,7 +163,7 @@ class GoogleAccountConnectionControllerTest {
                 .when(checkGoogleAccountConnectionUseCase).check(any(CheckGoogleConnectionCommand.class));
 
         mockMvc.perform(post("/api/google/connections/check")
-                        .with(authentication(authenticatedUser()))
+                        .with(authentication(authenticatedUser("ACADEMY:OWNER")))
                         .with(csrf()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("GOOGLE_404_1"));
@@ -169,7 +172,7 @@ class GoogleAccountConnectionControllerTest {
     @Test
     void disconnectReturns204() throws Exception {
         mockMvc.perform(delete("/api/google/connections")
-                        .with(authentication(authenticatedUser()))
+                        .with(authentication(authenticatedUser("ACADEMY:OWNER")))
                         .with(csrf()))
                 .andExpect(status().isNoContent());
 
