@@ -2,6 +2,7 @@ package com.academy.mudogroupware.workspace.infrastructure.persistence.task;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.academy.mudogroupware.global.domain.common.page.PageResult;
 import com.academy.mudogroupware.global.infrastructure.config.TimeConfig;
 import com.academy.mudogroupware.workspace.domain.model.task.RecurrenceType;
 import com.academy.mudogroupware.workspace.domain.model.task.RecurringTaskTemplate;
@@ -111,6 +112,39 @@ class RecurringTaskTemplatePersistenceAdapterDataJpaTest {
         RecurringTaskTemplate.create(2L, "B", RecurrenceType.WEEKLY, Map.of("daysOfWeek", List.of(1)), CREATOR_ID));
 
     assertThat(recurringTaskTemplateRepository.findAll()).hasSize(2);
+  }
+
+  @Test
+  void findAllByWorkspaceIdReturnsNewestFirstWithinPageSize() {
+    insertWorkspace(WORKSPACE_ID);
+    insertWorkspace(2L);
+    RecurringTaskTemplate oldest =
+        recurringTaskTemplateRepository.save(
+            RecurringTaskTemplate.create(
+                WORKSPACE_ID, "가장 오래된 템플릿", RecurrenceType.WEEKLY,
+                Map.of("daysOfWeek", List.of(1)), CREATOR_ID));
+    RecurringTaskTemplate newest =
+        recurringTaskTemplateRepository.save(
+            RecurringTaskTemplate.create(
+                WORKSPACE_ID, "가장 최근 템플릿", RecurrenceType.WEEKLY,
+                Map.of("daysOfWeek", List.of(1)), CREATOR_ID));
+    recurringTaskTemplateRepository.save(
+        RecurringTaskTemplate.create(
+            2L, "다른 워크스페이스", RecurrenceType.WEEKLY, Map.of("daysOfWeek", List.of(1)), CREATOR_ID));
+
+    PageResult<RecurringTaskTemplate> firstPage =
+        recurringTaskTemplateRepository.findAllByWorkspaceId(WORKSPACE_ID, 0, 1);
+
+    assertThat(firstPage.content()).extracting(RecurringTaskTemplate::getId).containsExactly(newest.getId());
+    assertThat(firstPage.page()).isEqualTo(0);
+    assertThat(firstPage.size()).isEqualTo(1);
+    assertThat(firstPage.hasNext()).isTrue();
+
+    PageResult<RecurringTaskTemplate> secondPage =
+        recurringTaskTemplateRepository.findAllByWorkspaceId(WORKSPACE_ID, 1, 1);
+
+    assertThat(secondPage.content()).extracting(RecurringTaskTemplate::getId).containsExactly(oldest.getId());
+    assertThat(secondPage.hasNext()).isFalse();
   }
 
   private void insertWorkspace(long workspaceId) {

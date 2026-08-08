@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.workspace.infrastructure.persistence.task;
 
+import com.academy.mudogroupware.global.domain.common.page.PageResult;
 import com.academy.mudogroupware.workspace.domain.exception.task.RecurringTaskTemplateNotFoundException;
 import com.academy.mudogroupware.workspace.domain.model.task.RecurringTaskTemplate;
 import com.academy.mudogroupware.workspace.domain.repository.task.RecurringTaskTemplateRepository;
@@ -8,6 +9,8 @@ import com.academy.mudogroupware.workspace.infrastructure.persistence.workspace.
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -48,10 +51,11 @@ public class RecurringTaskTemplatePersistenceAdapter implements RecurringTaskTem
   }
 
   @Override
-  public List<RecurringTaskTemplate> findAllByWorkspaceId(Long workspaceId) {
-    return recurringTaskTemplateJpaRepository.findAllByWorkspaceId(workspaceId).stream()
-        .map(mapper::toDomain)
-        .toList();
+  public PageResult<RecurringTaskTemplate> findAllByWorkspaceId(Long workspaceId, int page, int size) {
+    Slice<RecurringTaskTemplateJpaEntity> slice =
+        recurringTaskTemplateJpaRepository.findAllByWorkspaceId(workspaceId, PageRequest.of(page, size));
+    List<RecurringTaskTemplate> content = slice.getContent().stream().map(mapper::toDomain).toList();
+    return PageResult.of(content, slice.getNumber(), slice.getSize(), slice.hasNext());
   }
 
   @Override
