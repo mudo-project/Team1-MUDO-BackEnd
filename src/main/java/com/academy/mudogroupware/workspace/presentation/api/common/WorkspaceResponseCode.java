@@ -18,7 +18,8 @@ public enum WorkspaceResponseCode implements ResponseCode {
   TASK_UPDATED("WORKSPACE_200_6", "업무 수정에 성공했습니다."),
   TASK_COMMENT_CREATED("WORKSPACE_201_3", "업무 댓글 생성에 성공했습니다."),
   TASK_COMMENT_UPDATED("WORKSPACE_200_7", "업무 댓글 수정에 성공했습니다."),
-  TASK_COMMENT_COMPLETE_TOGGLED("WORKSPACE_200_8", "업무 댓글 완료 상태 변경에 성공했습니다.");
+  TASK_COMMENT_COMPLETE_TOGGLED("WORKSPACE_200_8", "업무 댓글 완료 상태 변경에 성공했습니다."),
+  RECURRING_TEMPLATE_CREATED("WORKSPACE_201_4", "반복 업무 템플릿 생성에 성공했습니다.");
 
   private final String code;
   private final String message;

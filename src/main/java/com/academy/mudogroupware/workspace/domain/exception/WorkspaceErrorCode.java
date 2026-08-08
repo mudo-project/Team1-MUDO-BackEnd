@@ -38,7 +38,13 @@ public enum WorkspaceErrorCode implements ErrorCode {
   TASK_COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "WORKSPACE_404_4", "업무 댓글을 찾을 수 없습니다."),
 
   INVALID_MENTIONED_USER(
-      HttpStatus.BAD_REQUEST, "WORKSPACE_400_6", "멘션 대상은 워크스페이스 참여자여야 합니다.");
+      HttpStatus.BAD_REQUEST, "WORKSPACE_400_6", "멘션 대상은 워크스페이스 참여자여야 합니다."),
+
+  INVALID_RECURRENCE_RULE(
+      HttpStatus.BAD_REQUEST, "WORKSPACE_400_7", "반복 주기 설정이 올바르지 않습니다."),
+
+  RECURRING_TASK_TEMPLATE_NOT_FOUND(
+      HttpStatus.NOT_FOUND, "WORKSPACE_404_5", "반복 업무 템플릿을 찾을 수 없습니다.");
 
   private final HttpStatus httpStatus;
   private final String code;
