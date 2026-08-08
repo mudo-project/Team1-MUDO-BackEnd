@@ -87,6 +87,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 | FastAPI 등 외부 서버 연동 | `docs/INTEGRATION.md` | 호출 책임, 인증 전달, 타임아웃, 재시도, 오류 변환 |
 | Entity, Repository, 테이블, 트랜잭션 변경 | `docs/DATABASE.md` | 데이터 소유 도메인, Entity 직접 참조 금지, 트랜잭션 경계 |
 | 예외·오류 응답 변경 | `docs/ERROR_HANDLING.md` | `ErrorCode`, 예외 계층, HTTP 응답 형식 |
+| Service 메서드 로깅 추가·수정 | `docs/LOGGING_CONVENTION.md` | 이벤트명 규칙(`_시작`/`_완료`/`_실패`), 적용 대상, 파라미터 규칙 |
 
 문서가 없거나 현재 코드와 불일치하면, 추측으로 구현하지 않는다. 불일치 사항과 영향을 받는 도메인을 먼저 알리고 방향을 확인한다.
 
