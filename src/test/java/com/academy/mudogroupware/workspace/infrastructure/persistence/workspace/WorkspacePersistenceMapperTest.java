@@ -2,7 +2,7 @@ package com.academy.mudogroupware.workspace.infrastructure.persistence.workspace
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.academy.mudogroupware.workspace.domain.model.Workspace;
+import com.academy.mudogroupware.workspace.domain.model.workspace.Workspace;
 import org.junit.jupiter.api.Test;
 
 class WorkspacePersistenceMapperTest {

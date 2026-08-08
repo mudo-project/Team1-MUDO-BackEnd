@@ -2,7 +2,7 @@ package com.academy.mudogroupware.users.infrastructure.persistence;
 
 import com.academy.mudogroupware.users.domain.repository.UserRepository;
 import com.academy.mudogroupware.workspace.application.port.WorkspaceUserInfoPort;
-import com.academy.mudogroupware.workspace.application.query.WorkspaceMemberInfo;
+import com.academy.mudogroupware.workspace.application.query.workspace.WorkspaceMemberInfo;
 import java.util.List;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;

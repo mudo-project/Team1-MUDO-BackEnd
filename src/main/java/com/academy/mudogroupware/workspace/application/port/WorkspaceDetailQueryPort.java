@@ -1,7 +1,7 @@
 package com.academy.mudogroupware.workspace.application.port;
 
-import com.academy.mudogroupware.workspace.application.query.TaskCommentSummary;
-import com.academy.mudogroupware.workspace.application.query.WorkspaceTaskCandidate;
+import com.academy.mudogroupware.workspace.application.query.comment.TaskCommentSummary;
+import com.academy.mudogroupware.workspace.application.query.task.WorkspaceTaskCandidate;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;

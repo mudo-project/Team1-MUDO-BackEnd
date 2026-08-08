@@ -3,12 +3,12 @@ package com.academy.mudogroupware.workspace.infrastructure.persistence.task;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.academy.mudogroupware.global.infrastructure.config.TimeConfig;
-import com.academy.mudogroupware.workspace.domain.model.Task;
-import com.academy.mudogroupware.workspace.domain.model.TaskStatus;
-import com.academy.mudogroupware.workspace.domain.model.TaskStatusHistory;
-import com.academy.mudogroupware.workspace.domain.repository.RecurringTaskSkipRepository;
-import com.academy.mudogroupware.workspace.domain.repository.TaskRepository;
-import com.academy.mudogroupware.workspace.domain.repository.TaskStatusHistoryRepository;
+import com.academy.mudogroupware.workspace.domain.model.task.Task;
+import com.academy.mudogroupware.workspace.domain.model.task.TaskStatus;
+import com.academy.mudogroupware.workspace.domain.model.task.TaskStatusHistory;
+import com.academy.mudogroupware.workspace.domain.repository.task.RecurringTaskSkipRepository;
+import com.academy.mudogroupware.workspace.domain.repository.task.TaskRepository;
+import com.academy.mudogroupware.workspace.domain.repository.task.TaskStatusHistoryRepository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Optional;

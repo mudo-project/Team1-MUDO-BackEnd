@@ -1,9 +1,9 @@
 package com.academy.mudogroupware.workspace.infrastructure.persistence.task;
 
-import com.academy.mudogroupware.workspace.domain.exception.TaskNotFoundException;
-import com.academy.mudogroupware.workspace.domain.model.Task;
-import com.academy.mudogroupware.workspace.domain.model.TaskStatus;
-import com.academy.mudogroupware.workspace.domain.repository.TaskRepository;
+import com.academy.mudogroupware.workspace.domain.exception.task.TaskNotFoundException;
+import com.academy.mudogroupware.workspace.domain.model.task.Task;
+import com.academy.mudogroupware.workspace.domain.model.task.TaskStatus;
+import com.academy.mudogroupware.workspace.domain.repository.task.TaskRepository;
 import com.academy.mudogroupware.workspace.infrastructure.persistence.workspace.WorkspaceJpaEntity;
 import com.academy.mudogroupware.workspace.infrastructure.persistence.workspace.WorkspaceJpaRepository;
 import java.time.LocalDate;
