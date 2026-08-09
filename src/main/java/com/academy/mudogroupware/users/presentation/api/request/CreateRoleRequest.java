@@ -8,7 +8,7 @@ import jakarta.validation.constraints.Size;
 public record CreateRoleRequest(
         @NotBlank @Size(max = 50) String name,
         @Size(max = 255) String description,
-        String color
+        @Size(max = 20) String color
 ) {
 
     public CreateRoleCommand toCommand(Long academyId) {

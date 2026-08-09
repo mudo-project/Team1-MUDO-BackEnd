@@ -15,7 +15,9 @@ import com.academy.mudogroupware.users.domain.repository.RoleRepository;
 import com.academy.mudogroupware.users.domain.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -26,11 +28,14 @@ public class ListRolesService implements ListRolesUseCase {
 
     @Override
     public List<RoleView> listRoles(Long academyId) {
+        log.info("event=role_list_시작 academyId={}", academyId);
         List<Role> roles = roleRepository.findAllByAcademyId(academyId);
         Set<Long> roleIds = roles.stream().map(Role::getId).collect(Collectors.toSet());
         Map<Long, Long> memberCounts = userRepository.countActiveByRoleIds(roleIds);
-        return roles.stream()
+        List<RoleView> result = roles.stream()
                 .map(role -> new RoleView(role, memberCounts.getOrDefault(role.getId(), 0L)))
                 .toList();
+        log.info("event=role_list_완료 academyId={}, count={}", academyId, result.size());
+        return result;
     }
 }
