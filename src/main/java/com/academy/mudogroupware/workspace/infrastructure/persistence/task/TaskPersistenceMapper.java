@@ -17,7 +17,8 @@ public interface TaskPersistenceMapper {
         entity.getStatus(),
         entity.getDueAt(),
         entity.getScheduledFor(),
-        entity.getCreatedBy());
+        entity.getCreatedBy(),
+        entity.getCreatedAt());
   }
 
   // workspace / recurringTemplate 참조는 어댑터가 해결해서 넘긴다.

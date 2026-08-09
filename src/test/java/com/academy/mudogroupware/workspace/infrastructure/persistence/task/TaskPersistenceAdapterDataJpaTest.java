@@ -97,6 +97,34 @@ class TaskPersistenceAdapterDataJpaTest {
   }
 
   @Test
+  void findByIdRoundTripsRegularTaskWithCreatedAt() {
+    insertWorkspace(WORKSPACE_ID);
+    insertTask(1L, WORKSPACE_ID, TaskStatus.IN_PROGRESS, TODAY);
+
+    Optional<Task> found = taskRepository.findById(WORKSPACE_ID, 1L);
+
+    assertThat(found).isPresent();
+    assertThat(found.get().getStatus()).isEqualTo(TaskStatus.IN_PROGRESS);
+    assertThat(found.get().getCreatedAt()).isEqualTo(at());
+  }
+
+  @Test
+  void findByIdReturnsEmptyWhenTaskBelongsToAnotherWorkspace() {
+    long otherWorkspaceId = 2L;
+    insertWorkspace(WORKSPACE_ID);
+    insertWorkspace(otherWorkspaceId);
+    insertTask(1L, otherWorkspaceId, TaskStatus.IN_PROGRESS, TODAY);
+
+    assertThat(taskRepository.findById(WORKSPACE_ID, 1L)).isEmpty();
+  }
+
+  @Test
+  void findByIdReturnsEmptyForMissingTask() {
+    insertWorkspace(WORKSPACE_ID);
+    assertThat(taskRepository.findById(WORKSPACE_ID, 999L)).isEmpty();
+  }
+
+  @Test
   void savingExistingTaskUpdatesStatusAndDueAt() {
     insertWorkspace(WORKSPACE_ID);
     insertTask(1L, WORKSPACE_ID, TaskStatus.DELAYED, TODAY.minusDays(1));
@@ -152,6 +180,26 @@ class TaskPersistenceAdapterDataJpaTest {
         .isEqualTo(1);
     assertThat(count("task_status_history", "task_id = 1 and current_status = 'DELAYED' and changed_by is null"))
         .isEqualTo(1);
+  }
+
+  @Test
+  void findLatestChangedAtReturnsMostRecentHistory() {
+    insertWorkspace(WORKSPACE_ID);
+    insertTask(1L, WORKSPACE_ID, TaskStatus.WAITING, TODAY);
+    insertStatusHistory(1L, TaskStatus.WAITING, TaskStatus.IN_PROGRESS, LocalDateTime.of(2026, 8, 2, 9, 0));
+    insertStatusHistory(1L, TaskStatus.IN_PROGRESS, TaskStatus.COMPLETED, LocalDateTime.of(2026, 8, 3, 15, 0));
+
+    Optional<LocalDateTime> latest = taskStatusHistoryRepository.findLatestChangedAt(1L);
+
+    assertThat(latest).contains(LocalDateTime.of(2026, 8, 3, 15, 0));
+  }
+
+  @Test
+  void findLatestChangedAtReturnsEmptyWhenNoHistory() {
+    insertWorkspace(WORKSPACE_ID);
+    insertTask(1L, WORKSPACE_ID, TaskStatus.WAITING, TODAY);
+
+    assertThat(taskStatusHistoryRepository.findLatestChangedAt(1L)).isEmpty();
   }
 
   @Test
@@ -224,10 +272,15 @@ class TaskPersistenceAdapterDataJpaTest {
   }
 
   private void insertStatusHistory(long taskId, TaskStatus previous, TaskStatus current) {
+    insertStatusHistory(taskId, previous, current, at());
+  }
+
+  private void insertStatusHistory(
+      long taskId, TaskStatus previous, TaskStatus current, LocalDateTime createdAt) {
     jdbcTemplate.update(
         "insert into task_status_history (task_id, previous_status, current_status, created_at) "
             + "values (?, ?, ?, ?)",
-        taskId, previous.name(), current.name(), at());
+        taskId, previous.name(), current.name(), createdAt);
   }
 
   private void insertComment(long commentId, long taskId) {

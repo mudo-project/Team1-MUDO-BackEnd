@@ -231,6 +231,27 @@ class TaskTest {
         .isInstanceOf(InvalidTaskStatusTransitionException.class);
   }
 
+  // --- restore: createdAt 보존 ---
+
+  @Test
+  void restoreWithCreatedAtExposesCreatedAt() {
+    LocalDateTime createdAt = LocalDateTime.of(2026, 7, 29, 9, 30);
+
+    Task task =
+        Task.restore(
+            1L, WORKSPACE_ID, null, "업무", TaskStatus.WAITING, TODAY, null, CREATOR_ID, createdAt);
+
+    assertThat(task.getCreatedAt()).isEqualTo(createdAt);
+  }
+
+  @Test
+  void restoreWithoutCreatedAtLeavesItNull() {
+    Task task =
+        Task.restore(1L, WORKSPACE_ID, null, "업무", TaskStatus.WAITING, TODAY, null, CREATOR_ID);
+
+    assertThat(task.getCreatedAt()).isNull();
+  }
+
   private Task regular(TaskStatus status, LocalDate dueAt) {
     return Task.restore(1L, WORKSPACE_ID, null, "일반 업무", status, dueAt, null, CREATOR_ID);
   }

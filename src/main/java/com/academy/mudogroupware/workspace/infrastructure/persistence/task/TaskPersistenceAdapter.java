@@ -45,6 +45,13 @@ public class TaskPersistenceAdapter implements TaskRepository {
   }
 
   @Override
+  public Optional<Task> findById(Long workspaceId, Long taskId) {
+    return taskJpaRepository
+        .findByIdAndWorkspaceId(taskId, workspaceId)
+        .map(taskPersistenceMapper::toDomain);
+  }
+
+  @Override
   public void delete(Long taskId) {
     // 자식 → 부모 순서로 지운다. 운영 MySQL의 ON DELETE CASCADE는 안전망으로 남는다.
     taskJpaRepository.deleteMentionsByTaskId(taskId);

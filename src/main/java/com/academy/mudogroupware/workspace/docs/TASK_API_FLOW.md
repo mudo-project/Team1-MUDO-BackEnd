@@ -160,6 +160,45 @@ POST /api/workspaces/{workspaceId}/tasks
 
 성공하면 Controller가 `GlobalApiResponse.created(WorkspaceResponseCode.TASK_CREATED, ...)`로 HTTP `201 Created`와 `taskId`를 반환한다.
 
+## 🔍 업무 상세 조회 API 흐름
+
+```text
+GET /api/workspaces/{workspaceId}/tasks/{taskId}
+  → Security Filter
+  → AuthUser
+  → WorkspaceTaskController
+  → TaskDetailQueryUseCase
+  → TaskDetailQueryService @Transactional(readOnly = true)
+  → WorkspaceRepository.findById (락 없음)
+  → WorkspacePersistenceAdapter
+  → TaskRepository.findById (락 없음, 워크스페이스 범위)
+  → TaskPersistenceAdapter
+  → WorkspaceUserInfoPort.findUserInfo (등록자 이름 조회)
+  → WorkspaceUserInfoAdapter (users 도메인)
+  → TaskStatusHistoryRepository.findLatestChangedAt
+  → TaskStatusHistoryPersistenceAdapter
+```
+
+### 1. 워크스페이스 존재 확인과 참여자 검증
+
+`TaskDetailQueryService`는 다른 Task API와 동일한 순서를 따른다 — `WorkspaceRepository.findById`(락 없음)로 조회 후 없으면 `WorkspaceNotFoundException`(`404_1`), 참여자가 아니면 `WorkspaceAccessDeniedException`(`403_1`).
+
+### 2. 업무 조회 (락 없음)
+
+조회 전용 API이므로 `TaskRepository.findById(workspaceId, taskId)`를 쓴다. 수정·삭제가 쓰는 `findByIdForUpdate`(비관적 락, 2단계)와 달리 락을 잡지 않는다 — 상세 조회는 매번 쓰기 락을 잡을 이유가 없고, 동시 조회 성능에 불필요한 영향을 주지 않기 위해서다. 워크스페이스 소속 확인 규칙(다른 워크스페이스 소속이면 `404_3`)은 `findByIdForUpdate`와 동일하게 유지한다.
+
+### 3. 등록자 이름 조회
+
+`task.getCreatedBy()` 하나만 들어있는 `Set<Long>`으로 `WorkspaceUserInfoPort.findUserInfo(...)`를 호출한다(워크스페이스 상세 조회가 참여자·업무 생성자 이름을 일괄 조회할 때 쓰는 것과 같은 포트). 이름을 찾지 못하면 `"알 수 없음"`으로 대체한다.
+
+### 4. 최종 상태 변경 시각 조회
+
+`TaskStatusHistoryRepository.findLatestChangedAt(taskId)`로 가장 최근 이력의 `createdAt`만 조회한다. 이력이 없으면 `Optional.empty()` → 응답에서 `lastStatusChangedAt` 필드 자체가 생략된다. **변경자(`changedBy`)는 조회하지 않는다** — 설계 시 프론트와 "기록은 유지하되 노출은 하지 않기"로 합의했다.
+
+### 5. 응답
+
+성공하면 Controller가 `GlobalApiResponse.ok(WorkspaceResponseCode.TASK_DETAIL_RETRIEVED, ...)`로 HTTP `200 OK`와 `TaskDetailResponse`를 반환한다.
+
 ## ✏️ 업무 상태·마감일 수정 API 흐름
 
 ```text
