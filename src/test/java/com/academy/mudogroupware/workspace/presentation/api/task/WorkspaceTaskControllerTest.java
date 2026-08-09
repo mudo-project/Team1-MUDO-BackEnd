@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -18,8 +19,11 @@ import com.academy.mudogroupware.global.presentation.security.JwtAuthenticationC
 import com.academy.mudogroupware.workspace.application.command.task.CreateTaskCommand;
 import com.academy.mudogroupware.workspace.application.command.task.DeleteTaskCommand;
 import com.academy.mudogroupware.workspace.application.command.task.UpdateTaskCommand;
+import com.academy.mudogroupware.workspace.application.query.task.TaskDetail;
+import com.academy.mudogroupware.workspace.application.query.workspace.WorkspaceMemberInfo;
 import com.academy.mudogroupware.workspace.application.usecase.task.CreateTaskUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.task.DeleteTaskUseCase;
+import com.academy.mudogroupware.workspace.application.usecase.task.TaskDetailQueryUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.task.UpdateTaskUseCase;
 import com.academy.mudogroupware.workspace.domain.exception.task.IllegalTaskDueAtException;
 import com.academy.mudogroupware.workspace.domain.exception.task.InvalidTaskStatusTransitionException;
@@ -30,6 +34,7 @@ import com.academy.mudogroupware.workspace.domain.exception.workspace.WorkspaceN
 import com.academy.mudogroupware.workspace.domain.model.task.Task;
 import com.academy.mudogroupware.workspace.domain.model.task.TaskStatus;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -47,6 +52,7 @@ class WorkspaceTaskControllerTest {
   @Autowired private MockMvc mockMvc;
 
   @MockitoBean private CreateTaskUseCase createTaskUseCase;
+  @MockitoBean private TaskDetailQueryUseCase taskDetailQueryUseCase;
   @MockitoBean private UpdateTaskUseCase updateTaskUseCase;
   @MockitoBean private DeleteTaskUseCase deleteTaskUseCase;
   @MockitoBean private JwtTokenProvider jwtTokenProvider;
@@ -161,6 +167,65 @@ class WorkspaceTaskControllerTest {
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"title\":\"업무\",\"dueAt\":\"2026-08-10\"}"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("WORKSPACE_403_1"));
+  }
+
+  @Test
+  void getTaskDetailReturnsResolvedFields() throws Exception {
+    TaskDetail detail =
+        new TaskDetail(
+            101L, "성적 데이터 7월분 엑셀 정리", new WorkspaceMemberInfo(10L, "윤예진"),
+            LocalDateTime.of(2026, 7, 29, 9, 30), TaskStatus.IN_PROGRESS,
+            LocalDate.of(2026, 8, 5), LocalDateTime.of(2026, 8, 2, 9, 0));
+    when(taskDetailQueryUseCase.getTaskDetail(1L, 101L, 10L)).thenReturn(detail);
+
+    mockMvc
+        .perform(get("/api/workspaces/1/tasks/101").with(authentication(auth())))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.code").value("WORKSPACE_200_16"))
+        .andExpect(jsonPath("$.data.taskId").value(101))
+        .andExpect(jsonPath("$.data.title").value("성적 데이터 7월분 엑셀 정리"))
+        .andExpect(jsonPath("$.data.creator.userId").value(10))
+        .andExpect(jsonPath("$.data.creator.name").value("윤예진"))
+        .andExpect(jsonPath("$.data.status").value("IN_PROGRESS"))
+        .andExpect(jsonPath("$.data.dueAt").value("2026-08-05"))
+        .andExpect(jsonPath("$.data.lastStatusChangedAt").value("2026-08-02T09:00:00"));
+  }
+
+  @Test
+  void getTaskDetailOmitsLastStatusChangedAtWhenNull() throws Exception {
+    TaskDetail detail =
+        new TaskDetail(
+            101L, "업무", new WorkspaceMemberInfo(10L, "윤예진"),
+            LocalDateTime.of(2026, 7, 29, 9, 30), TaskStatus.WAITING,
+            LocalDate.of(2026, 8, 5), null);
+    when(taskDetailQueryUseCase.getTaskDetail(1L, 101L, 10L)).thenReturn(detail);
+
+    mockMvc
+        .perform(get("/api/workspaces/1/tasks/101").with(authentication(auth())))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.lastStatusChangedAt").doesNotExist());
+  }
+
+  @Test
+  void getTaskDetailPropagatesTaskNotFound() throws Exception {
+    when(taskDetailQueryUseCase.getTaskDetail(1L, 101L, 10L))
+        .thenThrow(new TaskNotFoundException());
+
+    mockMvc
+        .perform(get("/api/workspaces/1/tasks/101").with(authentication(auth())))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("WORKSPACE_404_3"));
+  }
+
+  @Test
+  void getTaskDetailPropagatesAccessDenied() throws Exception {
+    when(taskDetailQueryUseCase.getTaskDetail(1L, 101L, 10L))
+        .thenThrow(new WorkspaceAccessDeniedException());
+
+    mockMvc
+        .perform(get("/api/workspaces/1/tasks/101").with(authentication(auth())))
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.code").value("WORKSPACE_403_1"));
   }
