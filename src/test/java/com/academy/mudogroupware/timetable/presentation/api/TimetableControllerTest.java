@@ -206,11 +206,8 @@ class TimetableControllerTest {
 
         mockMvc.perform(get("/api/timetables/1/export")
                         .param("format", "EXCEL")
-                        .param("colorClass", "FFCC00")
-                        .param("colorSpecial", "00AACC")
-                        .param("colorClinic", "AA00CC")
-                        .param("colorStanding", "888888")
-                        .param("colorExam", "FF0000")
+                        .param("colorCriterion", "CLASSROOM")
+                        .param("colorMap", "{\"601\":\"FFCC00\"}")
                         .with(authentication(authenticatedUser())))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(
@@ -220,17 +217,30 @@ class TimetableControllerTest {
     }
 
     @Test
+    void exportTimetableAcceptsFilterAndDensityParameters() throws Exception {
+        when(exportTimetableUseCase.export(any(ExportTimetableCommand.class))).thenReturn(new byte[] {1, 2, 3});
+
+        mockMvc.perform(get("/api/timetables/1/export")
+                        .param("format", "PNG")
+                        .param("colorCriterion", "TEACHER")
+                        .param("colorMap", "{\"정T\":\"FFCC00\"}")
+                        .param("density", "SPACIOUS")
+                        .param("dayOfWeek", "MONDAY")
+                        .param("floor", "6층")
+                        .param("classType", "CLASS")
+                        .with(authentication(authenticatedUser())))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void exportTimetableReturns404WhenNotFound() throws Exception {
         when(exportTimetableUseCase.export(any(ExportTimetableCommand.class)))
                 .thenThrow(new TimetableSetNotFoundException());
 
         mockMvc.perform(get("/api/timetables/999/export")
                         .param("format", "PDF")
-                        .param("colorClass", "FFCC00")
-                        .param("colorSpecial", "00AACC")
-                        .param("colorClinic", "AA00CC")
-                        .param("colorStanding", "888888")
-                        .param("colorExam", "FF0000")
+                        .param("colorCriterion", "CLASSROOM")
+                        .param("colorMap", "{\"601\":\"FFCC00\"}")
                         .with(authentication(authenticatedUser())))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("TIMETABLE_404_1"));
@@ -243,11 +253,19 @@ class TimetableControllerTest {
 
         mockMvc.perform(get("/api/timetables/1/export")
                         .param("format", "PNG")
-                        .param("colorClass", "ZZZZZZ")
-                        .param("colorSpecial", "00AACC")
-                        .param("colorClinic", "AA00CC")
-                        .param("colorStanding", "888888")
-                        .param("colorExam", "FF0000")
+                        .param("colorCriterion", "CLASSROOM")
+                        .param("colorMap", "{\"601\":\"ZZZZZZ\"}")
+                        .with(authentication(authenticatedUser())))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("TIMETABLE_400_5"));
+    }
+
+    @Test
+    void exportTimetableReturns400WhenColorMapIsNotValidJson() throws Exception {
+        mockMvc.perform(get("/api/timetables/1/export")
+                        .param("format", "PNG")
+                        .param("colorCriterion", "CLASSROOM")
+                        .param("colorMap", "not-json")
                         .with(authentication(authenticatedUser())))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("TIMETABLE_400_5"));
@@ -257,11 +275,8 @@ class TimetableControllerTest {
     void exportTimetableReturns400WhenFormatIsInvalidEnumValue() throws Exception {
         mockMvc.perform(get("/api/timetables/1/export")
                         .param("format", "INVALID")
-                        .param("colorClass", "FFCC00")
-                        .param("colorSpecial", "00AACC")
-                        .param("colorClinic", "AA00CC")
-                        .param("colorStanding", "888888")
-                        .param("colorExam", "FF0000")
+                        .param("colorCriterion", "CLASSROOM")
+                        .param("colorMap", "{\"601\":\"FFCC00\"}")
                         .with(authentication(authenticatedUser())))
                 .andExpect(status().isBadRequest());
     }
@@ -269,11 +284,8 @@ class TimetableControllerTest {
     @Test
     void exportTimetableReturns400WhenRequiredParameterIsMissing() throws Exception {
         mockMvc.perform(get("/api/timetables/1/export")
-                        .param("colorClass", "FFCC00")
-                        .param("colorSpecial", "00AACC")
-                        .param("colorClinic", "AA00CC")
-                        .param("colorStanding", "888888")
-                        .param("colorExam", "FF0000")
+                        .param("colorCriterion", "CLASSROOM")
+                        .param("colorMap", "{\"601\":\"FFCC00\"}")
                         .with(authentication(authenticatedUser())))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("COMMON_400_1"));
@@ -283,11 +295,8 @@ class TimetableControllerTest {
     void exportTimetableReturns401WhenUnauthenticated() throws Exception {
         mockMvc.perform(get("/api/timetables/1/export")
                         .param("format", "EXCEL")
-                        .param("colorClass", "FFCC00")
-                        .param("colorSpecial", "00AACC")
-                        .param("colorClinic", "AA00CC")
-                        .param("colorStanding", "888888")
-                        .param("colorExam", "FF0000"))
+                        .param("colorCriterion", "CLASSROOM")
+                        .param("colorMap", "{\"601\":\"FFCC00\"}"))
                 .andExpect(status().isUnauthorized());
     }
 

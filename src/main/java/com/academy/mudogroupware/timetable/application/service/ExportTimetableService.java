@@ -14,8 +14,10 @@ import com.academy.mudogroupware.timetable.application.query.TimetableSlotView;
 import com.academy.mudogroupware.timetable.application.usecase.ExportTimetableUseCase;
 import com.academy.mudogroupware.timetable.application.usecase.GetTimetableSetUseCase;
 import com.academy.mudogroupware.timetable.application.usecase.GetTimetableSlotsUseCase;
-import com.academy.mudogroupware.timetable.domain.model.ClassType;
+import com.academy.mudogroupware.timetable.domain.model.TimetableClassroom;
 import com.academy.mudogroupware.timetable.domain.model.TimetableExportColor;
+import com.academy.mudogroupware.timetable.domain.model.TimetableExportFormat;
+import com.academy.mudogroupware.timetable.domain.model.TimetableExportOptions;
 
 import lombok.RequiredArgsConstructor;
 
@@ -32,24 +34,43 @@ public class ExportTimetableService implements ExportTimetableUseCase {
         TimetableSetDetailView set = getTimetableSetUseCase
                 .getTimetableSet(command.academyId(), command.timetableSetId());
 
-        Map<ClassType, TimetableExportColor> colors = parseColors(command.colorHexByClassType());
+        Map<String, TimetableExportColor> colors = parseColors(command.colorHexByGroupValue());
+        TimetableExportOptions options = new TimetableExportOptions(command.colorCriterion(), colors, command.density());
 
-        List<TimetableSlotView> sortedSlots = getTimetableSlotsUseCase
+        List<TimetableSlotView> allSortedSlots = getTimetableSlotsUseCase
                 .getSlots(command.academyId(), command.timetableSetId()).stream()
                 .sorted(Comparator.comparing(TimetableSlotView::dayOfWeek)
                         .thenComparing(TimetableSlotView::startTime))
                 .toList();
+
+        // PDF는 인쇄용 고정 산출물이라 화면의 필터 상태와 무관하게 항상 세트 전체를 내보낸다.
+        List<TimetableSlotView> slotsToRender = command.format() == TimetableExportFormat.PDF
+                ? allSortedSlots
+                : applyFilters(command, set, allSortedSlots);
 
         TimetableExportRenderer renderer = renderers.stream()
                 .filter(r -> r.supports(command.format()))
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("지원하지 않는 내보내기 형식: " + command.format()));
 
-        return renderer.render(set.name(), sortedSlots, colors);
+        return renderer.render(set.name(), slotsToRender, options);
     }
 
-    private Map<ClassType, TimetableExportColor> parseColors(Map<ClassType, String> colorHexByClassType) {
-        return colorHexByClassType.entrySet().stream()
+    private List<TimetableSlotView> applyFilters(
+            ExportTimetableCommand command, TimetableSetDetailView set, List<TimetableSlotView> slots) {
+        Map<String, String> floorByClassroomCode = set.classrooms().stream()
+                .collect(Collectors.toMap(TimetableClassroom::code, TimetableClassroom::floor, (a, b) -> a));
+
+        return slots.stream()
+                .filter(slot -> command.dayOfWeek() == null || slot.dayOfWeek() == command.dayOfWeek())
+                .filter(slot -> command.classType() == null || slot.classType() == command.classType())
+                .filter(slot -> command.floor() == null
+                        || command.floor().equals(floorByClassroomCode.get(slot.classroomCode())))
+                .toList();
+    }
+
+    private Map<String, TimetableExportColor> parseColors(Map<String, String> colorHexByGroupValue) {
+        return colorHexByGroupValue.entrySet().stream()
                 .collect(Collectors.toMap(Map.Entry::getKey, entry -> TimetableExportColor.fromHex(entry.getValue())));
     }
 }
