@@ -138,9 +138,9 @@ UNIQUE (academy_id, active_name)
 ### 템플릿과 생성
 
 - 반복 업무는 `recurring_task_template`이 관리하고, 스케줄러가 개별 `task`를 생성한다.
-- 반복 템플릿의 `recurrence_type`은 `DAILY`, `WEEKLY`, `MONTHLY`로 제한한다.
-- `recurrence_rule` JSON으로 특정 요일, 매월 특정 날짜, 실행 시각, 시작일, 종료일을 표현한다.
-- 월간 반복일이 존재하지 않는 달에는 그 달의 마지막 날에 업무를 생성한다.
+- 반복 템플릿의 `recurrence_type`은 `WEEKLY`, `MONTHLY`로 제한한다.
+- `recurrence_rule`은 `WEEKLY`면 요일 목록(`daysOfWeek`, 월=1~일=7)을, `MONTHLY`면 `dayOfMonth=1`만 허용한다
+  (프론트 요청으로 매주 월~일 반복과 매달 1일 반복만 지원, 2026-08-08).
 - 생성된 반복 업무는 `due_at = NULL`, 초기 상태 `WAITING`이다.
 - `is_active = false`이면 이후 업무 생성을 중지한다. 이미 생성된 업무는 유지한다.
 - 비활성 기간의 누락 회차는 템플릿 재활성화 후에도 생성하지 않는다.

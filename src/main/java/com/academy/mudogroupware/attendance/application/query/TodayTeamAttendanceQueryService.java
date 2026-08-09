@@ -24,9 +24,11 @@ import com.academy.mudogroupware.attendance.domain.repository.AttendancePolicyRe
 import com.academy.mudogroupware.attendance.domain.repository.LeaveRequestRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 @Transactional(readOnly = true)
 public class TodayTeamAttendanceQueryService implements GetTodayTeamAttendanceUseCase {
 
@@ -42,6 +44,7 @@ public class TodayTeamAttendanceQueryService implements GetTodayTeamAttendanceUs
 
     @Override
     public TodayTeamAttendanceView getToday(Long requesterId, Long academyId) {
+        log.info("event=attendance_team_today_read_시작 requesterId={}, academyId={}", requesterId, academyId);
         OwnedAcademy academy = academyRepository.findByOwnerUserId(requesterId)
                 .filter(owned -> owned.id().equals(academyId))
                 .orElseThrow(() -> new AttendanceException(
@@ -73,13 +76,15 @@ public class TodayTeamAttendanceQueryService implements GetTodayTeamAttendanceUs
                 .filter(employee -> employee.status() == TeamAttendanceStatus.LEAVE)
                 .count();
 
-        return new TodayTeamAttendanceView(
+        TodayTeamAttendanceView result = new TodayTeamAttendanceView(
                 today,
                 KOREAN_DAY_NAMES[today.getDayOfWeek().getValue() - 1],
                 schedule.startTime(),
                 schedule.endTime(),
                 new TodayTeamAttendanceView.Summary(presentCount, absentCount, offCount, leaveCount),
                 employees);
+        log.info("event=attendance_team_today_read_완료 academyId={}, count={}", academyId, employees.size());
+        return result;
     }
 
     private TodayTeamAttendanceView.Employee toEmployee(

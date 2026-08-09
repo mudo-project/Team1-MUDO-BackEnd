@@ -270,11 +270,13 @@ class WorkspaceTaskControllerTest {
   }
 
   @Test
-  void deleteTaskReturnsNoContent() throws Exception {
+  void deleteTaskReturnsOkWithSuccessMessage() throws Exception {
     mockMvc
         .perform(
             delete("/api/workspaces/1/tasks/101").with(authentication(auth())).with(csrf()))
-        .andExpect(status().isNoContent());
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.code").value("WORKSPACE_200_13"))
+        .andExpect(jsonPath("$.message").value("업무 삭제에 성공했습니다."));
 
     verify(deleteTaskUseCase).deleteTask(new DeleteTaskCommand(1L, 101L, 10L));
   }

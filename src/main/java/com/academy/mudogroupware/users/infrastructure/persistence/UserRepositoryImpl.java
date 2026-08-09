@@ -2,8 +2,10 @@ package com.academy.mudogroupware.users.infrastructure.persistence;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Repository;
@@ -11,6 +13,7 @@ import org.springframework.stereotype.Repository;
 import com.academy.mudogroupware.users.domain.exception.RoleNotFoundException;
 import com.academy.mudogroupware.users.domain.exception.UserErrorCode;
 import com.academy.mudogroupware.users.domain.exception.UserException;
+import com.academy.mudogroupware.users.domain.exception.UsernameDuplicateException;
 import com.academy.mudogroupware.users.domain.model.User;
 import com.academy.mudogroupware.users.domain.model.UserStatus;
 import com.academy.mudogroupware.users.domain.repository.UserRepository;
@@ -22,12 +25,18 @@ import lombok.RequiredArgsConstructor;
 public class UserRepositoryImpl implements UserRepository {
 
     private static final String USERS_ROLE_FK_CONSTRAINT = "fk_users_role";
+    private static final String USERNAME_UNIQUE_CONSTRAINT = "uk_users_username";
 
     private final UserJpaRepository userJpaRepository;
 
     @Override
     public boolean existsActiveByRoleId(Long roleId) {
         return userJpaRepository.existsByRoleIdAndStatus(roleId, UserStatus.ACTIVE);
+    }
+
+    @Override
+    public boolean existsByUsername(String username) {
+        return userJpaRepository.existsByUsername(username);
     }
 
     @Override
@@ -61,6 +70,15 @@ public class UserRepositoryImpl implements UserRepository {
     }
 
     @Override
+    public Map<Long, Long> countActiveByRoleIds(Set<Long> roleIds) {
+        if (roleIds.isEmpty()) {
+            return Map.of();
+        }
+        return userJpaRepository.countActiveByRoleIdIn(roleIds).stream()
+                .collect(Collectors.toMap(RoleMemberCountRow::getRoleId, RoleMemberCountRow::getCount));
+    }
+
+    @Override
     public User save(User user) {
         UserEntity entity = UserEntity.builder()
                 .academyId(user.getAcademyId())
@@ -78,7 +96,14 @@ public class UserRepositoryImpl implements UserRepository {
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
                 .build();
-        return toDomain(userJpaRepository.save(entity));
+        try {
+            return toDomain(userJpaRepository.saveAndFlush(entity));
+        } catch (DataIntegrityViolationException exception) {
+            if (containsConstraint(exception, USERNAME_UNIQUE_CONSTRAINT)) {
+                throw new UsernameDuplicateException(exception);
+            }
+            throw exception;
+        }
     }
 
     @Override

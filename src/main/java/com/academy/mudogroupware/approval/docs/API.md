@@ -52,7 +52,7 @@ Request Body
 | `title` | `String` | `true` | 결재 제목 |
 | `contentType` | `String` | `true` | `TEXT` 또는 `FILE` |
 | `text` | `String` | `contentType=TEXT`일 때 `true` | 결재 본문. `TEXT` 타입이면 필수 |
-| `fileIds` | `List<Long>` | `false` | 첨부파일 ID 목록 |
+| `fileIds` | `List<Long>` | `false` | 첨부파일 ID 목록. `POST /api/files/presigned-url` → S3 업로드 → `POST /api/files`로 발급받은 `fileId`를 넣는다. 자세한 흐름은 [file 모듈 API.md](../../file/docs/API.md) 참고 |
 | `approverIds` | `List<Long>` | `false` | 템플릿 기본 결재선 대신 사용할 결재선. 비우면 템플릿의 결재선을 그대로 사용 |
 | `leaveStartDate` | `String(date)` | `false` | 휴가 연동 시작일. 지정 시 `leaveEndDate`도 함께 지정해야 함(근태 자동 반영용) |
 | `leaveEndDate` | `String(date)` | `false` | 휴가 연동 종료일 |

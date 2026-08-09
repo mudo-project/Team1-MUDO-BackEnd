@@ -110,7 +110,8 @@
 ```json
 {
   "name": "강사",
-  "description": "수업 담당"
+  "description": "수업 담당",
+  "color": "#FF5733"
 }
 ```
 
@@ -118,6 +119,7 @@
 | --- | --- | --- | --- |
 | `name` | String | true | 역할 이름 (같은 학원 내에서 중복 불가, 최대 50자) |
 | `description` | String | false | 역할 설명 (최대 255자) |
+| `color` | String | false | 역할 뱃지 색상. 형식 검증 없이 그대로 저장/반환합니다(프론트 책임), 최대 20자. 안 보내면 `null` |
 
 #### Response · `201 Created`
 
@@ -365,7 +367,9 @@
     {
       "roleId": 3,
       "name": "강사",
-      "description": "수업 담당"
+      "description": "수업 담당",
+      "color": "#FF5733",
+      "memberCount": 4
     }
   ]
 }
@@ -375,6 +379,7 @@
 
 - 인증된 사용자(JWT)의 소속 학원(`academyId`) 역할만 반환합니다. 페이지네이션이 없습니다(기존 권한 카탈로그 조회와 동일한 전례).
 - 권한 정보(`permissionCodes`)는 내려주지 않습니다 — 프론트 사이드바가 목록에서는 권한을 쓰지 않기 때문입니다. 필요하면 역할 상세 조회(후속 API)를 씁니다.
+- `memberCount`는 저장된 값이 아니라 조회 시점에 `status = ACTIVE`인 구성원 수를 계산합니다(퇴사자는 세지 않음).
 
 ---
 
@@ -398,6 +403,8 @@
     "roleId": 3,
     "name": "강사",
     "description": "수업 담당",
+    "color": "#FF5733",
+    "memberCount": 4,
     "permissionCodes": ["NOTICE:READ", "TASK:MANAGE"]
   }
 }
@@ -407,6 +414,7 @@
 
 - 목록 조회와 달리 `permissionCodes`를 포함해 내려줍니다.
 - 역할이 존재하지 않거나, 존재하더라도 요청자의 소속 학원(`academyId`)이 아니면 동일하게 `404 USER_404_2`로 응답합니다 — 다른 학원 역할의 존재 여부가 노출되지 않도록 하기 위함입니다.
+- `memberCount`는 목록 조회와 동일하게 `status = ACTIVE`인 구성원만 계산합니다.
 
 ---
 
@@ -420,7 +428,8 @@
 ```json
 {
   "name": "수석강사",
-  "description": "수정된 설명"
+  "description": "수정된 설명",
+  "color": "#00FF00"
 }
 ```
 
@@ -430,7 +439,7 @@
 
 ### 검증 및 정책
 
-- `name`은 비어 있을 수 없고 50자, `description`은 255자를 넘을 수 없습니다(역할 생성과 동일한 제약).
+- `name`은 비어 있을 수 없고 50자, `description`은 255자를 넘을 수 없습니다(역할 생성과 동일한 제약). `color`는 검증 없이 그대로 저장됩니다.
 - 역할이 존재하지 않거나 다른 학원 소속이면 `404 USER_404_2`.
 - 같은 학원 안에 **자기 자신을 제외하고** 같은 이름의 역할이 있으면 `409 USER_409_1` — 이름을 바꾸지 않는 수정 요청(설명만 변경)이 자기 자신과 충돌해 실패하지 않도록 자기 자신은 검사에서 제외합니다.
 - 권한 목록(`permissionCodes`)은 이 API로 바꿀 수 없습니다 — 역할 권한 조립(`PUT /api/roles/{roleId}/permissions`)을 씁니다.
@@ -521,6 +530,56 @@
 
 ---
 
+## 17. 직원 계정 발급
+
+`POST /api/users`
+권한: `ACCOUNT:MANAGE` 필요
+
+### Request
+
+```json
+{
+  "username": "teacher01",
+  "name": "김강사",
+  "phone": "010-1111-2222",
+  "email": "teacher01@example.com",
+  "roleId": 8
+}
+```
+
+| name | type | required | 설명 |
+| --- | --- | --- | --- |
+| `username` | String | true | 로그인 아이디, 최대 50자, 전역 유니크 |
+| `name` | String | true | 이름, 최대 50자 |
+| `phone` | String | true | 전화번호, 최대 20자 |
+| `email` | String | true | 이메일, 최대 100자 |
+| `roleId` | Long | true | 배정할 역할 ID (같은 학원 소속 역할만 가능) |
+
+### Response · `201 Created`
+
+```json
+{
+  "status": 201,
+  "code": "USER_201_1",
+  "message": "직원 계정이 발급되었습니다.",
+  "data": {
+    "userId": 8,
+    "username": "teacher01",
+    "temporaryPassword": "USb8MGQYrq!p"
+  }
+}
+```
+
+### 검증 및 정책
+
+- `academyId`는 요청으로 받지 않고 인증된 관리자 기준으로 서버가 결정합니다 — 다른 학원에 계정을 만들 수 없습니다.
+- `username`이 이미 존재하면 `409 USER_409_6`으로 거절합니다(사전 체크 + DB 유니크 제약 이중 방어).
+- `roleId`가 존재하지 않거나 다른 학원 소속이면 `404 USER_404_2`로 응답합니다.
+- 계정은 `accountType=MEMBER`, 임시 비밀번호로 발급되며 `mustChangePw`가 `true`로 저장됩니다. 단, 로그인 흐름에서 이 값을 읽어 비밀번호 변경을 강제하는 로직은 아직 없습니다(후속 작업).
+- 응답의 `temporaryPassword`는 이 호출 한 번에만 평문으로 내려가며 서버에 별도로 저장되지 않습니다. 학원 관리자가 직원에게 직접 전달해야 합니다 — 이메일 등 자동 발송은 아직 없습니다(후속 작업).
+
+---
+
 ## ⚠️ 주요 오류
 
 | HTTP | 코드 | 상황 |
@@ -535,6 +594,7 @@
 | `404` | `USER_404_2` | 역할이 존재하지 않거나 다른 학원 소속 |
 | `404` | `USER_404_3` | 학원 신청서가 존재하지 않음 |
 | `409` | `USER_409_5` | 이미 검토된(승인/반려) 신청서를 다시 승인/반려 시도 |
+| `409` | `USER_409_6` | 이미 사용 중인 아이디로 직원 계정 발급 시도 |
 | `401` | `AUTH_401_1` | 리프레시 토큰 자체가 위조되었거나 형식이 올바르지 않음 |
 | `401` | `AUTH_401_2` | 리프레시 토큰이 만료됨 |
 | `401` | `AUTH_401_6` | 서버에 저장된 리프레시 토큰이 없음 |

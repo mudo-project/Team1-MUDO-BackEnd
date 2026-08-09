@@ -23,4 +23,10 @@ public class RecurringTaskSkipPersistenceAdapter implements RecurringTaskSkipRep
     recurringTaskSkipJpaRepository.save(
         RecurringTaskSkipJpaEntity.create(template, scheduledFor));
   }
+
+  @Override
+  public boolean exists(Long recurringTemplateId, LocalDateTime scheduledFor) {
+    return recurringTaskSkipJpaRepository.existsById(
+        RecurringTaskSkipId.of(recurringTemplateId, scheduledFor));
+  }
 }

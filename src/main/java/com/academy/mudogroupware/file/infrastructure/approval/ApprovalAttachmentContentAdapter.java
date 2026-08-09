@@ -7,6 +7,8 @@ import org.springframework.stereotype.Component;
 import com.academy.mudogroupware.approval.application.port.AttachmentContentPort;
 import com.academy.mudogroupware.approval.application.port.AttachmentContentUnavailableException;
 import com.academy.mudogroupware.file.domain.repository.FileStoragePort;
+import com.academy.mudogroupware.file.infrastructure.persistence.FileMetadataEntity;
+import com.academy.mudogroupware.file.infrastructure.persistence.FileMetadataJpaRepository;
 
 import lombok.RequiredArgsConstructor;
 

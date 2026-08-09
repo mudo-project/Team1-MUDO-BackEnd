@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.workspace.application.service.workspace;
 
+import com.academy.mudogroupware.global.infrastructure.logging.AfterCommitLogger;
 import com.academy.mudogroupware.workspace.application.command.workspace.RenameWorkspaceCommand;
 import com.academy.mudogroupware.workspace.application.usecase.workspace.RenameWorkspaceUseCase;
 import com.academy.mudogroupware.workspace.domain.exception.workspace.WorkspaceAccessDeniedException;
@@ -7,9 +8,11 @@ import com.academy.mudogroupware.workspace.domain.exception.workspace.WorkspaceN
 import com.academy.mudogroupware.workspace.domain.model.workspace.Workspace;
 import com.academy.mudogroupware.workspace.domain.repository.workspace.WorkspaceRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class RenameWorkspaceService implements RenameWorkspaceUseCase {
@@ -19,6 +22,11 @@ public class RenameWorkspaceService implements RenameWorkspaceUseCase {
   @Override
   @Transactional
   public String rename(RenameWorkspaceCommand command) {
+    log.info(
+        "event=workspace_rename_시작 workspaceId={}, requesterId={}",
+        command.workspaceId(),
+        command.requesterId());
+
     Workspace workspace =
         workspaceRepository
             .findByIdForUpdate(command.workspaceId())
@@ -31,6 +39,13 @@ public class RenameWorkspaceService implements RenameWorkspaceUseCase {
 
     Workspace renamed = workspace.rename(command.name());
     workspaceRepository.rename(command.workspaceId(), renamed.getName());
+
+    AfterCommitLogger.run(
+        () ->
+            log.info(
+                "event=workspace_rename_완료 workspaceId={}, name={}",
+                command.workspaceId(),
+                renamed.getName()));
     return renamed.getName();
   }
 }

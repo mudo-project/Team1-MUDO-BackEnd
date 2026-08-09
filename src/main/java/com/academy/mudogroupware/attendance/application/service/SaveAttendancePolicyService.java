@@ -17,9 +17,11 @@ import com.academy.mudogroupware.attendance.domain.repository.AcademyRepository;
 import com.academy.mudogroupware.attendance.domain.repository.AttendancePolicyRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 @Transactional
 public class SaveAttendancePolicyService implements SaveAttendancePolicyUseCase {
 
@@ -28,9 +30,11 @@ public class SaveAttendancePolicyService implements SaveAttendancePolicyUseCase 
 
     @Override
     public SaveAttendancePolicyResult save(SaveAttendancePolicyCommand command) {
-        OwnedAcademy academy = academyRepository.findByOwnerUserId(command.requesterId())
-                .orElseThrow(() -> new AttendanceException(
-                        AttendanceErrorCode.ATTENDANCE_POLICY_SAVE_FORBIDDEN));
+        log.info("event=attendance_policy_save_시작 requesterId={}", command.requesterId());
+        try {
+            OwnedAcademy academy = academyRepository.findByOwnerUserId(command.requesterId())
+                    .orElseThrow(() -> new AttendanceException(
+                            AttendanceErrorCode.ATTENDANCE_POLICY_SAVE_FORBIDDEN));
 
         AttendancePolicy policy = attendancePolicyRepository.findByAcademyId(academy.id())
                 .map(existing -> existing.update(
@@ -43,6 +47,14 @@ public class SaveAttendancePolicyService implements SaveAttendancePolicyUseCase 
                         command.weekdays() == null ? List.<AttendancePolicyWeekday>of()
                                 : command.weekdays()));
 
-        return SaveAttendancePolicyResult.from(attendancePolicyRepository.save(policy));
+            SaveAttendancePolicyResult result = SaveAttendancePolicyResult.from(attendancePolicyRepository.save(policy));
+            log.info("event=attendance_policy_save_완료 requesterId={}, policyId={}",
+                    command.requesterId(), result.policyId());
+            return result;
+        } catch (RuntimeException e) {
+            log.warn("event=attendance_policy_save_실패 requesterId={}, reason={}",
+                    command.requesterId(), e.getMessage());
+            throw e;
+        }
     }
 }

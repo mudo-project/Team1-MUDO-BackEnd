@@ -349,13 +349,15 @@ class WorkspaceControllerTest {
   }
 
   @Test
-  void deletesWorkspaceAndReturns204() throws Exception {
+  void deletesWorkspaceAndReturns200WithSuccessMessage() throws Exception {
     mockMvc
         .perform(
             delete("/api/workspaces/{workspaceId}", 100L)
                 .with(authentication(authenticatedUser()))
                 .with(csrf()))
-        .andExpect(status().isNoContent());
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.code").value("WORKSPACE_200_11"))
+        .andExpect(jsonPath("$.message").value("워크스페이스 삭제에 성공했습니다."));
 
     verify(deleteWorkspaceUseCase).delete(new DeleteWorkspaceCommand(10L, 100L));
   }
@@ -409,26 +411,29 @@ class WorkspaceControllerTest {
   }
 
   @Test
-  void removesOtherMemberAndReturns204() throws Exception {
+  void removesOtherMemberAndReturns200WithSuccessMessage() throws Exception {
     mockMvc
         .perform(
             delete("/api/workspaces/{workspaceId}/members/{userId}", 100L, 20L)
                 .with(authentication(authenticatedUser()))
                 .with(csrf()))
-        .andExpect(status().isNoContent());
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.code").value("WORKSPACE_200_12"))
+        .andExpect(jsonPath("$.message").value("참여자 제거에 성공했습니다."));
 
     verify(removeWorkspaceMemberUseCase)
         .removeMember(new RemoveWorkspaceMemberCommand(10L, 100L, 20L));
   }
 
   @Test
-  void leavesSelfAndReturns204() throws Exception {
+  void leavesSelfAndReturns200WithSuccessMessage() throws Exception {
     mockMvc
         .perform(
             delete("/api/workspaces/{workspaceId}/members/{userId}", 100L, 10L)
                 .with(authentication(authenticatedUser()))
                 .with(csrf()))
-        .andExpect(status().isNoContent());
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.code").value("WORKSPACE_200_12"));
 
     verify(removeWorkspaceMemberUseCase)
         .removeMember(new RemoveWorkspaceMemberCommand(10L, 100L, 10L));
