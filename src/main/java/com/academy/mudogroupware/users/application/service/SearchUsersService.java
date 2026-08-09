@@ -10,7 +10,9 @@ import com.academy.mudogroupware.users.domain.model.User;
 import com.academy.mudogroupware.users.domain.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -20,6 +22,9 @@ public class SearchUsersService implements SearchUsersUseCase {
 
     @Override
     public List<User> search(Long academyId, String keyword) {
-        return userRepository.searchByAcademyId(academyId, keyword);
+        log.info("event=user_search_시작 academyId={}, keyword={}", academyId, keyword);
+        List<User> result = userRepository.searchByAcademyId(academyId, keyword);
+        log.info("event=user_search_완료 academyId={}, count={}", academyId, result.size());
+        return result;
     }
 }
