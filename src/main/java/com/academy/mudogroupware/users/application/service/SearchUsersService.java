@@ -22,7 +22,8 @@ public class SearchUsersService implements SearchUsersUseCase {
 
     @Override
     public List<User> search(Long academyId, String keyword) {
-        log.info("event=user_search_시작 academyId={}, keyword={}", academyId, keyword);
+        boolean keywordPresent = keyword != null && !keyword.isBlank();
+        log.info("event=user_search_시작 academyId={}, keywordPresent={}", academyId, keywordPresent);
         List<User> result = userRepository.searchByAcademyId(academyId, keyword);
         log.info("event=user_search_완료 academyId={}, count={}", academyId, result.size());
         return result;
