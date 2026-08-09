@@ -144,13 +144,15 @@ class WorkspaceTaskCommentControllerTest {
   }
 
   @Test
-  void deleteCommentReturnsNoContent() throws Exception {
+  void deleteCommentReturnsOkWithSuccessMessage() throws Exception {
     mockMvc
         .perform(
             delete("/api/workspaces/1/tasks/101/comments/501")
                 .with(authentication(auth()))
                 .with(csrf()))
-        .andExpect(status().isNoContent());
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.code").value("WORKSPACE_200_14"))
+        .andExpect(jsonPath("$.message").value("업무 댓글 삭제에 성공했습니다."));
 
     verify(deleteTaskCommentUseCase)
         .deleteComment(new DeleteTaskCommentCommand(1L, 101L, 501L, 10L));
