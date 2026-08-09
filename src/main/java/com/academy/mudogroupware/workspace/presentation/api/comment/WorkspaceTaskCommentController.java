@@ -93,19 +93,19 @@ public class WorkspaceTaskCommentController {
       summary = "업무 댓글 삭제",
       description = "현재 참여자 누구나 삭제할 수 있습니다. 하드 삭제이며 멘션도 함께 삭제되고 복구할 수 없습니다.")
   @ApiResponses({
-    @ApiResponse(responseCode = "204", description = "댓글 삭제 성공"),
+    @ApiResponse(responseCode = "200", description = "댓글 삭제 성공"),
     @ApiResponse(responseCode = "403", description = "참여자가 아님"),
     @ApiResponse(responseCode = "404", description = "워크스페이스·업무·댓글이 존재하지 않음")
   })
   @DeleteMapping("/{commentId}")
-  public ResponseEntity<Void> deleteComment(
+  public ResponseEntity<GlobalApiResponse<Void>> deleteComment(
       @AuthenticationPrincipal AuthUser authUser,
       @PathVariable Long workspaceId,
       @PathVariable Long taskId,
       @PathVariable Long commentId) {
     deleteTaskCommentUseCase.deleteComment(
         new DeleteTaskCommentCommand(workspaceId, taskId, commentId, authUser.userId()));
-    return ResponseEntity.noContent().build();
+    return ResponseEntity.ok(GlobalApiResponse.ok(WorkspaceResponseCode.TASK_COMMENT_DELETED));
   }
 
   @Operation(

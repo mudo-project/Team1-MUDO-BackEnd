@@ -126,7 +126,7 @@ class UpdateRecurringTaskTemplateServiceTest {
   @Test
   void rejectsMissingTemplate() {
     givenWorkspaceWithMember();
-    when(recurringTaskTemplateRepository.findByWorkspaceIdAndId(WORKSPACE_ID, TEMPLATE_ID))
+    when(recurringTaskTemplateRepository.findByWorkspaceIdAndIdForUpdate(WORKSPACE_ID, TEMPLATE_ID))
         .thenReturn(Optional.empty());
 
     assertThatThrownBy(
@@ -150,7 +150,7 @@ class UpdateRecurringTaskTemplateServiceTest {
         RecurringTaskTemplate.restore(
             TEMPLATE_ID, WORKSPACE_ID, "기존 제목", RecurrenceType.WEEKLY,
             Map.of("daysOfWeek", List.of(1)), MEMBER_ID);
-    when(recurringTaskTemplateRepository.findByWorkspaceIdAndId(WORKSPACE_ID, TEMPLATE_ID))
+    when(recurringTaskTemplateRepository.findByWorkspaceIdAndIdForUpdate(WORKSPACE_ID, TEMPLATE_ID))
         .thenReturn(Optional.of(existing));
   }
 }

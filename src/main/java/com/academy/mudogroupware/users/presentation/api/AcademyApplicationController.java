@@ -24,9 +24,13 @@ import com.academy.mudogroupware.users.presentation.api.request.RejectAcademyApp
 import com.academy.mudogroupware.users.presentation.api.response.AcademyApplicationApproveResponse;
 import com.academy.mudogroupware.users.presentation.api.response.AcademyApplicationResponse;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+@Tag(name = "학원 신청", description = "학원 신청 목록/상세 조회, 승인/반려 API (PLATFORM:SUPER_ADMIN 전용)")
 @RestController
 @RequestMapping("/api/academy-applications")
 @RequiredArgsConstructor
@@ -37,6 +41,9 @@ public class AcademyApplicationController {
     private final ApproveAcademyApplicationUseCase approveAcademyApplicationUseCase;
     private final RejectAcademyApplicationUseCase rejectAcademyApplicationUseCase;
 
+    @Operation(
+            summary = "학원 신청 목록 조회",
+            description = "SUPER ADMIN이 들어온 학원 신청 목록을 조회합니다. 페이지네이션이 없습니다.")
     @GetMapping
     public ResponseEntity<GlobalApiResponse<List<AcademyApplicationResponse>>> list() {
         List<AcademyApplicationResponse> data = listAcademyApplicationsUseCase.listApplications().stream()
@@ -46,19 +53,25 @@ public class AcademyApplicationController {
                 GlobalApiResponse.ok(AcademyApplicationResponseCode.ACADEMY_APPLICATION_LIST_FOUND, data));
     }
 
+    @Operation(
+            summary = "학원 신청 상세 조회",
+            description = "신청서 하나의 상세 정보를 조회합니다.")
     @GetMapping("/{applicationId}")
     public ResponseEntity<GlobalApiResponse<AcademyApplicationResponse>> get(
-            @PathVariable Long applicationId) {
+            @Parameter(description = "학원 신청 ID") @PathVariable Long applicationId) {
         AcademyApplicationResponse data =
                 AcademyApplicationResponse.from(getAcademyApplicationUseCase.getApplication(applicationId));
         return ResponseEntity.ok(
                 GlobalApiResponse.ok(AcademyApplicationResponseCode.ACADEMY_APPLICATION_DETAIL_FOUND, data));
     }
 
+    @Operation(
+            summary = "학원 신청 승인",
+            description = "신청을 승인합니다. 승인 시 학원과 최초 관리자(원장) 계정이 함께 생성되며, 임시 비밀번호가 응답에 1회 평문으로 포함됩니다.")
     @PostMapping("/{applicationId}/approve")
     public ResponseEntity<GlobalApiResponse<AcademyApplicationApproveResponse>> approve(
             @AuthenticationPrincipal AuthUser authUser,
-            @PathVariable Long applicationId) {
+            @Parameter(description = "학원 신청 ID") @PathVariable Long applicationId) {
         ApproveAcademyApplicationResult result = approveAcademyApplicationUseCase.approve(
                 new ApproveAcademyApplicationCommand(applicationId, authUser.userId()));
         AcademyApplicationApproveResponse data = AcademyApplicationApproveResponse.from(result);
@@ -66,10 +79,13 @@ public class AcademyApplicationController {
                 GlobalApiResponse.ok(AcademyApplicationResponseCode.ACADEMY_APPLICATION_APPROVED, data));
     }
 
+    @Operation(
+            summary = "학원 신청 반려",
+            description = "사유를 남기고 신청을 반려합니다. 이미 승인/반려된 신청서는 다시 처리할 수 없습니다.")
     @PostMapping("/{applicationId}/reject")
     public ResponseEntity<Void> reject(
             @AuthenticationPrincipal AuthUser authUser,
-            @PathVariable Long applicationId,
+            @Parameter(description = "학원 신청 ID") @PathVariable Long applicationId,
             @Valid @RequestBody RejectAcademyApplicationRequest request) {
         rejectAcademyApplicationUseCase.reject(request.toCommand(applicationId, authUser.userId()));
         return ResponseEntity.noContent().build();

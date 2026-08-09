@@ -242,7 +242,7 @@ DELETE /api/workspaces/{workspaceId}
 
 ### 3. 응답
 
-성공하면 응답 본문 없이 HTTP `204 No Content`를 반환한다.
+성공하면 Controller가 `GlobalApiResponse.ok(WorkspaceResponseCode.WORKSPACE_DELETED)`로 `200 OK`를 반환한다.
 
 ## ➕ 워크스페이스 참여자 추가 API 흐름
 
@@ -321,7 +321,7 @@ DELETE /api/workspaces/{workspaceId}/members/{userId}
 
 ### 4. 응답
 
-성공하면 응답 본문 없이 HTTP `204 No Content`를 반환한다.
+성공하면 Controller가 `GlobalApiResponse.ok(WorkspaceResponseCode.WORKSPACE_MEMBER_REMOVED)`로 `200 OK`를 반환한다.
 
 ## ♻️ 워크스페이스 복구 API 흐름
 

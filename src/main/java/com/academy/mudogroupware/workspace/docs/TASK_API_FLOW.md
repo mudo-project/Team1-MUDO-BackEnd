@@ -245,4 +245,4 @@ DELETE /api/workspaces/{workspaceId}/tasks/{taskId}
 
 ### 5. 응답
 
-성공하면 Controller가 본문 없는 HTTP `204 No Content`를 반환한다.
+성공하면 Controller가 `GlobalApiResponse.ok(WorkspaceResponseCode.TASK_DELETED)`로 `200 OK`를 반환한다.

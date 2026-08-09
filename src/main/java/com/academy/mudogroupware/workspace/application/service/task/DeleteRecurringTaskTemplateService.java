@@ -1,8 +1,8 @@
 package com.academy.mudogroupware.workspace.application.service.task;
 
 import com.academy.mudogroupware.global.infrastructure.logging.AfterCommitLogger;
-import com.academy.mudogroupware.workspace.application.command.task.UpdateRecurringTaskTemplateCommand;
-import com.academy.mudogroupware.workspace.application.usecase.task.UpdateRecurringTaskTemplateUseCase;
+import com.academy.mudogroupware.workspace.application.command.task.DeleteRecurringTaskTemplateCommand;
+import com.academy.mudogroupware.workspace.application.usecase.task.DeleteRecurringTaskTemplateUseCase;
 import com.academy.mudogroupware.workspace.domain.exception.task.RecurringTaskTemplateNotFoundException;
 import com.academy.mudogroupware.workspace.domain.exception.workspace.WorkspaceAccessDeniedException;
 import com.academy.mudogroupware.workspace.domain.exception.workspace.WorkspaceNotFoundException;
@@ -18,18 +18,19 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class UpdateRecurringTaskTemplateService implements UpdateRecurringTaskTemplateUseCase {
+public class DeleteRecurringTaskTemplateService implements DeleteRecurringTaskTemplateUseCase {
 
   private final WorkspaceRepository workspaceRepository;
   private final RecurringTaskTemplateRepository recurringTaskTemplateRepository;
 
   @Override
   @Transactional
-  public RecurringTaskTemplate update(UpdateRecurringTaskTemplateCommand command) {
+  public void delete(DeleteRecurringTaskTemplateCommand command) {
     log.info(
-        "event=recurring_template_update_시작 workspaceId={}, templateId={}",
+        "event=recurring_template_delete_시작 workspaceId={}, templateId={}, requesterId={}",
         command.workspaceId(),
-        command.templateId());
+        command.templateId(),
+        command.requesterId());
 
     // 존재 확인을 권한 확인보다 먼저 한다 (기존 워크스페이스 API와 동일한 순서).
     Workspace workspace =
@@ -40,27 +41,21 @@ public class UpdateRecurringTaskTemplateService implements UpdateRecurringTaskTe
       throw new WorkspaceAccessDeniedException();
     }
 
-    // 삭제 Service와 같은 락(findByWorkspaceIdAndIdForUpdate)을 공유해 동시 요청(같은 워크스페이스·
-    // 같은 템플릿)을 직렬화한다 — Task.findByIdForUpdate와 동일 패턴.
+    // 수정 Service와 같은 락을 공유한다 — 동시 요청(같은 워크스페이스·같은 템플릿)을 직렬화한다.
     RecurringTaskTemplate template =
         recurringTaskTemplateRepository
             .findByWorkspaceIdAndIdForUpdate(command.workspaceId(), command.templateId())
             .orElseThrow(RecurringTaskTemplateNotFoundException::new);
 
-    String newTitle = command.title() != null ? command.title() : template.getTitle();
-    RecurringTaskTemplate changed =
-        command.recurrenceType() == null
-            ? template.changeRecurrence(newTitle, template.getRecurrenceType(), template.getRecurrenceRule())
-            : template.changeRecurrence(newTitle, command.recurrenceType(), command.recurrenceRule());
-
-    RecurringTaskTemplate saved = recurringTaskTemplateRepository.save(changed);
+    // 이미 생성된 Task는 삭제되지 않는다 — recurring_template_id가 NULL이 되어 일반 업무로 남는다
+    // (운영 DB의 ON DELETE SET NULL, TaskJpaEntity의 @OnDelete로 H2도 동일하게 동작).
+    recurringTaskTemplateRepository.delete(template.getId());
 
     AfterCommitLogger.run(
         () ->
             log.info(
-                "event=recurring_template_update_완료 workspaceId={}, templateId={}",
+                "event=recurring_template_delete_완료 workspaceId={}, templateId={}",
                 command.workspaceId(),
-                saved.getId()));
-    return saved;
+                template.getId()));
   }
 }
