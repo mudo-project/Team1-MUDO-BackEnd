@@ -270,6 +270,15 @@ class TaskTest {
     assertThat(task.isRecurring()).isTrue();
   }
 
+  @Test
+  void restoreRejectsRecurringTemplateIdWithoutScheduledFor() {
+    assertThatThrownBy(
+            () ->
+                Task.restore(
+                    1L, WORKSPACE_ID, 100L, "반복 업무", TaskStatus.WAITING, null, null, CREATOR_ID))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
   private Task regular(TaskStatus status, LocalDate dueAt) {
     return Task.restore(1L, WORKSPACE_ID, null, "일반 업무", status, dueAt, null, CREATOR_ID);
   }

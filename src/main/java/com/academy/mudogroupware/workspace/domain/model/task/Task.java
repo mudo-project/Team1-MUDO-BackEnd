@@ -30,6 +30,11 @@ public class Task {
       LocalDateTime scheduledFor,
       Long createdBy,
       LocalDateTime createdAt) {
+    // 반복 업무 발생은 scheduledFor로 회차를 식별한다. recurringTemplateId만 있고
+    // scheduledFor가 없으면 어떤 회차인지 알 수 없는 불완전한 상태다.
+    if (recurringTemplateId != null && scheduledFor == null) {
+      throw new IllegalArgumentException("반복 업무는 recurringTemplateId와 scheduledFor를 함께 가져야 합니다.");
+    }
     this.id = id;
     this.workspaceId = workspaceId;
     this.recurringTemplateId = recurringTemplateId;
