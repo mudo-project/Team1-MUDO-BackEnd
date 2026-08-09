@@ -214,3 +214,7 @@ HTTP `204 No Content` (응답 본문 없음)
 ### Business Rules
 
 - 세트를 삭제하면 그 안의 강의실 구성(`timetable_set_classroom`)도 `ON DELETE CASCADE`로 함께 삭제된다.
+
+## 시간표 세트 내보내기
+
+`GET /api/timetables/{timetableSetId}/export` (엑셀/PDF/PNG) — [TIMETABLE_EXPORT_API.md](TIMETABLE_EXPORT_API.md) 참고.
