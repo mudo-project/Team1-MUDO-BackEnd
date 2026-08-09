@@ -24,7 +24,6 @@ import com.academy.mudogroupware.timetable.domain.model.TimetableExportOptions;
 public class PngTimetableExportRenderer implements TimetableExportRenderer {
 
     private static final int[] COLUMN_WIDTHS = {60, 130, 100, 90, 100, 140, 70};
-    private static final int HEADER_HEIGHT = 36;
     private static final int TITLE_HEIGHT = 30;
     private static final long MAX_TOTAL_PIXELS = 20_000_000L;
 
@@ -37,10 +36,11 @@ public class PngTimetableExportRenderer implements TimetableExportRenderer {
     public byte[] render(String timetableSetName, List<TimetableSlotView> sortedSlots,
                           TimetableExportOptions options) {
         int rowHeight = options.density().rowHeightPx();
+        int headerHeight = rowHeight;
         float fontSize = options.density().fontSize();
 
         long totalWidth = sumWidths();
-        long totalHeight = (long) TITLE_HEIGHT + HEADER_HEIGHT + (long) sortedSlots.size() * rowHeight;
+        long totalHeight = (long) TITLE_HEIGHT + headerHeight + (long) sortedSlots.size() * rowHeight;
         if (totalWidth * totalHeight > MAX_TOTAL_PIXELS) {
             throw new ExportImageTooLargeException();
         }
@@ -58,8 +58,8 @@ public class PngTimetableExportRenderer implements TimetableExportRenderer {
             g.drawString(timetableSetName, 8, TITLE_HEIGHT - 8);
 
             int y = TITLE_HEIGHT;
-            drawRow(g, y, HEADER_HEIGHT, TimetableExportLabels.HEADERS, new Color(0xE0E0E0), true, fontSize);
-            y += HEADER_HEIGHT;
+            drawRow(g, y, headerHeight, TimetableExportLabels.HEADERS, new Color(0xE0E0E0), true, fontSize);
+            y += headerHeight;
 
             for (TimetableSlotView slot : sortedSlots) {
                 TimetableExportColor color = options.colorFor(slot.classroomCode(), slot.teacherName(), slot.grade());

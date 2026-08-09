@@ -31,6 +31,7 @@ import com.academy.mudogroupware.timetable.domain.exception.InvalidExportColorEx
 import com.academy.mudogroupware.timetable.domain.exception.TimetableSetNotFoundException;
 import com.academy.mudogroupware.timetable.domain.model.ClassType;
 import com.academy.mudogroupware.timetable.domain.model.TimetableClassroom;
+import com.academy.mudogroupware.timetable.domain.model.TimetableExportColor;
 import com.academy.mudogroupware.timetable.domain.model.TimetableExportColorCriterion;
 import com.academy.mudogroupware.timetable.domain.model.TimetableExportDensity;
 import com.academy.mudogroupware.timetable.domain.model.TimetableExportFormat;
@@ -92,9 +93,39 @@ class ExportTimetableServiceTest {
         assertThat(result).containsExactly(1, 2, 3);
 
         @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<TimetableSlotView>> slotsCaptor = ArgumentCaptor.forClass(List.class);
+        ArgumentCaptor<TimetableExportOptions> optionsCaptor = ArgumentCaptor.forClass(TimetableExportOptions.class);
+        verify(excelRenderer).render(eq("2026 여름특강"), slotsCaptor.capture(), optionsCaptor.capture());
+        assertThat(slotsCaptor.getValue()).containsExactly(mondaySlot, tuesdaySlot);
+
+        TimetableExportOptions options = optionsCaptor.getValue();
+        assertThat(options.colorCriterion()).isEqualTo(TimetableExportColorCriterion.CLASSROOM);
+        assertThat(options.density()).isEqualTo(TimetableExportDensity.NORMAL);
+        assertThat(options.colorFor("601", null, null)).isEqualTo(TimetableExportColor.fromHex("FFCC00"));
+        assertThat(options.colorFor("602", null, null)).isEqualTo(TimetableExportColor.fromHex("00AACC"));
+    }
+
+    @Test
+    void exportAppliesClassTypeFilterForNonPdfFormat() {
+        when(getTimetableSetUseCase.getTimetableSet(1L, 1L)).thenReturn(setWithClassrooms());
+
+        TimetableSlotView classSlot = new TimetableSlotView(
+                100L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
+                "고3", "정T", "미적분");
+        TimetableSlotView specialSlot = new TimetableSlotView(
+                200L, ClassType.SPECIAL, DayOfWeek.MONDAY, "601", LocalTime.of(13, 0), LocalTime.of(15, 0),
+                "고2", "오T", "물리");
+        when(getTimetableSlotsUseCase.getSlots(1L, 1L)).thenReturn(List.of(classSlot, specialSlot));
+
+        when(excelRenderer.supports(TimetableExportFormat.EXCEL)).thenReturn(true);
+        when(excelRenderer.render(any(), any(), any())).thenReturn(new byte[0]);
+
+        service.export(command(TimetableExportFormat.EXCEL, null, null, ClassType.CLASS));
+
+        @SuppressWarnings("unchecked")
         ArgumentCaptor<List<TimetableSlotView>> captor = ArgumentCaptor.forClass(List.class);
-        verify(excelRenderer).render(eq("2026 여름특강"), captor.capture(), any(TimetableExportOptions.class));
-        assertThat(captor.getValue()).containsExactly(mondaySlot, tuesdaySlot);
+        verify(excelRenderer).render(any(), captor.capture(), any());
+        assertThat(captor.getValue()).containsExactly(classSlot);
     }
 
     @Test

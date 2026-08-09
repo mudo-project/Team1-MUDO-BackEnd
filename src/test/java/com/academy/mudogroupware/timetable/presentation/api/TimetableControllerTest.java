@@ -272,6 +272,28 @@ class TimetableControllerTest {
     }
 
     @Test
+    void exportTimetableReturns400WhenColorMapIsJsonNull() throws Exception {
+        mockMvc.perform(get("/api/timetables/1/export")
+                        .param("format", "PNG")
+                        .param("colorCriterion", "CLASSROOM")
+                        .param("colorMap", "null")
+                        .with(authentication(authenticatedUser())))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("TIMETABLE_400_5"));
+    }
+
+    @Test
+    void exportTimetableReturns400WhenColorMapHasNullValue() throws Exception {
+        mockMvc.perform(get("/api/timetables/1/export")
+                        .param("format", "PNG")
+                        .param("colorCriterion", "CLASSROOM")
+                        .param("colorMap", "{\"601\":null}")
+                        .with(authentication(authenticatedUser())))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("TIMETABLE_400_5"));
+    }
+
+    @Test
     void exportTimetableReturns400WhenFormatIsInvalidEnumValue() throws Exception {
         mockMvc.perform(get("/api/timetables/1/export")
                         .param("format", "INVALID")

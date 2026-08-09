@@ -180,12 +180,17 @@ public class TimetableController {
     }
 
     private Map<String, String> parseColorMap(String colorMap) {
+        Map<String, String> parsed;
         try {
-            return objectMapper.readValue(colorMap, new TypeReference<Map<String, String>>() {
+            parsed = objectMapper.readValue(colorMap, new TypeReference<Map<String, String>>() {
             });
         } catch (JsonProcessingException e) {
+            throw new InvalidExportColorException(e);
+        }
+        if (parsed == null || parsed.containsValue(null)) {
             throw new InvalidExportColorException();
         }
+        return parsed;
     }
 
     private String extension(TimetableExportFormat format) {
