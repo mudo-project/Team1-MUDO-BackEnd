@@ -22,9 +22,11 @@ import com.academy.mudogroupware.attendance.domain.repository.AttendancePolicyRe
 import com.academy.mudogroupware.attendance.domain.repository.AttendanceRecordRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 @Transactional
 public class CheckInService implements CheckInUseCase {
 
@@ -35,9 +37,11 @@ public class CheckInService implements CheckInUseCase {
 
     @Override
     public CheckInResult checkIn(CheckInCommand command) {
-        if (command.userId() == null || command.academyId() == null) {
-            throw new AttendanceException(AttendanceErrorCode.CHECK_IN_FORBIDDEN);
-        }
+        log.info("event=attendance_check_in_시작 userId={}, academyId={}", command.userId(), command.academyId());
+        try {
+            if (command.userId() == null || command.academyId() == null) {
+                throw new AttendanceException(AttendanceErrorCode.CHECK_IN_FORBIDDEN);
+            }
 
         AcademyWifiIp detectedWifiIp = AcademyWifiIp.create(
                 command.academyId(), command.detectedIpAddress(), null);
@@ -62,7 +66,15 @@ public class CheckInService implements CheckInUseCase {
         AttendanceRecord record = AttendanceRecord.checkIn(
                 command.academyId(), command.userId(), now, workStartTime,
                 policy.getLateGraceMinutes(), command.clockInNote());
-        return CheckInResult.from(attendanceRecordRepository.save(record));
+            CheckInResult result = CheckInResult.from(attendanceRecordRepository.save(record));
+            log.info("event=attendance_check_in_완료 userId={}, academyId={}, status={}",
+                    command.userId(), command.academyId(), result.status());
+            return result;
+        } catch (RuntimeException e) {
+            log.warn("event=attendance_check_in_실패 userId={}, academyId={}, reason={}",
+                    command.userId(), command.academyId(), e.getMessage());
+            throw e;
+        }
     }
 
     private LocalTime resolveWorkStartTime(AttendancePolicy policy, LocalDateTime now) {

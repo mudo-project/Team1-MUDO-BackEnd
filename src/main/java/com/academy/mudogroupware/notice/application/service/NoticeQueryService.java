@@ -156,7 +156,6 @@ public class NoticeQueryService implements NoticeQueryUseCase {
     }
 
     private NoticeAttachmentView toAttachmentView(NoticeAttachment attachment) {
-        return new NoticeAttachmentView(attachment.getId(), attachment.getFileUrl(), attachment.getFileName(),
-                attachment.getFileType());
+        return new NoticeAttachmentView(attachment.getId(), attachment.getFileId(), attachment.getFileName());
     }
 }

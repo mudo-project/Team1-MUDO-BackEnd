@@ -20,10 +20,9 @@
 ### 작성·수정·삭제
 
 - 기능명세서상 "대표와 대표가 허용한 권한을 가진 사용자"만 작성·수정·삭제할 수 있다.
-- `users.role` 값 체계가 자유 텍스트로만 존재하는 현재 시점에는 실제 권한 검사를 구현하지 않는다.
-- 지금은 로그인 여부만 검사하며, `CalendarController`에 TODO 주석으로 남긴다.
-- `users.role` 체계 확정 후 권한 모듈 연동으로 실제 검증을 반영한다.
-- `notice` 도메인과 동일한 결정이다.
+- `CALENDAR:MANAGE` 권한(`permission.code`)을 보유한 사용자만 작성·수정·삭제할 수 있으며, `CalendarController`의 `@PreAuthorize("hasAuthority('CALENDAR:MANAGE')")`로 검증한다.
+- 이 권한은 원장 본인 또는 원장이 역할(role)-권한(permission) 매핑으로 위임한 구성원에게 부여된다. 권한 부여/회수 자체는 기존 역할-권한 관리 기능을 그대로 사용하며, 캘린더 도메인이 별도 위임 로직을 갖지 않는다.
+- 자세한 권한 코드 정의와 시드 위치는 [`CALENDAR_PERMISSIONS.md`](CALENDAR_PERMISSIONS.md) 참고.
 
 ## 🗓️ 일정
 

@@ -14,9 +14,11 @@ import com.academy.mudogroupware.attendance.domain.repository.AcademyRepository;
 import com.academy.mudogroupware.attendance.domain.repository.AcademyWifiIpRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 @Transactional
 public class RegisterWifiIpService implements RegisterWifiIpUseCase {
 
@@ -25,9 +27,11 @@ public class RegisterWifiIpService implements RegisterWifiIpUseCase {
 
     @Override
     public RegisterWifiIpResult register(RegisterWifiIpCommand command) {
-        OwnedAcademy academy = academyRepository.findByOwnerUserId(command.requesterId())
-                .orElseThrow(() -> new AttendanceException(
-                        AttendanceErrorCode.WIFI_IP_REGISTRATION_FORBIDDEN));
+        log.info("event=attendance_wifi_ip_register_시작 requesterId={}", command.requesterId());
+        try {
+            OwnedAcademy academy = academyRepository.findByOwnerUserId(command.requesterId())
+                    .orElseThrow(() -> new AttendanceException(
+                            AttendanceErrorCode.WIFI_IP_REGISTRATION_FORBIDDEN));
 
         AcademyWifiIp confirmedWifiIp = AcademyWifiIp.create(
                 academy.id(), command.confirmedIpAddress(), null);
@@ -43,6 +47,14 @@ public class RegisterWifiIpService implements RegisterWifiIpUseCase {
             throw new AttendanceException(AttendanceErrorCode.WIFI_IP_ALREADY_REGISTERED);
         }
 
-        return RegisterWifiIpResult.from(academyWifiIpRepository.save(detectedWifiIp));
+            RegisterWifiIpResult result = RegisterWifiIpResult.from(academyWifiIpRepository.save(detectedWifiIp));
+            log.info("event=attendance_wifi_ip_register_완료 requesterId={}, wifiIpId={}",
+                    command.requesterId(), result.wifiIpId());
+            return result;
+        } catch (RuntimeException e) {
+            log.warn("event=attendance_wifi_ip_register_실패 requesterId={}, reason={}",
+                    command.requesterId(), e.getMessage());
+            throw e;
+        }
     }
 }

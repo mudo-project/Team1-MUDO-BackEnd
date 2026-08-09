@@ -18,7 +18,10 @@
 ## 외부에 공개하는 Application API
 
 - `StartGoogleAccountConnectionUseCase`, `CompleteGoogleAccountConnectionUseCase`,
-  `GetGoogleAccountConnectionUseCase`, `CheckGoogleAccountConnectionUseCase`, `DisconnectGoogleAccountUseCase`.
+  `GetGoogleAccountConnectionUseCase`, `CheckGoogleAccountConnectionUseCase`, `DisconnectGoogleAccountUseCase`,
+  `GetGoogleAccessTokenUseCase`.
+- `GetGoogleAccessTokenUseCase`는 API 엔드포인트로 노출되지 않는다 — 템플릿 기능처럼 Drive/Docs/Sheets를
+  직접 호출해야 하는 다른 도메인이 자바 코드에서 직접 호출하는 용도다.
 - 현재 다른 도메인이 소비하는 Port는 없다.
 
 ## 의존성
@@ -35,15 +38,14 @@
 | `GOOGLE_CLIENT_SECRET` | 구글 OAuth 클라이언트 시크릿 | 없음(비어 있으면 앱은 뜨지만 구글 연동 API 호출 시점에 실패) |
 | `GOOGLE_REDIRECT_URI` | 구글 콘솔에 등록한 콜백 URI. 이 서버의 `GET /api/google/connections/callback` 절대 경로여야 한다 | 없음(비어 있으면 앱은 뜨지만 구글 연동 API 호출 시점에 실패) |
 | `GOOGLE_OAUTH_FRONTEND_REDIRECT_URI` | 콜백 처리 후 브라우저를 돌려보낼 프론트엔드 결과 페이지 | `/`(설정 전 임시값) |
-| `GOOGLE_OAUTH_SCOPE` | 요청할 OAuth scope(공백 구분) | `openid email`(계정 식별용. drive.file/documents/spreadsheets는 템플릿 기능 구현 시 점진적으로 추가) |
+| `GOOGLE_OAUTH_SCOPE` | 요청할 OAuth scope(공백 구분) | `openid https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/documents https://www.googleapis.com/auth/spreadsheets`(계정 식별 + 드라이브/독스/시트 접근) |
 | `GOOGLE_TOKEN_ENCRYPTION_KEY` | 리프레시 토큰 암호화 전용 키. `JWT_SECRET`과 별도 값이어야 한다 | 없음(필수 설정, 없으면 앱 시작 실패) |
 
 시크릿 값은 `.env.local`(팀 공용 로컬 파일)에 커밋하지 않는다. 각자 실제 구글 Cloud 프로젝트에서 발급받아 로컬 환경 변수 또는 별도 시크릿 관리 방식으로 주입한다.
 
 ## 주의 사항
 
-- `GoogleAccountConnectionController`는 `authorize-url`/`check`/`disconnect`/`GET`에 대해 로그인 여부만 검사한다.
-  기능명세서상 "관리자 전용"은 `users.role` 값 체계가 확정된 뒤 `@PreAuthorize`로 반영한다(`calendar` 도메인과 동일한 결정).
+- `GoogleAccountConnectionController`의 `authorize-url`/`GET`/`check`/`disconnect`는 **원장(academy 관리자) 계정만** 호출할 수 있다. 자세한 권한 코드 정의는 [`GOOGLE_PERMISSIONS.md`](GOOGLE_PERMISSIONS.md) 참고.
 - `GET /api/google/connections/callback`은 구글이 브라우저를 리다이렉트하는 대상이라 `Authorization` 헤더가 없다.
   `SecurityConfig`에서 이 경로만 `permitAll`로 열어 뒀고, 위조·재사용은 `state`(HMAC 서명, 10분 유효)로 막는다.
 - "재연결"과 "계정 교체"는 별도 엔드포인트가 아니라 `authorize-url?switchAccount=true|false` 하나로 처리한다.
@@ -63,10 +65,12 @@
 | 새 스프레드시트 생성 | Sheets API v4 | `POST https://sheets.googleapis.com/v4/spreadsheets` |
 
 - **미리보기·수정은 별도 API 호출이 아니다.** `https://docs.google.com/document/d/{fileId}/edit?embedded=true` (스프레드시트는 `spreadsheets/d/...`) URL을 프론트가 `<iframe>`으로 띄우면, 편집 내용은 구글 서버로 직접 저장된다. 우리 백엔드는 이 URL만 내려주면 된다.
-- 지금은 `openid email`만 요청하므로, 템플릿 기능을 실제로 켤 때는 `GOOGLE_OAUTH_SCOPE`에 `drive.file`/`documents`/`spreadsheets`를 추가하고 기존 연동 계정은 재연결(재동의)을 받아야 한다(Google의 incremental authorization 권장 방식).
-- 다만 `GoogleOAuthPort.refreshAccessToken(...)`은 현재 "유효성 검증" 용도로만 액세스 토큰을 발급받고 버린다. 템플릿 기능에서는 이 액세스 토큰 자체를 반환받아 Drive/Docs/Sheets 호출에 재사용하도록 확장해야 한다(액세스 토큰은 1시간짜리라 매 요청마다 새로 발급받는 흐름이 될 가능성이 높다).
-- 이 기능은 `google` 도메인의 리프레시 토큰을 그대로 갖다 쓰는 게 아니라, `MODULES.md`의 도메인 간 조회 Port 정책에 따라 `template`(가칭) 도메인이 필요한 Port를 정의하고 `google` 도메인 담당자 동의하에 Adapter로 구현하는 방식을 검토한다.
+- `GOOGLE_OAUTH_SCOPE`는 `openid email` + `drive.file`/`documents`/`spreadsheets`까지 이미 요청한다. 기존에 `openid email`만으로 연동된 계정은 저장된 `scope`가 이 요구사항을 충족하지 못해 `GET /api/google/connections` 조회 시 `status=FAILED`로 나타나며, 프론트의 "재연결" 버튼(`authorize-url` 재호출)으로 재동의받으면 해소된다.
+- **주의:** 구글은 `email` scope를 요청해도 토큰 응답의 `scope` 필드에는 항상 정식 URL(`https://www.googleapis.com/auth/userinfo.email`)로 돌려준다. `deriveStatus`의 scope 비교는 문자열 비교라서, `GOOGLE_OAUTH_SCOPE`도 짧은 이름(`email`)이 아니라 이 정식 URL로 요청해야 비교가 항상 실패하는 문제를 피할 수 있다(`GoogleOAuthProperties.DEFAULT_SCOPE` 참고).
+- `GetGoogleAccessTokenUseCase.getAccessToken(academyId)`가 이 액세스 토큰(1시간 유효)을 반환한다. 템플릿 기능을 만들 도메인은 이 UseCase를 직접 호출해 Drive/Docs/Sheets API 호출에 재사용하면 된다(매 호출마다 새로 발급받는 흐름). 연동이 없거나(`GoogleAccountNotConnectedException`) scope가 부족하거나 만료됐으면(`GoogleAccountConnectionInvalidException`) 예외를 던지므로, 호출하는 도메인은 이 두 예외를 사용자에게 "구글 연동이 필요합니다/재연결이 필요합니다"로 안내하면 된다.
+- `template`(가칭) 도메인은 `google` 도메인의 리프레시 토큰이나 Entity를 직접 참조하지 않고, 위 `GetGoogleAccessTokenUseCase` 하나만 호출한다. `MODULES.md`의 "도메인 간 조회 Port" 정책(요청 모듈이 Port를 정의하고 대상 모듈이 Adapter로 구현)은 요청 모듈이 이미 존재할 때를 전제한다 — 지금은 `template` 도메인 자체가 아직 없어 그 방향의 Port를 정의할 주체가 없으므로, `google` 도메인이 기존 5개 UseCase와 동일한 방식으로 먼저 공개해 둔 것이다. `template` 도메인이 실제로 만들어지면, 그 담당자가 이 UseCase를 그대로 쓸지 자체 Port로 감쌀지 결정한다.
 
 ## 세부 문서
 
 - [GOOGLE_API.md](GOOGLE_API.md): 요청·응답 형식
+- [GOOGLE_PERMISSIONS.md](GOOGLE_PERMISSIONS.md): 권한 코드 정의

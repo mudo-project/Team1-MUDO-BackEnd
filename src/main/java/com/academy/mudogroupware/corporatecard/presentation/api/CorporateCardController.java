@@ -1,0 +1,65 @@
+package com.academy.mudogroupware.corporatecard.presentation.api;
+
+import java.util.List;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+
+import com.academy.mudogroupware.corporatecard.application.service.CorporateCardExpenseService;
+import com.academy.mudogroupware.corporatecard.presentation.api.request.SubmitCardExpenseRequest;
+import com.academy.mudogroupware.corporatecard.presentation.api.response.CardExpenseResponse;
+import com.academy.mudogroupware.corporatecard.presentation.api.response.CorporateCardTransactionResponse;
+import com.academy.mudogroupware.corporatecard.presentation.api.response.CorporateCardTransactionPageResponse;
+import com.academy.mudogroupware.global.presentation.api.common.GlobalApiResponse;
+import com.academy.mudogroupware.global.presentation.security.AuthUser;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+
+@Tag(name = "법인카드", description = "법인카드 사용내역 및 정산 API")
+@RestController
+@RequestMapping("/api/corporate-card/transactions")
+@RequiredArgsConstructor
+public class CorporateCardController {
+    private final CorporateCardExpenseService service;
+
+    @Operation(summary = "법인카드 사용내역 조회")
+    @PreAuthorize("hasAuthority('CORPORATE_CARD:EXPENSE')")
+    @GetMapping
+    public GlobalApiResponse<CorporateCardTransactionPageResponse> getTransactions(
+            @AuthenticationPrincipal AuthUser authUser,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        if (page < 0 || size < 1 || size > 100) {
+            throw new IllegalArgumentException("page는 0 이상, size는 1~100이어야 합니다.");
+        }
+        return GlobalApiResponse.ok("CORPORATE_CARD_TRANSACTIONS_RETRIEVED", "법인카드 사용내역 조회가 완료되었습니다.",
+                CorporateCardTransactionPageResponse.from(service.getTransactions(authUser.academyId(), page, size)));
+    }
+
+    @Operation(summary = "법인카드 사용내역 상세 조회")
+    @PreAuthorize("hasAuthority('CORPORATE_CARD:EXPENSE')")
+    @GetMapping("/{transactionId}")
+    public GlobalApiResponse<CardExpenseResponse> getTransaction(@AuthenticationPrincipal AuthUser authUser,
+                                                                  @PathVariable Long transactionId) {
+        return GlobalApiResponse.ok("CORPORATE_CARD_TRANSACTION_RETRIEVED", "법인카드 사용내역 조회가 완료되었습니다.",
+                CardExpenseResponse.from(service.getTransaction(authUser.academyId(), transactionId)));
+    }
+
+    @Operation(summary = "법인카드 사용내역 정산 상신")
+    @PreAuthorize("hasAuthority('CORPORATE_CARD:EXPENSE')")
+    @PostMapping("/{transactionId}/submit")
+    public ResponseEntity<GlobalApiResponse<CardExpenseResponse>> submit(
+            @AuthenticationPrincipal AuthUser authUser, @PathVariable Long transactionId,
+            @Valid @RequestBody SubmitCardExpenseRequest request) {
+        CardExpenseResponse response = CardExpenseResponse.from(
+                service.submit(request.toCommand(transactionId, authUser.userId()), authUser.academyId()));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(GlobalApiResponse.created("CORPORATE_CARD_EXPENSE_SUBMITTED", "법인카드 정산이 상신되었습니다.", response));
+    }
+}

@@ -25,9 +25,11 @@ import com.academy.mudogroupware.attendance.domain.repository.AttendanceRecordRe
 import com.academy.mudogroupware.attendance.domain.repository.LeaveRequestRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 @Transactional(readOnly = true)
 public class MyMonthlyAttendanceQueryService implements GetMyMonthlyAttendanceUseCase {
 
@@ -42,6 +44,7 @@ public class MyMonthlyAttendanceQueryService implements GetMyMonthlyAttendanceUs
     @Override
     public MyMonthlyAttendanceView getMonthly(
             Long userId, Long academyId, int year, int month) {
+        log.info("event=attendance_monthly_read_시작 userId={}, academyId={}, year={}, month={}", userId, academyId, year, month);
         YearMonth targetMonth = toYearMonth(year, month);
         LocalDate today = LocalDate.now(clock);
         LocalDate hireDate = employmentSummaryPort.findByUserIdAndAcademyId(userId, academyId)
@@ -51,7 +54,8 @@ public class MyMonthlyAttendanceQueryService implements GetMyMonthlyAttendanceUs
         LocalDate startDate = laterOf(targetMonth.atDay(1), hireDate);
         LocalDate endDate = earlierOf(targetMonth.atEndOfMonth(), today);
         if (startDate.isAfter(endDate)) {
-            return new MyMonthlyAttendanceView(year, month, List.of());
+            MyMonthlyAttendanceView result = new MyMonthlyAttendanceView(year, month, List.of());
+            log.info("event=attendance_monthly_read_완료 userId={}, academyId={}, count=0", userId, academyId); return result;
         }
 
         AttendancePolicy policy = attendancePolicyRepository.findByAcademyId(academyId)
@@ -70,7 +74,9 @@ public class MyMonthlyAttendanceQueryService implements GetMyMonthlyAttendanceUs
                 .map(date -> toDay(
                         date, policy, records.get(date), approvedLeaves, today, currentTime))
                 .toList();
-        return new MyMonthlyAttendanceView(year, month, days);
+        MyMonthlyAttendanceView result = new MyMonthlyAttendanceView(year, month, days);
+        log.info("event=attendance_monthly_read_완료 userId={}, academyId={}, count={}", userId, academyId, days.size());
+        return result;
     }
 
     private MyMonthlyAttendanceView.Day toDay(

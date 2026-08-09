@@ -9,7 +9,7 @@
 ### 인증 및 권한
 
 - `Authorization: Bearer {accessToken}` 헤더가 필요하다.
-- 현재 구현은 인증된 사용자라면 호출할 수 있다. 기능명세서상 "관리자 전용"은 `users.role` 값 체계 확정 후 `@PreAuthorize`로 적용 예정이다.
+- 원장(academy 관리자) 계정만 호출할 수 있다. `@PreAuthorize("hasAuthority('ACADEMY:OWNER')")`로 검증하며, `account_type=ADMIN` + `admin_scope=ACADEMY`인 계정에게만 이 authority가 부여된다.
 
 ### Query Parameter
 
@@ -39,6 +39,7 @@ HTTP `200 OK`
 | HTTP 상태 | code | 발생 조건 |
 | --- | --- | --- |
 | `401 Unauthorized` | `COMMON_401_1` | Access Token이 없거나 유효하지 않은 경우 |
+| `403 Forbidden` | `COMMON_403_1` | 원장(academy 관리자) 계정이 아닌 경우 |
 | `500 Internal Server Error` | `COMMON_500_1` | 처리되지 않은 서버 오류 |
 
 ### Business Rules
@@ -81,7 +82,8 @@ HTTP `302 Found`, `Location: {GOOGLE_OAUTH_FRONTEND_REDIRECT_URI}?googleConnecti
 
 ### 인증 및 권한
 
-- `Authorization: Bearer {accessToken}` 헤더가 필요하다. 인증된 사용자라면 누구나 호출할 수 있다.
+- `Authorization: Bearer {accessToken}` 헤더가 필요하다.
+- 원장(academy 관리자) 계정만 호출할 수 있다. `@PreAuthorize("hasAuthority('ACADEMY:OWNER')")`로 검증한다.
 
 ### Success Response
 
@@ -95,7 +97,7 @@ HTTP `200 OK`
   "data": {
     "googleEmail": "academy@mudo.co.kr",
     "connectedByUserId": 7,
-    "scope": "openid email",
+    "scope": "openid https://www.googleapis.com/auth/userinfo.email",
     "connectedAt": "2026-07-01T14:22:00",
     "tokenExpiresAt": "2026-08-30T14:22:00",
     "lastCheckedAt": "2026-08-03T09:00:00",
@@ -106,13 +108,14 @@ HTTP `200 OK`
 
 연동된 계정이 없으면 `data`가 `null`이다(별도 404를 두지 않는다 — "연동 안 됨"은 정상적으로 있을 수 있는 상태다).
 
-`status`는 `CONNECTED` / `EXPIRING`(만료 3일 전부터) / `EXPIRED` / `FAILED` 중 하나다.
+`status`는 `CONNECTED` / `EXPIRING`(만료 3일 전부터) / `EXPIRED` / `FAILED` 중 하나다. `FAILED`는 `/check` 확인 실패뿐 아니라, 연동 당시 동의받은 scope가 현재 요구되는 scope(`GOOGLE_OAUTH_SCOPE`)를 다 포함하지 못하는 경우에도 반환된다 — 이 경우 "재연결"(`authorize-url` 재호출)로 해소한다.
 
 ### Error Response
 
 | HTTP 상태 | code | 발생 조건 |
 | --- | --- | --- |
 | `401 Unauthorized` | `COMMON_401_1` | Access Token이 없거나 유효하지 않은 경우 |
+| `403 Forbidden` | `COMMON_403_1` | 원장(academy 관리자) 계정이 아닌 경우 |
 | `500 Internal Server Error` | `COMMON_500_1` | 처리되지 않은 서버 오류 |
 
 ## 구글 연동 상태 확인
@@ -124,6 +127,7 @@ HTTP `200 OK`
 ### 인증 및 권한
 
 - `Authorization: Bearer {accessToken}` 헤더가 필요하다.
+- 원장(academy 관리자) 계정만 호출할 수 있다. `@PreAuthorize("hasAuthority('ACADEMY:OWNER')")`로 검증한다.
 
 ### Success Response
 
@@ -134,6 +138,7 @@ HTTP `204 No Content` (응답 본문 없음)
 | HTTP 상태 | code | 발생 조건 |
 | --- | --- | --- |
 | `401 Unauthorized` | `COMMON_401_1` | Access Token이 없거나 유효하지 않은 경우 |
+| `403 Forbidden` | `COMMON_403_1` | 원장(academy 관리자) 계정이 아닌 경우 |
 | `404 Not Found` | `GOOGLE_404_1` | 연동된 구글 계정이 없는 경우 |
 | `500 Internal Server Error` | `COMMON_500_1` | 처리되지 않은 서버 오류 |
 
@@ -151,6 +156,7 @@ HTTP `204 No Content` (응답 본문 없음)
 ### 인증 및 권한
 
 - `Authorization: Bearer {accessToken}` 헤더가 필요하다.
+- 원장(academy 관리자) 계정만 호출할 수 있다. `@PreAuthorize("hasAuthority('ACADEMY:OWNER')")`로 검증한다.
 
 ### Success Response
 
@@ -161,6 +167,7 @@ HTTP `204 No Content` (응답 본문 없음)
 | HTTP 상태 | code | 발생 조건 |
 | --- | --- | --- |
 | `401 Unauthorized` | `COMMON_401_1` | Access Token이 없거나 유효하지 않은 경우 |
+| `403 Forbidden` | `COMMON_403_1` | 원장(academy 관리자) 계정이 아닌 경우 |
 | `404 Not Found` | `GOOGLE_404_1` | 연동된 구글 계정이 없는 경우 |
 | `500 Internal Server Error` | `COMMON_500_1` | 처리되지 않은 서버 오류 |
 

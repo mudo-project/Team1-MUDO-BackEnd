@@ -47,6 +47,6 @@ public class CreateNoticeService implements CreateNoticeUseCase {
     }
 
     private NoticeAttachment toAttachment(NoticeAttachmentInput input) {
-        return NoticeAttachment.create(input.fileUrl(), input.fileName(), input.fileType());
+        return NoticeAttachment.create(input.fileId(), input.fileName());
     }
 }

@@ -11,7 +11,7 @@
 ## 소유하는 주요 데이터와 상태
 
 - `Notice` — DB 테이블 `notice` (`V1.3.1__create_notice_tables.sql`)
-- `NoticeAttachment` — DB 테이블 `notice_attachment` (다중 첨부, 파일 URL/이름/타입을 직접 저장 — approval 모듈처럼 공유 file 테이블의 `file_id`를 참조하는 방식이 아니라, 팀 ERD에 이미 이 구조로 그려져 있어 그대로 따름)
+- `NoticeAttachment` — DB 테이블 `notice_attachment` (다중 첨부, `file_id`(공유 `file_metadata` 참조) + `file_name`을 저장. 2026-08-09 이전엔 `file_url`을 직접 입력받는 구조였으나, 업로드 API 자체가 없어 실제로 채울 수 없는 값이었다. approval과 동일하게 `file` 모듈이 발급하는 `fileId`를 참조하는 방식으로 통일했다 — `V1.5.5`, 자세한 내용은 [CHANGELOG.md](CHANGELOG.md))
 - 읽음 기록 — DB 테이블 `notice_read` (notice_id + user_id 유니크, 조회수/읽은 인원 계산에 사용)
 
 ## 외부에 공개하는 Application API

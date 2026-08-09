@@ -76,6 +76,10 @@ public class ApprovalTemplateRepositoryImpl implements ApprovalTemplateRepositor
         ApprovalTemplateEntity entity = approvalTemplateJpaRepository.getReferenceById(domain.getId());
         entity.setName(domain.getName());
         entity.clearLines();
+        // orphanRemoval 컬렉션을 비우자마자 다시 채우면, Hibernate가 같은 flush 안에서
+        // 새 라인 INSERT를 기존 라인 DELETE보다 먼저 실행해 (template_id, step_order)
+        // 유니크 제약(uk_approval_line_step_template_step)에 걸린다. 삭제를 먼저 flush한다.
+        approvalTemplateJpaRepository.saveAndFlush(entity);
         domain.getLines().forEach(line -> entity.addLine(toLineEntity(line)));
         return entity;
     }

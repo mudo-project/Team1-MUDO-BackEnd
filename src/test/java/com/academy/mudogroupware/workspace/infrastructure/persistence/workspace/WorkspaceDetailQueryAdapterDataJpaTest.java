@@ -129,8 +129,8 @@ class WorkspaceDetailQueryAdapterDataJpaTest {
   private void insertRecurringTemplate(long templateId, long workspaceId) {
     jdbcTemplate.update(
         "insert into recurring_task_template "
-            + "(recurring_template_id, workspace_id, title, recurrence_type, recurrence_rule, is_active, created_by, created_at, updated_at) "
-            + "values (?, ?, 'daily', 'DAILY', '{}', true, 10, ?, ?)",
+            + "(recurring_template_id, workspace_id, title, recurrence_type, recurrence_rule, created_by, created_at, updated_at) "
+            + "values (?, ?, 'weekly', 'WEEKLY', '{}', 10, ?, ?)",
         templateId,
         workspaceId,
         at(),

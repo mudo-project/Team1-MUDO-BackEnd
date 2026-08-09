@@ -1,5 +1,5 @@
 > 작성일: 2026-08-04
-> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청/승인 워크플로우(PR 1·2·3/3, "계정 발급 체계" 2단계) 완료, 역할 관리 API 7개(생성/목록/상세/수정/삭제/권한 조립/권한 카탈로그 조회) 완료, 사용자 역할 변경 API 완료, 학원 구성원 검색 API 완료 · 학원 관리자의 직원 계정 발급(계정 발급 체계 3단계) 미착수
+> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청/승인 워크플로우(PR 1·2·3/3, "계정 발급 체계" 2단계) 완료, 역할 관리 API 7개(생성/목록/상세/수정/삭제/권한 조립/권한 카탈로그 조회) 완료, 사용자 역할 변경 API 완료, 학원 구성원 검색 API 완료, 역할 색상/인원수 완료, CodeRabbit 피드백 반영 + 로깅 컨벤션 전체 도메인(Service 17개) 적용 완료 · 학원 관리자의 직원 계정 발급(계정 발급 체계 3단계) 미착수
 
 ## 🎯 변경 목적
 
@@ -639,6 +639,85 @@ PR 1(목록)·PR 2(상세)에 이어지는 세 번째이자 마지막 PR. 승인
 | Persistence(users) | `UserJpaRepository`에 검색용 파생 쿼리 2개 추가, `UserRepositoryImpl.searchByAcademyId` 구현 |
 | Application(users) | `SearchUsersUseCase`/`SearchUsersService` 신규 |
 | Presentation(users) | `UserController`에 `GET` 핸들러 추가, `UserResponseCode.USER_SEARCHED`(`USER_200_3`), `UserSearchResponse` 신규 |
+
+---
+
+## ✅ 2026-08-08 · 역할 색상(color) + 인원수(memberCount) 추가 (이슈 #226)
+
+### 배경
+
+프론트 역할 설정 화면에 color(뱃지 색상)와 memberCount(역할별 인원수)가 있는데 백엔드 `role` 테이블/API엔 둘 다 없던 기존 갭. 역할 CRUD가 끝나면 사용자에게 상기하기로 해뒀던 항목을 이번에 함께 처리했다. 설계: `docs/superpowers/specs/2026-08-08-role-color-design.md`.
+
+### 확정된 정책
+
+- **`color`는 `name`/`description`과 완전히 동일한 경로로 흐른다.** 역할 생성/수정 요청에서 받고, 목록/상세 응답에 그대로 내려준다. 형식 검증(hex 등)은 하지 않는다 — 팀 결정으로 프론트 책임.
+- **`Role.create()`/`Role.restore()`는 기존 6-인자 시그니처를 유지한 채 7-인자(color 포함) 오버로드를 추가하는 방식으로 확장했다.** 코드베이스에 이 두 메서드 호출부가 11곳 있었는데(대부분 테스트), 전부 고치는 대신 이전에 `AuthUser`가 같은 이유로 delegating 생성자를 쓴 전례를 그대로 따라 기존 호출부를 안 건드렸다.
+- **`memberCount`는 `role` 테이블 컬럼이 아니라 매 조회 시 `users` 테이블에서 계산하는 파생값이다.** `status = ACTIVE`인 구성원만 센다(역할 삭제 정책의 `existsActiveByRoleId`와 동일한 기준). 인원 배정이 바뀔 때마다 캐시를 동기화해야 하는 컬럼을 만드는 대신, 학원 규모상 매번 계산해도 부담 없다고 판단했다.
+- **`memberCount`는 `Role` 도메인 모델에 넣지 않았다.** 다른 애그리거트(User)의 파생 통계를 순수 도메인 객체에 섞으면 `updatePermissions()` 등 count와 무관한 흐름까지 불필요하게 count 조회를 끌고 다니게 된다. 대신 attendance 도메인의 `WeeklyEmployeeAttendanceView`와 같은 패턴으로 응용 계층에 `RoleView(Role role, long memberCount)`를 신설해 `ListRolesUseCase`/`GetRoleUseCase`가 이걸 반환하도록 바꿨다.
+- **`UserRepository.countActiveByRoleIds(Set<Long>)`는 역할 여러 개를 한 번에 집계하는 배치 쿼리다.** 역할 목록 조회에서 역할 N개마다 개별 쿼리를 날리는 N+1을 피하기 위해, GROUP BY로 한 번에 가져와 `Map<Long, Long>`으로 변환한다. 상세 조회(역할 하나)도 같은 메서드를 `Set.of(roleId)`로 호출해서 재사용한다.
+
+### 완료 기준
+
+- [x] `role.color` 컬럼 마이그레이션(`V4.1.4`) 적용
+- [x] `Role` 도메인 모델에 `color` + 7-인자 오버로드 추가(6-인자 하위호환 유지)
+- [x] `RoleEntity`/`RoleRepository`/`RoleRepositoryImpl`에 `color` 배관(`updateNameAndDescription` 4-인자로 확장)
+- [x] `UserRepository.countActiveByRoleIds` 추가(TDD, N+1 없이 배치 집계)
+- [x] `RoleView` 신설, `ListRolesUseCase`/`GetRoleUseCase` 반환 타입을 `RoleView` 기반으로 변경(TDD)
+- [x] 역할 생성/수정 API에 `color` 추가(TDD)
+- [x] `RoleListResponse`/`RoleDetailResponse`에 `color`/`memberCount` 반영
+- [x] 로컬 curl로 end-to-end 검증(생성/목록/상세/수정 전부, 역할 배정 후 memberCount 실제 증가 확인)
+- [x] `./gradlew build` 통과
+
+### 🧩 영향 범위
+
+| 계층 | 변경 내용 |
+| --- | --- |
+| Domain(users) | `Role`에 `color` 필드 + 7-인자 `create`/`restore` 오버로드 추가. `UserRepository`에 `countActiveByRoleIds(Set<Long>)` 추가 |
+| Persistence(users) | `RoleEntity`에 `color` 컬럼 + `update()` 3-인자 확장. `RoleJpaRepository`는 무변경, `RoleRepositoryImpl`에 `color` 배관. `UserJpaRepository`에 집계 쿼리 + `RoleMemberCountRow` 프로젝션 신규, `UserRepositoryImpl.countActiveByRoleIds` 구현 |
+| Application(users) | `RoleView` 신규(`application/query`). `ListRolesUseCase`/`GetRoleUseCase` 반환 타입을 `RoleView` 기반으로 변경. `CreateRoleCommand`/`UpdateRoleCommand`에 `color` 추가 |
+| Presentation(users) | `CreateRoleRequest`/`UpdateRoleRequest`에 `color` 추가. `RoleListResponse`/`RoleDetailResponse`에 `color`/`memberCount` 추가(`from(RoleView)`로 팩토리 시그니처 변경, `RoleController` 자체는 무변경) |
+| Migration | `V4.1.4`(`role` 테이블에 `color VARCHAR(20) NULL` 컬럼 추가) |
+
+---
+
+## ✅ 2026-08-09 · PR #231 CodeRabbit 피드백 반영 + `users` 도메인 로깅 컨벤션 전면 적용
+
+### 배경
+
+두 가지 독립 작업을 사용자 요청으로 하나의 PR에 묶었다. (1) 역할 색상/인원수 PR(#231)에 CodeRabbit이 남긴 6건 중, 검토 결과 기술적으로 타당한 4건(`superpowers:receiving-code-review` 기준으로 codebase 컨벤션과 대조해 검증). (2) `docs/LOGGING_CONVENTION.md`(Service 구현체의 public 메서드 대상 비즈니스 이벤트 로깅 컨벤션)가 문서만 만들어지고 실제로는 한 곳에도 적용되지 않은 상태였는데, `users` 도메인 Service 클래스 17개 전부에 소급 적용했다.
+
+### 확정된 정책 — CodeRabbit 피드백 반영
+
+- **`color`에 `@Size(max = 20)` 검증을 추가했다.** `role.color` 컬럼이 `VARCHAR(20)`인데 `name`/`description`엔 이미 있던 길이 검증이 `color`에만 빠져있던 불일치였다 — 신규 요구사항이 아니라 기존 컨벤션 누락을 맞춘 것.
+- **`UserRepositoryImplDataJpaTest`에 `countActiveByRoleIds` 실 DB 검증 테스트를 추가했다.** 기존엔 Mockito 목 기반 단위 테스트만 있어서, GROUP BY 집계 쿼리가 실제 DB에서 의도대로 동작하는지 확인하는 테스트가 없었다.
+- **`CreateRoleServiceTest`가 `color` 값이 실제로 전달되는지 검증하지 않고 있었다.** 목 `save()`의 `thenAnswer`에서 반환값만 만들고 인자로 들어온 `color`는 확인하지 않아, 필드가 누락돼도 테스트가 통과하는 상태였다 — assertion을 추가했다.
+- **`UserRepositoryImplTest`의 빈 `Set` 케이스에 `verifyNoInteractions(jpaRepository)`를 추가했다.** 빈 입력일 때 리포지토리를 아예 호출하지 않는 얼리 리턴 경로인데, 이를 검증하는 assertion이 없었다.
+- **6건 중 이 4건만 반영했다** — 나머지 2건은 이미 팀의 기존 컨벤션(짐짝 전례)과 일치하거나 이 PR 범위를 넘는 설계 변경이라 판단해 제외했다.
+
+### 확정된 정책 — 로깅 컨벤션 소급 적용
+
+- **`PerformanceLogAspect`(AOP, 실행시간 측정)와는 별개다.** 기존에 이미 있던 이 Aspect는 `get*`/`find*` 메서드의 실행 시간만 재는 순수 성능 로깅이고, `LOGGING_CONVENTION.md`가 요구하는 "비즈니스 이벤트 로깅"(`event=<도메인>_<행위>_시작/완료/실패`)과는 목적이 다르다. 이벤트명·파라미터가 서비스마다 도메인 특화라 AOP로 자동화할 수 없어, 17개 Service 클래스 각각에 수동으로 적용했다.
+- **예외를 던지는 메서드만 `try/catch` + `_실패` 로그를 추가했다.** 순수 조회(예: `ListRolesService`, `SearchUsersService`, `UserDirectoryService`, `ListAcademyApplicationsService`)는 `_시작`/`_완료`만 두르고 `try/catch`를 넣지 않았다 — 존재하지 않는 실패 경로에 대한 방어 코드를 만들지 않는다는 원칙.
+- **비밀번호·토큰류는 어떤 로그에도 남기지 않는다.** 기존에 `LoginCommand.toString()` 마스킹으로 확립된 원칙을 로그 문에도 동일하게 적용했다: `LoginService`는 `username`만, `RefreshService`는 refreshToken 값 자체를 남기지 않는다. `ApproveAcademyApplicationService`는 학원 승인 시 발급하는 임시 비밀번호(`temporaryPassword`)를 완료 로그에도 포함하지 않고, 대신 결과를 나타내는 값으로 `academyId`/`userId`를 남긴다.
+- **이벤트명 접두어는 `<도메인>_<행위>` 스킴을 서비스 17개 전체에 일관 적용했다**: `auth_login`/`auth_logout`/`auth_token_reissue`(인증 3개), `role_create`/`role_list`/`role_get`/`role_update`/`role_delete`(역할 CRUD 5개), `role_permission_assign`/`permission_catalog_list`/`user_role_change`/`user_search`/`user_directory_find_active_ids`(권한·사용자 5개), `academy_application_list`/`academy_application_get`/`academy_application_approve`/`academy_application_reject`(학원 신청 4개).
+
+### 완료 기준
+
+- [x] CodeRabbit 피드백 4건 반영(`@Size` 검증, DataJpaTest 추가, 목 검증 보강 2건)
+- [x] 인증 서비스 3개(`LoginService`/`LogoutService`/`RefreshService`)에 로깅 적용
+- [x] 역할 CRUD 서비스 5개(`CreateRoleService`/`ListRolesService`/`GetRoleService`/`UpdateRoleService`/`DeleteRoleService`)에 로깅 적용
+- [x] 권한·사용자 서비스 5개(`AssignRolePermissionsService`/`PermissionQueryService`/`ChangeUserRoleService`/`SearchUsersService`/`UserDirectoryService`)에 로깅 적용
+- [x] 학원 신청 서비스 4개(`ListAcademyApplicationsService`/`GetAcademyApplicationService`/`ApproveAcademyApplicationService`/`RejectAcademyApplicationService`)에 로깅 적용
+- [x] `./gradlew build` 통과(전체 테스트 포함)
+
+### 🧩 영향 범위
+
+| 계층 | 변경 내용 |
+| --- | --- |
+| Presentation(users) | `CreateRoleRequest`/`UpdateRoleRequest`에 `color` `@Size(max = 20)` 추가 |
+| Application(users) | Service 클래스 17개에 `@Slf4j` + `LOGGING_CONVENTION.md` 기준 이벤트 로그 추가(코드 로직 변경 없음) |
+| Test(users) | `UserRepositoryImplDataJpaTest`(`countActiveByRoleIds` 실 DB 케이스 2건), `CreateRoleServiceTest`(`color` 값 검증), `UserRepositoryImplTest`(`verifyNoInteractions` 추가) |
+| Docs(users) | `CHANGELOG.md`/`API.md`의 `color` 필드 설명에 20자 제한 명시 |
 
 ---
 

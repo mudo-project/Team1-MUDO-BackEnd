@@ -7,6 +7,7 @@ import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.academy.mudogroupware.google.application.port.RequiredGoogleScopePort;
 import com.academy.mudogroupware.google.application.query.GoogleAccountConnectionView;
 import com.academy.mudogroupware.google.application.usecase.GetGoogleAccountConnectionUseCase;
 import com.academy.mudogroupware.google.domain.model.GoogleAccountConnection;
@@ -21,6 +22,7 @@ public class GetGoogleAccountConnectionService implements GetGoogleAccountConnec
 
     private final GoogleAccountConnectionRepository googleAccountConnectionRepository;
     private final Clock clock;
+    private final RequiredGoogleScopePort requiredGoogleScopePort;
 
     @Override
     public Optional<GoogleAccountConnectionView> getConnection(Long academyId) {
@@ -36,6 +38,6 @@ public class GetGoogleAccountConnectionService implements GetGoogleAccountConnec
                 connection.getConnectedAt(),
                 connection.getTokenExpiresAt(),
                 connection.getLastCheckedAt(),
-                connection.deriveStatus(now));
+                connection.deriveStatus(now, requiredGoogleScopePort.requiredScopes()));
     }
 }

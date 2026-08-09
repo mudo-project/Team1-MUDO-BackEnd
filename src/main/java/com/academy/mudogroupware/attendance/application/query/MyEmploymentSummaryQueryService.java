@@ -13,9 +13,11 @@ import com.academy.mudogroupware.attendance.domain.exception.AttendanceErrorCode
 import com.academy.mudogroupware.attendance.domain.exception.AttendanceException;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 @Transactional(readOnly = true)
 public class MyEmploymentSummaryQueryService implements GetMyEmploymentSummaryUseCase {
 
@@ -24,11 +26,14 @@ public class MyEmploymentSummaryQueryService implements GetMyEmploymentSummaryUs
 
     @Override
     public MyEmploymentSummaryView getSummary(Long userId, Long academyId) {
+        log.info("event=attendance_employment_summary_read_시작 userId={}, academyId={}", userId, academyId);
         LocalDate hireDate = employmentSummaryPort.findByUserIdAndAcademyId(userId, academyId)
                 .orElseThrow(() -> new AttendanceException(
                         AttendanceErrorCode.EMPLOYMENT_INFO_NOT_FOUND))
                 .hireDate();
         long tenureDays = Math.max(0, ChronoUnit.DAYS.between(hireDate, LocalDate.now(clock)));
-        return new MyEmploymentSummaryView(hireDate, tenureDays);
+        MyEmploymentSummaryView result = new MyEmploymentSummaryView(hireDate, tenureDays);
+        log.info("event=attendance_employment_summary_read_완료 userId={}, academyId={}, tenureDays={}", userId, academyId, tenureDays);
+        return result;
     }
 }
