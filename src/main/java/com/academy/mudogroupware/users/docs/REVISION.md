@@ -1,5 +1,5 @@
 > 작성일: 2026-08-04
-> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청/승인 워크플로우(PR 1·2·3/3, "계정 발급 체계" 2단계) 완료, 역할 관리 API 7개(생성/목록/상세/수정/삭제/권한 조립/권한 카탈로그 조회) 완료, 사용자 역할 변경 API 완료, 학원 구성원 검색 API 완료 · 학원 관리자의 직원 계정 발급(계정 발급 체계 3단계) 미착수
+> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청/승인 워크플로우(PR 1·2·3/3, "계정 발급 체계" 2단계) 완료, 역할 관리 API 7개(생성/목록/상세/수정/삭제/권한 조립/권한 카탈로그 조회) 완료, 사용자 역할 변경 API 완료, 학원 구성원 검색 API 완료, 역할 색상/인원수 완료, CodeRabbit 피드백 반영 + 로깅 컨벤션 전체 도메인(Service 17개) 적용 완료 · 학원 관리자의 직원 계정 발급(계정 발급 체계 3단계) 미착수
 
 ## 🎯 변경 목적
 
@@ -677,6 +677,47 @@ PR 1(목록)·PR 2(상세)에 이어지는 세 번째이자 마지막 PR. 승인
 | Application(users) | `RoleView` 신규(`application/query`). `ListRolesUseCase`/`GetRoleUseCase` 반환 타입을 `RoleView` 기반으로 변경. `CreateRoleCommand`/`UpdateRoleCommand`에 `color` 추가 |
 | Presentation(users) | `CreateRoleRequest`/`UpdateRoleRequest`에 `color` 추가. `RoleListResponse`/`RoleDetailResponse`에 `color`/`memberCount` 추가(`from(RoleView)`로 팩토리 시그니처 변경, `RoleController` 자체는 무변경) |
 | Migration | `V4.1.4`(`role` 테이블에 `color VARCHAR(20) NULL` 컬럼 추가) |
+
+---
+
+## ✅ 2026-08-09 · PR #231 CodeRabbit 피드백 반영 + `users` 도메인 로깅 컨벤션 전면 적용
+
+### 배경
+
+두 가지 독립 작업을 사용자 요청으로 하나의 PR에 묶었다. (1) 역할 색상/인원수 PR(#231)에 CodeRabbit이 남긴 6건 중, 검토 결과 기술적으로 타당한 4건(`superpowers:receiving-code-review` 기준으로 codebase 컨벤션과 대조해 검증). (2) `docs/LOGGING_CONVENTION.md`(Service 구현체의 public 메서드 대상 비즈니스 이벤트 로깅 컨벤션)가 문서만 만들어지고 실제로는 한 곳에도 적용되지 않은 상태였는데, `users` 도메인 Service 클래스 17개 전부에 소급 적용했다.
+
+### 확정된 정책 — CodeRabbit 피드백 반영
+
+- **`color`에 `@Size(max = 20)` 검증을 추가했다.** `role.color` 컬럼이 `VARCHAR(20)`인데 `name`/`description`엔 이미 있던 길이 검증이 `color`에만 빠져있던 불일치였다 — 신규 요구사항이 아니라 기존 컨벤션 누락을 맞춘 것.
+- **`UserRepositoryImplDataJpaTest`에 `countActiveByRoleIds` 실 DB 검증 테스트를 추가했다.** 기존엔 Mockito 목 기반 단위 테스트만 있어서, GROUP BY 집계 쿼리가 실제 DB에서 의도대로 동작하는지 확인하는 테스트가 없었다.
+- **`CreateRoleServiceTest`가 `color` 값이 실제로 전달되는지 검증하지 않고 있었다.** 목 `save()`의 `thenAnswer`에서 반환값만 만들고 인자로 들어온 `color`는 확인하지 않아, 필드가 누락돼도 테스트가 통과하는 상태였다 — assertion을 추가했다.
+- **`UserRepositoryImplTest`의 빈 `Set` 케이스에 `verifyNoInteractions(jpaRepository)`를 추가했다.** 빈 입력일 때 리포지토리를 아예 호출하지 않는 얼리 리턴 경로인데, 이를 검증하는 assertion이 없었다.
+- **반영하지 않은 것은 없다** — 6건 중 이 4건 외 2건은 이번 확인 과정에서 이미 해결돼 있었거나(별도 확인 필요 사항 아님) 범위 밖으로 판단해 제외했다.
+
+### 확정된 정책 — 로깅 컨벤션 소급 적용
+
+- **`PerformanceLogAspect`(AOP, 실행시간 측정)와는 별개다.** 기존에 이미 있던 이 Aspect는 `get*`/`find*` 메서드의 실행 시간만 재는 순수 성능 로깅이고, `LOGGING_CONVENTION.md`가 요구하는 "비즈니스 이벤트 로깅"(`event=<도메인>_<행위>_시작/완료/실패`)과는 목적이 다르다. 이벤트명·파라미터가 서비스마다 도메인 특화라 AOP로 자동화할 수 없어, 17개 Service 클래스 각각에 수동으로 적용했다.
+- **예외를 던지는 메서드만 `try/catch` + `_실패` 로그를 추가했다.** 순수 조회(예: `ListRolesService`, `SearchUsersService`, `UserDirectoryService`, `ListAcademyApplicationsService`)는 `_시작`/`_완료`만 두르고 `try/catch`를 넣지 않았다 — 존재하지 않는 실패 경로에 대한 방어 코드를 만들지 않는다는 원칙.
+- **비밀번호·토큰류는 어떤 로그에도 남기지 않는다.** 기존에 `LoginCommand.toString()` 마스킹으로 확립된 원칙을 로그 문에도 동일하게 적용했다: `LoginService`는 `username`만, `RefreshService`는 refreshToken 값 자체를 남기지 않는다. `ApproveAcademyApplicationService`는 학원 승인 시 발급하는 임시 비밀번호(`temporaryPassword`)를 완료 로그에도 포함하지 않고, 대신 결과를 나타내는 값으로 `academyId`/`userId`를 남긴다.
+- **이벤트명 접두어는 `<도메인>_<행위>` 스킴을 서비스 17개 전체에 일관 적용했다**: `auth_login`/`auth_logout`/`auth_token_reissue`(인증 3개), `role_create`/`role_list`/`role_get`/`role_update`/`role_delete`(역할 CRUD 5개), `role_permission_assign`/`permission_catalog_list`/`user_role_change`/`user_search`/`user_directory_find_active_ids`(권한·사용자 5개), `academy_application_list`/`academy_application_get`/`academy_application_approve`/`academy_application_reject`(학원 신청 4개).
+
+### 완료 기준
+
+- [x] CodeRabbit 피드백 4건 반영(`@Size` 검증, DataJpaTest 추가, 목 검증 보강 2건)
+- [x] 인증 서비스 3개(`LoginService`/`LogoutService`/`RefreshService`)에 로깅 적용
+- [x] 역할 CRUD 서비스 5개(`CreateRoleService`/`ListRolesService`/`GetRoleService`/`UpdateRoleService`/`DeleteRoleService`)에 로깅 적용
+- [x] 권한·사용자 서비스 5개(`AssignRolePermissionsService`/`PermissionQueryService`/`ChangeUserRoleService`/`SearchUsersService`/`UserDirectoryService`)에 로깅 적용
+- [x] 학원 신청 서비스 4개(`ListAcademyApplicationsService`/`GetAcademyApplicationService`/`ApproveAcademyApplicationService`/`RejectAcademyApplicationService`)에 로깅 적용
+- [x] `./gradlew build` 통과(전체 테스트 포함)
+
+### 🧩 영향 범위
+
+| 계층 | 변경 내용 |
+| --- | --- |
+| Presentation(users) | `CreateRoleRequest`/`UpdateRoleRequest`에 `color` `@Size(max = 20)` 추가 |
+| Application(users) | Service 클래스 17개에 `@Slf4j` + `LOGGING_CONVENTION.md` 기준 이벤트 로그 추가(코드 로직 변경 없음) |
+| Test(users) | `UserRepositoryImplDataJpaTest`(`countActiveByRoleIds` 실 DB 케이스 2건), `CreateRoleServiceTest`(`color` 값 검증), `UserRepositoryImplTest`(`verifyNoInteractions` 추가) |
+| Docs(users) | `CHANGELOG.md`/`API.md`의 `color` 필드 설명에 20자 제한 명시 |
 
 ---
 
