@@ -1,5 +1,28 @@
 # 🔄 워크스페이스 생성 이름 중복 정책 단순화
 
+## ✅ 2026-08-09 · 반복 업무 템플릿 삭제 API와 삭제 응답 형식 표준화
+
+### 변경 목적
+
+반복 업무 템플릿 생성(#224)·목록 조회(#234)·수정(#236)에 이어 삭제 API를 추가합니다. 수정 API 라운드에서 `REVISION.md`에 남긴 계획대로, 템플릿 조회를 비관적 락(`findByWorkspaceIdAndIdForUpdate`)으로 전환해 수정·삭제 두 Service가 공유하도록 했습니다. 이 작업 중 workspace 도메인의 기존 삭제 API 4개가 전부 `204 No Content`로 응답해 성공 메시지를 확인할 수 없다는 점도 함께 발견해, 삭제 API 5개(신규 1개 + 기존 4개)를 전부 `200 OK` + `GlobalApiResponse` 봉투로 통일했습니다.
+
+### 구현 변경
+
+- `DELETE /api/workspaces/{workspaceId}/recurring-templates/{templateId}`를 추가했습니다. 하드 삭제이며 `recurring_task_skip`도 함께 삭제됩니다.
+- `RecurringTaskTemplateRepository.findByWorkspaceIdAndIdForUpdate`를 추가했습니다 — `Task.findByIdForUpdate`와 동일한 2단계 패턴(락 없는 소속 확인 → 비관적 락)이며, `UpdateRecurringTaskTemplateService`도 기존 락 없는 조회에서 이 메서드로 전환해 수정·삭제 두 Service가 같은 락을 공유합니다.
+- 템플릿 삭제 시 이미 생성된 Task는 삭제하지 않고 `recurring_template_id`만 `NULL`로 남깁니다(운영 마이그레이션의 `ON DELETE SET NULL` 그대로). `TaskJpaEntity.recurringTemplate`에 `@OnDelete(action = OnDeleteAction.SET_NULL)`을 추가해 이 동작을 `@DataJpaTest`(H2)에도 재현했습니다 — 이 어노테이션이 없으면 아직 생성된 업무가 남아있는 템플릿을 삭제할 때 H2에서 FK 제약 위반이 발생합니다.
+- 워크스페이스 삭제, 참여자 제거, 업무 삭제, 업무 댓글 삭제, 반복 업무 템플릿 삭제 API 5개를 전부 `ResponseEntity<GlobalApiResponse<Void>>` + `200 OK`로 통일했습니다. `WorkspaceResponseCode`에 `WORKSPACE_200_11`~`WORKSPACE_200_15` 5개를 추가했습니다. Service/UseCase의 `delete`/`removeMember`/`deleteComment` 시그니처는 바꾸지 않고 Controller 레이어에서만 봉투로 감쌌습니다.
+
+### 검증
+
+- `DeleteRecurringTaskTemplateServiceTest`로 성공/워크스페이스 없음/미참여자/템플릿 없음을 검증했습니다.
+- `RecurringTaskTemplatePersistenceAdapterDataJpaTest`에 `findByWorkspaceIdAndIdForUpdate`의 워크스페이스 범위 검증과, 템플릿 삭제 시 생성된 Task의 `recurring_template_id`가 `NULL`로 바뀌는지 검증하는 테스트를 추가했습니다.
+- `WorkspaceRecurringTaskTemplateControllerTest`로 200/403/404를 검증했습니다.
+- 기존 `WorkspaceControllerTest`·`WorkspaceTaskControllerTest`·`WorkspaceTaskCommentControllerTest`의 삭제 관련 테스트를 200 + 응답 바디 검증으로 갱신했습니다.
+- 전체 `./gradlew test`를 통과했습니다.
+
+> API 계약은 [RECURRING_TASK_API.md](RECURRING_TASK_API.md), 호출 흐름은 [RECURRING_TASK_API_FLOW.md](RECURRING_TASK_API_FLOW.md)에 반영했습니다. 📚
+
 ## ✅ 2026-08-09 · 반복 업무 템플릿 수정 API와 로깅 커밋 타이밍 개선
 
 ### 변경 목적

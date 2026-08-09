@@ -2,6 +2,11 @@
 
 ## 2026-08-09
 
+- 반복 업무 템플릿 삭제 API(`DELETE /api/workspaces/{workspaceId}/recurring-templates/{templateId}`)를 추가했습니다. 하드 삭제이며 복구할 수 없습니다. 템플릿으로 이미 생성된 업무는 삭제되지 않고 일반 업무로 남습니다.
+- 워크스페이스 삭제, 참여자 제거, 업무 삭제, 업무 댓글 삭제 API의 응답이 빈 본문(`204 No Content`)에서 성공 메시지가 담긴 본문(`200 OK`)으로 바뀌었습니다.
+
+## 2026-08-09
+
 - 반복 업무 템플릿 수정 API(`PATCH /api/workspaces/{workspaceId}/recurring-templates/{templateId}`)를 추가했습니다. 제목 단독 또는 반복 주기(`recurrenceType`+`recurrenceRule`) 세트로 수정하며, 한쪽만 보내면 다른 쪽은 기존 값을 유지합니다. 둘 다 생략하거나 주기 세트 중 하나만 보내면 `400`입니다.
 - 공백만으로 이루어진 제목은 수정 요청에서도 거부합니다(생성 API와 동일한 제약).
 - 삭제 API가 아직 없어 수정 조회에는 비관적 락을 걸지 않습니다. 삭제 API가 추가되면 락 도입 여부를 재검토합니다.

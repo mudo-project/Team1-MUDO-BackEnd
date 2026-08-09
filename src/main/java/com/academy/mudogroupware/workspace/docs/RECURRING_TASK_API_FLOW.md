@@ -130,6 +130,40 @@ Compact Constructor에서 `title`이 있으면 미리 trim한다. 검증을 통�
 
 `RecurringTaskTemplateRepository.save`는 `id`가 있으므로 `RecurringTaskTemplatePersistenceAdapter`가 기존 엔티티를 조회해 `changeRecurrence`로 갱신한다(생성과 같은 `save` 메서드, 분기만 다름). 성공하면 Controller가 `GlobalApiResponse.ok(WorkspaceResponseCode.RECURRING_TEMPLATE_UPDATED, ...)`로 HTTP `200 OK`와 반영된 `templateId`·`title`·`recurrenceType`·`recurrenceRule`을 반환한다.
 
+## 🗑️ 반복 업무 템플릿 삭제 API 흐름
+
+```text
+DELETE /api/workspaces/{workspaceId}/recurring-templates/{templateId}
+  → Security Filter
+  → AuthUser
+  → WorkspaceRecurringTaskTemplateController
+  → DeleteRecurringTaskTemplateCommand
+  → DeleteRecurringTaskTemplateUseCase
+  → DeleteRecurringTaskTemplateService
+  → WorkspaceRepository.findById (락 없음)
+  → WorkspacePersistenceAdapter
+  → RecurringTaskTemplateRepository.findByWorkspaceIdAndIdForUpdate (락 없는 소속 확인 → 비관적 락, 2단계)
+  → RecurringTaskTemplateRepository.delete
+  → RecurringTaskTemplatePersistenceAdapter
+  → RecurringTaskTemplateJpaRepository / RecurringTaskSkipJpaRepository
+```
+
+### 1. 존재 확인과 참여자 검증
+
+`DeleteRecurringTaskTemplateService`는 다른 반복 업무 템플릿 API와 동일한 순서를 따른다 — `WorkspaceRepository.findById`(락 없음)로 조회 후 없으면 `WorkspaceNotFoundException`(`404_1`), 참여자가 아니면 `WorkspaceAccessDeniedException`(`403_1`).
+
+### 2. 비관적 락 조회
+
+`RecurringTaskTemplateRepository.findByWorkspaceIdAndIdForUpdate(workspaceId, templateId)`는 `TaskRepository.findByIdForUpdate`와 동일한 2단계로 동작한다. ① `existsByIdAndWorkspaceId`로 락 없이 워크스페이스 소속을 먼저 확인하고, 소속이 아니면 즉시 `RecurringTaskTemplateNotFoundException`(`404_5`)이 발생한다. ② 소속이 확인된 templateId에 대해서만 비관적 락을 건다. 수정 API의 `findByWorkspaceIdAndIdForUpdate`와 같은 락을 공유하므로, 수정과 삭제가 동시에 들어오면(같은 워크스페이스·같은 템플릿) 뒤에 도착한 트랜잭션이 먼저 완료된 트랜잭션의 결과를 보게 된다.
+
+### 3. 삭제 실행과 이미 생성된 업무 처리
+
+`RecurringTaskTemplateRepository.delete(templateId)`는 자식(`recurring_task_skip`) → 부모(`recurring_task_template`) 순서로 하드 삭제한다. 템플릿으로 이미 생성된 `Task` 행은 삭제되지 않는다 — `task.recurring_template_id`가 운영 마이그레이션에서 `ON DELETE SET NULL`로 정의되어 있어 `NULL`로만 바뀌고 "일반 업무"로 남는다. `TaskJpaEntity.recurringTemplate`의 `@OnDelete(action = OnDeleteAction.SET_NULL)`이 이 동작을 `@DataJpaTest`(H2)에도 동일하게 재현한다.
+
+### 4. 응답
+
+성공하면 Controller가 `GlobalApiResponse.ok(WorkspaceResponseCode.RECURRING_TEMPLATE_DELETED)`로 `200 OK`를 반환한다.
+
 ## 📚 관련 문서
 
 - [RECURRING_TASK_API.md](RECURRING_TASK_API.md) — 반복 업무 템플릿 API 명세

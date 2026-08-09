@@ -267,7 +267,40 @@ Response Body
 
 > 존재 확인(`404`)을 참여자 검증(`403`)보다 먼저 수행한다 — 생성·목록 조회 API와 동일한 순서.
 > 다른 워크스페이스에 속한 템플릿 번호를 보내도 `WORKSPACE_404_5`로 응답한다(조회 자체가 `findByWorkspaceIdAndId`로 워크스페이스 범위에 제한됨).
-> 동시 수정에 대한 비관적 락은 사용하지 않는다 — 삭제 API가 아직 없어 삭제와의 경합이 발생할 수 없기 때문이다(업무(Task) 수정 API와 달리).
+> 조회는 `findByWorkspaceIdAndIdForUpdate`(비관적 락)로 수행하며, 삭제 API와 같은 락을 공유해 동시 요청(같은 워크스페이스·같은 템플릿)을 직렬화한다.
+
+---
+
+## 🗑️ 반복 업무 템플릿 삭제 API
+
+```text
+DELETE /api/workspaces/{workspaceId}/recurring-templates/{templateId}
+```
+
+현재 참여자만 삭제할 수 있습니다. 하드 삭제이며 `recurring_task_skip` 기록도 함께 삭제되어 복구할 수 없습니다. 이미 생성된 업무는 삭제되지 않고 `recurring_template_id`만 `NULL`이 된 일반 업무로 남습니다.
+
+### Response Body
+
+```json
+{
+  "status": 200,
+  "code": "WORKSPACE_200_15",
+  "message": "반복 업무 템플릿 삭제에 성공했습니다.",
+  "data": null
+}
+```
+
+### 실패 코드
+
+| HTTP 상태 | code | message | 설명 |
+| --- | --- | --- | --- |
+| `401 Unauthorized` | `COMMON_401_1` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않은 경우 |
+| `403 Forbidden` | `WORKSPACE_403_1` | 워크스페이스에 접근할 권한이 없습니다. | 요청자가 참여자가 아닌 경우 |
+| `404 Not Found` | `WORKSPACE_404_1` | 워크스페이스를 찾을 수 없습니다. | 워크스페이스가 없거나 삭제된 경우 |
+| `404 Not Found` | `WORKSPACE_404_5` | 반복 업무 템플릿을 찾을 수 없습니다. | 템플릿이 없거나 해당 워크스페이스 소속이 아닌 경우 |
+
+> 존재 확인(`404`)을 참여자 검증(`403`)보다 먼저 수행한다 — 다른 반복 업무 템플릿 API와 동일한 순서.
+> 조회는 `findByWorkspaceIdAndIdForUpdate`(비관적 락)로 수행하며, 수정 API와 같은 락을 공유해 동시 요청을 직렬화한다.
 
 ---
 
