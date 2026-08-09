@@ -97,6 +97,11 @@ public interface TaskJpaRepository extends JpaRepository<TaskJpaEntity, Long> {
   @Query("select t from TaskJpaEntity t where t.id = :taskId")
   Optional<TaskJpaEntity> lockById(@Param("taskId") Long taskId);
 
+  // 조회 전용(락 없음). 상세 조회처럼 쓰기 락이 필요 없는 조회에서 사용한다.
+  @Query("select t from TaskJpaEntity t where t.id = :taskId and t.workspace.id = :workspaceId")
+  Optional<TaskJpaEntity> findByIdAndWorkspaceId(
+      @Param("taskId") Long taskId, @Param("workspaceId") Long workspaceId);
+
   // 아래 3개는 업무 하드 삭제 시 자식 행을 먼저 지우기 위한 벌크 삭제다.
   // 운영 MySQL에는 ON DELETE CASCADE가 걸려 있지만, @DataJpaTest의 H2 스키마는
   // 엔티티에서 생성되어 cascade가 없으므로 명시적으로 지운다.

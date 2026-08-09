@@ -97,6 +97,34 @@ class TaskPersistenceAdapterDataJpaTest {
   }
 
   @Test
+  void findByIdRoundTripsRegularTaskWithCreatedAt() {
+    insertWorkspace(WORKSPACE_ID);
+    insertTask(1L, WORKSPACE_ID, TaskStatus.IN_PROGRESS, TODAY);
+
+    Optional<Task> found = taskRepository.findById(WORKSPACE_ID, 1L);
+
+    assertThat(found).isPresent();
+    assertThat(found.get().getStatus()).isEqualTo(TaskStatus.IN_PROGRESS);
+    assertThat(found.get().getCreatedAt()).isEqualTo(at());
+  }
+
+  @Test
+  void findByIdReturnsEmptyWhenTaskBelongsToAnotherWorkspace() {
+    long otherWorkspaceId = 2L;
+    insertWorkspace(WORKSPACE_ID);
+    insertWorkspace(otherWorkspaceId);
+    insertTask(1L, otherWorkspaceId, TaskStatus.IN_PROGRESS, TODAY);
+
+    assertThat(taskRepository.findById(WORKSPACE_ID, 1L)).isEmpty();
+  }
+
+  @Test
+  void findByIdReturnsEmptyForMissingTask() {
+    insertWorkspace(WORKSPACE_ID);
+    assertThat(taskRepository.findById(WORKSPACE_ID, 999L)).isEmpty();
+  }
+
+  @Test
   void savingExistingTaskUpdatesStatusAndDueAt() {
     insertWorkspace(WORKSPACE_ID);
     insertTask(1L, WORKSPACE_ID, TaskStatus.DELAYED, TODAY.minusDays(1));
