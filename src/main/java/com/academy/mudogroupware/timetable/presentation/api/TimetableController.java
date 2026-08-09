@@ -4,7 +4,9 @@ import java.util.List;
 
 import com.academy.mudogroupware.global.presentation.api.common.GlobalApiResponse;
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
+import com.academy.mudogroupware.timetable.application.command.DeleteTimetableSetCommand;
 import com.academy.mudogroupware.timetable.application.usecase.CreateTimetableSetUseCase;
+import com.academy.mudogroupware.timetable.application.usecase.DeleteTimetableSetUseCase;
 import com.academy.mudogroupware.timetable.application.usecase.GetTimetableSetUseCase;
 import com.academy.mudogroupware.timetable.application.usecase.GetTimetableSetsUseCase;
 import com.academy.mudogroupware.timetable.application.usecase.UpdateTimetableSetUseCase;
@@ -25,6 +27,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -43,6 +46,7 @@ public class TimetableController {
     private final GetTimetableSetsUseCase getTimetableSetsUseCase;
     private final GetTimetableSetUseCase getTimetableSetUseCase;
     private final UpdateTimetableSetUseCase updateTimetableSetUseCase;
+    private final DeleteTimetableSetUseCase deleteTimetableSetUseCase;
 
     @Operation(summary = "시간표 세트 생성", description = "기간·운영시간·요일·슬롯단위·강의실 구성을 지정해 새 시간표 세트를 만듭니다.")
     @ApiResponses({
@@ -103,6 +107,21 @@ public class TimetableController {
             @PathVariable Long timetableSetId,
             @Valid @RequestBody UpdateTimetableSetRequest request) {
         updateTimetableSetUseCase.updateTimetableSet(request.toCommand(authUser.academyId(), timetableSetId));
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "시간표 세트 삭제", description = "시간표 세트와 그 안의 모든 수업 슬롯을 삭제합니다.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "204", description = "삭제 성공"),
+        @ApiResponse(responseCode = "403", description = "TIMETABLE:MANAGE 권한이 없는 경우"),
+        @ApiResponse(responseCode = "404", description = "시간표 세트가 존재하지 않거나 다른 학원 소속인 경우")
+    })
+    @PreAuthorize("hasAuthority('TIMETABLE:MANAGE')")
+    @DeleteMapping("/{timetableSetId}")
+    public ResponseEntity<Void> deleteTimetableSet(
+            @AuthenticationPrincipal AuthUser authUser,
+            @PathVariable Long timetableSetId) {
+        deleteTimetableSetUseCase.deleteTimetableSet(new DeleteTimetableSetCommand(authUser.academyId(), timetableSetId));
         return ResponseEntity.noContent().build();
     }
 }
