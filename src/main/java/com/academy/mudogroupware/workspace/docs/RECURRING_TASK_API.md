@@ -266,7 +266,7 @@ Response Body
 | `404 Not Found` | `WORKSPACE_404_5` | 반복 업무 템플릿을 찾을 수 없습니다. | 템플릿이 없거나 해당 워크스페이스 소속이 아닌 경우 |
 
 > 존재 확인(`404`)을 참여자 검증(`403`)보다 먼저 수행한다 — 생성·목록 조회 API와 동일한 순서.
-> 다른 워크스페이스에 속한 템플릿 번호를 보내도 `WORKSPACE_404_5`로 응답한다(조회 자체가 `findByWorkspaceIdAndId`로 워크스페이스 범위에 제한됨).
+> 다른 워크스페이스에 속한 템플릿 번호를 보내도 `WORKSPACE_404_5`로 응답한다(조회 자체가 `findByWorkspaceIdAndIdForUpdate`로 워크스페이스 범위에 제한됨).
 > 조회는 `findByWorkspaceIdAndIdForUpdate`(비관적 락)로 수행하며, 삭제 API와 같은 락을 공유해 동시 요청(같은 워크스페이스·같은 템플릿)을 직렬화한다.
 
 ---

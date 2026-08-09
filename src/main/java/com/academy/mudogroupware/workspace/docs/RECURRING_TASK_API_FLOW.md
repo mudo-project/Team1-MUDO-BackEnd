@@ -100,7 +100,7 @@ PATCH /api/workspaces/{workspaceId}/recurring-templates/{templateId}
   → UpdateRecurringTaskTemplateService
   → WorkspaceRepository.findById (락 없음)
   → WorkspacePersistenceAdapter
-  → RecurringTaskTemplateRepository.findByWorkspaceIdAndId (락 없음)
+  → RecurringTaskTemplateRepository.findByWorkspaceIdAndIdForUpdate (락 없는 소속 확인 → 비관적 락, 2단계)
   → RecurringTaskTemplate.changeRecurrence (Domain Model, 반복 규칙 재검증)
   → RecurringTaskTemplateRepository.save
   → RecurringTaskTemplatePersistenceAdapter
@@ -122,7 +122,7 @@ Compact Constructor에서 `title`이 있으면 미리 trim한다. 검증을 통�
 
 ### 3. 템플릿 조회와 값 병합
 
-`RecurringTaskTemplateRepository.findByWorkspaceIdAndId(workspaceId, templateId)`로 조회한다(락 없음 — 삭제 API가 아직 없어 삭제와의 동시 경합이 존재하지 않는다). 없으면 `RecurringTaskTemplateNotFoundException`(`404_5`).
+`RecurringTaskTemplateRepository.findByWorkspaceIdAndIdForUpdate(workspaceId, templateId)`로 조회한다(`Task.findByIdForUpdate`와 동일한 2단계 패턴 — 락 없는 소속 확인 후 비관적 락). 삭제 API와 같은 락을 공유해 동시 요청을 직렬화한다. 없으면 `RecurringTaskTemplateNotFoundException`(`404_5`).
 
 `command.title()`이 `null`이면 기존 제목을 유지하고, `command.recurrenceType()`이 `null`이면 기존 `recurrenceType`·`recurrenceRule`을 그대로 다시 넘긴다(Request 검증으로 인해 `recurrenceType`이 `null`이면 `recurrenceRule`도 항상 `null`이다). 병합된 값으로 `template.changeRecurrence(newTitle, newType, newRule)`을 호출한다 — 이 메서드는 내부적으로 새 `RecurringTaskTemplate` 인스턴스를 만들며 생성자와 동일한 `validateRule`을 다시 실행하므로, 값이 바뀌지 않은 경우에도 기존 규칙이 여전히 유효한지 재검증된다.
 
