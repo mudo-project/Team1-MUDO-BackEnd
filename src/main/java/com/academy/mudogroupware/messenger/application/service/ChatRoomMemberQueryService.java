@@ -51,7 +51,7 @@ public class ChatRoomMemberQueryService implements ChatRoomMemberQueryUseCase {
             return views;
         } catch (RuntimeException e) {
             log.warn("event=chat_room_member_list_실패 chatRoomId={}, requesterId={}, reason={}", chatRoomId,
-                    requesterId, e.getMessage());
+                    requesterId, e.getMessage(), e);
             throw e;
         }
     }

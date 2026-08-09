@@ -55,7 +55,7 @@ public class SendMessageService implements SendMessageUseCase {
             return saved.getId();
         } catch (RuntimeException e) {
             log.warn("event=message_send_실패 chatRoomId={}, senderId={}, reason={}", command.chatRoomId(),
-                    command.senderId(), e.getMessage());
+                    command.senderId(), e.getMessage(), e);
             throw e;
         }
     }

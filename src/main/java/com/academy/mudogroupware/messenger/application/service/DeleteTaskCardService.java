@@ -57,7 +57,7 @@ public class DeleteTaskCardService implements DeleteTaskCardUseCase {
                     command.chatRoomId(), command.cardId(), command.requesterId());
         } catch (RuntimeException e) {
             log.warn("event=task_card_delete_실패 chatRoomId={}, cardId={}, requesterId={}, reason={}",
-                    command.chatRoomId(), command.cardId(), command.requesterId(), e.getMessage());
+                    command.chatRoomId(), command.cardId(), command.requesterId(), e.getMessage(), e);
             throw e;
         }
     }

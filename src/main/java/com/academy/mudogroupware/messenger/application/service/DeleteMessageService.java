@@ -46,7 +46,7 @@ public class DeleteMessageService implements DeleteMessageUseCase {
                     requesterId);
         } catch (RuntimeException e) {
             log.warn("event=message_delete_실패 chatRoomId={}, messageId={}, requesterId={}, reason={}", chatRoomId,
-                    messageId, requesterId, e.getMessage());
+                    messageId, requesterId, e.getMessage(), e);
             throw e;
         }
     }

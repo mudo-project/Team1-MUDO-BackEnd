@@ -86,7 +86,7 @@ public class ChatMessageQueryService implements ChatMessageQueryUseCase {
             return new ChatMessagePageView(messageViews, hasNext, nextCursorCreatedAt, nextCursorMessageId);
         } catch (RuntimeException e) {
             log.warn("event=chat_message_list_실패 chatRoomId={}, requesterId={}, reason={}", chatRoomId,
-                    requesterId, e.getMessage());
+                    requesterId, e.getMessage(), e);
             throw e;
         }
     }
