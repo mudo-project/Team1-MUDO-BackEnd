@@ -36,11 +36,12 @@ HTTP `200 OK`
 
 | HTTP 상태 | code | 발생 조건 |
 | --- | --- | --- |
-| `400 Bad Request` | `COMMON_400_1` | `format` 파라미터가 유효하지 않은 enum 값인 경우 |
+| `400 Bad Request` | `COMMON_400_1` | 필수 쿼리 파라미터(`format`, `colorClass` 등)가 누락되었거나, `format`이 유효하지 않은 enum 값인 경우 |
 | `400 Bad Request` | `TIMETABLE_400_5` | 색상 파라미터가 6자리 16진수(RRGGBB) 형식이 아닌 경우 |
+| `400 Bad Request` | `TIMETABLE_400_6` | 내보내기 결과 이미지(PNG)가 허용 크기를 초과하는 경우 |
 | `401 Unauthorized` | `COMMON_401_1` | Access Token이 없거나 유효하지 않은 경우 |
 | `404 Not Found` | `TIMETABLE_404_1` | 시간표 세트가 존재하지 않거나 다른 학원 소속인 경우 |
-| `500 Internal Server Error` | `COMMON_500_1` | 처리되지 않은 서버 오류(필수 파라미터 자체가 누락된 경우도 현재는 500으로 응답한다 — `MissingServletRequestParameterException` 전역 핸들러 부재, 후속 이슈로 별도 등록) |
+| `500 Internal Server Error` | `COMMON_500_1` | 처리되지 않은 서버 오류 |
 
 ## Business Rules
 

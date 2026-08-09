@@ -266,6 +266,31 @@ class TimetableControllerTest {
                 .andExpect(status().isBadRequest());
     }
 
+    @Test
+    void exportTimetableReturns400WhenRequiredParameterIsMissing() throws Exception {
+        mockMvc.perform(get("/api/timetables/1/export")
+                        .param("colorClass", "FFCC00")
+                        .param("colorSpecial", "00AACC")
+                        .param("colorClinic", "AA00CC")
+                        .param("colorStanding", "888888")
+                        .param("colorExam", "FF0000")
+                        .with(authentication(authenticatedUser())))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_400_1"));
+    }
+
+    @Test
+    void exportTimetableReturns401WhenUnauthenticated() throws Exception {
+        mockMvc.perform(get("/api/timetables/1/export")
+                        .param("format", "EXCEL")
+                        .param("colorClass", "FFCC00")
+                        .param("colorSpecial", "00AACC")
+                        .param("colorClinic", "AA00CC")
+                        .param("colorStanding", "888888")
+                        .param("colorExam", "FF0000"))
+                .andExpect(status().isUnauthorized());
+    }
+
     private Authentication authenticatedUser(String... authorities) {
         return new UsernamePasswordAuthenticationToken(
                 AUTH_USER, null, List.of(authorities).stream().map(SimpleGrantedAuthority::new).toList());

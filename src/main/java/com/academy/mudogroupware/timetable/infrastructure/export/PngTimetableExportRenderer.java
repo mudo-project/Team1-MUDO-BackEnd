@@ -16,7 +16,9 @@ import org.springframework.stereotype.Component;
 
 import com.academy.mudogroupware.timetable.application.port.TimetableExportRenderer;
 import com.academy.mudogroupware.timetable.application.query.TimetableSlotView;
+import com.academy.mudogroupware.timetable.domain.exception.ExportImageTooLargeException;
 import com.academy.mudogroupware.timetable.domain.model.ClassType;
+import com.academy.mudogroupware.timetable.domain.model.TimetableExportColor;
 import com.academy.mudogroupware.timetable.domain.model.TimetableExportFormat;
 
 @Component
@@ -26,6 +28,7 @@ public class PngTimetableExportRenderer implements TimetableExportRenderer {
     private static final int ROW_HEIGHT = 32;
     private static final int HEADER_HEIGHT = 36;
     private static final int TITLE_HEIGHT = 30;
+    private static final long MAX_TOTAL_PIXELS = 20_000_000L;
 
     @Override
     public boolean supports(TimetableExportFormat format) {
@@ -34,15 +37,20 @@ public class PngTimetableExportRenderer implements TimetableExportRenderer {
 
     @Override
     public byte[] render(String timetableSetName, List<TimetableSlotView> sortedSlots,
-                          Map<ClassType, Color> colorsByClassType) {
-        int totalWidth = sumWidths();
-        int totalHeight = TITLE_HEIGHT + HEADER_HEIGHT + sortedSlots.size() * ROW_HEIGHT;
+                          Map<ClassType, TimetableExportColor> colorsByClassType) {
+        long totalWidth = sumWidths();
+        long totalHeight = (long) TITLE_HEIGHT + HEADER_HEIGHT + (long) sortedSlots.size() * ROW_HEIGHT;
+        if (totalWidth * totalHeight > MAX_TOTAL_PIXELS) {
+            throw new ExportImageTooLargeException();
+        }
 
-        BufferedImage image = new BufferedImage(totalWidth, totalHeight, BufferedImage.TYPE_INT_RGB);
+        int width = (int) totalWidth;
+        int height = (int) totalHeight;
+        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         Graphics2D g = image.createGraphics();
         try {
             g.setColor(Color.WHITE);
-            g.fillRect(0, 0, totalWidth, totalHeight);
+            g.fillRect(0, 0, width, height);
 
             g.setColor(Color.BLACK);
             g.setFont(TimetableExportFonts.AWT_BOLD.deriveFont(16f));
@@ -53,7 +61,8 @@ public class PngTimetableExportRenderer implements TimetableExportRenderer {
             y += HEADER_HEIGHT;
 
             for (TimetableSlotView slot : sortedSlots) {
-                Color rowColor = colorsByClassType.getOrDefault(slot.classType(), Color.WHITE);
+                TimetableExportColor color = colorsByClassType.get(slot.classType());
+                Color rowColor = color != null ? new Color(color.red(), color.green(), color.blue()) : Color.WHITE;
                 drawRow(g, y, ROW_HEIGHT, TimetableExportLabels.toRow(slot), rowColor, false);
                 y += ROW_HEIGHT;
             }

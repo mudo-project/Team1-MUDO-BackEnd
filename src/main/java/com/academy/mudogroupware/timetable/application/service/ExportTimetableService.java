@@ -1,14 +1,11 @@
 package com.academy.mudogroupware.timetable.application.service;
 
-import java.awt.Color;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import com.academy.mudogroupware.timetable.application.command.ExportTimetableCommand;
 import com.academy.mudogroupware.timetable.application.port.TimetableExportRenderer;
@@ -17,17 +14,14 @@ import com.academy.mudogroupware.timetable.application.query.TimetableSlotView;
 import com.academy.mudogroupware.timetable.application.usecase.ExportTimetableUseCase;
 import com.academy.mudogroupware.timetable.application.usecase.GetTimetableSetUseCase;
 import com.academy.mudogroupware.timetable.application.usecase.GetTimetableSlotsUseCase;
-import com.academy.mudogroupware.timetable.domain.exception.InvalidExportColorException;
 import com.academy.mudogroupware.timetable.domain.model.ClassType;
+import com.academy.mudogroupware.timetable.domain.model.TimetableExportColor;
 
 import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class ExportTimetableService implements ExportTimetableUseCase {
-
-    private static final Pattern HEX_COLOR = Pattern.compile("^[0-9A-Fa-f]{6}$");
 
     private final GetTimetableSetUseCase getTimetableSetUseCase;
     private final GetTimetableSlotsUseCase getTimetableSlotsUseCase;
@@ -38,7 +32,7 @@ public class ExportTimetableService implements ExportTimetableUseCase {
         TimetableSetDetailView set = getTimetableSetUseCase
                 .getTimetableSet(command.academyId(), command.timetableSetId());
 
-        Map<ClassType, Color> colors = parseColors(command.colorHexByClassType());
+        Map<ClassType, TimetableExportColor> colors = parseColors(command.colorHexByClassType());
 
         List<TimetableSlotView> sortedSlots = getTimetableSlotsUseCase
                 .getSlots(command.academyId(), command.timetableSetId()).stream()
@@ -54,15 +48,8 @@ public class ExportTimetableService implements ExportTimetableUseCase {
         return renderer.render(set.name(), sortedSlots, colors);
     }
 
-    private Map<ClassType, Color> parseColors(Map<ClassType, String> colorHexByClassType) {
+    private Map<ClassType, TimetableExportColor> parseColors(Map<ClassType, String> colorHexByClassType) {
         return colorHexByClassType.entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, entry -> parseHex(entry.getValue())));
-    }
-
-    private Color parseHex(String hex) {
-        if (!HEX_COLOR.matcher(hex).matches()) {
-            throw new InvalidExportColorException();
-        }
-        return new Color(Integer.parseInt(hex, 16));
+                .collect(Collectors.toMap(Map.Entry::getKey, entry -> TimetableExportColor.fromHex(entry.getValue())));
     }
 }

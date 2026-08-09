@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import com.academy.mudogroupware.timetable.application.port.TimetableExportRenderer;
 import com.academy.mudogroupware.timetable.application.query.TimetableSlotView;
 import com.academy.mudogroupware.timetable.domain.model.ClassType;
+import com.academy.mudogroupware.timetable.domain.model.TimetableExportColor;
 import com.academy.mudogroupware.timetable.domain.model.TimetableExportFormat;
 import com.lowagie.text.Document;
 import com.lowagie.text.DocumentException;
@@ -38,7 +39,7 @@ public class PdfTimetableExportRenderer implements TimetableExportRenderer {
 
     @Override
     public byte[] render(String timetableSetName, List<TimetableSlotView> sortedSlots,
-                          Map<ClassType, Color> colorsByClassType) {
+                          Map<ClassType, TimetableExportColor> colorsByClassType) {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         Document document = new Document(PageSize.A3.rotate());
         try {
@@ -54,18 +55,19 @@ public class PdfTimetableExportRenderer implements TimetableExportRenderer {
         return out.toByteArray();
     }
 
-    private PdfPTable buildTable(List<TimetableSlotView> sortedSlots, Map<ClassType, Color> colorsByClassType) {
+    private PdfPTable buildTable(List<TimetableSlotView> sortedSlots,
+                                  Map<ClassType, TimetableExportColor> colorsByClassType) {
         PdfPTable table = new PdfPTable(TimetableExportLabels.HEADERS.length);
         table.setWidthPercentage(100);
         for (String header : TimetableExportLabels.HEADERS) {
             table.addCell(new Phrase(header, HEADER_FONT));
         }
         for (TimetableSlotView slot : sortedSlots) {
-            Color awtColor = colorsByClassType.get(slot.classType());
+            TimetableExportColor color = colorsByClassType.get(slot.classType());
             for (String value : TimetableExportLabels.toRow(slot)) {
                 PdfPCell cell = new PdfPCell(new Phrase(value, BODY_FONT));
-                if (awtColor != null) {
-                    cell.setBackgroundColor(awtColor);
+                if (color != null) {
+                    cell.setBackgroundColor(new Color(color.red(), color.green(), color.blue()));
                 }
                 table.addCell(cell);
             }

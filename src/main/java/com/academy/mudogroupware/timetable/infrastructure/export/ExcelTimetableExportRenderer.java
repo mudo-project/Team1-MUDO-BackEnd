@@ -13,6 +13,7 @@ import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.FillPatternType;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.util.WorkbookUtil;
 import org.apache.poi.xssf.usermodel.XSSFColor;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Component;
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Component;
 import com.academy.mudogroupware.timetable.application.port.TimetableExportRenderer;
 import com.academy.mudogroupware.timetable.application.query.TimetableSlotView;
 import com.academy.mudogroupware.timetable.domain.model.ClassType;
+import com.academy.mudogroupware.timetable.domain.model.TimetableExportColor;
 import com.academy.mudogroupware.timetable.domain.model.TimetableExportFormat;
 
 @Component
@@ -32,7 +34,7 @@ public class ExcelTimetableExportRenderer implements TimetableExportRenderer {
 
     @Override
     public byte[] render(String timetableSetName, List<TimetableSlotView> sortedSlots,
-                          Map<ClassType, Color> colorsByClassType) {
+                          Map<ClassType, TimetableExportColor> colorsByClassType) {
         try (XSSFWorkbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Sheet sheet = workbook.createSheet(safeSheetName(timetableSetName));
             Map<ClassType, CellStyle> stylesByClassType = buildStyles(workbook, colorsByClassType);
@@ -48,19 +50,23 @@ public class ExcelTimetableExportRenderer implements TimetableExportRenderer {
     }
 
     private String safeSheetName(String name) {
-        String trimmed = name.length() > 31 ? name.substring(0, 31) : name;
-        return trimmed.replaceAll("[\\\\/*\\[\\]:?]", "_");
+        return WorkbookUtil.createSafeSheetName(name);
     }
 
-    private Map<ClassType, CellStyle> buildStyles(XSSFWorkbook workbook, Map<ClassType, Color> colorsByClassType) {
+    private Map<ClassType, CellStyle> buildStyles(XSSFWorkbook workbook,
+                                                   Map<ClassType, TimetableExportColor> colorsByClassType) {
         Map<ClassType, CellStyle> styles = new EnumMap<>(ClassType.class);
-        for (Map.Entry<ClassType, Color> entry : colorsByClassType.entrySet()) {
+        for (Map.Entry<ClassType, TimetableExportColor> entry : colorsByClassType.entrySet()) {
             CellStyle style = workbook.createCellStyle();
-            style.setFillForegroundColor(new XSSFColor(entry.getValue(), null));
+            style.setFillForegroundColor(new XSSFColor(toAwtColor(entry.getValue()), null));
             style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
             styles.put(entry.getKey(), style);
         }
         return styles;
+    }
+
+    private Color toAwtColor(TimetableExportColor color) {
+        return new Color(color.red(), color.green(), color.blue());
     }
 
     private void writeHeader(Sheet sheet) {
