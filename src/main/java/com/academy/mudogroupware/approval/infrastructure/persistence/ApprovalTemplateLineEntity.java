@@ -9,13 +9,17 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "approval_line_step")
+@Table(name = "approval_line_step",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_approval_line_step_template_step",
+                columnNames = {"template_id", "step_order"}))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class ApprovalTemplateLineEntity {
