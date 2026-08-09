@@ -51,6 +51,14 @@ public class RecurringTaskTemplatePersistenceAdapter implements RecurringTaskTem
   }
 
   @Override
+  public Optional<RecurringTaskTemplate> findByWorkspaceIdAndIdForUpdate(Long workspaceId, Long templateId) {
+    if (!recurringTaskTemplateJpaRepository.existsByIdAndWorkspaceId(templateId, workspaceId)) {
+      return Optional.empty();
+    }
+    return recurringTaskTemplateJpaRepository.lockById(templateId).map(mapper::toDomain);
+  }
+
+  @Override
   public PageResult<RecurringTaskTemplate> findAllByWorkspaceId(Long workspaceId, int page, int size) {
     Slice<RecurringTaskTemplateJpaEntity> slice =
         recurringTaskTemplateJpaRepository.findAllByWorkspaceId(workspaceId, PageRequest.of(page, size));

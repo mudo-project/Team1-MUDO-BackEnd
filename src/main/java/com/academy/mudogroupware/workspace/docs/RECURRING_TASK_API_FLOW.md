@@ -100,7 +100,7 @@ PATCH /api/workspaces/{workspaceId}/recurring-templates/{templateId}
   → UpdateRecurringTaskTemplateService
   → WorkspaceRepository.findById (락 없음)
   → WorkspacePersistenceAdapter
-  → RecurringTaskTemplateRepository.findByWorkspaceIdAndId (락 없음)
+  → RecurringTaskTemplateRepository.findByWorkspaceIdAndIdForUpdate (락 없는 소속 확인 → 비관적 락, 2단계)
   → RecurringTaskTemplate.changeRecurrence (Domain Model, 반복 규칙 재검증)
   → RecurringTaskTemplateRepository.save
   → RecurringTaskTemplatePersistenceAdapter
@@ -122,13 +122,49 @@ Compact Constructor에서 `title`이 있으면 미리 trim한다. 검증을 통�
 
 ### 3. 템플릿 조회와 값 병합
 
-`RecurringTaskTemplateRepository.findByWorkspaceIdAndId(workspaceId, templateId)`로 조회한다(락 없음 — 삭제 API가 아직 없어 삭제와의 동시 경합이 존재하지 않는다). 없으면 `RecurringTaskTemplateNotFoundException`(`404_5`).
+`RecurringTaskTemplateRepository.findByWorkspaceIdAndIdForUpdate(workspaceId, templateId)`로 조회한다(`Task.findByIdForUpdate`와 동일한 2단계 패턴 — 락 없는 소속 확인 후 비관적 락). 삭제 API와 같은 락을 공유해 동시 요청을 직렬화한다. 없으면 `RecurringTaskTemplateNotFoundException`(`404_5`).
 
 `command.title()`이 `null`이면 기존 제목을 유지하고, `command.recurrenceType()`이 `null`이면 기존 `recurrenceType`·`recurrenceRule`을 그대로 다시 넘긴다(Request 검증으로 인해 `recurrenceType`이 `null`이면 `recurrenceRule`도 항상 `null`이다). 병합된 값으로 `template.changeRecurrence(newTitle, newType, newRule)`을 호출한다 — 이 메서드는 내부적으로 새 `RecurringTaskTemplate` 인스턴스를 만들며 생성자와 동일한 `validateRule`을 다시 실행하므로, 값이 바뀌지 않은 경우에도 기존 규칙이 여전히 유효한지 재검증된다.
 
 ### 4. 저장과 응답
 
 `RecurringTaskTemplateRepository.save`는 `id`가 있으므로 `RecurringTaskTemplatePersistenceAdapter`가 기존 엔티티를 조회해 `changeRecurrence`로 갱신한다(생성과 같은 `save` 메서드, 분기만 다름). 성공하면 Controller가 `GlobalApiResponse.ok(WorkspaceResponseCode.RECURRING_TEMPLATE_UPDATED, ...)`로 HTTP `200 OK`와 반영된 `templateId`·`title`·`recurrenceType`·`recurrenceRule`을 반환한다.
+
+---
+
+## 🗑️ 반복 업무 템플릿 삭제 API 흐름
+
+```text
+DELETE /api/workspaces/{workspaceId}/recurring-templates/{templateId}
+  → Security Filter
+  → AuthUser
+  → WorkspaceRecurringTaskTemplateController
+  → DeleteRecurringTaskTemplateCommand
+  → DeleteRecurringTaskTemplateUseCase
+  → DeleteRecurringTaskTemplateService
+  → WorkspaceRepository.findById (락 없음)
+  → WorkspacePersistenceAdapter
+  → RecurringTaskTemplateRepository.findByWorkspaceIdAndIdForUpdate (락 없는 소속 확인 → 비관적 락, 2단계)
+  → RecurringTaskTemplateRepository.delete
+  → RecurringTaskTemplatePersistenceAdapter
+  → RecurringTaskTemplateJpaRepository / RecurringTaskSkipJpaRepository
+```
+
+### 1. 존재 확인과 참여자 검증
+
+`DeleteRecurringTaskTemplateService`는 다른 반복 업무 템플릿 API와 동일한 순서를 따른다 — `WorkspaceRepository.findById`(락 없음)로 조회 후 없으면 `WorkspaceNotFoundException`(`404_1`), 참여자가 아니면 `WorkspaceAccessDeniedException`(`403_1`).
+
+### 2. 비관적 락 조회
+
+`RecurringTaskTemplateRepository.findByWorkspaceIdAndIdForUpdate(workspaceId, templateId)`는 `TaskRepository.findByIdForUpdate`와 동일한 2단계로 동작한다. ① `existsByIdAndWorkspaceId`로 락 없이 워크스페이스 소속을 먼저 확인하고, 소속이 아니면 즉시 `RecurringTaskTemplateNotFoundException`(`404_5`)이 발생한다. ② 소속이 확인된 templateId에 대해서만 비관적 락을 건다. 수정 API의 `findByWorkspaceIdAndIdForUpdate`와 같은 락을 공유하므로, 수정과 삭제가 동시에 들어오면(같은 워크스페이스·같은 템플릿) 뒤에 도착한 트랜잭션이 먼저 완료된 트랜잭션의 결과를 보게 된다.
+
+### 3. 삭제 실행과 이미 생성된 업무 처리
+
+`RecurringTaskTemplateRepository.delete(templateId)`는 자식(`recurring_task_skip`) → 부모(`recurring_task_template`) 순서로 하드 삭제한다. 템플릿으로 이미 생성된 `Task` 행은 삭제되지 않는다 — `task.recurring_template_id`가 운영 마이그레이션에서 `ON DELETE SET NULL`로 정의되어 있어 `NULL`로만 바뀌고 "일반 업무"로 남는다. `TaskJpaEntity.recurringTemplate`의 `@OnDelete(action = OnDeleteAction.SET_NULL)`이 이 동작을 `@DataJpaTest`(H2)에도 동일하게 재현한다.
+
+### 4. 응답
+
+성공하면 Controller가 `GlobalApiResponse.ok(WorkspaceResponseCode.RECURRING_TEMPLATE_DELETED)`로 `200 OK`를 반환한다.
 
 ## 📚 관련 문서
 

@@ -115,7 +115,7 @@ DELETE /api/workspaces/{workspaceId}/tasks/{taskId}/comments/{commentId}
 
 ### 6. 응답
 
-성공하면 `204 No Content`, 본문 없음.
+성공하면 Controller가 `GlobalApiResponse.ok(WorkspaceResponseCode.TASK_COMMENT_DELETED)`로 `200 OK`를 반환한다.
 
 ## ✅ 완료 토글 API 흐름
 

@@ -228,9 +228,18 @@ Response Body
 
 | HTTP 상태 | 설명 |
 | --- | --- |
-| `204 No Content` | 댓글 삭제 성공 |
+| `200 OK` | 댓글 삭제 성공 |
 
-응답 본문은 없다.
+Response Body
+
+```json
+{
+  "status": 200,
+  "code": "WORKSPACE_200_14",
+  "message": "업무 댓글 삭제에 성공했습니다.",
+  "data": null
+}
+```
 
 ### 실패 코드
 
