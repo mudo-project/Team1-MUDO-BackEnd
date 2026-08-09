@@ -33,9 +33,10 @@ public class CreateTaskCommentService implements CreateTaskCommentUseCase {
   @Transactional
   public TaskComment createComment(CreateTaskCommentCommand command) {
     log.info(
-        "event=task_comment_create_시작 workspaceId={}, taskId={}",
+        "event=task_comment_create_시작 workspaceId={}, taskId={}, requesterId={}",
         command.workspaceId(),
-        command.taskId());
+        command.taskId(),
+        command.requesterId());
 
     Workspace workspace =
         workspaceRepository

@@ -30,10 +30,11 @@ public class DeleteTaskCommentService implements DeleteTaskCommentUseCase {
   @Transactional
   public void deleteComment(DeleteTaskCommentCommand command) {
     log.info(
-        "event=task_comment_delete_시작 workspaceId={}, taskId={}, commentId={}",
+        "event=task_comment_delete_시작 workspaceId={}, taskId={}, commentId={}, requesterId={}",
         command.workspaceId(),
         command.taskId(),
-        command.commentId());
+        command.commentId(),
+        command.requesterId());
 
     Workspace workspace =
         workspaceRepository

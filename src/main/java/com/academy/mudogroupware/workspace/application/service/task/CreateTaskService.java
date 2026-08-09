@@ -31,9 +31,10 @@ public class CreateTaskService implements CreateTaskUseCase {
   @Transactional
   public Long createTask(CreateTaskCommand command) {
     log.info(
-        "event=task_create_시작 workspaceId={}, title={}",
+        "event=task_create_시작 workspaceId={}, title={}, requesterId={}",
         command.workspaceId(),
-        command.title());
+        command.title(),
+        command.requesterId());
 
     // 존재 확인을 권한 확인보다 먼저 한다 (기존 워크스페이스 API와 동일한 순서).
     Workspace workspace =

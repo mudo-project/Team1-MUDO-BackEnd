@@ -24,7 +24,10 @@ public class DeleteWorkspaceService implements DeleteWorkspaceUseCase {
   @Override
   @Transactional
   public void delete(DeleteWorkspaceCommand command) {
-    log.info("event=workspace_delete_시작 workspaceId={}", command.workspaceId());
+    log.info(
+        "event=workspace_delete_시작 workspaceId={}, requesterId={}",
+        command.workspaceId(),
+        command.requesterId());
 
     Workspace workspace =
         workspaceRepository

@@ -21,7 +21,10 @@ public class RenameWorkspaceService implements RenameWorkspaceUseCase {
   @Override
   @Transactional
   public String rename(RenameWorkspaceCommand command) {
-    log.info("event=workspace_rename_시작 workspaceId={}", command.workspaceId());
+    log.info(
+        "event=workspace_rename_시작 workspaceId={}, requesterId={}",
+        command.workspaceId(),
+        command.requesterId());
 
     Workspace workspace =
         workspaceRepository

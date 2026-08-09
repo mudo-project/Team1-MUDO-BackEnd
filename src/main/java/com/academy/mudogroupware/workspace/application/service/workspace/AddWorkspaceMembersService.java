@@ -26,7 +26,10 @@ public class AddWorkspaceMembersService implements AddWorkspaceMembersUseCase {
   @Override
   @Transactional
   public Set<Long> addMembers(AddWorkspaceMembersCommand command) {
-    log.info("event=workspace_member_add_시작 workspaceId={}", command.workspaceId());
+    log.info(
+        "event=workspace_member_add_시작 workspaceId={}, requesterId={}",
+        command.workspaceId(),
+        command.requesterId());
 
     Workspace workspace =
         workspaceRepository

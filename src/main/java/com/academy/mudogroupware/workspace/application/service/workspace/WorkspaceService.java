@@ -26,9 +26,10 @@ public class WorkspaceService implements CreateWorkspaceUseCase {
   @Transactional
   public Long createWorkspace(CreateWorkspaceCommand command) {
     log.info(
-        "event=workspace_create_시작 academyId={}, name={}",
+        "event=workspace_create_시작 academyId={}, name={}, creatorId={}",
         command.academyId(),
-        command.name());
+        command.name(),
+        command.creatorId());
 
     // ws 이름 저장
     String name = command.name().trim();

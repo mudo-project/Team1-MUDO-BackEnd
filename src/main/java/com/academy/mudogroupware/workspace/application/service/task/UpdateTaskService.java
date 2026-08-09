@@ -33,9 +33,10 @@ public class UpdateTaskService implements UpdateTaskUseCase {
   @Transactional
   public Task updateTask(UpdateTaskCommand command) {
     log.info(
-        "event=task_update_시작 workspaceId={}, taskId={}",
+        "event=task_update_시작 workspaceId={}, taskId={}, requesterId={}",
         command.workspaceId(),
-        command.taskId());
+        command.taskId(),
+        command.requesterId());
 
     Workspace workspace =
         workspaceRepository

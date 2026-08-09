@@ -22,9 +22,11 @@ public class RemoveWorkspaceMemberService implements RemoveWorkspaceMemberUseCas
   @Transactional
   public void removeMember(RemoveWorkspaceMemberCommand command) {
     log.info(
-        "event=workspace_member_remove_시작 workspaceId={}, targetUserId={}",
+        "event=workspace_member_remove_시작 workspaceId={}, targetUserId={}, requesterId={}, selfWithdrawal={}",
         command.workspaceId(),
-        command.targetUserId());
+        command.targetUserId(),
+        command.requesterId(),
+        command.requesterId().equals(command.targetUserId()));
 
     Workspace workspace =
         workspaceRepository

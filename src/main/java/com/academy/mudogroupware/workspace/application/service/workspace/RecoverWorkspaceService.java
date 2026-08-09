@@ -29,7 +29,10 @@ public class RecoverWorkspaceService implements RecoverWorkspaceUseCase {
   @Override
   @Transactional
   public String recover(RecoverWorkspaceCommand command) {
-    log.info("event=workspace_recover_시작 workspaceId={}", command.workspaceId());
+    log.info(
+        "event=workspace_recover_시작 workspaceId={}, requesterId={}",
+        command.workspaceId(),
+        command.requesterId());
 
     Workspace workspace =
         workspaceRepository

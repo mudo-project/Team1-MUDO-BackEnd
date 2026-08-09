@@ -33,10 +33,11 @@ public class ToggleTaskCommentCompleteService implements ToggleTaskCommentComple
   @Transactional
   public TaskComment toggleComplete(ToggleTaskCommentCompleteCommand command) {
     log.info(
-        "event=task_comment_toggle_complete_시작 workspaceId={}, taskId={}, commentId={}",
+        "event=task_comment_toggle_complete_시작 workspaceId={}, taskId={}, commentId={}, requesterId={}",
         command.workspaceId(),
         command.taskId(),
-        command.commentId());
+        command.commentId(),
+        command.requesterId());
 
     Workspace workspace =
         workspaceRepository

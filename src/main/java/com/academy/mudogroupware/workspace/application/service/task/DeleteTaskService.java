@@ -28,9 +28,10 @@ public class DeleteTaskService implements DeleteTaskUseCase {
   @Transactional
   public void deleteTask(DeleteTaskCommand command) {
     log.info(
-        "event=task_delete_시작 workspaceId={}, taskId={}",
+        "event=task_delete_시작 workspaceId={}, taskId={}, requesterId={}",
         command.workspaceId(),
-        command.taskId());
+        command.taskId(),
+        command.requesterId());
 
     Workspace workspace =
         workspaceRepository

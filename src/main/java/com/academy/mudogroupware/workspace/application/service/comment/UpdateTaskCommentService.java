@@ -34,10 +34,11 @@ public class UpdateTaskCommentService implements UpdateTaskCommentUseCase {
   @Transactional
   public TaskComment updateComment(UpdateTaskCommentCommand command) {
     log.info(
-        "event=task_comment_update_시작 workspaceId={}, taskId={}, commentId={}",
+        "event=task_comment_update_시작 workspaceId={}, taskId={}, commentId={}, requesterId={}",
         command.workspaceId(),
         command.taskId(),
-        command.commentId());
+        command.commentId(),
+        command.requesterId());
 
     Workspace workspace =
         workspaceRepository
