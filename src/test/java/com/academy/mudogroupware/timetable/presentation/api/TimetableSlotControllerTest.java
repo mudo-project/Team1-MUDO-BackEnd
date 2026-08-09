@@ -5,6 +5,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -31,6 +32,7 @@ import com.academy.mudogroupware.timetable.application.query.TimetableSlotView;
 import com.academy.mudogroupware.timetable.application.usecase.CreateTimetableSlotUseCase;
 import com.academy.mudogroupware.timetable.application.usecase.GetTimetableSlotUseCase;
 import com.academy.mudogroupware.timetable.application.usecase.GetTimetableSlotsUseCase;
+import com.academy.mudogroupware.timetable.application.usecase.UpdateTimetableSlotUseCase;
 import com.academy.mudogroupware.timetable.domain.exception.TimetableSlotNotFoundException;
 import com.academy.mudogroupware.timetable.domain.model.ClassType;
 
@@ -44,6 +46,7 @@ class TimetableSlotControllerTest {
     @MockitoBean private CreateTimetableSlotUseCase createTimetableSlotUseCase;
     @MockitoBean private GetTimetableSlotsUseCase getTimetableSlotsUseCase;
     @MockitoBean private GetTimetableSlotUseCase getTimetableSlotUseCase;
+    @MockitoBean private UpdateTimetableSlotUseCase updateTimetableSlotUseCase;
     @MockitoBean private JwtTokenProvider jwtTokenProvider;
     @MockitoBean private JwtAuthenticationConverter jwtAuthenticationConverter;
 
@@ -113,6 +116,30 @@ class TimetableSlotControllerTest {
                         .with(authentication(authenticatedUser())))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("TIMETABLE_404_2"));
+    }
+
+    @Test
+    void updateSlotReturns204() throws Exception {
+        String body = """
+                {
+                  "scope": "ALL",
+                  "classType": "SPECIAL",
+                  "dayOfWeek": "TUESDAY",
+                  "classroomCode": "602",
+                  "startTime": "13:00:00",
+                  "endTime": "15:00:00",
+                  "grade": "고2",
+                  "teacherName": "오T",
+                  "subjectName": "물리"
+                }
+                """;
+
+        mockMvc.perform(patch("/api/timetables/1/slots/100")
+                        .with(authentication(authenticatedUser("TIMETABLE:MANAGE")))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isNoContent());
     }
 
     private Authentication authenticatedUser(String... authorities) {
