@@ -17,7 +17,9 @@ import com.academy.mudogroupware.notice.domain.model.NoticeAttachment;
 import com.academy.mudogroupware.notice.domain.repository.NoticeRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -29,6 +31,7 @@ public class CreateNoticeService implements CreateNoticeUseCase {
 
     @Override
     public Long createNotice(CreateNoticeCommand command) {
+        log.info("event=notice_create_시작 authorUserId={}", command.authorUserId());
         AuthorInfo author = noticeAuthorDirectoryPort.getAuthor(command.authorUserId());
 
         List<NoticeAttachment> attachments = command.attachments() == null
@@ -38,7 +41,9 @@ public class CreateNoticeService implements CreateNoticeUseCase {
         Notice notice = Notice.create(author.academyId(), command.authorUserId(), command.title(),
                 command.content(), command.pinned(), attachments, LocalDateTime.now(clock));
 
-        return noticeRepository.save(notice).getId();
+        Long noticeId = noticeRepository.save(notice).getId();
+        log.info("event=notice_create_완료 authorUserId={}, noticeId={}", command.authorUserId(), noticeId);
+        return noticeId;
     }
 
     private NoticeAttachment toAttachment(NoticeAttachmentInput input) {
