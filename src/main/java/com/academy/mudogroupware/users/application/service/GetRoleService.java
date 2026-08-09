@@ -36,7 +36,7 @@ public class GetRoleService implements GetRoleUseCase {
             log.info("event=role_get_완료 roleId={}, memberCount={}", roleId, memberCount);
             return new RoleView(role, memberCount);
         } catch (RuntimeException e) {
-            log.warn("event=role_get_실패 roleId={}, academyId={}, reason={}", roleId, academyId, e.getMessage());
+            log.warn("event=role_get_실패 roleId={}, academyId={}, reason={}", roleId, academyId, e.getMessage(), e);
             throw e;
         }
     }

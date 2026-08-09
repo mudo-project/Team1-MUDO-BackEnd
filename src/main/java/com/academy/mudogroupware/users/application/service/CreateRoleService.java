@@ -39,7 +39,7 @@ public class CreateRoleService implements CreateRoleUseCase {
             return roleId;
         } catch (RuntimeException e) {
             log.warn("event=role_create_실패 academyId={}, name={}, reason={}", command.academyId(), command.name(),
-                    e.getMessage());
+                    e.getMessage(), e);
             throw e;
         }
     }

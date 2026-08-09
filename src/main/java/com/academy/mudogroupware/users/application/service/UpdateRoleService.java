@@ -38,7 +38,7 @@ public class UpdateRoleService implements UpdateRoleUseCase {
             log.info("event=role_update_완료 roleId={}", role.getId());
         } catch (RuntimeException e) {
             log.warn("event=role_update_실패 roleId={}, academyId={}, reason={}", command.roleId(),
-                    command.academyId(), e.getMessage());
+                    command.academyId(), e.getMessage(), e);
             throw e;
         }
     }

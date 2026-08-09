@@ -44,7 +44,7 @@ public class ChangeUserRoleService implements ChangeUserRoleUseCase {
             log.info("event=user_role_change_완료 userId={}, roleId={}", user.getId(), role.getId());
         } catch (RuntimeException e) {
             log.warn("event=user_role_change_실패 userId={}, roleId={}, academyId={}, reason={}", command.userId(),
-                    command.roleId(), command.academyId(), e.getMessage());
+                    command.roleId(), command.academyId(), e.getMessage(), e);
             throw e;
         }
     }

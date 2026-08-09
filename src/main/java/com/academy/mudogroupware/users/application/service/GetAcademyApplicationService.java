@@ -29,7 +29,7 @@ public class GetAcademyApplicationService implements GetAcademyApplicationUseCas
             return application;
         } catch (RuntimeException e) {
             log.warn("event=academy_application_get_실패 applicationId={}, reason={}", applicationId,
-                    e.getMessage());
+                    e.getMessage(), e);
             throw e;
         }
     }

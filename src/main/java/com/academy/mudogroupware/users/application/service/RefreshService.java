@@ -47,7 +47,7 @@ public class RefreshService implements RefreshUseCase {
             log.info("event=auth_token_reissue_완료 userId={}", user.getId());
             return accessToken;
         } catch (RuntimeException e) {
-            log.warn("event=auth_token_reissue_실패 reason={}", e.getMessage());
+            log.warn("event=auth_token_reissue_실패 reason={}", e.getMessage(), e);
             throw e;
         }
     }

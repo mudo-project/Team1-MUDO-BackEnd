@@ -44,7 +44,7 @@ public class LoginService implements LoginUseCase {
             log.info("event=auth_login_완료 username={}, userId={}", command.username(), user.getId());
             return tokenPair;
         } catch (RuntimeException e) {
-            log.warn("event=auth_login_실패 username={}, reason={}", command.username(), e.getMessage());
+            log.warn("event=auth_login_실패 username={}, reason={}", command.username(), e.getMessage(), e);
             throw e;
         }
     }

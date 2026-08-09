@@ -74,7 +74,7 @@ public class ApproveAcademyApplicationService implements ApproveAcademyApplicati
             return new ApproveAcademyApplicationResult(academy.getId(), user.getId(), temporaryPassword);
         } catch (RuntimeException e) {
             log.warn("event=academy_application_approve_실패 applicationId={}, reviewerId={}, reason={}",
-                    command.applicationId(), command.reviewerId(), e.getMessage());
+                    command.applicationId(), command.reviewerId(), e.getMessage(), e);
             throw e;
         }
     }

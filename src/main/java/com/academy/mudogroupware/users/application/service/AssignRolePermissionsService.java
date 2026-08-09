@@ -51,7 +51,7 @@ public class AssignRolePermissionsService implements AssignRolePermissionsUseCas
                     command.permissionCodes().size());
         } catch (RuntimeException e) {
             log.warn("event=role_permission_assign_실패 roleId={}, academyId={}, reason={}", command.roleId(),
-                    command.academyId(), e.getMessage());
+                    command.academyId(), e.getMessage(), e);
             throw e;
         }
     }

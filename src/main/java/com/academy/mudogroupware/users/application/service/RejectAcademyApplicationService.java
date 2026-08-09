@@ -38,7 +38,7 @@ public class RejectAcademyApplicationService implements RejectAcademyApplication
             log.info("event=academy_application_reject_완료 applicationId={}", command.applicationId());
         } catch (RuntimeException e) {
             log.warn("event=academy_application_reject_실패 applicationId={}, reviewerId={}, reason={}",
-                    command.applicationId(), command.reviewerId(), e.getMessage());
+                    command.applicationId(), command.reviewerId(), e.getMessage(), e);
             throw e;
         }
     }

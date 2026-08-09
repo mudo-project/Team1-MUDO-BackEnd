@@ -40,7 +40,7 @@ public class DeleteRoleService implements DeleteRoleUseCase {
             log.info("event=role_delete_완료 roleId={}", role.getId());
         } catch (RuntimeException e) {
             log.warn("event=role_delete_실패 roleId={}, academyId={}, reason={}", command.roleId(),
-                    command.academyId(), e.getMessage());
+                    command.academyId(), e.getMessage(), e);
             throw e;
         }
     }
