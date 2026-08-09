@@ -42,7 +42,7 @@ public class CreateMemoService implements CreateMemoUseCase {
             log.info("event=memo_create_완료 userId={}, memoId={}", command.userId(), memoId);
             return memoId;
         } catch (RuntimeException e) {
-            log.warn("event=memo_create_실패 userId={}, reason={}", command.userId(), e.getMessage());
+            log.warn("event=memo_create_실패 userId={}, reason={}", command.userId(), e.getMessage(), e);
             throw e;
         }
     }

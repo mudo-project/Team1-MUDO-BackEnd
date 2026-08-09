@@ -41,7 +41,7 @@ public class UpdateMemoPositionService implements UpdateMemoPositionUseCase {
             log.info("event=memo_position_update_완료 memoId={}, userId={}", command.memoId(), command.userId());
         } catch (RuntimeException e) {
             log.warn("event=memo_position_update_실패 memoId={}, userId={}, reason={}", command.memoId(),
-                    command.userId(), e.getMessage());
+                    command.userId(), e.getMessage(), e);
             throw e;
         }
     }

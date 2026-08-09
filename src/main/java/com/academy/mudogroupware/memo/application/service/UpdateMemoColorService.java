@@ -42,7 +42,7 @@ public class UpdateMemoColorService implements UpdateMemoColorUseCase {
                     command.userId(), memo.getColor());
         } catch (RuntimeException e) {
             log.warn("event=memo_color_update_실패 memoId={}, userId={}, reason={}", command.memoId(),
-                    command.userId(), e.getMessage());
+                    command.userId(), e.getMessage(), e);
             throw e;
         }
     }

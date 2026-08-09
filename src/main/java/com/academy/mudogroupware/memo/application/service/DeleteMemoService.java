@@ -34,7 +34,7 @@ public class DeleteMemoService implements DeleteMemoUseCase {
             log.info("event=memo_delete_완료 memoId={}, userId={}", command.memoId(), command.userId());
         } catch (RuntimeException e) {
             log.warn("event=memo_delete_실패 memoId={}, userId={}, reason={}", command.memoId(), command.userId(),
-                    e.getMessage());
+                    e.getMessage(), e);
             throw e;
         }
     }
