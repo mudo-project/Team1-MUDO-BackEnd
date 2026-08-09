@@ -16,9 +16,11 @@ import com.academy.mudogroupware.attendance.domain.repository.AttendanceRecordRe
 import com.academy.mudogroupware.attendance.domain.repository.LeaveRequestRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 @Transactional(readOnly = true)
 public class MyTodayAttendanceQueryService implements GetMyTodayAttendanceUseCase {
 
@@ -31,6 +33,7 @@ public class MyTodayAttendanceQueryService implements GetMyTodayAttendanceUseCas
 
     @Override
     public MyTodayAttendanceView getToday(Long userId, Long academyId) {
+        log.info("event=attendance_today_read_시작 userId={}, academyId={}", userId, academyId);
         LocalDateTime now = LocalDateTime.now(clock);
         LocalDate today = now.toLocalDate();
         LocalTime currentTime = now.toLocalTime();
@@ -46,7 +49,7 @@ public class MyTodayAttendanceQueryService implements GetMyTodayAttendanceUseCas
         var status = statusResolver.resolve(
                 today, schedule, record, approvedLeaves, today, currentTime);
 
-        return new MyTodayAttendanceView(
+        MyTodayAttendanceView result = new MyTodayAttendanceView(
                 today,
                 schedule.startTime(),
                 schedule.endTime(),
@@ -54,6 +57,8 @@ public class MyTodayAttendanceQueryService implements GetMyTodayAttendanceUseCas
                 toOffset(record == null ? null : record.getClockOutAt()),
                 status,
                 now.atZone(clock.getZone()).toOffsetDateTime());
+        log.info("event=attendance_today_read_완료 userId={}, academyId={}, status={}", userId, academyId, status);
+        return result;
     }
 
     private java.time.OffsetDateTime toOffset(LocalDateTime dateTime) {
