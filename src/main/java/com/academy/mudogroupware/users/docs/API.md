@@ -119,7 +119,7 @@
 | --- | --- | --- | --- |
 | `name` | String | true | 역할 이름 (같은 학원 내에서 중복 불가, 최대 50자) |
 | `description` | String | false | 역할 설명 (최대 255자) |
-| `color` | String | false | 역할 뱃지 색상. 형식 검증 없이 그대로 저장/반환합니다(프론트 책임). 안 보내면 `null` |
+| `color` | String | false | 역할 뱃지 색상. 형식 검증 없이 그대로 저장/반환합니다(프론트 책임), 최대 20자. 안 보내면 `null` |
 
 #### Response · `201 Created`
 
