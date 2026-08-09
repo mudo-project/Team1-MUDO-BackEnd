@@ -67,6 +67,7 @@ class UserRepositoryImplDataJpaTest {
         insertUserWithRole(1L, 1L, "role5-active-1", UserStatus.ACTIVE, 5L);
         insertUserWithRole(2L, 1L, "role5-active-2", UserStatus.ACTIVE, 5L);
         insertUserWithRole(3L, 1L, "role5-resigned", UserStatus.RESIGNED, 5L);
+        insertUserWithRole(6L, 1L, "role5-inactive", UserStatus.INACTIVE, 5L);
         insertUserWithRole(4L, 1L, "role7-active", UserStatus.ACTIVE, 7L);
         insertUserWithRole(5L, 1L, "role9-active-not-requested", UserStatus.ACTIVE, 9L);
 
@@ -78,6 +79,7 @@ class UserRepositoryImplDataJpaTest {
     @Test
     void countActiveByRoleIdsReturnsEmptyMapWhenNoActiveUsersForRequestedRoles() {
         insertUserWithRole(1L, 1L, "role5-resigned", UserStatus.RESIGNED, 5L);
+        insertUserWithRole(2L, 1L, "role5-inactive", UserStatus.INACTIVE, 5L);
 
         Map<Long, Long> result = userRepository.countActiveByRoleIds(Set.of(5L));
 
