@@ -12,7 +12,9 @@ import com.academy.mudogroupware.users.domain.repository.RoleRepository;
 import com.academy.mudogroupware.users.domain.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -23,15 +25,23 @@ public class DeleteRoleService implements DeleteRoleUseCase {
 
     @Override
     public void deleteRole(DeleteRoleCommand command) {
-        Role role = roleRepository.findById(command.roleId())
-                .filter(r -> r.getAcademyId().equals(command.academyId()))
-                .orElseThrow(RoleNotFoundException::new);
+        log.info("event=role_delete_시작 roleId={}, academyId={}", command.roleId(), command.academyId());
+        try {
+            Role role = roleRepository.findById(command.roleId())
+                    .filter(r -> r.getAcademyId().equals(command.academyId()))
+                    .orElseThrow(RoleNotFoundException::new);
 
-        if (userRepository.existsActiveByRoleId(role.getId())) {
-            throw new RoleInUseException();
+            if (userRepository.existsActiveByRoleId(role.getId())) {
+                throw new RoleInUseException();
+            }
+
+            userRepository.clearRoleId(role.getId());
+            roleRepository.deleteById(role.getId());
+            log.info("event=role_delete_완료 roleId={}", role.getId());
+        } catch (RuntimeException e) {
+            log.warn("event=role_delete_실패 roleId={}, academyId={}, reason={}", command.roleId(),
+                    command.academyId(), e.getMessage());
+            throw e;
         }
-
-        userRepository.clearRoleId(role.getId());
-        roleRepository.deleteById(role.getId());
     }
 }
