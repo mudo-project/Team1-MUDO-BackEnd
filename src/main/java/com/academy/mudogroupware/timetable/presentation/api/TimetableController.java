@@ -7,8 +7,10 @@ import com.academy.mudogroupware.global.presentation.security.AuthUser;
 import com.academy.mudogroupware.timetable.application.usecase.CreateTimetableSetUseCase;
 import com.academy.mudogroupware.timetable.application.usecase.GetTimetableSetUseCase;
 import com.academy.mudogroupware.timetable.application.usecase.GetTimetableSetsUseCase;
+import com.academy.mudogroupware.timetable.application.usecase.UpdateTimetableSetUseCase;
 import com.academy.mudogroupware.timetable.presentation.api.common.TimetableResponseCode;
 import com.academy.mudogroupware.timetable.presentation.api.request.CreateTimetableSetRequest;
+import com.academy.mudogroupware.timetable.presentation.api.request.UpdateTimetableSetRequest;
 import com.academy.mudogroupware.timetable.presentation.api.response.CreateTimetableSetResponse;
 import com.academy.mudogroupware.timetable.presentation.api.response.TimetableSetDetailResponse;
 import com.academy.mudogroupware.timetable.presentation.api.response.TimetableSetSummaryResponse;
@@ -24,6 +26,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -39,6 +42,7 @@ public class TimetableController {
     private final CreateTimetableSetUseCase createTimetableSetUseCase;
     private final GetTimetableSetsUseCase getTimetableSetsUseCase;
     private final GetTimetableSetUseCase getTimetableSetUseCase;
+    private final UpdateTimetableSetUseCase updateTimetableSetUseCase;
 
     @Operation(summary = "시간표 세트 생성", description = "기간·운영시간·요일·슬롯단위·강의실 구성을 지정해 새 시간표 세트를 만듭니다.")
     @ApiResponses({
@@ -83,5 +87,22 @@ public class TimetableController {
         TimetableSetDetailResponse response = TimetableSetDetailResponse.from(
                 getTimetableSetUseCase.getTimetableSet(authUser.academyId(), timetableSetId));
         return ResponseEntity.ok(GlobalApiResponse.ok(TimetableResponseCode.SET_DETAIL_RETRIEVED, response));
+    }
+
+    @Operation(summary = "시간표 세트 수정", description = "시간표 세트의 기간/운영시간/요일/슬롯단위/강의실 구성을 전체 교체합니다.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "204", description = "수정 성공"),
+        @ApiResponse(responseCode = "400", description = "요청값이 유효하지 않음"),
+        @ApiResponse(responseCode = "403", description = "TIMETABLE:MANAGE 권한이 없는 경우"),
+        @ApiResponse(responseCode = "404", description = "시간표 세트가 존재하지 않거나 다른 학원 소속인 경우")
+    })
+    @PreAuthorize("hasAuthority('TIMETABLE:MANAGE')")
+    @PatchMapping("/{timetableSetId}")
+    public ResponseEntity<Void> updateTimetableSet(
+            @AuthenticationPrincipal AuthUser authUser,
+            @PathVariable Long timetableSetId,
+            @Valid @RequestBody UpdateTimetableSetRequest request) {
+        updateTimetableSetUseCase.updateTimetableSet(request.toCommand(authUser.academyId(), timetableSetId));
+        return ResponseEntity.noContent().build();
     }
 }
