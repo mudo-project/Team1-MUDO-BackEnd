@@ -23,7 +23,9 @@ import com.academy.mudogroupware.messenger.domain.repository.ChatRoomRepository;
 import com.academy.mudogroupware.messenger.domain.repository.ChatTaskCardRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -36,40 +38,50 @@ public class TaskCardQueryService implements TaskCardQueryUseCase {
     @Override
     public TaskCardPageView getTaskCards(Long chatRoomId, Long requesterId, LocalDateTime cursorCreatedAt,
                                           Long cursorCardId, int size) {
-        if (size < 1 || size > 100) {
-            throw new MessengerException(MessengerErrorCode.INVALID_TASK_CARD_PAGE_SIZE);
+        log.info("event=task_card_list_시작 chatRoomId={}, requesterId={}", chatRoomId, requesterId);
+        try {
+            if (size < 1 || size > 100) {
+                throw new MessengerException(MessengerErrorCode.INVALID_TASK_CARD_PAGE_SIZE);
+            }
+
+            boolean cursorProvided = cursorCreatedAt != null || cursorCardId != null;
+            boolean cursorComplete = cursorCreatedAt != null && cursorCardId != null;
+            if (cursorProvided && !cursorComplete) {
+                throw new MessengerException(MessengerErrorCode.INVALID_TASK_CARD_CURSOR);
+            }
+
+            ChatRoom chatRoom = chatRoomRepository.findById(chatRoomId)
+                    .orElseThrow(() -> new MessengerException(MessengerErrorCode.CHAT_ROOM_NOT_FOUND));
+            if (!chatRoom.isMember(requesterId)) {
+                throw new MessengerException(MessengerErrorCode.NOT_ROOM_MEMBER);
+            }
+
+            List<ChatTaskCard> fetched = chatTaskCardRepository.findPage(chatRoomId, cursorCreatedAt, cursorCardId,
+                    size);
+            boolean hasNext = fetched.size() > size;
+            List<ChatTaskCard> pageCards = hasNext ? fetched.subList(0, size) : fetched;
+
+            List<Long> memberIds = pageCards.stream()
+                    .flatMap(card -> Stream.concat(Stream.of(card.getAssignerUserId()),
+                            card.getAssignees().stream().map(ChatTaskAssignee::getUserId)))
+                    .distinct()
+                    .toList();
+            Map<Long, ChatMemberInfo> members = chatMemberDirectoryPort.getMembers(memberIds);
+
+            List<TaskCardView> taskCardViews = pageCards.stream().map(card -> toView(card, members)).toList();
+
+            ChatTaskCard lastInPage = pageCards.isEmpty() ? null : pageCards.get(pageCards.size() - 1);
+            LocalDateTime nextCursorCreatedAt = hasNext ? lastInPage.getCreatedAt() : null;
+            Long nextCursorCardId = hasNext ? lastInPage.getId() : null;
+
+            log.info("event=task_card_list_완료 chatRoomId={}, requesterId={}, count={}, hasNext={}", chatRoomId,
+                    requesterId, taskCardViews.size(), hasNext);
+            return new TaskCardPageView(taskCardViews, hasNext, nextCursorCreatedAt, nextCursorCardId);
+        } catch (RuntimeException e) {
+            log.warn("event=task_card_list_실패 chatRoomId={}, requesterId={}, reason={}", chatRoomId, requesterId,
+                    e.getMessage());
+            throw e;
         }
-
-        boolean cursorProvided = cursorCreatedAt != null || cursorCardId != null;
-        boolean cursorComplete = cursorCreatedAt != null && cursorCardId != null;
-        if (cursorProvided && !cursorComplete) {
-            throw new MessengerException(MessengerErrorCode.INVALID_TASK_CARD_CURSOR);
-        }
-
-        ChatRoom chatRoom = chatRoomRepository.findById(chatRoomId)
-                .orElseThrow(() -> new MessengerException(MessengerErrorCode.CHAT_ROOM_NOT_FOUND));
-        if (!chatRoom.isMember(requesterId)) {
-            throw new MessengerException(MessengerErrorCode.NOT_ROOM_MEMBER);
-        }
-
-        List<ChatTaskCard> fetched = chatTaskCardRepository.findPage(chatRoomId, cursorCreatedAt, cursorCardId, size);
-        boolean hasNext = fetched.size() > size;
-        List<ChatTaskCard> pageCards = hasNext ? fetched.subList(0, size) : fetched;
-
-        List<Long> memberIds = pageCards.stream()
-                .flatMap(card -> Stream.concat(Stream.of(card.getAssignerUserId()),
-                        card.getAssignees().stream().map(ChatTaskAssignee::getUserId)))
-                .distinct()
-                .toList();
-        Map<Long, ChatMemberInfo> members = chatMemberDirectoryPort.getMembers(memberIds);
-
-        List<TaskCardView> taskCardViews = pageCards.stream().map(card -> toView(card, members)).toList();
-
-        ChatTaskCard lastInPage = pageCards.isEmpty() ? null : pageCards.get(pageCards.size() - 1);
-        LocalDateTime nextCursorCreatedAt = hasNext ? lastInPage.getCreatedAt() : null;
-        Long nextCursorCardId = hasNext ? lastInPage.getId() : null;
-
-        return new TaskCardPageView(taskCardViews, hasNext, nextCursorCreatedAt, nextCursorCardId);
     }
 
     private TaskCardView toView(ChatTaskCard chatTaskCard, Map<Long, ChatMemberInfo> members) {
