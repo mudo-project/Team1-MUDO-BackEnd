@@ -13,9 +13,11 @@ import com.academy.mudogroupware.workspace.domain.repository.workspace.Workspace
 import java.time.Clock;
 import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CreateTaskService implements CreateTaskUseCase {
@@ -28,6 +30,11 @@ public class CreateTaskService implements CreateTaskUseCase {
   @Override
   @Transactional
   public Long createTask(CreateTaskCommand command) {
+    log.info(
+        "event=task_create_시작 workspaceId={}, title={}",
+        command.workspaceId(),
+        command.title());
+
     // 존재 확인을 권한 확인보다 먼저 한다 (기존 워크스페이스 API와 동일한 순서).
     Workspace workspace =
         workspaceRepository
@@ -53,6 +60,10 @@ public class CreateTaskService implements CreateTaskUseCase {
         TaskStatusHistory.userChanged(
             saved.getId(), null, saved.getStatus(), command.requesterId()));
 
+    log.info(
+        "event=task_create_완료 workspaceId={}, taskId={}",
+        command.workspaceId(),
+        saved.getId());
     return saved.getId();
   }
 }
