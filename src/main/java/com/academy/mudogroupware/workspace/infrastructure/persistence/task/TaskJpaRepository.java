@@ -97,6 +97,11 @@ public interface TaskJpaRepository extends JpaRepository<TaskJpaEntity, Long> {
   @Query("select t from TaskJpaEntity t where t.id = :taskId")
   Optional<TaskJpaEntity> lockById(@Param("taskId") Long taskId);
 
+  // recurringTemplate은 ManyToOne 참조라 언더스코어로 중첩 경로를 명시한다.
+  // uk_task_recurring_template_scheduled_for 유니크 인덱스를 그대로 타서 조회 비용이 거의 없다.
+  boolean existsByRecurringTemplate_IdAndScheduledFor(
+      Long recurringTemplateId, LocalDateTime scheduledFor);
+
   // 조회 전용(락 없음). 상세 조회처럼 쓰기 락이 필요 없는 조회에서 사용한다.
   @Query("select t from TaskJpaEntity t where t.id = :taskId and t.workspace.id = :workspaceId")
   Optional<TaskJpaEntity> findByIdAndWorkspaceId(

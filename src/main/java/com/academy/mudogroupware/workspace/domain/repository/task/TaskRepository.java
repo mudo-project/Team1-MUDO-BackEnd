@@ -28,4 +28,7 @@ public interface TaskRepository {
 
   // 자동 지연 대상 반복 업무: scheduled_for < 오늘 00:00
   List<Task> findOverdueRecurringTasks(LocalDateTime startOfToday);
+
+  // 반복 업무 생성 스케줄러의 멱등성 체크: 이 회차가 이미 생성됐는지 확인한다.
+  boolean existsByRecurringTemplateIdAndScheduledFor(Long recurringTemplateId, LocalDateTime scheduledFor);
 }
