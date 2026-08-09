@@ -28,9 +28,11 @@ import com.academy.mudogroupware.attendance.domain.repository.LeaveRequestReposi
 import com.academy.mudogroupware.global.domain.common.page.PageResult;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 @Transactional(readOnly = true)
 public class WeeklyEmployeeAttendanceQueryService implements GetWeeklyEmployeeAttendanceUseCase {
 
@@ -45,6 +47,7 @@ public class WeeklyEmployeeAttendanceQueryService implements GetWeeklyEmployeeAt
     public WeeklyEmployeeAttendanceView getWeekly(
             Long requesterId, Long academyId, LocalDate date, String keyword,
             MyAttendanceDayStatus status, int page, int size) {
+        log.info("event=attendance_employee_weekly_read_시작 requesterId={}, academyId={}, date={}, page={}, size={}", requesterId, academyId, date, page, size);
         if (date == null || page < 0 || size < 1 || size > 100) {
             throw new AttendanceException(AttendanceErrorCode.INVALID_ATTENDANCE_QUERY_PERIOD);
         }
@@ -111,8 +114,10 @@ public class WeeklyEmployeeAttendanceQueryService implements GetWeeklyEmployeeAt
 
         int from = Math.min(page * size, filtered.size());
         int to = Math.min(from + size, filtered.size());
-        return new WeeklyEmployeeAttendanceView(startDate, endDate, scheduledWorkDays,
+        WeeklyEmployeeAttendanceView result = new WeeklyEmployeeAttendanceView(startDate, endDate, scheduledWorkDays,
                 PageResult.of(filtered.subList(from, to), page, size, to < filtered.size()));
+        log.info("event=attendance_employee_weekly_read_완료 academyId={}, count={}", academyId, filtered.size());
+        return result;
     }
 
     private MyAttendanceDayStatus resolveStatus(Long userId, LocalDate date,

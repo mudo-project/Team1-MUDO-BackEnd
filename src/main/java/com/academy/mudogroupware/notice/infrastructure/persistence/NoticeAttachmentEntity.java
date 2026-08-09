@@ -29,21 +29,17 @@ public class NoticeAttachmentEntity {
     @JoinColumn(name = "notice_id", nullable = false)
     private NoticeEntity notice;
 
-    @Column(name = "file_url", nullable = false, length = 500)
-    private String fileUrl;
+    @Column(name = "file_id", nullable = false)
+    private Long fileId;
 
     @Column(name = "file_name", nullable = false, length = 200)
     private String fileName;
 
-    @Column(name = "file_type", length = 50)
-    private String fileType;
-
     @Builder
-    private NoticeAttachmentEntity(Long id, String fileUrl, String fileName, String fileType) {
+    private NoticeAttachmentEntity(Long id, Long fileId, String fileName) {
         this.id = id;
-        this.fileUrl = fileUrl;
+        this.fileId = fileId;
         this.fileName = fileName;
-        this.fileType = fileType;
     }
 
     void assignNotice(NoticeEntity notice) {

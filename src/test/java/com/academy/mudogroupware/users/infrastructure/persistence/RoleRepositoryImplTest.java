@@ -54,7 +54,7 @@ class RoleRepositoryImplTest {
                 new DataIntegrityViolationException("Duplicate entry for key 'uk_role_academy_name'");
         doThrow(violation).when(jpaRepository).flush();
 
-        assertThatThrownBy(() -> adapter.updateNameAndDescription(1L, "조교", "새 설명"))
+        assertThatThrownBy(() -> adapter.updateNameAndDescription(1L, "조교", "새 설명", "#FFFFFF"))
                 .isInstanceOf(RoleNameDuplicateException.class)
                 .hasCause(violation);
     }
@@ -68,7 +68,7 @@ class RoleRepositoryImplTest {
         DataIntegrityViolationException violation = new DataIntegrityViolationException("some unrelated constraint");
         doThrow(violation).when(jpaRepository).flush();
 
-        assertThatThrownBy(() -> adapter.updateNameAndDescription(1L, "조교", "새 설명")).isSameAs(violation);
+        assertThatThrownBy(() -> adapter.updateNameAndDescription(1L, "조교", "새 설명", "#FFFFFF")).isSameAs(violation);
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.workspace.application.service.task;
 
+import com.academy.mudogroupware.global.infrastructure.logging.AfterCommitLogger;
 import com.academy.mudogroupware.workspace.application.usecase.task.DelayOverdueTasksUseCase;
 import com.academy.mudogroupware.workspace.domain.model.task.Task;
 import com.academy.mudogroupware.workspace.domain.model.task.TaskStatus;
@@ -35,10 +36,12 @@ public class DelayOverdueTasksService implements DelayOverdueTasksUseCase {
     overdueRegularTasks.forEach(task -> transitionToDelayed(task, today));
     overdueRecurringTasks.forEach(task -> transitionToDelayed(task, today));
 
-    log.info(
-        "업무 자동 지연 처리 완료: 일반 {}건, 반복 {}건",
-        overdueRegularTasks.size(),
-        overdueRecurringTasks.size());
+    AfterCommitLogger.run(
+        () ->
+            log.info(
+                "업무 자동 지연 처리 완료: 일반 {}건, 반복 {}건",
+                overdueRegularTasks.size(),
+                overdueRecurringTasks.size()));
   }
 
   private void transitionToDelayed(Task task, LocalDate today) {

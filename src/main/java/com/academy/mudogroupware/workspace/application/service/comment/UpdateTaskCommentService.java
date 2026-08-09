@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.workspace.application.service.comment;
 
+import com.academy.mudogroupware.global.infrastructure.logging.AfterCommitLogger;
 import com.academy.mudogroupware.workspace.application.command.comment.UpdateTaskCommentCommand;
 import com.academy.mudogroupware.workspace.application.usecase.comment.UpdateTaskCommentUseCase;
 import com.academy.mudogroupware.workspace.domain.exception.comment.InvalidMentionedUserException;
@@ -16,9 +17,11 @@ import com.academy.mudogroupware.workspace.domain.repository.workspace.Workspace
 import java.time.Clock;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UpdateTaskCommentService implements UpdateTaskCommentUseCase {
@@ -31,6 +34,13 @@ public class UpdateTaskCommentService implements UpdateTaskCommentUseCase {
   @Override
   @Transactional
   public TaskComment updateComment(UpdateTaskCommentCommand command) {
+    log.info(
+        "event=task_comment_update_시작 workspaceId={}, taskId={}, commentId={}, requesterId={}",
+        command.workspaceId(),
+        command.taskId(),
+        command.commentId(),
+        command.requesterId());
+
     Workspace workspace =
         workspaceRepository
             .findById(command.workspaceId())
@@ -61,6 +71,15 @@ public class UpdateTaskCommentService implements UpdateTaskCommentUseCase {
     TaskComment updated =
         comment.updateContent(command.content(), command.mentionedUserIds(), LocalDateTime.now(clock));
 
-    return taskCommentRepository.save(updated);
+    TaskComment saved = taskCommentRepository.save(updated);
+
+    AfterCommitLogger.run(
+        () ->
+            log.info(
+                "event=task_comment_update_완료 workspaceId={}, taskId={}, commentId={}",
+                command.workspaceId(),
+                command.taskId(),
+                saved.getId()));
+    return saved;
   }
 }

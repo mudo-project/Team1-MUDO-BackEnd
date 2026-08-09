@@ -2,9 +2,9 @@ package com.academy.mudogroupware.users.application.usecase;
 
 import java.util.List;
 
-import com.academy.mudogroupware.users.domain.model.Role;
+import com.academy.mudogroupware.users.application.query.RoleView;
 
 public interface ListRolesUseCase {
 
-    List<Role> listRoles(Long academyId);
+    List<RoleView> listRoles(Long academyId);
 }

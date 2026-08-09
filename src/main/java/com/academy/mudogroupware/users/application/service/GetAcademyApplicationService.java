@@ -9,7 +9,9 @@ import com.academy.mudogroupware.users.domain.model.AcademyApplication;
 import com.academy.mudogroupware.users.domain.repository.AcademyApplicationRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -19,7 +21,16 @@ public class GetAcademyApplicationService implements GetAcademyApplicationUseCas
 
     @Override
     public AcademyApplication getApplication(Long applicationId) {
-        return academyApplicationRepository.findById(applicationId)
-                .orElseThrow(AcademyApplicationNotFoundException::new);
+        log.info("event=academy_application_get_시작 applicationId={}", applicationId);
+        try {
+            AcademyApplication application = academyApplicationRepository.findById(applicationId)
+                    .orElseThrow(AcademyApplicationNotFoundException::new);
+            log.info("event=academy_application_get_완료 applicationId={}", applicationId);
+            return application;
+        } catch (RuntimeException e) {
+            log.warn("event=academy_application_get_실패 applicationId={}, reason={}", applicationId,
+                    e.getMessage(), e);
+            throw e;
+        }
     }
 }

@@ -1,4 +1,4 @@
-package com.academy.mudogroupware.file.infrastructure.approval;
+package com.academy.mudogroupware.file.infrastructure.persistence;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 

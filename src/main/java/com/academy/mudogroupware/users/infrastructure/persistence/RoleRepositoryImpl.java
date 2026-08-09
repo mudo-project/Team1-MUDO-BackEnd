@@ -38,6 +38,7 @@ public class RoleRepositoryImpl implements RoleRepository {
                 .academyId(role.getAcademyId())
                 .name(role.getName())
                 .description(role.getDescription())
+                .color(role.getColor())
                 .createdAt(role.getCreatedAt())
                 .build();
 
@@ -83,10 +84,10 @@ public class RoleRepositoryImpl implements RoleRepository {
     }
 
     @Override
-    public void updateNameAndDescription(Long roleId, String name, String description) {
+    public void updateNameAndDescription(Long roleId, String name, String description, String color) {
         RoleEntity entity = roleJpaRepository.findWithPermissionsById(roleId)
                 .orElseThrow(RoleNotFoundException::new);
-        entity.update(name, description);
+        entity.update(name, description, color);
         try {
             roleJpaRepository.flush();
         } catch (DataIntegrityViolationException exception) {
@@ -112,7 +113,7 @@ public class RoleRepositoryImpl implements RoleRepository {
 
     private Role toDomainWithoutPermissions(RoleEntity entity) {
         return Role.restore(
-                entity.getId(), entity.getAcademyId(), entity.getName(), entity.getDescription(),
+                entity.getId(), entity.getAcademyId(), entity.getName(), entity.getDescription(), entity.getColor(),
                 entity.getCreatedAt(), Set.of());
     }
 
@@ -121,7 +122,7 @@ public class RoleRepositoryImpl implements RoleRepository {
                 .map(PermissionEntity::getCode)
                 .collect(Collectors.toSet());
         return Role.restore(
-                entity.getId(), entity.getAcademyId(), entity.getName(), entity.getDescription(),
+                entity.getId(), entity.getAcademyId(), entity.getName(), entity.getDescription(), entity.getColor(),
                 entity.getCreatedAt(), permissionCodes);
     }
 

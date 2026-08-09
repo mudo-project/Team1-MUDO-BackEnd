@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.workspace.application.service.workspace;
 
+import com.academy.mudogroupware.global.infrastructure.logging.AfterCommitLogger;
 import com.academy.mudogroupware.workspace.application.command.workspace.RecoverWorkspaceCommand;
 import com.academy.mudogroupware.workspace.application.usecase.workspace.RecoverWorkspaceUseCase;
 import com.academy.mudogroupware.workspace.domain.exception.workspace.WorkspaceAccessDeniedException;
@@ -10,9 +11,11 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class RecoverWorkspaceService implements RecoverWorkspaceUseCase {
@@ -27,6 +30,11 @@ public class RecoverWorkspaceService implements RecoverWorkspaceUseCase {
   @Override
   @Transactional
   public String recover(RecoverWorkspaceCommand command) {
+    log.info(
+        "event=workspace_recover_시작 workspaceId={}, requesterId={}",
+        command.workspaceId(),
+        command.requesterId());
+
     Workspace workspace =
         workspaceRepository
             .findDeletedByIdForUpdate(command.workspaceId())
@@ -45,6 +53,13 @@ public class RecoverWorkspaceService implements RecoverWorkspaceUseCase {
 
     Workspace recovered = workspace.recover(finalName);
     workspaceRepository.recover(command.workspaceId(), recovered.getName());
+
+    AfterCommitLogger.run(
+        () ->
+            log.info(
+                "event=workspace_recover_완료 workspaceId={}, name={}",
+                command.workspaceId(),
+                recovered.getName()));
     return recovered.getName();
   }
 

@@ -1,8 +1,8 @@
 package com.academy.mudogroupware.users.application.usecase;
 
-import com.academy.mudogroupware.users.domain.model.Role;
+import com.academy.mudogroupware.users.application.query.RoleView;
 
 public interface GetRoleUseCase {
 
-    Role getRole(Long roleId, Long academyId);
+    RoleView getRole(Long roleId, Long academyId);
 }

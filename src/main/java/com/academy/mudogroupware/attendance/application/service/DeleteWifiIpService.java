@@ -11,9 +11,11 @@ import com.academy.mudogroupware.attendance.domain.repository.AcademyRepository;
 import com.academy.mudogroupware.attendance.domain.repository.AcademyWifiIpRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 @Transactional
 public class DeleteWifiIpService implements DeleteWifiIpUseCase {
 
@@ -22,12 +24,20 @@ public class DeleteWifiIpService implements DeleteWifiIpUseCase {
 
     @Override
     public void delete(Long requesterId, Long wifiIpId) {
-        OwnedAcademy academy = academyRepository.findByOwnerUserId(requesterId)
-                .orElseThrow(() -> new AttendanceException(
-                        AttendanceErrorCode.WIFI_IP_DELETION_FORBIDDEN));
+        log.info("event=attendance_wifi_ip_delete_시작 requesterId={}, wifiIpId={}", requesterId, wifiIpId);
+        try {
+            OwnedAcademy academy = academyRepository.findByOwnerUserId(requesterId)
+                    .orElseThrow(() -> new AttendanceException(
+                            AttendanceErrorCode.WIFI_IP_DELETION_FORBIDDEN));
 
-        if (!academyWifiIpRepository.deleteByIdAndAcademyId(wifiIpId, academy.id())) {
-            throw new AttendanceException(AttendanceErrorCode.WIFI_IP_NOT_FOUND);
+            if (!academyWifiIpRepository.deleteByIdAndAcademyId(wifiIpId, academy.id())) {
+                throw new AttendanceException(AttendanceErrorCode.WIFI_IP_NOT_FOUND);
+            }
+            log.info("event=attendance_wifi_ip_delete_완료 requesterId={}, wifiIpId={}", requesterId, wifiIpId);
+        } catch (RuntimeException e) {
+            log.warn("event=attendance_wifi_ip_delete_실패 requesterId={}, wifiIpId={}, reason={}",
+                    requesterId, wifiIpId, e.getMessage());
+            throw e;
         }
     }
 }

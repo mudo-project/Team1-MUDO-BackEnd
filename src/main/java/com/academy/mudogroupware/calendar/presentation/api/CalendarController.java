@@ -31,6 +31,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -42,7 +43,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-// TODO: 권한 모듈의 CALENDAR:CREATE(대표 및 대표가 허용한 권한) 검증이 준비되면 @PreAuthorize를 추가한다.
 @Tag(name = "캘린더", description = "학원 공용 캘린더 일정 관리 API")
 @RestController
 @RequestMapping("/api/calendars")
@@ -58,8 +58,10 @@ public class CalendarController {
     @Operation(summary = "일정 생성", description = "학원 공용 캘린더에 새 일정을 추가합니다.")
     @ApiResponses({
         @ApiResponse(responseCode = "201", description = "일정 생성 성공"),
-        @ApiResponse(responseCode = "400", description = "요청값이 유효하지 않음(제목 누락, 종료 시각이 시작 시각보다 이전 등)")
+        @ApiResponse(responseCode = "400", description = "요청값이 유효하지 않음(제목 누락, 종료 시각이 시작 시각보다 이전 등)"),
+        @ApiResponse(responseCode = "403", description = "CALENDAR:MANAGE 권한이 없는 경우")
     })
+    @PreAuthorize("hasAuthority('CALENDAR:MANAGE')")
     @PostMapping
     public ResponseEntity<GlobalApiResponse<CreateCalendarEventResponse>> createEvent(
             @AuthenticationPrincipal AuthUser authUser,
@@ -107,8 +109,10 @@ public class CalendarController {
     @Operation(summary = "일정 삭제", description = "일정 번호로 학원 공용 캘린더 일정을 삭제합니다.")
     @ApiResponses({
         @ApiResponse(responseCode = "204", description = "일정 삭제 성공"),
+        @ApiResponse(responseCode = "403", description = "CALENDAR:MANAGE 권한이 없는 경우"),
         @ApiResponse(responseCode = "404", description = "일정이 존재하지 않거나 다른 학원 소속인 경우")
     })
+    @PreAuthorize("hasAuthority('CALENDAR:MANAGE')")
     @DeleteMapping("/{eventId}")
     public ResponseEntity<Void> deleteEvent(
             @AuthenticationPrincipal AuthUser authUser,
@@ -121,8 +125,10 @@ public class CalendarController {
     @ApiResponses({
         @ApiResponse(responseCode = "204", description = "일정 수정 성공"),
         @ApiResponse(responseCode = "400", description = "요청값이 유효하지 않음(제목 누락, 종료 시각이 시작 시각보다 이전 등)"),
+        @ApiResponse(responseCode = "403", description = "CALENDAR:MANAGE 권한이 없는 경우"),
         @ApiResponse(responseCode = "404", description = "일정이 존재하지 않거나 다른 학원 소속인 경우")
     })
+    @PreAuthorize("hasAuthority('CALENDAR:MANAGE')")
     @PatchMapping("/{eventId}")
     public ResponseEntity<Void> updateEvent(
             @AuthenticationPrincipal AuthUser authUser,
