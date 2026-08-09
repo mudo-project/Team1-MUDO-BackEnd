@@ -49,6 +49,19 @@ public class Task {
         null, workspaceId, null, title.trim(), initialStatus, dueAt, null, creatorId, null);
   }
 
+  // 반복 업무 발생 생성. 생성 시점이 곧 발생일(scheduledFor)이라 지연 판단이 필요 없어
+  // 항상 WAITING으로 시작한다. 반복 업무는 due_at을 쓰지 않으므로 null로 둔다.
+  public static Task createRecurring(
+      Long workspaceId,
+      Long recurringTemplateId,
+      String title,
+      LocalDateTime scheduledFor,
+      Long createdBy) {
+    return new Task(
+        null, workspaceId, recurringTemplateId, title, TaskStatus.WAITING, null, scheduledFor,
+        createdBy, null);
+  }
+
   public static Task restore(
       Long id,
       Long workspaceId,
