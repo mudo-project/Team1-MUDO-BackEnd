@@ -1,7 +1,7 @@
 # Timetable 비즈니스 정책
 
 - 최초 작성일: 2026-08-09
-- 상태: 시간표 세트 생성/목록/상세/수정/삭제 API 확정. 수업 슬롯 등록/목록/상세/수정/삭제 API 확정(수정·삭제는 scope=ALL만 지원).
+- 상태: 시간표 세트 생성/목록/상세/수정/삭제 API 확정. 수업 슬롯 등록/목록/상세/수정/삭제 API 확정(수정·삭제는 scope=ALL만 지원). 내보내기(엑셀/PDF/PNG) API 확정.
 
 ## 🎯 모듈 책임
 
@@ -56,8 +56,17 @@
 - `THIS_OCCURRENCE`/`FROM_NOW`로 요청하면 `UnsupportedSlotScopeException`(400, `TIMETABLE_400_4`)을 던져 명확히 거절한다 — 조용히 무시하거나 `ALL`처럼 동작하지 않는다.
 - 이 두 범위를 지원하려면 `timetable_slot_exception` 테이블(날짜별 override/skip 기록)과 `effective_from`/`effective_until` 기간 분할 로직이 필요하며, 마이그레이션(`timetable_slot_exception`)만 미리 준비되어 있고 코드는 후속 범위다.
 
+## 📤 내보내기
+
+- 엑셀(.xlsx)/PDF(A3 가로)/PNG 3개 포맷을 지원한다. 구글 스프레드시트로 저장은 이번 범위가 아니다(Drive API 연동과 계정 결정이 필요한 별도 이슈).
+- 3개 포맷 모두 **화면 필터와 무관하게 세트 전체 슬롯**을 요일→시작시각 순으로 정렬한 표(리스트) 형태로 내보낸다. 화면에 보이는 요일×시간 시각적 그리드를 재현하지 않는다.
+- 수업종류(`ClassType`) 5개별 배경색은 프론트가 요청 파라미터(`colorClass`/`colorSpecial`/`colorClinic`/`colorStanding`/`colorExam`, 6자리 hex)로 지정하며 백엔드는 팔레트를 계산하지 않고 그대로 적용한다. 형식이 6자리 16진수가 아니면 400(`TIMETABLE_400_5`)으로 거절한다.
+- 밀도(행 높이·글자크기)는 반영하지 않는다 — 고정 레이아웃 하나만 지원한다.
+- 조회 계열과 동일하게 권한 무관, 같은 학원 소속 인증 사용자면 누구나 호출 가능하다.
+- **알려진 한계:** PNG는 `Font.SANS_SERIF` 논리 폰트를 사용하므로, 배포 환경(Linux 컨테이너)에 한글 글꼴이 없으면 한글이 정상적으로 렌더링되지 않을 수 있다.
+
 ## 🚨 예외 정책
 
 - 도메인 규칙 위반은 `TimetableErrorCode` + 에러별 이름이 드러나는 개별 예외 클래스로 던진다.
-- 사용 중인 예외: `TimetableNameRequiredException`(400), `InvalidTimetablePeriodException`(400), `DuplicateClassroomCodeException`(400), `UnsupportedSlotScopeException`(400), `TimetableSetNotFoundException`(404), `TimetableSlotNotFoundException`(404), `ClassroomTimeConflictException`(409).
+- 사용 중인 예외: `TimetableNameRequiredException`(400), `InvalidTimetablePeriodException`(400), `DuplicateClassroomCodeException`(400), `UnsupportedSlotScopeException`(400), `InvalidExportColorException`(400), `TimetableSetNotFoundException`(404), `TimetableSlotNotFoundException`(404), `ClassroomTimeConflictException`(409).
 - `docs/ERROR_HANDLING.md`의 표준 패턴을 따르며, `calendar`/`google` 도메인과 동일한 방식이다.
