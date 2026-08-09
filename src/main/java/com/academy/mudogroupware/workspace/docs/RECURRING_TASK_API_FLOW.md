@@ -130,6 +130,8 @@ Compact Constructor에서 `title`이 있으면 미리 trim한다. 검증을 통�
 
 `RecurringTaskTemplateRepository.save`는 `id`가 있으므로 `RecurringTaskTemplatePersistenceAdapter`가 기존 엔티티를 조회해 `changeRecurrence`로 갱신한다(생성과 같은 `save` 메서드, 분기만 다름). 성공하면 Controller가 `GlobalApiResponse.ok(WorkspaceResponseCode.RECURRING_TEMPLATE_UPDATED, ...)`로 HTTP `200 OK`와 반영된 `templateId`·`title`·`recurrenceType`·`recurrenceRule`을 반환한다.
 
+---
+
 ## 🗑️ 반복 업무 템플릿 삭제 API 흐름
 
 ```text

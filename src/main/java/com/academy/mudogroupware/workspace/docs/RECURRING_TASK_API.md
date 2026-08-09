@@ -307,5 +307,5 @@ DELETE /api/workspaces/{workspaceId}/recurring-templates/{templateId}
 ## 참고 문서
 
 - [TASK_API.md](TASK_API.md) — 업무(Task) API 명세
-- [RECURRING_TASK_API_FLOW.md](RECURRING_TASK_API_FLOW.md) — 반복 업무 템플릿 생성·목록 조회·수정 API 호출 흐름
+- [RECURRING_TASK_API_FLOW.md](RECURRING_TASK_API_FLOW.md) — 반복 업무 템플릿 생성·목록 조회·수정·삭제 API 호출 흐름
 - [BUSINESS_RULES.md](BUSINESS_RULES.md) — 업무 상태 결정·전이 규칙

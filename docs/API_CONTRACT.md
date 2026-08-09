@@ -103,6 +103,8 @@ Authorization: Bearer {accessToken}
 
 - `204 No Content` 응답에는 응답 본문을 포함하지 않는다.
 
+> **예외: workspace 도메인 삭제 API.** workspace 도메인의 삭제 API 5종은 `204 No Content` 대신 `200 OK` + `GlobalApiResponse` 본문(성공 코드·메시지 포함)을 반환한다. 호출자가 응답 본문만으로 어떤 작업이 성공했는지 구분할 수 있게 하기 위한 의도적인 예외이며, 다른 도메인의 삭제 API는 계속 `204 No Content` 규칙을 따른다.
+
 ### Controller 응답 조립
 
 - 모든 응답 본문은 `global.presentation.api.common.GlobalApiResponse`를 사용한다. 도메인별 공통 응답 Wrapper를 중복 생성하지 않는다.
