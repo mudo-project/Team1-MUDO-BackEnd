@@ -45,7 +45,7 @@ public class PngTimetableExportRenderer implements TimetableExportRenderer {
             g.fillRect(0, 0, totalWidth, totalHeight);
 
             g.setColor(Color.BLACK);
-            g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 16));
+            g.setFont(TimetableExportFonts.AWT_BOLD.deriveFont(16f));
             g.drawString(timetableSetName, 8, TITLE_HEIGHT - 8);
 
             int y = TITLE_HEIGHT;
@@ -79,7 +79,8 @@ public class PngTimetableExportRenderer implements TimetableExportRenderer {
 
     private void drawRow(Graphics2D g, int y, int height, String[] values, Color background, boolean bold) {
         int x = 0;
-        g.setFont(new Font(Font.SANS_SERIF, bold ? Font.BOLD : Font.PLAIN, 13));
+        Font baseFont = bold ? TimetableExportFonts.AWT_BOLD : TimetableExportFonts.AWT_REGULAR;
+        g.setFont(baseFont.deriveFont(13f));
         for (int i = 0; i < values.length; i++) {
             g.setColor(background);
             g.fillRect(x, y, COLUMN_WIDTHS[i], height);
