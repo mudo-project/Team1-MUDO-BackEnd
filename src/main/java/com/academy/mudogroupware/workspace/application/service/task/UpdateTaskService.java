@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.workspace.application.service.task;
 
+import com.academy.mudogroupware.global.infrastructure.logging.AfterCommitLogger;
 import com.academy.mudogroupware.workspace.application.command.task.UpdateTaskCommand;
 import com.academy.mudogroupware.workspace.application.usecase.task.UpdateTaskUseCase;
 import com.academy.mudogroupware.workspace.domain.exception.task.TaskNotFoundException;
@@ -15,9 +16,11 @@ import com.academy.mudogroupware.workspace.domain.repository.workspace.Workspace
 import java.time.Clock;
 import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UpdateTaskService implements UpdateTaskUseCase {
@@ -30,6 +33,12 @@ public class UpdateTaskService implements UpdateTaskUseCase {
   @Override
   @Transactional
   public Task updateTask(UpdateTaskCommand command) {
+    log.info(
+        "event=task_update_시작 workspaceId={}, taskId={}, requesterId={}",
+        command.workspaceId(),
+        command.taskId(),
+        command.requesterId());
+
     Workspace workspace =
         workspaceRepository
             .findById(command.workspaceId())
@@ -63,6 +72,13 @@ public class UpdateTaskService implements UpdateTaskUseCase {
               saved.getId(), previousStatus, saved.getStatus(), command.requesterId()));
     }
 
+    AfterCommitLogger.run(
+        () ->
+            log.info(
+                "event=task_update_완료 workspaceId={}, taskId={}, status={}",
+                command.workspaceId(),
+                command.taskId(),
+                saved.getStatus()));
     return saved;
   }
 }

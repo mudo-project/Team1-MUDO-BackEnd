@@ -11,9 +11,11 @@ import com.academy.mudogroupware.workspace.domain.repository.task.RecurringTaskS
 import com.academy.mudogroupware.workspace.domain.repository.task.TaskRepository;
 import com.academy.mudogroupware.workspace.domain.repository.workspace.WorkspaceRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class DeleteTaskService implements DeleteTaskUseCase {
@@ -25,6 +27,12 @@ public class DeleteTaskService implements DeleteTaskUseCase {
   @Override
   @Transactional
   public void deleteTask(DeleteTaskCommand command) {
+    log.info(
+        "event=task_delete_시작 workspaceId={}, taskId={}, requesterId={}",
+        command.workspaceId(),
+        command.taskId(),
+        command.requesterId());
+
     Workspace workspace =
         workspaceRepository
             .findById(command.workspaceId())
