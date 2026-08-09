@@ -11,9 +11,11 @@ import com.academy.mudogroupware.workspace.domain.repository.workspace.Workspace
 import java.util.LinkedHashSet;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AddWorkspaceMembersService implements AddWorkspaceMembersUseCase {
@@ -24,6 +26,8 @@ public class AddWorkspaceMembersService implements AddWorkspaceMembersUseCase {
   @Override
   @Transactional
   public Set<Long> addMembers(AddWorkspaceMembersCommand command) {
+    log.info("event=workspace_member_add_시작 workspaceId={}", command.workspaceId());
+
     Workspace workspace =
         workspaceRepository
             .findByIdForUpdate(command.workspaceId())
@@ -47,6 +51,11 @@ public class AddWorkspaceMembersService implements AddWorkspaceMembersUseCase {
 
     Workspace updated = workspace.addMembers(newIds);
     workspaceRepository.updateMembers(command.workspaceId(), updated.getMemberIds());
+
+    log.info(
+        "event=workspace_member_add_완료 workspaceId={}, addedCount={}",
+        command.workspaceId(),
+        newIds.size());
     return newIds;
   }
 }
