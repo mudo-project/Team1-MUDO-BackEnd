@@ -1,5 +1,11 @@
 # 📚 Notice Changelog
 
+## 2026-08-09 · 첨부파일 참조 방식을 fileUrl → fileId로 통일
+
+- `notice_attachment`의 `file_url`/`file_type` 컬럼을 제거하고 `file_id`(공유 `file_metadata` 참조, FK)를 추가했다(`V1.5.5`).
+- 이전엔 프론트가 `fileUrl`을 직접 채워서 보내야 했는데, 파일을 업로드해서 URL을 받는 API 자체가 없어 실제로 채울 수 없는 값이었다. approval의 `fileIds`와 동일하게 `file` 모듈에서 발급하는 `fileId`를 참조하도록 통일했다 (`POST /api/files/presigned-url` → S3 업로드 → `POST /api/files`로 fileId 발급).
+- `NoticeAttachmentRequest`/`NoticeAttachmentResponse`에서 `fileUrl`/`fileType` 필드를 제거하고 `fileId`를 추가했다. 다운로드 URL이 필요하면 `GET /api/files/{fileId}/download-url`을 별도로 호출한다.
+
 ## 2026-08-08 · 공지 권한 정책 반영
 
 - 공지 작성/수정은 `NOTICE:WRITE` 권한으로 제한했습니다.

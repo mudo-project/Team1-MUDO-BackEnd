@@ -3,44 +3,38 @@ package com.academy.mudogroupware.notice.domain.model;
 public final class NoticeAttachment {
 
     private final Long id;
-    private final String fileUrl;
+    private final Long fileId;
     private final String fileName;
-    private final String fileType;
 
-    private NoticeAttachment(Long id, String fileUrl, String fileName, String fileType) {
-        if (fileUrl == null || fileUrl.isBlank()) {
-            throw new IllegalArgumentException("fileUrl must not be blank");
+    private NoticeAttachment(Long id, Long fileId, String fileName) {
+        if (fileId == null) {
+            throw new IllegalArgumentException("fileId must not be null");
         }
         if (fileName == null || fileName.isBlank()) {
             throw new IllegalArgumentException("fileName must not be blank");
         }
         this.id = id;
-        this.fileUrl = fileUrl;
+        this.fileId = fileId;
         this.fileName = fileName;
-        this.fileType = fileType;
     }
 
-    public static NoticeAttachment create(String fileUrl, String fileName, String fileType) {
-        return new NoticeAttachment(null, fileUrl, fileName, fileType);
+    public static NoticeAttachment create(Long fileId, String fileName) {
+        return new NoticeAttachment(null, fileId, fileName);
     }
 
-    public static NoticeAttachment restore(Long id, String fileUrl, String fileName, String fileType) {
-        return new NoticeAttachment(id, fileUrl, fileName, fileType);
+    public static NoticeAttachment restore(Long id, Long fileId, String fileName) {
+        return new NoticeAttachment(id, fileId, fileName);
     }
 
     public Long getId() {
         return id;
     }
 
-    public String getFileUrl() {
-        return fileUrl;
+    public Long getFileId() {
+        return fileId;
     }
 
     public String getFileName() {
         return fileName;
-    }
-
-    public String getFileType() {
-        return fileType;
     }
 }

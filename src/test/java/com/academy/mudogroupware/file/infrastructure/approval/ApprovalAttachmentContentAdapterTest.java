@@ -12,6 +12,8 @@ import org.junit.jupiter.api.Test;
 
 import com.academy.mudogroupware.approval.application.port.AttachmentContentUnavailableException;
 import com.academy.mudogroupware.file.domain.repository.FileStoragePort;
+import com.academy.mudogroupware.file.infrastructure.persistence.FileMetadataEntity;
+import com.academy.mudogroupware.file.infrastructure.persistence.FileMetadataJpaRepository;
 
 class ApprovalAttachmentContentAdapterTest {
 
