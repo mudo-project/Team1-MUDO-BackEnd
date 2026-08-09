@@ -4,13 +4,14 @@ import java.awt.Color;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.FillPatternType;
+import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.util.WorkbookUtil;
@@ -20,12 +21,15 @@ import org.springframework.stereotype.Component;
 
 import com.academy.mudogroupware.timetable.application.port.TimetableExportRenderer;
 import com.academy.mudogroupware.timetable.application.query.TimetableSlotView;
-import com.academy.mudogroupware.timetable.domain.model.ClassType;
 import com.academy.mudogroupware.timetable.domain.model.TimetableExportColor;
 import com.academy.mudogroupware.timetable.domain.model.TimetableExportFormat;
+import com.academy.mudogroupware.timetable.domain.model.TimetableExportOptions;
 
 @Component
 public class ExcelTimetableExportRenderer implements TimetableExportRenderer {
+
+    // 화면 밀도(px 기준)를 엑셀 포인트 단위로 환산하는 근사치(1pt ≈ 1.333px).
+    private static final float PX_TO_POINT = 0.75f;
 
     @Override
     public boolean supports(TimetableExportFormat format) {
@@ -34,13 +38,15 @@ public class ExcelTimetableExportRenderer implements TimetableExportRenderer {
 
     @Override
     public byte[] render(String timetableSetName, List<TimetableSlotView> sortedSlots,
-                          Map<ClassType, TimetableExportColor> colorsByClassType) {
+                          TimetableExportOptions options) {
         try (XSSFWorkbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Sheet sheet = workbook.createSheet(safeSheetName(timetableSetName));
-            Map<ClassType, CellStyle> stylesByClassType = buildStyles(workbook, colorsByClassType);
+            Font font = buildFont(workbook, options);
+            float rowHeightPoints = options.density().rowHeightPx() * PX_TO_POINT;
+            Map<String, CellStyle> stylesByColorKey = new HashMap<>();
 
-            writeHeader(sheet);
-            writeRows(sheet, sortedSlots, stylesByClassType);
+            writeHeader(sheet, font, rowHeightPoints);
+            writeRows(sheet, sortedSlots, options, font, rowHeightPoints, workbook, stylesByColorKey);
 
             workbook.write(out);
             return out.toByteArray();
@@ -53,42 +59,52 @@ public class ExcelTimetableExportRenderer implements TimetableExportRenderer {
         return WorkbookUtil.createSafeSheetName(name);
     }
 
-    private Map<ClassType, CellStyle> buildStyles(XSSFWorkbook workbook,
-                                                   Map<ClassType, TimetableExportColor> colorsByClassType) {
-        Map<ClassType, CellStyle> styles = new EnumMap<>(ClassType.class);
-        for (Map.Entry<ClassType, TimetableExportColor> entry : colorsByClassType.entrySet()) {
-            CellStyle style = workbook.createCellStyle();
-            style.setFillForegroundColor(new XSSFColor(toAwtColor(entry.getValue()), null));
-            style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-            styles.put(entry.getKey(), style);
+    private Font buildFont(XSSFWorkbook workbook, TimetableExportOptions options) {
+        Font font = workbook.createFont();
+        font.setFontHeightInPoints((short) Math.round(options.density().fontSize()));
+        return font;
+    }
+
+    private void writeHeader(Sheet sheet, Font font, float rowHeightPoints) {
+        Row header = sheet.createRow(0);
+        header.setHeightInPoints(rowHeightPoints);
+        CellStyle headerStyle = sheet.getWorkbook().createCellStyle();
+        headerStyle.setFont(font);
+        for (int i = 0; i < TimetableExportLabels.HEADERS.length; i++) {
+            Cell cell = header.createCell(i);
+            cell.setCellValue(TimetableExportLabels.HEADERS[i]);
+            cell.setCellStyle(headerStyle);
         }
-        return styles;
+    }
+
+    private void writeRows(Sheet sheet, List<TimetableSlotView> slots, TimetableExportOptions options, Font font,
+                            float rowHeightPoints, XSSFWorkbook workbook, Map<String, CellStyle> stylesByColorKey) {
+        int rowIndex = 1;
+        for (TimetableSlotView slot : slots) {
+            Row row = sheet.createRow(rowIndex++);
+            row.setHeightInPoints(rowHeightPoints);
+            String[] values = TimetableExportLabels.toRow(slot);
+            TimetableExportColor color = options.colorFor(slot.classroomCode(), slot.teacherName(), slot.grade());
+            CellStyle style = stylesByColorKey.computeIfAbsent(
+                    color.red() + "," + color.green() + "," + color.blue(),
+                    key -> buildStyle(workbook, font, color));
+            for (int i = 0; i < values.length; i++) {
+                Cell cell = row.createCell(i);
+                cell.setCellValue(values[i]);
+                cell.setCellStyle(style);
+            }
+        }
+    }
+
+    private CellStyle buildStyle(XSSFWorkbook workbook, Font font, TimetableExportColor color) {
+        CellStyle style = workbook.createCellStyle();
+        style.setFont(font);
+        style.setFillForegroundColor(new XSSFColor(toAwtColor(color), null));
+        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        return style;
     }
 
     private Color toAwtColor(TimetableExportColor color) {
         return new Color(color.red(), color.green(), color.blue());
-    }
-
-    private void writeHeader(Sheet sheet) {
-        Row header = sheet.createRow(0);
-        for (int i = 0; i < TimetableExportLabels.HEADERS.length; i++) {
-            header.createCell(i).setCellValue(TimetableExportLabels.HEADERS[i]);
-        }
-    }
-
-    private void writeRows(Sheet sheet, List<TimetableSlotView> slots, Map<ClassType, CellStyle> stylesByClassType) {
-        int rowIndex = 1;
-        for (TimetableSlotView slot : slots) {
-            Row row = sheet.createRow(rowIndex++);
-            String[] values = TimetableExportLabels.toRow(slot);
-            CellStyle style = stylesByClassType.get(slot.classType());
-            for (int i = 0; i < values.length; i++) {
-                Cell cell = row.createCell(i);
-                cell.setCellValue(values[i]);
-                if (style != null) {
-                    cell.setCellStyle(style);
-                }
-            }
-        }
     }
 }
