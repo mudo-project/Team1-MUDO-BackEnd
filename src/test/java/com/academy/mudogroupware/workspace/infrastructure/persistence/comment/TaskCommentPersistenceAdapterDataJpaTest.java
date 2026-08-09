@@ -10,6 +10,7 @@ import com.academy.mudogroupware.workspace.infrastructure.persistence.task.TaskJ
 import com.academy.mudogroupware.workspace.infrastructure.persistence.task.TaskJpaRepository;
 import com.academy.mudogroupware.workspace.infrastructure.persistence.workspace.WorkspaceJpaEntity;
 import com.academy.mudogroupware.workspace.infrastructure.persistence.workspace.WorkspaceJpaRepository;
+import jakarta.persistence.EntityManager;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -18,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 @DataJpaTest(properties = "spring.jpa.hibernate.ddl-auto=create-drop")
 @Import(TimeConfig.class)
@@ -27,6 +29,8 @@ class TaskCommentPersistenceAdapterDataJpaTest {
   @Autowired private TaskJpaRepository taskJpaRepository;
   @Autowired private TaskCommentJpaRepository taskCommentJpaRepository;
   @Autowired private TaskCommentMentionJpaRepository taskCommentMentionJpaRepository;
+  @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private EntityManager entityManager;
 
   private TaskCommentPersistenceAdapter adapter() {
     return new TaskCommentPersistenceAdapter(
@@ -96,11 +100,18 @@ class TaskCommentPersistenceAdapterDataJpaTest {
 
   @Test
   void findAllByTaskIdReturnsOldestFirstWithinPageSize() {
+    // TaskCommentJpaEntity.create()는 createdAt을 받지 않고 @CreatedDate가 실제 저장 시각을 찍으므로,
+    // "먼저 저장"과 "의도한 createdAt"이 실제로 어긋나도 정렬이 createdAt을 기준으로 동작하는지
+    // 검증하기 위해 insertion 순서를 의도한 시간 순서와 반대로 만들고, 저장 후 created_at을
+    // jdbcTemplate으로 직접 덮어써서 id 순서와 createdAt 순서가 어긋나게 만든다.
     Long taskId = givenTaskId();
-    TaskComment older = adapter().save(
-        TaskComment.create(taskId, 10L, "먼저 쓴 댓글", List.of(), LocalDateTime.of(2026, 8, 1, 16, 0)));
     TaskComment newer = adapter().save(
         TaskComment.create(taskId, 10L, "나중에 쓴 댓글", List.of(), LocalDateTime.of(2026, 8, 2, 18, 0)));
+    TaskComment older = adapter().save(
+        TaskComment.create(taskId, 10L, "먼저 쓴 댓글", List.of(), LocalDateTime.of(2026, 8, 1, 16, 0)));
+    overwriteCreatedAt(older.getId(), LocalDateTime.of(2026, 8, 1, 16, 0));
+    overwriteCreatedAt(newer.getId(), LocalDateTime.of(2026, 8, 2, 18, 0));
+    entityManager.clear();
 
     PageResult<TaskComment> firstPage = adapter().findAllByTaskId(taskId, 0, 1);
 
@@ -110,6 +121,11 @@ class TaskCommentPersistenceAdapterDataJpaTest {
     PageResult<TaskComment> secondPage = adapter().findAllByTaskId(taskId, 1, 1);
     assertThat(secondPage.content()).extracting(TaskComment::getId).containsExactly(newer.getId());
     assertThat(secondPage.hasNext()).isFalse();
+  }
+
+  private void overwriteCreatedAt(Long commentId, LocalDateTime createdAt) {
+    jdbcTemplate.update(
+        "update task_comment set created_at = ? where comment_id = ?", createdAt, commentId);
   }
 
   @Test

@@ -188,6 +188,7 @@ class WorkspaceTaskControllerTest {
         .andExpect(jsonPath("$.data.title").value("성적 데이터 7월분 엑셀 정리"))
         .andExpect(jsonPath("$.data.creator.userId").value(10))
         .andExpect(jsonPath("$.data.creator.name").value("윤예진"))
+        .andExpect(jsonPath("$.data.createdAt").value("2026-07-29T09:30:00"))
         .andExpect(jsonPath("$.data.status").value("IN_PROGRESS"))
         .andExpect(jsonPath("$.data.dueAt").value("2026-08-05"))
         .andExpect(jsonPath("$.data.lastStatusChangedAt").value("2026-08-02T09:00:00"));

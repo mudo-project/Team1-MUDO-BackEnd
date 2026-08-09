@@ -23,10 +23,13 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -42,6 +45,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/workspaces/{workspaceId}/tasks/{taskId}/comments")
 @RequiredArgsConstructor
+@Validated
 public class WorkspaceTaskCommentController {
 
   private final CreateTaskCommentUseCase createTaskCommentUseCase;
@@ -86,8 +90,8 @@ public class WorkspaceTaskCommentController {
       @AuthenticationPrincipal AuthUser authUser,
       @PathVariable Long workspaceId,
       @PathVariable Long taskId,
-      @RequestParam(defaultValue = "0") int page,
-      @RequestParam(defaultValue = "20") int size) {
+      @RequestParam(defaultValue = "0") @Min(0) int page,
+      @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
     PageResult<TaskCommentListItem> comments =
         taskCommentListQueryUseCase.getComments(workspaceId, taskId, authUser.userId(), page, size);
     SliceResponse<TaskCommentListItemResponse> response =

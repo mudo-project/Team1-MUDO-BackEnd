@@ -133,9 +133,40 @@ class WorkspaceTaskCommentControllerTest {
         .andExpect(jsonPath("$.data.content[0].content").value("수학A반 완료"))
         .andExpect(jsonPath("$.data.content[0].author.name").value("윤예진"))
         .andExpect(jsonPath("$.data.content[0].completed").value(true))
+        .andExpect(jsonPath("$.data.content[0].createdAt").value("2026-08-01T16:00:00"))
         .andExpect(jsonPath("$.data.page").value(0))
         .andExpect(jsonPath("$.data.size").value(20))
         .andExpect(jsonPath("$.data.hasNext").value(false));
+  }
+
+  @Test
+  void getCommentsRejectsNegativePage() throws Exception {
+    mockMvc
+        .perform(
+            get("/api/workspaces/1/tasks/101/comments?page=-1").with(authentication(auth())))
+        .andExpect(status().isBadRequest());
+
+    verifyNoInteractions(taskCommentListQueryUseCase);
+  }
+
+  @Test
+  void getCommentsRejectsZeroSize() throws Exception {
+    mockMvc
+        .perform(
+            get("/api/workspaces/1/tasks/101/comments?size=0").with(authentication(auth())))
+        .andExpect(status().isBadRequest());
+
+    verifyNoInteractions(taskCommentListQueryUseCase);
+  }
+
+  @Test
+  void getCommentsRejectsSizeAbove100() throws Exception {
+    mockMvc
+        .perform(
+            get("/api/workspaces/1/tasks/101/comments?size=101").with(authentication(auth())))
+        .andExpect(status().isBadRequest());
+
+    verifyNoInteractions(taskCommentListQueryUseCase);
   }
 
   @Test
