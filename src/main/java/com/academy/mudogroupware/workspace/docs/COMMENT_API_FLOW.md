@@ -47,6 +47,49 @@ POST /api/workspaces/{workspaceId}/tasks/{taskId}/comments
 
 성공하면 Controller가 `GlobalApiResponse.created(WorkspaceResponseCode.TASK_COMMENT_CREATED, ...)`로 HTTP `201 Created`와 `TaskCommentResponse`(댓글 전체 필드 + `mentionedUserIds`)를 반환한다.
 
+## 🔍 댓글 목록 조회 API 흐름
+
+```text
+GET /api/workspaces/{workspaceId}/tasks/{taskId}/comments?page=&size=
+  → Security Filter
+  → AuthUser
+  → WorkspaceTaskCommentController (@Validated, page @Min(0), size @Min(1) @Max(100))
+  → TaskCommentListQueryUseCase
+  → TaskCommentListQueryService @Transactional(readOnly = true)
+  → WorkspaceRepository.findById (락 없음)
+  → WorkspacePersistenceAdapter
+  → TaskRepository.findById (락 없음, 워크스페이스 범위)
+  → TaskPersistenceAdapter
+  → TaskCommentRepository.findAllByTaskId (페이지네이션, createdAt asc·id asc)
+  → TaskCommentPersistenceAdapter
+  → WorkspaceUserInfoPort.findUserInfo (작성자 이름 일괄 조회)
+  → WorkspaceUserInfoAdapter (users 도메인)
+```
+
+### 1. 페이지 파라미터 검증
+
+`page`(`@Min(0)`)·`size`(`@Min(1) @Max(100)`)를 컨트롤러에서 Bean Validation으로 먼저 검증한다. 검증에 실패하면 `ConstraintViolationException` → `GlobalExceptionHandler`가 `400 COMMON_400_1`로 응답한다(검증 없이 `PageRequest.of()`에 그대로 넘기면 `IllegalArgumentException`이 처리되지 않아 `500`으로 새어나간다).
+
+### 2. 워크스페이스 존재 확인과 참여자 검증
+
+다른 Task/Comment API와 동일한 순서 — 존재 확인(`404_1`) → 참여자 확인(`403_1`).
+
+### 3. 업무 조회 (락 없음)
+
+`TaskRepository.findById(workspaceId, taskId)`로 업무 소속을 확인한다. 다른 워크스페이스 소속이거나 없는 taskId는 `TaskNotFoundException`(`404_3`).
+
+### 4. 댓글 페이지 조회
+
+`TaskCommentRepository.findAllByTaskId(taskId, page, size)`가 `createdAt asc, id asc`(tie-break) 정렬로 `PageResult<TaskComment>`를 반환한다. 멘션 목록은 이 조회에서 채우지 않는다(목록 응답에 불필요).
+
+### 5. 작성자 이름 일괄 조회
+
+페이지에 담긴 모든 댓글의 `authorId`를 `Set`으로 모아 `WorkspaceUserInfoPort.findUserInfo(...)`를 **한 번만** 호출한다(N+1 방지). `PageResult.map(...)`으로 `TaskComment` → `TaskCommentListItem`(이름 해석 완료)으로 변환한다.
+
+### 6. 응답
+
+성공하면 Controller가 `SliceResponse.from(...)`으로 `PageResult`를 `content`/`page`/`size`/`hasNext` 4필드 응답으로 조립하고, `GlobalApiResponse.ok(WorkspaceResponseCode.TASK_COMMENT_LIST_RETRIEVED, ...)`로 `200 OK`를 반환한다.
+
 ## ✏️ 댓글 수정 API 흐름
 
 ```text
