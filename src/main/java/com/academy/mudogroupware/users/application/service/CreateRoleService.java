@@ -28,7 +28,8 @@ public class CreateRoleService implements CreateRoleUseCase {
             throw new RoleNameDuplicateException();
         }
 
-        Role role = Role.create(command.academyId(), command.name(), command.description(), LocalDateTime.now(clock));
+        Role role = Role.create(command.academyId(), command.name(), command.description(), command.color(),
+                LocalDateTime.now(clock));
         return roleRepository.save(role).getId();
     }
 }

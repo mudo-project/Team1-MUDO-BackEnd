@@ -69,10 +69,11 @@ class RoleRepositoryImplDataJpaTest {
     void updateNameAndDescriptionUpdatesManagedEntity() {
         Role saved = roleRepository.save(Role.create(1L, "강사", "설명", LocalDateTime.now()));
 
-        roleRepository.updateNameAndDescription(saved.getId(), "조교", "새 설명");
+        roleRepository.updateNameAndDescription(saved.getId(), "조교", "새 설명", "#FFFFFF");
         Role found = roleRepository.findById(saved.getId()).orElseThrow();
 
         assertThat(found.getName()).isEqualTo("조교");
         assertThat(found.getDescription()).isEqualTo("새 설명");
+        assertThat(found.getColor()).isEqualTo("#FFFFFF");
     }
 }

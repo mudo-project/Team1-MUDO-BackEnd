@@ -26,6 +26,7 @@ public class JwtAuthenticationConverter {
 
   public Authentication toAuthentication(JwtClaims c) {
     boolean isPlatformAdmin = c.accountType() == AccountType.ADMIN && c.adminScope() == AdminScope.PLATFORM;
+    boolean isAcademyOwner = c.accountType() == AccountType.ADMIN && c.adminScope() == AdminScope.ACADEMY;
     RolePermissionInfo info = isPlatformAdmin
         ? new RolePermissionInfo("SUPER_ADMIN", platformAdminPermissionPort.allPermissionCodes())
         : rolePermissionLookupPort.lookup(c.roleId());
@@ -35,6 +36,9 @@ public class JwtAuthenticationConverter {
         info.permissionCodes().stream().map(SimpleGrantedAuthority::new).toList());
     if (isPlatformAdmin) {
       authorities.add(new SimpleGrantedAuthority("PLATFORM:SUPER_ADMIN"));
+    }
+    if (isAcademyOwner) {
+      authorities.add(new SimpleGrantedAuthority("ACADEMY:OWNER"));
     }
     return new UsernamePasswordAuthenticationToken(p, null, authorities);
   }

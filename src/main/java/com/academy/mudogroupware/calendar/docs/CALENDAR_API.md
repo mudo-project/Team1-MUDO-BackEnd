@@ -9,8 +9,7 @@
 ### 인증 및 권한
 
 - `Authorization: Bearer {accessToken}` 헤더가 필요하다.
-- 현재 구현은 인증된 사용자라면 호출할 수 있다.
-- 기능명세서상 "대표와 대표가 허용한 권한"은 `users.role` 값 체계 확정 후 `@PreAuthorize`로 적용 예정이며, 지금은 `CalendarController`에 TODO로 남긴다.
+- `CALENDAR:MANAGE` 권한을 보유한 사용자(원장 또는 원장이 권한을 부여한 구성원)만 호출할 수 있다. `CalendarController`의 `@PreAuthorize("hasAuthority('CALENDAR:MANAGE')")`로 검증한다.
 
 ### Request Header
 
@@ -71,6 +70,7 @@ HTTP `201 Created`
 | `400 Bad Request` | `CALENDAR_400_1` | 도메인 검증에서 `title`이 공백으로 판정된 경우 |
 | `400 Bad Request` | `CALENDAR_400_2` | `eventEndAt`이 `eventStartAt`보다 이전인 경우 |
 | `401 Unauthorized` | `COMMON_401_1` | Access Token이 없거나 유효하지 않은 경우 |
+| `403 Forbidden` | `COMMON_403_1` | `CALENDAR:MANAGE` 권한이 없는 경우 |
 | `500 Internal Server Error` | `COMMON_500_1` | 처리되지 않은 서버 오류 |
 
 ### Business Rules
@@ -170,8 +170,7 @@ HTTP `200 OK`
 ### 인증 및 권한
 
 - `Authorization: Bearer {accessToken}` 헤더가 필요하다.
-- 현재 구현은 인증된 사용자라면 호출할 수 있다.
-- 기능명세서상 "대표와 대표가 허용한 권한"은 `users.role` 값 체계 확정 후 `@PreAuthorize`로 적용 예정이며, 지금은 `CalendarController`에 TODO로 남긴다.
+- `CALENDAR:MANAGE` 권한을 보유한 사용자(원장 또는 원장이 권한을 부여한 구성원)만 호출할 수 있다. `CalendarController`의 `@PreAuthorize("hasAuthority('CALENDAR:MANAGE')")`로 검증한다.
 
 ### Request Header
 
@@ -222,6 +221,7 @@ HTTP `204 No Content` (응답 본문 없음)
 | `400 Bad Request` | `CALENDAR_400_1` | 도메인 검증에서 `title`이 공백으로 판정된 경우 |
 | `400 Bad Request` | `CALENDAR_400_2` | `eventEndAt`이 `eventStartAt`보다 이전인 경우 |
 | `401 Unauthorized` | `COMMON_401_1` | Access Token이 없거나 유효하지 않은 경우 |
+| `403 Forbidden` | `COMMON_403_1` | `CALENDAR:MANAGE` 권한이 없는 경우 |
 | `404 Not Found` | `CALENDAR_404_1` | 일정이 존재하지 않거나 다른 학원 소속인 경우 |
 | `500 Internal Server Error` | `COMMON_500_1` | 처리되지 않은 서버 오류 |
 
@@ -301,8 +301,7 @@ HTTP `200 OK`
 ### 인증 및 권한
 
 - `Authorization: Bearer {accessToken}` 헤더가 필요하다.
-- 현재 구현은 인증된 사용자라면 호출할 수 있다.
-- 기능명세서상 "대표와 대표가 허용한 권한"은 `users.role` 값 체계 확정 후 `@PreAuthorize`로 적용 예정이며, 지금은 `CalendarController`에 TODO로 남긴다.
+- `CALENDAR:MANAGE` 권한을 보유한 사용자(원장 또는 원장이 권한을 부여한 구성원)만 호출할 수 있다. `CalendarController`의 `@PreAuthorize("hasAuthority('CALENDAR:MANAGE')")`로 검증한다.
 
 ### Request Header
 
@@ -325,6 +324,7 @@ HTTP `204 No Content` (응답 본문 없음)
 | HTTP 상태 | code | 발생 조건 |
 | --- | --- | --- |
 | `401 Unauthorized` | `COMMON_401_1` | Access Token이 없거나 유효하지 않은 경우 |
+| `403 Forbidden` | `COMMON_403_1` | `CALENDAR:MANAGE` 권한이 없는 경우 |
 | `404 Not Found` | `CALENDAR_404_1` | 일정이 존재하지 않거나 다른 학원 소속인 경우 |
 | `500 Internal Server Error` | `COMMON_500_1` | 처리되지 않은 서버 오류 |
 

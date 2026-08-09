@@ -18,9 +18,11 @@ import com.academy.mudogroupware.attendance.domain.repository.AcademyWifiIpRepos
 import com.academy.mudogroupware.attendance.domain.repository.AttendanceRecordRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 @Transactional
 public class CheckOutService implements CheckOutUseCase {
 
@@ -30,9 +32,11 @@ public class CheckOutService implements CheckOutUseCase {
 
     @Override
     public CheckOutResult checkOut(CheckOutCommand command) {
-        if (command.userId() == null || command.academyId() == null) {
-            throw new AttendanceException(AttendanceErrorCode.CHECK_OUT_FORBIDDEN);
-        }
+        log.info("event=attendance_check_out_시작 userId={}, academyId={}", command.userId(), command.academyId());
+        try {
+            if (command.userId() == null || command.academyId() == null) {
+                throw new AttendanceException(AttendanceErrorCode.CHECK_OUT_FORBIDDEN);
+            }
 
         AcademyWifiIp detectedWifiIp = AcademyWifiIp.create(
                 command.academyId(), command.detectedIpAddress(), null);
@@ -49,7 +53,15 @@ public class CheckOutService implements CheckOutUseCase {
 
         AttendanceRecord checkedOut = openRecord.checkOut(
                 now, command.clockOutType(), command.clockOutNote());
-        return CheckOutResult.from(attendanceRecordRepository.save(checkedOut));
+            CheckOutResult result = CheckOutResult.from(attendanceRecordRepository.save(checkedOut));
+            log.info("event=attendance_check_out_완료 userId={}, academyId={}, clockOutType={}",
+                    command.userId(), command.academyId(), result.clockOutType());
+            return result;
+        } catch (RuntimeException e) {
+            log.warn("event=attendance_check_out_실패 userId={}, academyId={}, reason={}",
+                    command.userId(), command.academyId(), e.getMessage());
+            throw e;
+        }
     }
 
     private AttendanceRecord throwNoOpenRecord(CheckOutCommand command, LocalDateTime now) {

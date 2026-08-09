@@ -26,9 +26,11 @@ import com.academy.mudogroupware.attendance.domain.repository.AttendancePolicyRe
 import com.academy.mudogroupware.attendance.domain.repository.LeaveRequestRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 @Transactional(readOnly = true)
 public class WeeklyEmployeeDetailQueryService implements GetWeeklyEmployeeDetailUseCase {
 
@@ -41,6 +43,7 @@ public class WeeklyEmployeeDetailQueryService implements GetWeeklyEmployeeDetail
     @Override
     public WeeklyEmployeeDetailView getWeeklyDetail(
             Long requesterId, Long academyId, Long userId, LocalDate date) {
+        log.info("event=attendance_employee_weekly_detail_read_시작 requesterId={}, academyId={}, userId={}, date={}", requesterId, academyId, userId, date);
         if (date == null || userId == null) {
             throw new AttendanceException(AttendanceErrorCode.INVALID_ATTENDANCE_QUERY_PERIOD);
         }
@@ -88,9 +91,11 @@ public class WeeklyEmployeeDetailQueryService implements GetWeeklyEmployeeDetail
                         || day.status() == MyAttendanceDayStatus.LATE)
                 .count();
         WeeklyEmployeeDetail employee = rows.get(0);
-        return new WeeklyEmployeeDetailView(
+        WeeklyEmployeeDetailView result = new WeeklyEmployeeDetailView(
                 new WeeklyEmployeeDetailView.Employee(employee.userId(), employee.name(), employee.position()),
                 startDate, endDate, scheduledWorkDays, attendedDays, days);
+        log.info("event=attendance_employee_weekly_detail_read_완료 academyId={}, userId={}, attendedDays={}", academyId, userId, attendedDays);
+        return result;
     }
 
     private MyAttendanceDayStatus resolveStatus(
