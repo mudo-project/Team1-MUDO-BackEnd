@@ -15,9 +15,11 @@ import com.academy.mudogroupware.attendance.domain.repository.LeaveGrantReposito
 import com.academy.mudogroupware.attendance.domain.repository.LeaveRequestRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class SubmitLeaveRequestService implements SubmitLeaveRequestUseCase {
 
     private final AttendancePolicyRepository attendancePolicyRepository;
@@ -28,6 +30,8 @@ public class SubmitLeaveRequestService implements SubmitLeaveRequestUseCase {
     @Override
     @Transactional
     public void submit(SubmitLeaveRequestCommand command) {
+        log.info("event=attendance_leave_request_submit_시작 academyId={}, userId={}, documentId={}", command.academyId(), command.userId(), command.documentId());
+        try {
         AttendancePolicy policy = attendancePolicyRepository.findByAcademyId(command.academyId())
                 .orElseThrow(() -> new AttendanceException(AttendanceErrorCode.ATTENDANCE_POLICY_NOT_FOUND));
         int usedDays = leaveUsedDaysCalculator.calculate(policy, command.startDate(), command.endDate());
@@ -52,5 +56,7 @@ public class SubmitLeaveRequestService implements SubmitLeaveRequestUseCase {
 
         leaveRequestRepository.save(LeaveRequest.submit(command.academyId(), command.userId(),
                 command.documentId(), command.startDate(), command.endDate(), usedDays, command.submittedAt()));
+        log.info("event=attendance_leave_request_submit_완료 academyId={}, userId={}, documentId={}, usedDays={}", command.academyId(), command.userId(), command.documentId(), usedDays);
+        } catch (RuntimeException e) { log.warn("event=attendance_leave_request_submit_실패 academyId={}, userId={}, reason={}", command.academyId(), command.userId(), e.getMessage()); throw e; }
     }
 }

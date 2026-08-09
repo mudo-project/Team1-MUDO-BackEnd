@@ -12,9 +12,11 @@ import com.academy.mudogroupware.attendance.domain.repository.LeaveGrantReposito
 import com.academy.mudogroupware.attendance.domain.repository.LeaveRequestRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 @Transactional(readOnly = true)
 public class MyLeaveSummaryQueryService implements GetMyLeaveSummaryUseCase {
 
@@ -24,8 +26,9 @@ public class MyLeaveSummaryQueryService implements GetMyLeaveSummaryUseCase {
 
     @Override
     public MyLeaveSummaryView getSummary(Long userId, Long academyId) {
+        log.info("event=attendance_leave_summary_read_시작 userId={}, academyId={}", userId, academyId);
         LocalDate today = LocalDate.now(clock);
-        return leaveGrantRepository.findActive(academyId, userId, today)
+        MyLeaveSummaryView result = leaveGrantRepository.findActive(academyId, userId, today)
                 .map(grant -> {
                     int usedDays = leaveRequestRepository.sumUsedDaysByStatus(
                             academyId, userId, grant.getGrantDate(), grant.getExpirationDate(),
@@ -40,5 +43,7 @@ public class MyLeaveSummaryQueryService implements GetMyLeaveSummaryUseCase {
                             grant.getExpirationDate().plusDays(1));
                 })
                 .orElseGet(() -> new MyLeaveSummaryView(0, 0, 0, 0, null));
+        log.info("event=attendance_leave_summary_read_완료 userId={}, academyId={}", userId, academyId);
+        return result;
     }
 }

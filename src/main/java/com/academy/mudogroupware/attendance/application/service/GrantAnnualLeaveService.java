@@ -13,9 +13,11 @@ import com.academy.mudogroupware.attendance.domain.model.LeaveGrant;
 import com.academy.mudogroupware.attendance.domain.repository.LeaveGrantRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class GrantAnnualLeaveService implements GrantAnnualLeaveUseCase {
 
     private final LeaveGrantEmployeePort leaveGrantEmployeePort;
@@ -24,6 +26,8 @@ public class GrantAnnualLeaveService implements GrantAnnualLeaveUseCase {
     @Override
     @Transactional
     public int grantAnnualLeave(LocalDateTime now) {
+        log.info("event=attendance_annual_leave_grant_시작 grantDate={}", now.toLocalDate());
+        try {
         LocalDate today = now.toLocalDate();
         int grantedCount = 0;
         for (LeaveGrantEmployee employee : leaveGrantEmployeePort.findActiveEmployeesWithJoinedDate()) {
@@ -36,7 +40,9 @@ public class GrantAnnualLeaveService implements GrantAnnualLeaveUseCase {
                     employee.academyId(), employee.userId(), grantDate, now));
             grantedCount++;
         }
+        log.info("event=attendance_annual_leave_grant_완료 grantDate={}, count={}", today, grantedCount);
         return grantedCount;
+        } catch (RuntimeException e) { log.warn("event=attendance_annual_leave_grant_실패 grantDate={}, reason={}", now.toLocalDate(), e.getMessage()); throw e; }
     }
 
     private LocalDate currentGrantDate(LocalDate joinedDate, LocalDate today) {
