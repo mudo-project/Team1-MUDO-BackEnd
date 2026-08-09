@@ -13,9 +13,11 @@ import com.academy.mudogroupware.workspace.domain.repository.comment.TaskComment
 import com.academy.mudogroupware.workspace.domain.repository.task.TaskRepository;
 import com.academy.mudogroupware.workspace.domain.repository.workspace.WorkspaceRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class DeleteTaskCommentService implements DeleteTaskCommentUseCase {
@@ -27,6 +29,12 @@ public class DeleteTaskCommentService implements DeleteTaskCommentUseCase {
   @Override
   @Transactional
   public void deleteComment(DeleteTaskCommentCommand command) {
+    log.info(
+        "event=task_comment_delete_시작 workspaceId={}, taskId={}, commentId={}",
+        command.workspaceId(),
+        command.taskId(),
+        command.commentId());
+
     Workspace workspace =
         workspaceRepository
             .findById(command.workspaceId())

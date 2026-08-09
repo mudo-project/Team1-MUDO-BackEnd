@@ -15,9 +15,11 @@ import com.academy.mudogroupware.workspace.domain.repository.workspace.Workspace
 import java.time.Clock;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CreateTaskCommentService implements CreateTaskCommentUseCase {
@@ -30,6 +32,11 @@ public class CreateTaskCommentService implements CreateTaskCommentUseCase {
   @Override
   @Transactional
   public TaskComment createComment(CreateTaskCommentCommand command) {
+    log.info(
+        "event=task_comment_create_시작 workspaceId={}, taskId={}",
+        command.workspaceId(),
+        command.taskId());
+
     Workspace workspace =
         workspaceRepository
             .findById(command.workspaceId())
@@ -57,6 +64,13 @@ public class CreateTaskCommentService implements CreateTaskCommentUseCase {
             command.mentionedUserIds(),
             LocalDateTime.now(clock));
 
-    return taskCommentRepository.save(comment);
+    TaskComment saved = taskCommentRepository.save(comment);
+
+    log.info(
+        "event=task_comment_create_완료 workspaceId={}, taskId={}, commentId={}",
+        command.workspaceId(),
+        command.taskId(),
+        saved.getId());
+    return saved;
   }
 }
