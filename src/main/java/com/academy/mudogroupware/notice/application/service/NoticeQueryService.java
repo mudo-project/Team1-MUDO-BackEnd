@@ -98,7 +98,7 @@ public class NoticeQueryService implements NoticeQueryUseCase {
             );
         } catch (RuntimeException e) {
             log.warn("event=notice_detail_실패 noticeId={}, requesterId={}, reason={}", noticeId, requesterId,
-                    e.getMessage());
+                    e.getMessage(), e);
             throw e;
         }
     }
@@ -128,7 +128,7 @@ public class NoticeQueryService implements NoticeQueryUseCase {
             return views;
         } catch (RuntimeException e) {
             log.warn("event=notice_reader_list_실패 noticeId={}, requesterId={}, reason={}", noticeId, requesterId,
-                    e.getMessage());
+                    e.getMessage(), e);
             throw e;
         }
     }

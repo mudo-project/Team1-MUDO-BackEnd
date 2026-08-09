@@ -35,7 +35,7 @@ public class DeleteNoticeService implements DeleteNoticeUseCase {
             log.info("event=notice_delete_완료 noticeId={}, requesterId={}", noticeId, requesterId);
         } catch (RuntimeException e) {
             log.warn("event=notice_delete_실패 noticeId={}, requesterId={}, reason={}", noticeId, requesterId,
-                    e.getMessage());
+                    e.getMessage(), e);
             throw e;
         }
     }

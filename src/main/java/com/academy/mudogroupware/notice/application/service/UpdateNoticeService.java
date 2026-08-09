@@ -42,7 +42,7 @@ public class UpdateNoticeService implements UpdateNoticeUseCase {
                     command.requesterId());
         } catch (RuntimeException e) {
             log.warn("event=notice_update_실패 noticeId={}, requesterId={}, reason={}", command.noticeId(),
-                    command.requesterId(), e.getMessage());
+                    command.requesterId(), e.getMessage(), e);
             throw e;
         }
     }

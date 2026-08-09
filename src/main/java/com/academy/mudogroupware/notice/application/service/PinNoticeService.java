@@ -40,7 +40,7 @@ public class PinNoticeService implements PinNoticeUseCase {
             log.info("event=notice_pin_완료 noticeId={}, requesterId={}", noticeId, requesterId);
         } catch (RuntimeException e) {
             log.warn("event=notice_pin_실패 noticeId={}, requesterId={}, reason={}", noticeId, requesterId,
-                    e.getMessage());
+                    e.getMessage(), e);
             throw e;
         }
     }
@@ -62,7 +62,7 @@ public class PinNoticeService implements PinNoticeUseCase {
             log.info("event=notice_unpin_완료 noticeId={}, requesterId={}", noticeId, requesterId);
         } catch (RuntimeException e) {
             log.warn("event=notice_unpin_실패 noticeId={}, requesterId={}, reason={}", noticeId, requesterId,
-                    e.getMessage());
+                    e.getMessage(), e);
             throw e;
         }
     }
