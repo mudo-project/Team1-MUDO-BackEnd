@@ -190,17 +190,17 @@ public class WorkspaceController {
 
   @Operation(summary = "워크스페이스 삭제", description = "현재 참여자만 삭제할 수 있습니다. 소프트 삭제로 처리됩니다.")
   @ApiResponses({
-    @ApiResponse(responseCode = "204", description = "삭제 성공"),
+    @ApiResponse(responseCode = "200", description = "삭제 성공"),
     @ApiResponse(responseCode = "403", description = "참여자가 아님"),
     @ApiResponse(responseCode = "404", description = "워크스페이스가 존재하지 않거나 이미 삭제됨")
   })
   // TODO: 권한 모듈의 WORKSPACE:DELETE 권한이 준비되면 @PreAuthorize를 추가한다.
   // 단, 본인이 유일한 참여자인 경우의 삭제는 자진 탈퇴의 대체 행위이므로 계속 권한 없이 허용한다.
   @DeleteMapping("/{workspaceId}")
-  public ResponseEntity<Void> deleteWorkspace(
+  public ResponseEntity<GlobalApiResponse<Void>> deleteWorkspace(
       @AuthenticationPrincipal AuthUser authUser, @PathVariable Long workspaceId) {
     deleteWorkspaceUseCase.delete(new DeleteWorkspaceCommand(authUser.userId(), workspaceId));
-    return ResponseEntity.noContent().build();
+    return ResponseEntity.ok(GlobalApiResponse.ok(WorkspaceResponseCode.WORKSPACE_DELETED));
   }
 
   @Operation(summary = "워크스페이스 참여자 추가", description = "현재 참여자만 추가할 수 있습니다. 이미 참여 중인 사용자는 멱등 처리됩니다.")
