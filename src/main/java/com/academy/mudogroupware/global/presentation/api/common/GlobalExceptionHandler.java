@@ -13,6 +13,7 @@ import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
@@ -90,6 +91,21 @@ public class GlobalExceptionHandler {
         "event=exception_handled reason=type_mismatch param={} value={} traceId={}",
         e.getName(),
         e.getValue(),
+        traceId);
+    return ResponseEntity.badRequest()
+        .body(GlobalApiErrorResponse.of(CommonErrorCode.INVALID_INPUT, traceId, details));
+  }
+
+  @ExceptionHandler(MissingServletRequestParameterException.class)
+  public ResponseEntity<GlobalApiErrorResponse> missingParameter(MissingServletRequestParameterException e) {
+    String traceId = trace();
+    Map<String, Object> error = new LinkedHashMap<>();
+    error.put("field", e.getParameterName());
+    error.put("reason", "필수 파라미터입니다.");
+    Map<String, Object> details = Map.of("errors", List.of(error));
+    log.warn(
+        "event=exception_handled reason=missing_parameter param={} traceId={}",
+        e.getParameterName(),
         traceId);
     return ResponseEntity.badRequest()
         .body(GlobalApiErrorResponse.of(CommonErrorCode.INVALID_INPUT, traceId, details));

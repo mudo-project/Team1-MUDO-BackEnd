@@ -1,15 +1,21 @@
 package com.academy.mudogroupware.timetable.presentation.api;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 
 import com.academy.mudogroupware.global.presentation.api.common.GlobalApiResponse;
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
 import com.academy.mudogroupware.timetable.application.command.DeleteTimetableSetCommand;
+import com.academy.mudogroupware.timetable.application.command.ExportTimetableCommand;
 import com.academy.mudogroupware.timetable.application.usecase.CreateTimetableSetUseCase;
 import com.academy.mudogroupware.timetable.application.usecase.DeleteTimetableSetUseCase;
+import com.academy.mudogroupware.timetable.application.usecase.ExportTimetableUseCase;
 import com.academy.mudogroupware.timetable.application.usecase.GetTimetableSetUseCase;
 import com.academy.mudogroupware.timetable.application.usecase.GetTimetableSetsUseCase;
 import com.academy.mudogroupware.timetable.application.usecase.UpdateTimetableSetUseCase;
+import com.academy.mudogroupware.timetable.domain.model.ClassType;
+import com.academy.mudogroupware.timetable.domain.model.TimetableExportFormat;
 import com.academy.mudogroupware.timetable.presentation.api.common.TimetableResponseCode;
 import com.academy.mudogroupware.timetable.presentation.api.request.CreateTimetableSetRequest;
 import com.academy.mudogroupware.timetable.presentation.api.request.UpdateTimetableSetRequest;
@@ -23,7 +29,10 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -34,6 +43,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "시간표", description = "학원 시간표 세트/수업 슬롯 관리 API")
@@ -47,6 +57,7 @@ public class TimetableController {
     private final GetTimetableSetUseCase getTimetableSetUseCase;
     private final UpdateTimetableSetUseCase updateTimetableSetUseCase;
     private final DeleteTimetableSetUseCase deleteTimetableSetUseCase;
+    private final ExportTimetableUseCase exportTimetableUseCase;
 
     @Operation(summary = "시간표 세트 생성", description = "기간·운영시간·요일·슬롯단위·강의실 구성을 지정해 새 시간표 세트를 만듭니다.")
     @ApiResponses({
@@ -123,5 +134,58 @@ public class TimetableController {
             @PathVariable Long timetableSetId) {
         deleteTimetableSetUseCase.deleteTimetableSet(new DeleteTimetableSetCommand(authUser.academyId(), timetableSetId));
         return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "시간표 세트 내보내기",
+            description = "시간표 세트 전체 수업 목록을 엑셀/PDF/PNG 파일로 내보냅니다. 필터·밀도는 반영하지 않으며, "
+                    + "수업종류별 배경색은 요청 파라미터로 지정합니다.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "내보내기 성공"),
+        @ApiResponse(responseCode = "400", description = "색상 파라미터가 6자리 16진수 형식이 아닌 경우"),
+        @ApiResponse(responseCode = "404", description = "시간표 세트가 존재하지 않거나 다른 학원 소속인 경우")
+    })
+    @GetMapping("/{timetableSetId}/export")
+    public ResponseEntity<byte[]> exportTimetable(
+            @AuthenticationPrincipal AuthUser authUser,
+            @PathVariable Long timetableSetId,
+            @RequestParam TimetableExportFormat format,
+            @RequestParam String colorClass,
+            @RequestParam String colorSpecial,
+            @RequestParam String colorClinic,
+            @RequestParam String colorStanding,
+            @RequestParam String colorExam) {
+        Map<ClassType, String> colors = Map.of(
+                ClassType.CLASS, colorClass,
+                ClassType.SPECIAL, colorSpecial,
+                ClassType.CLINIC, colorClinic,
+                ClassType.STANDING, colorStanding,
+                ClassType.EXAM, colorExam);
+        byte[] file = exportTimetableUseCase.export(
+                new ExportTimetableCommand(authUser.academyId(), timetableSetId, format, colors));
+
+        String filename = "timetable_" + timetableSetId + "." + extension(format);
+        ContentDisposition contentDisposition = ContentDisposition.attachment()
+                .filename(filename, StandardCharsets.UTF_8)
+                .build();
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(mediaType(format)))
+                .header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition.toString())
+                .body(file);
+    }
+
+    private String extension(TimetableExportFormat format) {
+        return switch (format) {
+            case EXCEL -> "xlsx";
+            case PDF -> "pdf";
+            case PNG -> "png";
+        };
+    }
+
+    private String mediaType(TimetableExportFormat format) {
+        return switch (format) {
+            case EXCEL -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+            case PDF -> "application/pdf";
+            case PNG -> "image/png";
+        };
     }
 }

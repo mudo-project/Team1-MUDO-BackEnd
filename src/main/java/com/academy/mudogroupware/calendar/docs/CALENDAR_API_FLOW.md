@@ -23,7 +23,7 @@ POST /api/calendars
 
 `Security Filter`가 Access Token을 검증하고 `AuthUser`를 만든다. `CalendarController`는 `AuthUser`에서 `academyId`와 `userId`를 받아 요청 본문에는 없는 학원·작성자 정보를 결정한다.
 
-권한 모듈 연동 전이므로 대표 권한 검사는 수행하지 않는다. `notice`와 동일하게 인증만 검사하며, `CalendarController`에 TODO를 남긴다.
+작성 API(생성/수정/삭제)는 인증 확인에 더해 `@PreAuthorize("hasAuthority('CALENDAR:MANAGE')")`로 권한도 검사한다(자세한 내용은 [CALENDAR_PERMISSIONS.md](CALENDAR_PERMISSIONS.md) 참고). 조회 API는 인증만 확인하고 권한은 무관하다.
 
 ## 2. 요청 검증과 Command 변환
 
