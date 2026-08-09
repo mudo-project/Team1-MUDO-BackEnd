@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
@@ -31,6 +32,7 @@ class RecurringTaskTemplatePersistenceAdapterDataJpaTest {
   private static final long CREATOR_ID = 10L;
 
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private EntityManager entityManager;
   @Autowired private RecurringTaskTemplateRepository recurringTaskTemplateRepository;
   @Autowired private RecurringTaskSkipRepository recurringTaskSkipRepository;
 
@@ -119,6 +121,34 @@ class RecurringTaskTemplatePersistenceAdapterDataJpaTest {
     assertThat(recurringTaskTemplateRepository.findByWorkspaceIdAndId(WORKSPACE_ID, saved.getId()))
         .isEmpty();
     assertThat(recurringTaskSkipRepository.exists(saved.getId(), scheduledFor)).isFalse();
+  }
+
+  @Test
+  void deleteKeepsGeneratedTaskButNullsRecurringTemplateReference() {
+    insertWorkspace(WORKSPACE_ID);
+    RecurringTaskTemplate saved =
+        recurringTaskTemplateRepository.save(
+            RecurringTaskTemplate.create(
+                WORKSPACE_ID, "삭제 대상", RecurrenceType.WEEKLY, Map.of("daysOfWeek", List.of(1)), CREATOR_ID));
+    Long generatedTaskId = insertTaskReferencingTemplate(WORKSPACE_ID, saved.getId());
+
+    recurringTaskTemplateRepository.delete(saved.getId());
+    entityManager.flush();
+
+    Long remainingTemplateRef =
+        jdbcTemplate.queryForObject(
+            "select recurring_template_id from task where task_id = ?", Long.class, generatedTaskId);
+    assertThat(remainingTemplateRef).isNull();
+  }
+
+  private Long insertTaskReferencingTemplate(long workspaceId, long templateId) {
+    LocalDateTime now = LocalDateTime.now();
+    jdbcTemplate.update(
+        "insert into task (workspace_id, recurring_template_id, title, status, scheduled_for,"
+            + " created_by, created_at, updated_at) values (?, ?, ?, 'WAITING', ?, ?, ?, ?)",
+        workspaceId, templateId, "생성된 반복 업무", now, CREATOR_ID, now, now);
+    return jdbcTemplate.queryForObject(
+        "select task_id from task where recurring_template_id = ?", Long.class, templateId);
   }
 
   @Test
