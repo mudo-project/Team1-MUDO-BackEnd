@@ -40,6 +40,7 @@ HTTP `200 OK`
 | --- | --- | --- |
 | `401 Unauthorized` | `COMMON_401_1` | Access Token이 없거나 유효하지 않은 경우 |
 | `403 Forbidden` | `COMMON_403_1` | 원장(academy 관리자) 계정이 아닌 경우 |
+| `502 Bad Gateway` | `GOOGLE_502_1` | `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`/`GOOGLE_REDIRECT_URI` 중 하나라도 설정되지 않았거나 구글 인증 URL 생성 자체가 실패한 경우 |
 | `500 Internal Server Error` | `COMMON_500_1` | 처리되지 않은 서버 오류 |
 
 ### Business Rules
