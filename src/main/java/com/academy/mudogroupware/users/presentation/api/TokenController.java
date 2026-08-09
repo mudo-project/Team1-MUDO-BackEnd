@@ -12,8 +12,11 @@ import com.academy.mudogroupware.users.application.usecase.RefreshUseCase;
 import com.academy.mudogroupware.users.presentation.api.common.TokenResponseCode;
 import com.academy.mudogroupware.users.presentation.api.response.RefreshResponse;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
+@Tag(name = "계정·인증", description = "로그인/로그아웃 API")
 @RestController
 @RequestMapping("/api/token")
 @RequiredArgsConstructor
@@ -21,6 +24,9 @@ public class TokenController {
 
     private final RefreshUseCase refreshUseCase;
 
+    @Operation(
+            summary = "액세스 토큰 재발급",
+            description = "리프레시 토큰 쿠키로 새 액세스 토큰을 발급합니다. 리프레시 토큰 자체는 로테이션하지 않습니다.")
     @PostMapping("/reissue")
     public ResponseEntity<GlobalApiResponse<RefreshResponse>> reissue(
             @CookieValue(name = RefreshTokenCookieFactory.REFRESH_TOKEN_COOKIE, required = false) String refreshToken) {

@@ -1,5 +1,12 @@
 # 📚 Calendar Changelog
 
+## 2026-08-08 · 일정 작성/수정/삭제에 `CALENDAR:MANAGE` 권한 검사 추가 🔒
+
+- `POST /api/calendars`, `PATCH /api/calendars/{eventId}`, `DELETE /api/calendars/{eventId}`가 `CALENDAR:MANAGE` 권한을 보유한 사용자(원장 + 원장이 위임한 구성원)만 호출할 수 있도록 변경했습니다.
+- 권한이 없으면 `403 Forbidden`(`COMMON_403_1`)으로 응답합니다.
+- 조회(`GET /api/calendars`, `GET /api/calendars/{eventId}`)는 권한과 무관하게 같은 학원 소속 인증 사용자 전체에게 열려 있습니다.
+- 권한 시드는 `V5.1.2__add_calendar_manage_permission.sql`에서 관리합니다.
+
 ## 2026-08-07 · 목록/일별/월간 조회 쿼리를 date/yearMonth 기반으로 변경 🔧
 
 - `GET /api/calendars?from=&to=` 대신 `?date=`(일별) 또는 `?yearMonth=`(월간)로 호출합니다.
@@ -45,6 +52,6 @@
 - 영속성 구현체 이름은 헥사고날 용어를 충실히 따라 `CalendarEventPersistenceAdapter`를 사용합니다.
 - `created_at`, `updated_at`은 `BaseTimeEntity`(Spring Data JPA Auditing)로 자동 관리합니다.
 - `be5/V5.1.1__create_calendar_events_table.sql` 마이그레이션과 도메인/서비스/컨트롤러 단위 테스트를 추가했습니다.
-- 작성 권한(대표 및 대표가 허용한 권한) 실제 검사는 `users.role` 값 체계가 확정된 뒤 반영하며, 현재는 `CalendarController`에 TODO 주석으로만 남깁니다(`notice` 도메인과 동일한 결정).
+- 작성 권한은 이후 `CALENDAR:MANAGE` 권한 도입으로 반영되었습니다(아래 항목 참고).
 
 자세한 요청·응답 형식은 [CALENDAR_API.md](CALENDAR_API.md), 처리 흐름은 [CALENDAR_API_FLOW.md](CALENDAR_API_FLOW.md), 정책은 [BUSINESS_RULES.md](BUSINESS_RULES.md)를 참고해주세요. 📚

@@ -18,6 +18,7 @@ public class Task {
   private final LocalDate dueAt;
   private final LocalDateTime scheduledFor;
   private final Long createdBy;
+  private final LocalDateTime createdAt;
 
   private Task(
       Long id,
@@ -27,7 +28,8 @@ public class Task {
       TaskStatus status,
       LocalDate dueAt,
       LocalDateTime scheduledFor,
-      Long createdBy) {
+      Long createdBy,
+      LocalDateTime createdAt) {
     this.id = id;
     this.workspaceId = workspaceId;
     this.recurringTemplateId = recurringTemplateId;
@@ -36,13 +38,15 @@ public class Task {
     this.dueAt = dueAt;
     this.scheduledFor = scheduledFor;
     this.createdBy = createdBy;
+    this.createdAt = createdAt;
   }
 
   // 일반 업무 생성. 마감일이 today 이전이면 최초 상태를 DELAYED로 둔다.
   public static Task create(
       Long workspaceId, String title, LocalDate dueAt, Long creatorId, LocalDate today) {
     TaskStatus initialStatus = dueAt.isBefore(today) ? TaskStatus.DELAYED : TaskStatus.WAITING;
-    return new Task(null, workspaceId, null, title.trim(), initialStatus, dueAt, null, creatorId);
+    return new Task(
+        null, workspaceId, null, title.trim(), initialStatus, dueAt, null, creatorId, null);
   }
 
   public static Task restore(
@@ -54,8 +58,23 @@ public class Task {
       LocalDate dueAt,
       LocalDateTime scheduledFor,
       Long createdBy) {
+    return restore(
+        id, workspaceId, recurringTemplateId, title, status, dueAt, scheduledFor, createdBy, null);
+  }
+
+  public static Task restore(
+      Long id,
+      Long workspaceId,
+      Long recurringTemplateId,
+      String title,
+      TaskStatus status,
+      LocalDate dueAt,
+      LocalDateTime scheduledFor,
+      Long createdBy,
+      LocalDateTime createdAt) {
     return new Task(
-        id, workspaceId, recurringTemplateId, title, status, dueAt, scheduledFor, createdBy);
+        id, workspaceId, recurringTemplateId, title, status, dueAt, scheduledFor, createdBy,
+        createdAt);
   }
 
   // newDueAt은 선택이다. 주어지면 규칙 2가 요구하지 않는 경우에도 마감일에 반영한다.
@@ -76,7 +95,7 @@ public class Task {
     LocalDate effectiveDueAt = newDueAt != null ? newDueAt : dueAt;
     return new Task(
         id, workspaceId, recurringTemplateId, title, newStatus, effectiveDueAt, scheduledFor,
-        createdBy);
+        createdBy, createdAt);
   }
 
   public Task changeDueAt(LocalDate newDueAt) {
@@ -102,6 +121,7 @@ public class Task {
 
   private Task withDueAt(LocalDate newDueAt) {
     return new Task(
-        id, workspaceId, recurringTemplateId, title, status, newDueAt, scheduledFor, createdBy);
+        id, workspaceId, recurringTemplateId, title, status, newDueAt, scheduledFor, createdBy,
+        createdAt);
   }
 }

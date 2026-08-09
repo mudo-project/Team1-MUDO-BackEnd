@@ -16,6 +16,9 @@ public interface TaskRepository {
   // 락 경합을 일으킬 수 없도록 조회 자체를 워크스페이스 범위로 제한한다.
   Optional<Task> findByIdForUpdate(Long workspaceId, Long taskId);
 
+  // 조회 전용(락 없음). workspaceId가 일치하지 않으면 결과가 없다 — findByIdForUpdate와 동일한 스코프 규칙.
+  Optional<Task> findById(Long workspaceId, Long taskId);
+
   // 하드 삭제. 댓글·멘션·상태 이력을 함께 제거한다.
   void delete(Long taskId);
 

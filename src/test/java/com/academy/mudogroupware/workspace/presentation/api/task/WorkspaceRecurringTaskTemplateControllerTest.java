@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -19,8 +20,10 @@ import com.academy.mudogroupware.global.infrastructure.security.jwt.JwtTokenProv
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
 import com.academy.mudogroupware.global.presentation.security.JwtAuthenticationConverter;
 import com.academy.mudogroupware.workspace.application.command.task.CreateRecurringTaskTemplateCommand;
+import com.academy.mudogroupware.workspace.application.command.task.DeleteRecurringTaskTemplateCommand;
 import com.academy.mudogroupware.workspace.application.command.task.UpdateRecurringTaskTemplateCommand;
 import com.academy.mudogroupware.workspace.application.usecase.task.CreateRecurringTaskTemplateUseCase;
+import com.academy.mudogroupware.workspace.application.usecase.task.DeleteRecurringTaskTemplateUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.task.GetRecurringTaskTemplatesUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.task.UpdateRecurringTaskTemplateUseCase;
 import com.academy.mudogroupware.workspace.domain.exception.task.InvalidRecurrenceRuleException;
@@ -50,6 +53,7 @@ class WorkspaceRecurringTaskTemplateControllerTest {
   @MockitoBean private CreateRecurringTaskTemplateUseCase createRecurringTaskTemplateUseCase;
   @MockitoBean private GetRecurringTaskTemplatesUseCase getRecurringTaskTemplatesUseCase;
   @MockitoBean private UpdateRecurringTaskTemplateUseCase updateRecurringTaskTemplateUseCase;
+  @MockitoBean private DeleteRecurringTaskTemplateUseCase deleteRecurringTaskTemplateUseCase;
   @MockitoBean private JwtTokenProvider jwtTokenProvider;
   @MockitoBean private JwtAuthenticationConverter jwtAuthenticationConverter;
 
@@ -308,6 +312,64 @@ class WorkspaceRecurringTaskTemplateControllerTest {
                 .content("{\"recurrenceType\":\"MONTHLY\",\"recurrenceRule\":{\"dayOfMonth\":15}}"))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("WORKSPACE_400_7"));
+  }
+
+  @Test
+  void deleteTemplateReturnsOkWithSuccessMessage() throws Exception {
+    mockMvc
+        .perform(
+            delete("/api/workspaces/{workspaceId}/recurring-templates/{templateId}", 1L, 101L)
+                .with(authentication(auth()))
+                .with(csrf()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value(200))
+        .andExpect(jsonPath("$.code").value("WORKSPACE_200_15"))
+        .andExpect(jsonPath("$.message").value("반복 업무 템플릿 삭제에 성공했습니다."))
+        .andExpect(jsonPath("$.data").value(org.hamcrest.Matchers.nullValue()));
+
+    verify(deleteRecurringTaskTemplateUseCase)
+        .delete(new DeleteRecurringTaskTemplateCommand(1L, 101L, 10L));
+  }
+
+  @Test
+  void deleteTemplateReturns401WhenUnauthenticated() throws Exception {
+    mockMvc
+        .perform(
+            delete("/api/workspaces/{workspaceId}/recurring-templates/{templateId}", 1L, 101L)
+                .with(csrf()))
+        .andExpect(status().isUnauthorized());
+
+    verifyNoInteractions(deleteRecurringTaskTemplateUseCase);
+  }
+
+  @Test
+  void deleteTemplatePropagatesAccessDenied() throws Exception {
+    org.mockito.Mockito.doThrow(new WorkspaceAccessDeniedException())
+        .when(deleteRecurringTaskTemplateUseCase)
+        .delete(any(DeleteRecurringTaskTemplateCommand.class));
+
+    mockMvc
+        .perform(
+            delete("/api/workspaces/{workspaceId}/recurring-templates/{templateId}", 1L, 101L)
+                .with(authentication(auth()))
+                .with(csrf()))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("WORKSPACE_403_1"));
+  }
+
+  @Test
+  void deleteTemplatePropagatesTemplateNotFound() throws Exception {
+    org.mockito.Mockito.doThrow(new RecurringTaskTemplateNotFoundException())
+        .when(deleteRecurringTaskTemplateUseCase)
+        .delete(any(DeleteRecurringTaskTemplateCommand.class));
+
+    mockMvc
+        .perform(
+            delete("/api/workspaces/{workspaceId}/recurring-templates/{templateId}", 1L, 101L)
+                .with(authentication(auth()))
+                .with(csrf()))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("WORKSPACE_404_5"));
   }
 
   private Authentication auth() {

@@ -9,6 +9,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -32,13 +34,16 @@ import com.academy.mudogroupware.global.infrastructure.security.jwt.JwtTokenProv
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
 import com.academy.mudogroupware.global.presentation.security.JwtAuthenticationConverter;
 import com.academy.mudogroupware.timetable.application.command.CreateTimetableSetCommand;
+import com.academy.mudogroupware.timetable.application.command.ExportTimetableCommand;
 import com.academy.mudogroupware.timetable.application.query.TimetableSetDetailView;
 import com.academy.mudogroupware.timetable.application.query.TimetableSetSummaryView;
 import com.academy.mudogroupware.timetable.application.usecase.CreateTimetableSetUseCase;
+import com.academy.mudogroupware.timetable.application.usecase.ExportTimetableUseCase;
 import com.academy.mudogroupware.timetable.application.usecase.GetTimetableSetUseCase;
 import com.academy.mudogroupware.timetable.application.usecase.GetTimetableSetsUseCase;
 import com.academy.mudogroupware.timetable.application.usecase.DeleteTimetableSetUseCase;
 import com.academy.mudogroupware.timetable.application.usecase.UpdateTimetableSetUseCase;
+import com.academy.mudogroupware.timetable.domain.exception.InvalidExportColorException;
 import com.academy.mudogroupware.timetable.domain.exception.TimetableSetNotFoundException;
 import com.academy.mudogroupware.timetable.domain.model.TimetableClassroom;
 import com.academy.mudogroupware.timetable.domain.model.TimetableSetStatus;
@@ -57,6 +62,7 @@ class TimetableControllerTest {
     @MockitoBean private GetTimetableSetUseCase getTimetableSetUseCase;
     @MockitoBean private UpdateTimetableSetUseCase updateTimetableSetUseCase;
     @MockitoBean private DeleteTimetableSetUseCase deleteTimetableSetUseCase;
+    @MockitoBean private ExportTimetableUseCase exportTimetableUseCase;
     @MockitoBean private JwtTokenProvider jwtTokenProvider;
     @MockitoBean private JwtAuthenticationConverter jwtAuthenticationConverter;
 
@@ -192,6 +198,97 @@ class TimetableControllerTest {
                         .with(authentication(authenticatedUser("TIMETABLE:MANAGE")))
                         .with(csrf()))
                 .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void exportTimetableReturns200WithExcelContentType() throws Exception {
+        when(exportTimetableUseCase.export(any(ExportTimetableCommand.class))).thenReturn(new byte[] {1, 2, 3});
+
+        mockMvc.perform(get("/api/timetables/1/export")
+                        .param("format", "EXCEL")
+                        .param("colorClass", "FFCC00")
+                        .param("colorSpecial", "00AACC")
+                        .param("colorClinic", "AA00CC")
+                        .param("colorStanding", "888888")
+                        .param("colorExam", "FF0000")
+                        .with(authentication(authenticatedUser())))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .andExpect(header().string("Content-Disposition",
+                        org.hamcrest.Matchers.containsString("timetable_1.xlsx")));
+    }
+
+    @Test
+    void exportTimetableReturns404WhenNotFound() throws Exception {
+        when(exportTimetableUseCase.export(any(ExportTimetableCommand.class)))
+                .thenThrow(new TimetableSetNotFoundException());
+
+        mockMvc.perform(get("/api/timetables/999/export")
+                        .param("format", "PDF")
+                        .param("colorClass", "FFCC00")
+                        .param("colorSpecial", "00AACC")
+                        .param("colorClinic", "AA00CC")
+                        .param("colorStanding", "888888")
+                        .param("colorExam", "FF0000")
+                        .with(authentication(authenticatedUser())))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("TIMETABLE_404_1"));
+    }
+
+    @Test
+    void exportTimetableReturns400WhenColorInvalid() throws Exception {
+        when(exportTimetableUseCase.export(any(ExportTimetableCommand.class)))
+                .thenThrow(new InvalidExportColorException());
+
+        mockMvc.perform(get("/api/timetables/1/export")
+                        .param("format", "PNG")
+                        .param("colorClass", "ZZZZZZ")
+                        .param("colorSpecial", "00AACC")
+                        .param("colorClinic", "AA00CC")
+                        .param("colorStanding", "888888")
+                        .param("colorExam", "FF0000")
+                        .with(authentication(authenticatedUser())))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("TIMETABLE_400_5"));
+    }
+
+    @Test
+    void exportTimetableReturns400WhenFormatIsInvalidEnumValue() throws Exception {
+        mockMvc.perform(get("/api/timetables/1/export")
+                        .param("format", "INVALID")
+                        .param("colorClass", "FFCC00")
+                        .param("colorSpecial", "00AACC")
+                        .param("colorClinic", "AA00CC")
+                        .param("colorStanding", "888888")
+                        .param("colorExam", "FF0000")
+                        .with(authentication(authenticatedUser())))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void exportTimetableReturns400WhenRequiredParameterIsMissing() throws Exception {
+        mockMvc.perform(get("/api/timetables/1/export")
+                        .param("colorClass", "FFCC00")
+                        .param("colorSpecial", "00AACC")
+                        .param("colorClinic", "AA00CC")
+                        .param("colorStanding", "888888")
+                        .param("colorExam", "FF0000")
+                        .with(authentication(authenticatedUser())))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_400_1"));
+    }
+
+    @Test
+    void exportTimetableReturns401WhenUnauthenticated() throws Exception {
+        mockMvc.perform(get("/api/timetables/1/export")
+                        .param("format", "EXCEL")
+                        .param("colorClass", "FFCC00")
+                        .param("colorSpecial", "00AACC")
+                        .param("colorClinic", "AA00CC")
+                        .param("colorStanding", "888888")
+                        .param("colorExam", "FF0000"))
+                .andExpect(status().isUnauthorized());
     }
 
     private Authentication authenticatedUser(String... authorities) {

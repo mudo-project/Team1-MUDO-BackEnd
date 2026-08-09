@@ -1,5 +1,93 @@
 # 🔄 워크스페이스 생성 이름 중복 정책 단순화
 
+## ✅ 2026-08-10 · 업무 상세 조회 & 댓글 목록 조회 API 추가
+
+### 변경 목적
+
+업무 목록 조회는 워크스페이스 상세 조회에 이미 카드 형태로 포함되어 있었지만, 업무 하나를 클릭해 들어가는 상세 화면과 그 화면의 댓글 영역을 채울 API가 없었다. Figma 목업 기준으로 필요한 항목을 확인해 두 개의 독립된 조회(Query) API를 추가했다(이슈 #277, #278 / PR #279).
+
+브레인스토밍 과정에서 두 가지를 프론트와 합의했다: ① 최종 상태 변경자(누가 바꿨는지)는 기록은 유지하되 응답에는 노출하지 않는다. ② 코멘트 목록은 무한스크롤을 전제로 업무 상세와 별도 API로 분리한다.
+
+### 구현 변경
+
+- `GET /api/workspaces/{workspaceId}/tasks/{taskId}` — 업무 상세 조회. 제목·등록자·등록일·상태·기한·최종 상태 변경일시를 반환한다. `TaskDetailQueryUseCase`/`Service` 신규 작성.
+- `GET /api/workspaces/{workspaceId}/tasks/{taskId}/comments` — 댓글 목록 조회. 내용·작성자·완료 여부·생성일을 반환하며 `createdAt asc, id asc`로 페이지네이션(기본 20개)한다. `TaskCommentListQueryUseCase`/`Service` 신규 작성.
+- `Task` 도메인 모델에 `createdAt`을 추가했다. 기존 8-arg `restore(...)`를 11개 파일이 호출하고 있어 시그니처를 바꾸지 않고, `createdAt`을 받는 9-arg `restore(...)` 오버로드만 추가했다(기존 8-arg는 내부적으로 9-arg에 `createdAt=null`로 위임).
+- `TaskRepository.findById(workspaceId, taskId)`(락 없음)을 신규 추가했다. 기존 유일한 단건 조회인 `findByIdForUpdate`는 비관적 락을 잡아서, 조회 전용 API에 그대로 쓰면 불필요한 락 경합을 유발한다.
+- `TaskStatusHistoryRepository.findLatestChangedAt(taskId)`을 신규 추가했다. 전체 이력이 아니라 가장 최근 1건의 `createdAt`만 `Pageable(0, 1)`로 가져온다(MySQL 5.7 호환을 위해 `LIMIT` 서브쿼리 대신 페이지네이션 사용). **변경자(`changedBy`)는 조회하지 않는다** — 이력 자체는 계속 저장되므로 나중에 노출이 필요해지면 조회 메서드만 추가하면 된다.
+- `TaskCommentRepository.findAllByTaskId(taskId, page, size)`를 신규 추가했다. `createdAt`만으로는 동시간대 저장 시 정렬이 비결정적일 수 있어 `id`를 2차 정렬 기준으로 추가했다(반복 업무 템플릿 목록과 동일한 tie-break 이유).
+- `WorkspaceResponseCode`에 `WORKSPACE_200_16`(업무 상세 조회), `WORKSPACE_200_17`(댓글 목록 조회)을 추가했다.
+
+### 코드 리뷰 반영 (CodeRabbit)
+
+whole-PR 리뷰에서 6건이 나왔고, 4건 반영 + 2건 반박했다.
+
+- **반영**: `WorkspaceTaskCommentController.getComments`의 `page`/`size`에 `@Validated` + `@Min`/`@Max` 검증을 추가했다. `GlobalExceptionHandler`에 `IllegalArgumentException` 전용 핸들러가 없어서, 검증 없이 두면 `page=-1`/`size=0` 요청이 `PageRequest.of()`의 `IllegalArgumentException` → `500`으로 새어나가는 걸 확인했다(형제 API인 반복 업무 템플릿 목록은 이미 이 패턴을 쓰고 있었다).
+- **반영**: 댓글 정렬 테스트(`findAllByTaskIdReturnsOldestFirstWithinPageSize`)가 실제로는 `createdAt` 정렬을 검증하지 못하고 있었다 — `TaskCommentJpaEntity.create()`가 `createdAt`을 받지 않고 `@CreatedDate`가 실제 저장 시각을 찍기 때문에, save 호출 순서(→ id tie-break)로 우연히 통과하던 테스트였다. insertion 순서와 의도한 시간 순서를 반대로 만들고 `jdbcTemplate`으로 `created_at`을 직접 덮어쓴 뒤 `entityManager.clear()`로 1차 캐시를 비워, 실제 컬럼 기준 정렬을 검증하도록 수정했다.
+- **반영**: 두 컨트롤러 테스트에 누락된 `createdAt` 응답 필드 assertion을 추가했다.
+- **반박**: `Task.restore()`에 반복 업무 불변식(`recurringTemplateId != null`인데 `scheduledFor == null`인 조합 차단) 검증 추가 제안. 이 불변식은 원래 8-arg `restore()`에도 없던 검증이고, 현재 코드베이스에 반복 업무 템플릿으로부터 실제 occurrence를 생성하는 서비스가 아직 없어 이 조합이 만들어질 프로덕션 경로가 없다. `restore()`에서 막으면 나중에 occurrence 생성 로직이 실수로 이 조합을 만들었을 때 조회 시점에 늦게 500으로 터진다 — 생성 시점에 검증하는 별도 이슈로 미뤘다.
+- **반박**: 댓글 목록의 offset(page/size) → keyset(cursor) 페이지네이션 전환 제안. 브레인스토밍 때 이미 결정한 방향이고 형제 API(반복 업무 템플릿 목록)도 동일 패턴이다. 업무당 댓글 수가 소셜 피드처럼 커질 상황이 아니라 YAGNI로 보류했다.
+
+### 검증
+
+- `TaskTest`, `TaskPersistenceAdapterDataJpaTest`, `TaskDetailQueryServiceTest`, `WorkspaceTaskControllerTest`(신규 4케이스: 정상/이력없음/404/403)로 업무 상세 조회를 검증했다.
+- `TaskCommentPersistenceAdapterDataJpaTest`, `TaskCommentListQueryServiceTest`, `WorkspaceTaskCommentControllerTest`(신규 케이스: 정상 페이지/커스텀 page·size/404/403 + page/size 검증 3케이스)로 댓글 목록 조회를 검증했다.
+- 전체 `./gradlew build` 통과, 기존 8-arg `Task.restore(...)` 호출부(11개 파일) 회귀 없음 확인.
+
+> API 계약은 [TASK_API.md](TASK_API.md)/[COMMENT_API.md](COMMENT_API.md), 호출 흐름은 [TASK_API_FLOW.md](TASK_API_FLOW.md)/[COMMENT_API_FLOW.md](COMMENT_API_FLOW.md)에 반영했다. 📚
+
+## ✅ 2026-08-09 · 반복 업무 템플릿 삭제 API와 삭제 응답 형식 표준화
+
+### 변경 목적
+
+반복 업무 템플릿 생성(#224)·목록 조회(#234)·수정(#236)에 이어 삭제 API를 추가합니다. 수정 API 라운드에서 `REVISION.md`에 남긴 계획대로, 템플릿 조회를 비관적 락(`findByWorkspaceIdAndIdForUpdate`)으로 전환해 수정·삭제 두 Service가 공유하도록 했습니다. 이 작업 중 workspace 도메인의 기존 삭제 API 4개가 전부 `204 No Content`로 응답해 성공 메시지를 확인할 수 없다는 점도 함께 발견해, 삭제 API 5개(신규 1개 + 기존 4개)를 전부 `200 OK` + `GlobalApiResponse` 봉투로 통일했습니다.
+
+### 구현 변경
+
+- `DELETE /api/workspaces/{workspaceId}/recurring-templates/{templateId}`를 추가했습니다. 하드 삭제이며 `recurring_task_skip`도 함께 삭제됩니다.
+- `RecurringTaskTemplateRepository.findByWorkspaceIdAndIdForUpdate`를 추가했습니다 — `Task.findByIdForUpdate`와 동일한 2단계 패턴(락 없는 소속 확인 → 비관적 락)이며, `UpdateRecurringTaskTemplateService`도 기존 락 없는 조회에서 이 메서드로 전환해 수정·삭제 두 Service가 같은 락을 공유합니다.
+- 템플릿 삭제 시 이미 생성된 Task는 삭제하지 않고 `recurring_template_id`만 `NULL`로 남깁니다(운영 마이그레이션의 `ON DELETE SET NULL` 그대로). `TaskJpaEntity.recurringTemplate`에 `@OnDelete(action = OnDeleteAction.SET_NULL)`을 추가해 이 동작을 `@DataJpaTest`(H2)에도 재현했습니다 — 이 어노테이션이 없으면 아직 생성된 업무가 남아있는 템플릿을 삭제할 때 H2에서 FK 제약 위반이 발생합니다.
+- 워크스페이스 삭제, 참여자 제거, 업무 삭제, 업무 댓글 삭제, 반복 업무 템플릿 삭제 API 5개를 전부 `ResponseEntity<GlobalApiResponse<Void>>` + `200 OK`로 통일했습니다. `WorkspaceResponseCode`에 `WORKSPACE_200_11`~`WORKSPACE_200_15` 5개를 추가했습니다. Service/UseCase의 `delete`/`removeMember`/`deleteComment` 시그니처는 바꾸지 않고 Controller 레이어에서만 봉투로 감쌌습니다.
+
+### 검증
+
+- `DeleteRecurringTaskTemplateServiceTest`로 성공/워크스페이스 없음/미참여자/템플릿 없음을 검증했습니다.
+- `RecurringTaskTemplatePersistenceAdapterDataJpaTest`에 `findByWorkspaceIdAndIdForUpdate`의 워크스페이스 범위 검증과, 템플릿 삭제 시 생성된 Task의 `recurring_template_id`가 `NULL`로 바뀌는지 검증하는 테스트를 추가했습니다.
+- `WorkspaceRecurringTaskTemplateControllerTest`로 200/403/404를 검증했습니다.
+- 기존 `WorkspaceControllerTest`·`WorkspaceTaskControllerTest`·`WorkspaceTaskCommentControllerTest`의 삭제 관련 테스트를 200 + 응답 바디 검증으로 갱신했습니다.
+- 전체 `./gradlew test`를 통과했습니다.
+
+> API 계약은 [RECURRING_TASK_API.md](RECURRING_TASK_API.md), 호출 흐름은 [RECURRING_TASK_API_FLOW.md](RECURRING_TASK_API_FLOW.md)에 반영했습니다. 📚
+
+## ✅ 2026-08-09 · 반복 업무 템플릿 수정 API와 로깅 커밋 타이밍 개선
+
+### 변경 목적
+
+반복 업무 템플릿 생성(#224)·목록 조회(#234)에 이어 수정 API(#236)를 추가합니다. 이번 라운드는 이 프로젝트에서 처음으로 superpowers 브레인스토밍→스펙→계획→subagent-driven-development→최종 whole-branch 리뷰 사이클을 끝까지 완주한 사례이기도 합니다. 최종 리뷰와 코드래빗(CodeRabbit) 리뷰에서 나온 지적을 계기로, 이번 수정 API뿐 아니라 workspace 도메인 전체의 로깅 컨벤션 적용 범위와 로그 타이밍도 함께 개선했습니다.
+
+### 구현 변경
+
+- `PATCH /api/workspaces/{workspaceId}/recurring-templates/{templateId}`를 추가했습니다. `title` 단독 또는 `recurrenceType`+`recurrenceRule` 세트 중 최소 하나가 필요하며, 누락된 쪽은 기존 값을 유지합니다. `recurrenceType`·`recurrenceRule`은 항상 세트로만 받습니다 — 타입이 바뀌면 규칙의 유효한 모양도 바뀌므로(`WEEKLY`의 `daysOfWeek` vs `MONTHLY`의 `dayOfMonth`), 부분 수정을 허용하면 검증 실패나 예측 불가능한 동작으로 이어질 수 있습니다.
+- `RecurringTaskTemplate.changeRecurrence`를 재호출해 병합된 값을 다시 검증합니다 — 값이 바뀌지 않은 필드도 여전히 유효한 규칙인지 재확인되는 의도된 부수 효과입니다.
+- 삭제 API가 아직 없어 수정 조회(`findByWorkspaceIdAndId`)에는 비관적 락을 걸지 않았습니다. 삭제 API를 추가할 때 `findByWorkspaceIdAndIdForUpdate`로 전환하고 수정·삭제 두 Service가 그 조회를 공유하도록 반드시 바꿔야 합니다(`Task.findByIdForUpdate`와 동일 패턴).
+- 최종 whole-branch 리뷰에서 공백 제목이 trim 후 빈 문자열로 저장 가능하다는 결함을 발견해 `@AssertTrue` 검증을 추가했습니다 — 생성 API는 `@NotBlank`로 이미 막고 있었는데 수정 API에는 빠져 있었습니다. 4개의 개별 태스크 리뷰는 각자 통과했지만 교차 태스크 이슈라 whole-branch 리뷰에서만 잡혔습니다.
+- `AfterCommitLogger`(`global.infrastructure.logging`)를 추가했습니다. `TransactionSynchronizationManager.registerSynchronization`으로 완료(`_완료`) 로그를 트랜잭션 커밋 이후로 지연시킵니다. 저장 직후 로그를 남기면 이후 커밋 시점에 제약조건 위반·deadlock 등으로 롤백돼도 성공 로그만 남아 실패를 성공으로 오인할 수 있다는 코드래빗 지적을 반영했습니다. attendance/approval 도메인은 별도 PR이라 이번 범위에서 제외하고, workspace 도메인 완료 로그 12곳(이번에 추가한 8곳 + 기존 3곳 + `DelayOverdueTasksService`)에만 적용했습니다.
+- `AddWorkspaceMembersService`가 추가할 신규 참여자가 없어 조기 반환하는 경로에서도 `addedCount=0`으로 완료 로그를 남기도록 수정했습니다. 이전에는 조기 반환 시 완료 로그 자체가 생략되어 no-op 요청과 실패를 로그만으로 구분할 수 없었습니다.
+- workspace 도메인 Service 20개 중 로깅 컨벤션이 적용되지 않았던 17개(comment 4, task 4, workspace 9)에 시작/완료 로그를 소급 적용했습니다. GitHub 이슈 #223("workspace 도메인 기존 Service에 로깅 컨벤션 소급 적용")이 CLOSED 상태였지만 실제 코드에는 반영되어 있지 않아 이번에 다시 처리했습니다(#262). 변경(mutation) 작업 12곳의 시작 로그에는 `requesterId`(또는 `creatorId`)를 추가해 "누가 했는지"를 추적할 수 있게 했고, `RemoveWorkspaceMemberService`에는 자진탈퇴·타인제거를 구분하는 `selfWithdrawal` 플래그도 추가했습니다.
+
+### 수용한 한계
+
+- 자유텍스트(업무 제목, 워크스페이스 이름)를 로그에 남기는 문제와, `DelayOverdueTasksService`만 시작 로그 없이 완료 로그만 있는 비대칭은 컨벤션 문서 차원의 논의가 필요해 이번 범위에서 제외하고 후속 이슈로 남겼습니다.
+
+### 검증
+
+- Application 계층 테스트(제목만/주기만 변경, 워크스페이스 없음, 비참여자, 템플릿 없음, 주기 불일치)와 Controller 테스트(정상/빈 바디/세트 불완전/공백 제목/템플릿 없음/403/`400_7`)를 추가했습니다.
+- 로깅 리트로핏은 새 테스트를 추가하지 않고 각 서비스의 기존 테스트가 그대로 통과하는지만 확인했습니다(로그 출력을 검증하는 테스트 인프라가 없고, 기존에 로깅이 있던 서비스들도 동일).
+- `AfterCommitLogger`는 트랜잭션 동기화가 없을 때 즉시 실행되는지, 트랜잭션이 있을 때 커밋 전에는 실행되지 않다가 `afterCommit` 호출 시 실행되는지 단위 테스트로 검증했습니다.
+- 전체 `./gradlew test`를 통과했습니다.
+
+> API 계약은 [RECURRING_TASK_API.md](RECURRING_TASK_API.md), 호출 흐름은 [RECURRING_TASK_API_FLOW.md](RECURRING_TASK_API_FLOW.md)에 반영했습니다. 📚
+
 ## ✅ 2026-08-07 · 업무 CRUD 추가와 Task 도메인 계층 도입
 
 ### 변경 목적

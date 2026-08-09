@@ -15,6 +15,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import lombok.AccessLevel;
@@ -43,6 +45,7 @@ public class TaskJpaEntity extends BaseTimeEntity {
 
   @ManyToOne(fetch = FetchType.LAZY, optional = true)
   @JoinColumn(name = "recurring_template_id", nullable = true)
+  @OnDelete(action = OnDeleteAction.SET_NULL)
   private RecurringTaskTemplateJpaEntity recurringTemplate;
 
   @Column(nullable = false, length = 200)
