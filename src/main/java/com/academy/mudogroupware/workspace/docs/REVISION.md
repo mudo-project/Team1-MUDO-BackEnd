@@ -1,5 +1,34 @@
 # 🔄 워크스페이스 생성 이름 중복 정책 단순화
 
+## ✅ 2026-08-09 · 반복 업무 템플릿 수정 API와 로깅 커밋 타이밍 개선
+
+### 변경 목적
+
+반복 업무 템플릿 생성(#224)·목록 조회(#234)에 이어 수정 API(#236)를 추가합니다. 이번 라운드는 이 프로젝트에서 처음으로 superpowers 브레인스토밍→스펙→계획→subagent-driven-development→최종 whole-branch 리뷰 사이클을 끝까지 완주한 사례이기도 합니다. 최종 리뷰와 코드래빗(CodeRabbit) 리뷰에서 나온 지적을 계기로, 이번 수정 API뿐 아니라 workspace 도메인 전체의 로깅 컨벤션 적용 범위와 로그 타이밍도 함께 개선했습니다.
+
+### 구현 변경
+
+- `PATCH /api/workspaces/{workspaceId}/recurring-templates/{templateId}`를 추가했습니다. `title` 단독 또는 `recurrenceType`+`recurrenceRule` 세트 중 최소 하나가 필요하며, 누락된 쪽은 기존 값을 유지합니다. `recurrenceType`·`recurrenceRule`은 항상 세트로만 받습니다 — 타입이 바뀌면 규칙의 유효한 모양도 바뀌므로(`WEEKLY`의 `daysOfWeek` vs `MONTHLY`의 `dayOfMonth`), 부분 수정을 허용하면 검증 실패나 예측 불가능한 동작으로 이어질 수 있습니다.
+- `RecurringTaskTemplate.changeRecurrence`를 재호출해 병합된 값을 다시 검증합니다 — 값이 바뀌지 않은 필드도 여전히 유효한 규칙인지 재확인되는 의도된 부수 효과입니다.
+- 삭제 API가 아직 없어 수정 조회(`findByWorkspaceIdAndId`)에는 비관적 락을 걸지 않았습니다. 삭제 API를 추가할 때 `findByWorkspaceIdAndIdForUpdate`로 전환하고 수정·삭제 두 Service가 그 조회를 공유하도록 반드시 바꿔야 합니다(`Task.findByIdForUpdate`와 동일 패턴).
+- 최종 whole-branch 리뷰에서 공백 제목이 trim 후 빈 문자열로 저장 가능하다는 결함을 발견해 `@AssertTrue` 검증을 추가했습니다 — 생성 API는 `@NotBlank`로 이미 막고 있었는데 수정 API에는 빠져 있었습니다. 4개의 개별 태스크 리뷰는 각자 통과했지만 교차 태스크 이슈라 whole-branch 리뷰에서만 잡혔습니다.
+- `AfterCommitLogger`(`global.infrastructure.logging`)를 추가했습니다. `TransactionSynchronizationManager.registerSynchronization`으로 완료(`_완료`) 로그를 트랜잭션 커밋 이후로 지연시킵니다. 저장 직후 로그를 남기면 이후 커밋 시점에 제약조건 위반·deadlock 등으로 롤백돼도 성공 로그만 남아 실패를 성공으로 오인할 수 있다는 코드래빗 지적을 반영했습니다. attendance/approval 도메인은 별도 PR이라 이번 범위에서 제외하고, workspace 도메인 완료 로그 12곳(이번에 추가한 8곳 + 기존 3곳 + `DelayOverdueTasksService`)에만 적용했습니다.
+- `AddWorkspaceMembersService`가 추가할 신규 참여자가 없어 조기 반환하는 경로에서도 `addedCount=0`으로 완료 로그를 남기도록 수정했습니다. 이전에는 조기 반환 시 완료 로그 자체가 생략되어 no-op 요청과 실패를 로그만으로 구분할 수 없었습니다.
+- workspace 도메인 Service 20개 중 로깅 컨벤션이 적용되지 않았던 17개(comment 4, task 4, workspace 9)에 시작/완료 로그를 소급 적용했습니다. GitHub 이슈 #223("workspace 도메인 기존 Service에 로깅 컨벤션 소급 적용")이 CLOSED 상태였지만 실제 코드에는 반영되어 있지 않아 이번에 다시 처리했습니다(#262). 변경(mutation) 작업 12곳의 시작 로그에는 `requesterId`(또는 `creatorId`)를 추가해 "누가 했는지"를 추적할 수 있게 했고, `RemoveWorkspaceMemberService`에는 자진탈퇴·타인제거를 구분하는 `selfWithdrawal` 플래그도 추가했습니다.
+
+### 수용한 한계
+
+- 자유텍스트(업무 제목, 워크스페이스 이름)를 로그에 남기는 문제와, `DelayOverdueTasksService`만 시작 로그 없이 완료 로그만 있는 비대칭은 컨벤션 문서 차원의 논의가 필요해 이번 범위에서 제외하고 후속 이슈로 남겼습니다.
+
+### 검증
+
+- Application 계층 테스트(제목만/주기만 변경, 워크스페이스 없음, 비참여자, 템플릿 없음, 주기 불일치)와 Controller 테스트(정상/빈 바디/세트 불완전/공백 제목/템플릿 없음/403/`400_7`)를 추가했습니다.
+- 로깅 리트로핏은 새 테스트를 추가하지 않고 각 서비스의 기존 테스트가 그대로 통과하는지만 확인했습니다(로그 출력을 검증하는 테스트 인프라가 없고, 기존에 로깅이 있던 서비스들도 동일).
+- `AfterCommitLogger`는 트랜잭션 동기화가 없을 때 즉시 실행되는지, 트랜잭션이 있을 때 커밋 전에는 실행되지 않다가 `afterCommit` 호출 시 실행되는지 단위 테스트로 검증했습니다.
+- 전체 `./gradlew test`를 통과했습니다.
+
+> API 계약은 [RECURRING_TASK_API.md](RECURRING_TASK_API.md), 호출 흐름은 [RECURRING_TASK_API_FLOW.md](RECURRING_TASK_API_FLOW.md)에 반영했습니다. 📚
+
 ## ✅ 2026-08-07 · 업무 CRUD 추가와 Task 도메인 계층 도입
 
 ### 변경 목적

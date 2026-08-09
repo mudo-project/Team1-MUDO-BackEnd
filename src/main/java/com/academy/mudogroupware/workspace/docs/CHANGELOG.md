@@ -1,5 +1,13 @@
 # 📚 Workspace Changelog
 
+## 2026-08-09
+
+- 반복 업무 템플릿 수정 API(`PATCH /api/workspaces/{workspaceId}/recurring-templates/{templateId}`)를 추가했습니다. 제목 단독 또는 반복 주기(`recurrenceType`+`recurrenceRule`) 세트로 수정하며, 한쪽만 보내면 다른 쪽은 기존 값을 유지합니다. 둘 다 생략하거나 주기 세트 중 하나만 보내면 `400`입니다.
+- 공백만으로 이루어진 제목은 수정 요청에서도 거부합니다(생성 API와 동일한 제약).
+- 삭제 API가 아직 없어 수정 조회에는 비관적 락을 걸지 않습니다. 삭제 API가 추가되면 락 도입 여부를 재검토합니다.
+- workspace 도메인 Service의 완료(`_완료`) 로그를 트랜잭션 커밋 이후에만 남기도록 `AfterCommitLogger`를 도입했습니다. 저장 직후 로그를 남기면 이후 커밋 시점에 제약조건 위반 등으로 롤백돼도 성공 로그가 남아 실패를 성공으로 오인할 수 있었습니다.
+- workspace 도메인 Service 20개 중 로깅 컨벤션(`docs/LOGGING_CONVENTION.md`)이 적용되지 않았던 17개(comment 4, task 4, workspace 9)에 시작/완료 로그를 소급 적용했습니다.
+
 ## 2026-08-08
 
 - 업무 수정·삭제·댓글 API의 비관적 락 조회를 워크스페이스 범위로 제한했습니다. 다른 워크스페이스의 업무 번호로는 락 자체가 잡히지 않아, 무관한 워크스페이스 간 락 경합이 발생하지 않습니다.
