@@ -24,7 +24,9 @@ import com.academy.mudogroupware.users.domain.repository.AcademyRepository;
 import com.academy.mudogroupware.users.domain.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -43,28 +45,38 @@ public class ApproveAcademyApplicationService implements ApproveAcademyApplicati
 
     @Override
     public ApproveAcademyApplicationResult approve(ApproveAcademyApplicationCommand command) {
-        AcademyApplication application = academyApplicationRepository.findById(command.applicationId())
-                .orElseThrow(AcademyApplicationNotFoundException::new);
-        application.ensurePending();
+        log.info("event=academy_application_approve_시작 applicationId={}, reviewerId={}", command.applicationId(),
+                command.reviewerId());
+        try {
+            AcademyApplication application = academyApplicationRepository.findById(command.applicationId())
+                    .orElseThrow(AcademyApplicationNotFoundException::new);
+            application.ensurePending();
 
-        LocalDateTime now = LocalDateTime.now(clock);
-        academyApplicationRepository.markApproved(command.applicationId(), command.reviewerId(), now);
+            LocalDateTime now = LocalDateTime.now(clock);
+            academyApplicationRepository.markApproved(command.applicationId(), command.reviewerId(), now);
 
-        Academy academy = academyRepository.save(
-                Academy.create(application.getAcademyName(), application.getBusinessNo(), application.getId(), now));
+            Academy academy = academyRepository.save(Academy.create(
+                    application.getAcademyName(), application.getBusinessNo(), application.getId(), now));
 
-        String temporaryPassword = generateTemporaryPassword();
-        User user = userRepository.save(User.create(academy.getId(), application.getRequestedLoginId(),
-                passwordEncoder.encode(temporaryPassword), application.getRepresentativeName(),
-                application.getRepresentativePhone(), application.getRepresentativeEmail(), AccountType.ADMIN,
-                AdminScope.ACADEMY, now));
+            String temporaryPassword = generateTemporaryPassword();
+            User user = userRepository.save(User.create(academy.getId(), application.getRequestedLoginId(),
+                    passwordEncoder.encode(temporaryPassword), application.getRepresentativeName(),
+                    application.getRepresentativePhone(), application.getRepresentativeEmail(), AccountType.ADMIN,
+                    AdminScope.ACADEMY, now));
 
-        academyRepository.assignUser(academy.getId(), user.getId(), now);
+            academyRepository.assignUser(academy.getId(), user.getId(), now);
 
-        eventPublisher.publishEvent(
-                new AcademyApplicationApprovedEvent(academy.getId(), user.getId(), application.getId()));
+            eventPublisher.publishEvent(
+                    new AcademyApplicationApprovedEvent(academy.getId(), user.getId(), application.getId()));
 
-        return new ApproveAcademyApplicationResult(academy.getId(), user.getId(), temporaryPassword);
+            log.info("event=academy_application_approve_완료 applicationId={}, academyId={}, userId={}",
+                    command.applicationId(), academy.getId(), user.getId());
+            return new ApproveAcademyApplicationResult(academy.getId(), user.getId(), temporaryPassword);
+        } catch (RuntimeException e) {
+            log.warn("event=academy_application_approve_실패 applicationId={}, reviewerId={}, reason={}",
+                    command.applicationId(), command.reviewerId(), e.getMessage());
+            throw e;
+        }
     }
 
     private String generateTemporaryPassword() {
