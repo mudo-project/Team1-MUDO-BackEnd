@@ -90,16 +90,16 @@ public class WorkspaceTaskController {
           "현재 참여자만 삭제할 수 있습니다. 하드 삭제이며 댓글·멘션·상태 이력이 함께 삭제되고 복구할 수 없습니다. "
               + "반복 업무의 회차를 삭제하면 해당 회차를 영구히 건너뜁니다.")
   @ApiResponses({
-    @ApiResponse(responseCode = "204", description = "업무 삭제 성공"),
+    @ApiResponse(responseCode = "200", description = "업무 삭제 성공"),
     @ApiResponse(responseCode = "403", description = "참여자가 아님"),
     @ApiResponse(responseCode = "404", description = "워크스페이스 또는 업무가 존재하지 않음")
   })
   @DeleteMapping("/{taskId}")
-  public ResponseEntity<Void> deleteTask(
+  public ResponseEntity<GlobalApiResponse<Void>> deleteTask(
       @AuthenticationPrincipal AuthUser authUser,
       @PathVariable Long workspaceId,
       @PathVariable Long taskId) {
     deleteTaskUseCase.deleteTask(new DeleteTaskCommand(workspaceId, taskId, authUser.userId()));
-    return ResponseEntity.noContent().build();
+    return ResponseEntity.ok(GlobalApiResponse.ok(WorkspaceResponseCode.TASK_DELETED));
   }
 }
