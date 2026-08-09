@@ -4,12 +4,11 @@ import com.academy.mudogroupware.notice.application.query.NoticeAttachmentView;
 
 public record NoticeAttachmentResponse(
         Long id,
-        String fileUrl,
-        String fileName,
-        String fileType
+        Long fileId,
+        String fileName
 ) {
 
     public static NoticeAttachmentResponse from(NoticeAttachmentView view) {
-        return new NoticeAttachmentResponse(view.id(), view.fileUrl(), view.fileName(), view.fileType());
+        return new NoticeAttachmentResponse(view.id(), view.fileId(), view.fileName());
     }
 }

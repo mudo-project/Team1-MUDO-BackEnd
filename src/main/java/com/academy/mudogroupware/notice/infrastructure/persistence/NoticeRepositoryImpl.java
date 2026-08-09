@@ -75,9 +75,8 @@ public class NoticeRepositoryImpl implements NoticeRepository {
     private NoticeAttachmentEntity toAttachmentEntity(NoticeAttachment attachment) {
         return NoticeAttachmentEntity.builder()
                 .id(attachment.getId())
-                .fileUrl(attachment.getFileUrl())
+                .fileId(attachment.getFileId())
                 .fileName(attachment.getFileName())
-                .fileType(attachment.getFileType())
                 .build();
     }
 
@@ -92,7 +91,6 @@ public class NoticeRepositoryImpl implements NoticeRepository {
     }
 
     private NoticeAttachment toAttachmentDomain(NoticeAttachmentEntity entity) {
-        return NoticeAttachment.restore(entity.getId(), entity.getFileUrl(), entity.getFileName(),
-                entity.getFileType());
+        return NoticeAttachment.restore(entity.getId(), entity.getFileId(), entity.getFileName());
     }
 }
