@@ -44,7 +44,8 @@ public class UpdateTaskCardService implements UpdateTaskCardUseCase {
             if (!chatTaskCard.getChatRoomId().equals(command.chatRoomId())) {
                 throw new MessengerException(MessengerErrorCode.TASK_CARD_NOT_FOUND);
             }
-            boolean allAssigneesAreMembers = command.assigneeIds().stream().allMatch(chatRoom::isMember);
+            List<Long> requestedAssigneeIds = command.assigneeIds() == null ? List.of() : command.assigneeIds();
+            boolean allAssigneesAreMembers = requestedAssigneeIds.stream().allMatch(chatRoom::isMember);
             if (!allAssigneesAreMembers) {
                 throw new MessengerException(MessengerErrorCode.NOT_ROOM_MEMBER);
             }
@@ -52,7 +53,7 @@ public class UpdateTaskCardService implements UpdateTaskCardUseCase {
             List<Long> beforeAssigneeIds = chatTaskCard.getAssignees().stream()
                     .map(ChatTaskAssignee::getUserId).toList();
 
-            chatTaskCard.update(command.requesterId(), command.content(), command.dueDate(), command.assigneeIds());
+            chatTaskCard.update(command.requesterId(), command.content(), command.dueDate(), requestedAssigneeIds);
 
             List<Long> afterAssigneeIds = chatTaskCard.getAssignees().stream()
                     .map(ChatTaskAssignee::getUserId).toList();
