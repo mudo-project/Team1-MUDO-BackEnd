@@ -79,6 +79,13 @@ public class TaskPersistenceAdapter implements TaskRepository {
         .toList();
   }
 
+  @Override
+  public boolean existsByRecurringTemplateIdAndScheduledFor(
+      Long recurringTemplateId, LocalDateTime scheduledFor) {
+    return taskJpaRepository.existsByRecurringTemplate_IdAndScheduledFor(
+        recurringTemplateId, scheduledFor);
+  }
+
   private TaskJpaEntity newEntity(Task task) {
     WorkspaceJpaEntity workspace = workspaceJpaRepository.getReferenceById(task.getWorkspaceId());
     RecurringTaskTemplateJpaEntity recurringTemplate =

@@ -166,6 +166,27 @@ DELETE /api/workspaces/{workspaceId}/recurring-templates/{templateId}
 
 성공하면 Controller가 `GlobalApiResponse.ok(WorkspaceResponseCode.RECURRING_TEMPLATE_DELETED)`로 `200 OK`를 반환한다.
 
+## ⏰ 반복 업무 생성 스케줄러 흐름
+
+```text
+RecurringTaskScheduler (@Scheduled cron="0 5 0 * * *" zone="Asia/Seoul")
+  → GenerateRecurringTasksUseCase
+  → GenerateRecurringTasksService (@Transactional)
+  → RecurringTaskTemplateRepository.findAll() (소프트 삭제 워크스페이스 제외)
+  → RecurringTaskTemplate.isDueOn(today) (Domain Model)
+  → TaskRepository.existsByRecurringTemplateIdAndScheduledFor (이미 생성됨?)
+  → RecurringTaskSkipRepository.exists (삭제되어 재생성 금지?)
+  → Task.createRecurring (Domain Model)
+  → TaskRepository.save
+  → TaskStatusHistoryRepository.append(systemChanged)
+```
+
+매일 KST 00:05에 실행된다. `WorkspaceTaskDelayScheduler`(00:00, 지연 처리)와 실행 순서를 슬롯으로 분리했다 — 두 스케줄러는 서로 다른 `Task` 행을 다루므로 데이터 경합은 없고, 00:05는 배치 슬롯을 나누는 운영 컨벤션이다.
+
+멱등성은 두 가지를 각각 확인한다. ① 이미 생성됐는지는 `task` 테이블의 유니크 제약(`uk_task_recurring_template_scheduled_for`)이 만든 인덱스를 그대로 타는 `existsByRecurringTemplateIdAndScheduledFor`로 확인한다. ② 삭제되어 재생성하면 안 되는 회차인지는 `RecurringTaskSkipRepository.exists`로 확인한다(`DeleteTaskService`가 반복 업무 삭제 시 기록해두는 기존 메커니즘 재사용).
+
+캐치업(장애 복구 소급 생성)은 하지 않는다 — 매일 00:05 실행 시점의 "오늘"만 판단하며, 서버가 하루 이상 멈췄다가 복구돼도 지난 회차를 소급 생성하지 않는다.
+
 ## 📚 관련 문서
 
 - [RECURRING_TASK_API.md](RECURRING_TASK_API.md) — 반복 업무 템플릿 API 명세

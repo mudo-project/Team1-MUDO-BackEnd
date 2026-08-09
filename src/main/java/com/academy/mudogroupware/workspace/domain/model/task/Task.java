@@ -30,6 +30,11 @@ public class Task {
       LocalDateTime scheduledFor,
       Long createdBy,
       LocalDateTime createdAt) {
+    // 반복 업무 발생은 scheduledFor로 회차를 식별한다. recurringTemplateId만 있고
+    // scheduledFor가 없으면 어떤 회차인지 알 수 없는 불완전한 상태다.
+    if (recurringTemplateId != null && scheduledFor == null) {
+      throw new IllegalArgumentException("반복 업무는 recurringTemplateId와 scheduledFor를 함께 가져야 합니다.");
+    }
     this.id = id;
     this.workspaceId = workspaceId;
     this.recurringTemplateId = recurringTemplateId;
@@ -47,6 +52,19 @@ public class Task {
     TaskStatus initialStatus = dueAt.isBefore(today) ? TaskStatus.DELAYED : TaskStatus.WAITING;
     return new Task(
         null, workspaceId, null, title.trim(), initialStatus, dueAt, null, creatorId, null);
+  }
+
+  // 반복 업무 발생 생성. 생성 시점이 곧 발생일(scheduledFor)이라 지연 판단이 필요 없어
+  // 항상 WAITING으로 시작한다. 반복 업무는 due_at을 쓰지 않으므로 null로 둔다.
+  public static Task createRecurring(
+      Long workspaceId,
+      Long recurringTemplateId,
+      String title,
+      LocalDateTime scheduledFor,
+      Long createdBy) {
+    return new Task(
+        null, workspaceId, recurringTemplateId, title, TaskStatus.WAITING, null, scheduledFor,
+        createdBy, null);
   }
 
   public static Task restore(

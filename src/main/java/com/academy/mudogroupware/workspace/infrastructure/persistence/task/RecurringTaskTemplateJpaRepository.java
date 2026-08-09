@@ -1,6 +1,7 @@
 package com.academy.mudogroupware.workspace.infrastructure.persistence.task;
 
 import jakarta.persistence.LockModeType;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
@@ -36,4 +37,11 @@ public interface RecurringTaskTemplateJpaRepository
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("select t from RecurringTaskTemplateJpaEntity t where t.id = :templateId")
   Optional<RecurringTaskTemplateJpaEntity> lockById(@Param("templateId") Long templateId);
+
+  // JpaRepository.findAll()을 오버라이드해 소프트 삭제된 워크스페이스의 템플릿을 제외한다.
+  // 생성 스케줄러가 이 메서드로 전체 템플릿을 스캔하므로, 워크스페이스가 삭제되면
+  // 그 안의 템플릿이 계속 업무를 만들어내지 않도록 여기서 막는다.
+  @Override
+  @Query("select t from RecurringTaskTemplateJpaEntity t where t.workspace.deletedAt is null")
+  List<RecurringTaskTemplateJpaEntity> findAll();
 }

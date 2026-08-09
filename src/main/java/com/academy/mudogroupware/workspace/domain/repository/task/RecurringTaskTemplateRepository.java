@@ -22,6 +22,7 @@ public interface RecurringTaskTemplateRepository {
   PageResult<RecurringTaskTemplate> findAllByWorkspaceId(Long workspaceId, int page, int size);
 
   // 생성 스케줄러가 전체 워크스페이스의 템플릿을 스캔할 때 쓴다.
+  // 소프트 삭제된 워크스페이스에 속한 템플릿은 제외한다.
   List<RecurringTaskTemplate> findAll();
 
   // 하드 삭제. recurring_task_skip은 DB의 ON DELETE CASCADE로 함께 삭제된다.

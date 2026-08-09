@@ -252,6 +252,33 @@ class TaskTest {
     assertThat(task.getCreatedAt()).isNull();
   }
 
+  // --- createRecurring: 반복 업무 발생 생성 ---
+
+  @Test
+  void createRecurringStartsWaitingWithNullDueAt() {
+    LocalDateTime scheduledFor = TODAY.atStartOfDay();
+
+    Task task = Task.createRecurring(WORKSPACE_ID, 100L, "주간 정리", scheduledFor, CREATOR_ID);
+
+    assertThat(task.getStatus()).isEqualTo(TaskStatus.WAITING);
+    assertThat(task.getDueAt()).isNull();
+    assertThat(task.getScheduledFor()).isEqualTo(scheduledFor);
+    assertThat(task.getRecurringTemplateId()).isEqualTo(100L);
+    assertThat(task.getWorkspaceId()).isEqualTo(WORKSPACE_ID);
+    assertThat(task.getCreatedBy()).isEqualTo(CREATOR_ID);
+    assertThat(task.getId()).isNull();
+    assertThat(task.isRecurring()).isTrue();
+  }
+
+  @Test
+  void restoreRejectsRecurringTemplateIdWithoutScheduledFor() {
+    assertThatThrownBy(
+            () ->
+                Task.restore(
+                    1L, WORKSPACE_ID, 100L, "반복 업무", TaskStatus.WAITING, null, null, CREATOR_ID))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
   private Task regular(TaskStatus status, LocalDate dueAt) {
     return Task.restore(1L, WORKSPACE_ID, null, "일반 업무", status, dueAt, null, CREATOR_ID);
   }
