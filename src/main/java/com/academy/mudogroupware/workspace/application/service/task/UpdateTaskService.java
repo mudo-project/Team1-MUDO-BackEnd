@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.workspace.application.service.task;
 
+import com.academy.mudogroupware.global.infrastructure.logging.AfterCommitLogger;
 import com.academy.mudogroupware.workspace.application.command.task.UpdateTaskCommand;
 import com.academy.mudogroupware.workspace.application.usecase.task.UpdateTaskUseCase;
 import com.academy.mudogroupware.workspace.domain.exception.task.TaskNotFoundException;
@@ -71,11 +72,13 @@ public class UpdateTaskService implements UpdateTaskUseCase {
               saved.getId(), previousStatus, saved.getStatus(), command.requesterId()));
     }
 
-    log.info(
-        "event=task_update_완료 workspaceId={}, taskId={}, status={}",
-        command.workspaceId(),
-        command.taskId(),
-        saved.getStatus());
+    AfterCommitLogger.run(
+        () ->
+            log.info(
+                "event=task_update_완료 workspaceId={}, taskId={}, status={}",
+                command.workspaceId(),
+                command.taskId(),
+                saved.getStatus()));
     return saved;
   }
 }

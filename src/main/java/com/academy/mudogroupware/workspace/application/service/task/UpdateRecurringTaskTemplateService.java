@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.workspace.application.service.task;
 
+import com.academy.mudogroupware.global.infrastructure.logging.AfterCommitLogger;
 import com.academy.mudogroupware.workspace.application.command.task.UpdateRecurringTaskTemplateCommand;
 import com.academy.mudogroupware.workspace.application.usecase.task.UpdateRecurringTaskTemplateUseCase;
 import com.academy.mudogroupware.workspace.domain.exception.task.RecurringTaskTemplateNotFoundException;
@@ -57,10 +58,12 @@ public class UpdateRecurringTaskTemplateService implements UpdateRecurringTaskTe
 
     RecurringTaskTemplate saved = recurringTaskTemplateRepository.save(changed);
 
-    log.info(
-        "event=recurring_template_update_완료 workspaceId={}, templateId={}",
-        command.workspaceId(),
-        saved.getId());
+    AfterCommitLogger.run(
+        () ->
+            log.info(
+                "event=recurring_template_update_완료 workspaceId={}, templateId={}",
+                command.workspaceId(),
+                saved.getId()));
     return saved;
   }
 }

@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.workspace.application.service.workspace;
 
+import com.academy.mudogroupware.global.infrastructure.logging.AfterCommitLogger;
 import com.academy.mudogroupware.workspace.application.command.workspace.CreateWorkspaceCommand;
 import com.academy.mudogroupware.workspace.application.port.WorkspaceMemberDirectoryPort;
 import com.academy.mudogroupware.workspace.application.usecase.workspace.CreateWorkspaceUseCase;
@@ -56,10 +57,12 @@ public class WorkspaceService implements CreateWorkspaceUseCase {
 
     Long workspaceId = workspaceRepository.save(workspace).getId();
 
-    log.info(
-        "event=workspace_create_완료 academyId={}, workspaceId={}",
-        command.academyId(),
-        workspaceId);
+    AfterCommitLogger.run(
+        () ->
+            log.info(
+                "event=workspace_create_완료 academyId={}, workspaceId={}",
+                command.academyId(),
+                workspaceId));
     return workspaceId;
   }
 

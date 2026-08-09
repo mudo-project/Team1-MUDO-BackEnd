@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.workspace.application.service.workspace;
 
+import com.academy.mudogroupware.global.infrastructure.logging.AfterCommitLogger;
 import com.academy.mudogroupware.workspace.application.command.workspace.RecoverWorkspaceCommand;
 import com.academy.mudogroupware.workspace.application.usecase.workspace.RecoverWorkspaceUseCase;
 import com.academy.mudogroupware.workspace.domain.exception.workspace.WorkspaceAccessDeniedException;
@@ -53,10 +54,12 @@ public class RecoverWorkspaceService implements RecoverWorkspaceUseCase {
     Workspace recovered = workspace.recover(finalName);
     workspaceRepository.recover(command.workspaceId(), recovered.getName());
 
-    log.info(
-        "event=workspace_recover_완료 workspaceId={}, name={}",
-        command.workspaceId(),
-        recovered.getName());
+    AfterCommitLogger.run(
+        () ->
+            log.info(
+                "event=workspace_recover_완료 workspaceId={}, name={}",
+                command.workspaceId(),
+                recovered.getName()));
     return recovered.getName();
   }
 

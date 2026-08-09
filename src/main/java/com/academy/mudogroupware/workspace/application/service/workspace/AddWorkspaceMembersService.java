@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.workspace.application.service.workspace;
 
+import com.academy.mudogroupware.global.infrastructure.logging.AfterCommitLogger;
 import com.academy.mudogroupware.workspace.application.command.workspace.AddWorkspaceMembersCommand;
 import com.academy.mudogroupware.workspace.application.port.WorkspaceMemberDirectoryPort;
 import com.academy.mudogroupware.workspace.application.usecase.workspace.AddWorkspaceMembersUseCase;
@@ -43,22 +44,22 @@ public class AddWorkspaceMembersService implements AddWorkspaceMembersUseCase {
 
     Set<Long> requestedIds = new LinkedHashSet<>(command.memberIds());
     Set<Long> newIds = workspace.newlyAddedMemberIds(requestedIds);
-    if (newIds.isEmpty()) {
-      return newIds;
+    if (!newIds.isEmpty()) {
+      Set<Long> activeIds = workspaceMemberDirectoryPort.findActiveUserIds(command.academyId(), newIds);
+      if (!activeIds.containsAll(newIds)) {
+        throw new InvalidWorkspaceMemberException();
+      }
+
+      Workspace updated = workspace.addMembers(newIds);
+      workspaceRepository.updateMembers(command.workspaceId(), updated.getMemberIds());
     }
 
-    Set<Long> activeIds = workspaceMemberDirectoryPort.findActiveUserIds(command.academyId(), newIds);
-    if (!activeIds.containsAll(newIds)) {
-      throw new InvalidWorkspaceMemberException();
-    }
-
-    Workspace updated = workspace.addMembers(newIds);
-    workspaceRepository.updateMembers(command.workspaceId(), updated.getMemberIds());
-
-    log.info(
-        "event=workspace_member_add_완료 workspaceId={}, addedCount={}",
-        command.workspaceId(),
-        newIds.size());
+    AfterCommitLogger.run(
+        () ->
+            log.info(
+                "event=workspace_member_add_완료 workspaceId={}, addedCount={}",
+                command.workspaceId(),
+                newIds.size()));
     return newIds;
   }
 }

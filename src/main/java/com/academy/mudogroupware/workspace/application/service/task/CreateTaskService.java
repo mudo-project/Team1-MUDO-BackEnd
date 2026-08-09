@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.workspace.application.service.task;
 
+import com.academy.mudogroupware.global.infrastructure.logging.AfterCommitLogger;
 import com.academy.mudogroupware.workspace.application.command.task.CreateTaskCommand;
 import com.academy.mudogroupware.workspace.application.usecase.task.CreateTaskUseCase;
 import com.academy.mudogroupware.workspace.domain.exception.workspace.WorkspaceAccessDeniedException;
@@ -61,10 +62,12 @@ public class CreateTaskService implements CreateTaskUseCase {
         TaskStatusHistory.userChanged(
             saved.getId(), null, saved.getStatus(), command.requesterId()));
 
-    log.info(
-        "event=task_create_완료 workspaceId={}, taskId={}",
-        command.workspaceId(),
-        saved.getId());
+    AfterCommitLogger.run(
+        () ->
+            log.info(
+                "event=task_create_완료 workspaceId={}, taskId={}",
+                command.workspaceId(),
+                saved.getId()));
     return saved.getId();
   }
 }

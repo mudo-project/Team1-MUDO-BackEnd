@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.workspace.application.service.comment;
 
+import com.academy.mudogroupware.global.infrastructure.logging.AfterCommitLogger;
 import com.academy.mudogroupware.workspace.application.command.comment.ToggleTaskCommentCompleteCommand;
 import com.academy.mudogroupware.workspace.application.usecase.comment.ToggleTaskCommentCompleteUseCase;
 import com.academy.mudogroupware.workspace.domain.exception.comment.TaskCommentNotFoundException;
@@ -66,12 +67,14 @@ public class ToggleTaskCommentCompleteService implements ToggleTaskCommentComple
 
     TaskComment saved = taskCommentRepository.save(toggled);
 
-    log.info(
-        "event=task_comment_toggle_complete_완료 workspaceId={}, taskId={}, commentId={}, completed={}",
-        command.workspaceId(),
-        command.taskId(),
-        command.commentId(),
-        saved.isCompleted());
+    AfterCommitLogger.run(
+        () ->
+            log.info(
+                "event=task_comment_toggle_complete_완료 workspaceId={}, taskId={}, commentId={}, completed={}",
+                command.workspaceId(),
+                command.taskId(),
+                command.commentId(),
+                saved.isCompleted()));
     return saved;
   }
 }

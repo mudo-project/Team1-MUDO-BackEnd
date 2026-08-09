@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.workspace.application.service.workspace;
 
+import com.academy.mudogroupware.global.infrastructure.logging.AfterCommitLogger;
 import com.academy.mudogroupware.workspace.application.command.workspace.RenameWorkspaceCommand;
 import com.academy.mudogroupware.workspace.application.usecase.workspace.RenameWorkspaceUseCase;
 import com.academy.mudogroupware.workspace.domain.exception.workspace.WorkspaceAccessDeniedException;
@@ -39,10 +40,12 @@ public class RenameWorkspaceService implements RenameWorkspaceUseCase {
     Workspace renamed = workspace.rename(command.name());
     workspaceRepository.rename(command.workspaceId(), renamed.getName());
 
-    log.info(
-        "event=workspace_rename_완료 workspaceId={}, name={}",
-        command.workspaceId(),
-        renamed.getName());
+    AfterCommitLogger.run(
+        () ->
+            log.info(
+                "event=workspace_rename_완료 workspaceId={}, name={}",
+                command.workspaceId(),
+                renamed.getName()));
     return renamed.getName();
   }
 }

@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.workspace.application.service.comment;
 
+import com.academy.mudogroupware.global.infrastructure.logging.AfterCommitLogger;
 import com.academy.mudogroupware.workspace.application.command.comment.CreateTaskCommentCommand;
 import com.academy.mudogroupware.workspace.application.usecase.comment.CreateTaskCommentUseCase;
 import com.academy.mudogroupware.workspace.domain.exception.comment.InvalidMentionedUserException;
@@ -67,11 +68,13 @@ public class CreateTaskCommentService implements CreateTaskCommentUseCase {
 
     TaskComment saved = taskCommentRepository.save(comment);
 
-    log.info(
-        "event=task_comment_create_완료 workspaceId={}, taskId={}, commentId={}",
-        command.workspaceId(),
-        command.taskId(),
-        saved.getId());
+    AfterCommitLogger.run(
+        () ->
+            log.info(
+                "event=task_comment_create_완료 workspaceId={}, taskId={}, commentId={}",
+                command.workspaceId(),
+                command.taskId(),
+                saved.getId()));
     return saved;
   }
 }
