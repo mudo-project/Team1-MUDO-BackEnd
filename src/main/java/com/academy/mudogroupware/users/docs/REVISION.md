@@ -692,7 +692,7 @@ PR 1(목록)·PR 2(상세)에 이어지는 세 번째이자 마지막 PR. 승인
 - **`UserRepositoryImplDataJpaTest`에 `countActiveByRoleIds` 실 DB 검증 테스트를 추가했다.** 기존엔 Mockito 목 기반 단위 테스트만 있어서, GROUP BY 집계 쿼리가 실제 DB에서 의도대로 동작하는지 확인하는 테스트가 없었다.
 - **`CreateRoleServiceTest`가 `color` 값이 실제로 전달되는지 검증하지 않고 있었다.** 목 `save()`의 `thenAnswer`에서 반환값만 만들고 인자로 들어온 `color`는 확인하지 않아, 필드가 누락돼도 테스트가 통과하는 상태였다 — assertion을 추가했다.
 - **`UserRepositoryImplTest`의 빈 `Set` 케이스에 `verifyNoInteractions(jpaRepository)`를 추가했다.** 빈 입력일 때 리포지토리를 아예 호출하지 않는 얼리 리턴 경로인데, 이를 검증하는 assertion이 없었다.
-- **반영하지 않은 것은 없다** — 6건 중 이 4건 외 2건은 이번 확인 과정에서 이미 해결돼 있었거나(별도 확인 필요 사항 아님) 범위 밖으로 판단해 제외했다.
+- **6건 중 이 4건만 반영했다** — 나머지 2건은 이미 팀의 기존 컨벤션(짐짝 전례)과 일치하거나 이 PR 범위를 넘는 설계 변경이라 판단해 제외했다.
 
 ### 확정된 정책 — 로깅 컨벤션 소급 적용
 
