@@ -183,6 +183,26 @@ class TaskPersistenceAdapterDataJpaTest {
   }
 
   @Test
+  void findLatestChangedAtReturnsMostRecentHistory() {
+    insertWorkspace(WORKSPACE_ID);
+    insertTask(1L, WORKSPACE_ID, TaskStatus.WAITING, TODAY);
+    insertStatusHistory(1L, TaskStatus.WAITING, TaskStatus.IN_PROGRESS, LocalDateTime.of(2026, 8, 2, 9, 0));
+    insertStatusHistory(1L, TaskStatus.IN_PROGRESS, TaskStatus.COMPLETED, LocalDateTime.of(2026, 8, 3, 15, 0));
+
+    Optional<LocalDateTime> latest = taskStatusHistoryRepository.findLatestChangedAt(1L);
+
+    assertThat(latest).contains(LocalDateTime.of(2026, 8, 3, 15, 0));
+  }
+
+  @Test
+  void findLatestChangedAtReturnsEmptyWhenNoHistory() {
+    insertWorkspace(WORKSPACE_ID);
+    insertTask(1L, WORKSPACE_ID, TaskStatus.WAITING, TODAY);
+
+    assertThat(taskStatusHistoryRepository.findLatestChangedAt(1L)).isEmpty();
+  }
+
+  @Test
   void saveIfAbsentIsIdempotentForSameOccurrence() {
     insertWorkspace(WORKSPACE_ID);
     insertRecurringTemplate(100L, WORKSPACE_ID);
@@ -252,10 +272,15 @@ class TaskPersistenceAdapterDataJpaTest {
   }
 
   private void insertStatusHistory(long taskId, TaskStatus previous, TaskStatus current) {
+    insertStatusHistory(taskId, previous, current, at());
+  }
+
+  private void insertStatusHistory(
+      long taskId, TaskStatus previous, TaskStatus current, LocalDateTime createdAt) {
     jdbcTemplate.update(
         "insert into task_status_history (task_id, previous_status, current_status, created_at) "
             + "values (?, ?, ?, ?)",
-        taskId, previous.name(), current.name(), at());
+        taskId, previous.name(), current.name(), createdAt);
   }
 
   private void insertComment(long commentId, long taskId) {
