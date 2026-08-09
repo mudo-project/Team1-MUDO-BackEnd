@@ -68,6 +68,26 @@ class RecurringTaskTemplatePersistenceAdapterDataJpaTest {
   }
 
   @Test
+  void findByWorkspaceIdAndIdForUpdateReturnsEmptyForOtherWorkspace() {
+    insertWorkspace(WORKSPACE_ID);
+    insertWorkspace(2L);
+    RecurringTaskTemplate saved =
+        recurringTaskTemplateRepository.save(
+            RecurringTaskTemplate.create(
+                WORKSPACE_ID, "락 대상", RecurrenceType.MONTHLY,
+                Map.of("dayOfMonth", 1), CREATOR_ID));
+
+    Optional<RecurringTaskTemplate> foundWithWrongWorkspace =
+        recurringTaskTemplateRepository.findByWorkspaceIdAndIdForUpdate(2L, saved.getId());
+    Optional<RecurringTaskTemplate> foundWithCorrectWorkspace =
+        recurringTaskTemplateRepository.findByWorkspaceIdAndIdForUpdate(WORKSPACE_ID, saved.getId());
+
+    assertThat(foundWithWrongWorkspace).isEmpty();
+    assertThat(foundWithCorrectWorkspace).isPresent();
+    assertThat(foundWithCorrectWorkspace.get().getId()).isEqualTo(saved.getId());
+  }
+
+  @Test
   void updateReplacesTitleAndRecurrence() {
     insertWorkspace(WORKSPACE_ID);
     RecurringTaskTemplate saved =
