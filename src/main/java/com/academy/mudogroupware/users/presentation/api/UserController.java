@@ -21,9 +21,13 @@ import com.academy.mudogroupware.users.presentation.api.common.UserResponseCode;
 import com.academy.mudogroupware.users.presentation.api.request.ChangeUserRoleRequest;
 import com.academy.mudogroupware.users.presentation.api.response.UserSearchResponse;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+@Tag(name = "구성원", description = "학원 구성원 검색/역할 변경 API")
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
@@ -33,18 +37,25 @@ public class UserController {
     private final SearchUsersUseCase searchUsersUseCase;
 
     @PreAuthorize("hasAuthority('ACCOUNT:MANAGE')")
+    @Operation(
+            summary = "구성원 역할 변경",
+            description = "일반 직원 계정(accountType=MEMBER)의 역할을 같은 학원 소속 다른 역할로 바꿉니다. 역할 해제(역할 없음)는 지원하지 않습니다.")
     @PatchMapping("/{userId}/role")
     public ResponseEntity<Void> changeRole(
             @AuthenticationPrincipal AuthUser authUser,
-            @PathVariable Long userId,
+            @Parameter(description = "대상 구성원의 사용자 ID") @PathVariable Long userId,
             @Valid @RequestBody ChangeUserRoleRequest request) {
         changeUserRoleUseCase.changeRole(request.toCommand(userId, authUser.academyId()));
         return ResponseEntity.noContent().build();
     }
 
+    @Operation(
+            summary = "학원 구성원 검색",
+            description = "같은 학원 소속 ACTIVE 구성원을 이름으로 검색합니다. 키워드가 없으면 전체 목록을 반환합니다. 로그인만 되면 권한 제약 없이 호출할 수 있습니다.")
     @GetMapping
     public ResponseEntity<GlobalApiResponse<List<UserSearchResponse>>> search(
             @AuthenticationPrincipal AuthUser authUser,
+            @Parameter(description = "이름 부분 일치 검색어. 없으면 전체 목록 반환")
             @RequestParam(required = false) String keyword) {
         List<UserSearchResponse> data = searchUsersUseCase.search(authUser.academyId(), keyword).stream()
                 .map(UserSearchResponse::from)
