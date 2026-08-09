@@ -52,7 +52,7 @@ public class CompleteTaskService implements CompleteTaskUseCase {
                     chatTaskCard.isFullyCompleted());
         } catch (RuntimeException e) {
             log.warn("event=task_card_complete_실패 chatRoomId={}, cardId={}, userId={}, reason={}",
-                    command.chatRoomId(), command.cardId(), command.userId(), e.getMessage());
+                    command.chatRoomId(), command.cardId(), command.userId(), e.getMessage(), e);
             throw e;
         }
     }

@@ -80,7 +80,7 @@ public class UpdateTaskCardService implements UpdateTaskCardUseCase {
                     removedUserIds.size());
         } catch (RuntimeException e) {
             log.warn("event=task_card_update_실패 chatRoomId={}, cardId={}, requesterId={}, reason={}",
-                    command.chatRoomId(), command.cardId(), command.requesterId(), e.getMessage());
+                    command.chatRoomId(), command.cardId(), command.requesterId(), e.getMessage(), e);
             throw e;
         }
     }

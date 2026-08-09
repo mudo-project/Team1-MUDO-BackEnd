@@ -47,7 +47,7 @@ public class UpdateMessageService implements UpdateMessageUseCase {
                     command.messageId(), command.requesterId());
         } catch (RuntimeException e) {
             log.warn("event=message_update_실패 chatRoomId={}, messageId={}, requesterId={}, reason={}",
-                    command.chatRoomId(), command.messageId(), command.requesterId(), e.getMessage());
+                    command.chatRoomId(), command.messageId(), command.requesterId(), e.getMessage(), e);
             throw e;
         }
     }

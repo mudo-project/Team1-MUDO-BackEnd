@@ -64,7 +64,8 @@ public class CreateChatRoomService implements CreateChatRoomUseCase {
             log.info("event=chat_room_create_완료 requesterId={}, chatRoomId={}", command.requesterId(), chatRoomId);
             return chatRoomId;
         } catch (RuntimeException e) {
-            log.warn("event=chat_room_create_실패 requesterId={}, reason={}", command.requesterId(), e.getMessage());
+            log.warn("event=chat_room_create_실패 requesterId={}, reason={}", command.requesterId(), e.getMessage(),
+                    e);
             throw e;
         }
     }

@@ -63,7 +63,7 @@ public class CreateTaskCardService implements CreateTaskCardUseCase {
             return saved.getId();
         } catch (RuntimeException e) {
             log.warn("event=task_card_create_실패 chatRoomId={}, assignerId={}, reason={}", command.chatRoomId(),
-                    command.assignerId(), e.getMessage());
+                    command.assignerId(), e.getMessage(), e);
             throw e;
         }
     }

@@ -79,7 +79,7 @@ public class TaskCardQueryService implements TaskCardQueryUseCase {
             return new TaskCardPageView(taskCardViews, hasNext, nextCursorCreatedAt, nextCursorCardId);
         } catch (RuntimeException e) {
             log.warn("event=task_card_list_실패 chatRoomId={}, requesterId={}, reason={}", chatRoomId, requesterId,
-                    e.getMessage());
+                    e.getMessage(), e);
             throw e;
         }
     }
