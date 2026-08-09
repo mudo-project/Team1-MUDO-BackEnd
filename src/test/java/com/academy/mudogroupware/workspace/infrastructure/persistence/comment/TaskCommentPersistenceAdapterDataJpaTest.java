@@ -2,6 +2,7 @@ package com.academy.mudogroupware.workspace.infrastructure.persistence.comment;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.academy.mudogroupware.global.domain.common.page.PageResult;
 import com.academy.mudogroupware.global.infrastructure.config.TimeConfig;
 import com.academy.mudogroupware.workspace.domain.model.comment.TaskComment;
 import com.academy.mudogroupware.workspace.domain.model.task.TaskStatus;
@@ -38,6 +39,10 @@ class TaskCommentPersistenceAdapterDataJpaTest {
   private Long givenTaskId() {
     WorkspaceJpaEntity workspace =
         workspaceJpaRepository.save(WorkspaceJpaEntity.create(1L, "워크스페이스", 10L));
+    return givenTaskId(workspace);
+  }
+
+  private Long givenTaskId(WorkspaceJpaEntity workspace) {
     TaskJpaEntity task =
         taskJpaRepository.save(
             TaskJpaEntity.create(
@@ -87,5 +92,38 @@ class TaskCommentPersistenceAdapterDataJpaTest {
 
     assertThat(taskCommentJpaRepository.findById(created.getId())).isEmpty();
     assertThat(taskCommentMentionJpaRepository.findAllByCommentId(created.getId())).isEmpty();
+  }
+
+  @Test
+  void findAllByTaskIdReturnsOldestFirstWithinPageSize() {
+    Long taskId = givenTaskId();
+    TaskComment older = adapter().save(
+        TaskComment.create(taskId, 10L, "먼저 쓴 댓글", List.of(), LocalDateTime.of(2026, 8, 1, 16, 0)));
+    TaskComment newer = adapter().save(
+        TaskComment.create(taskId, 10L, "나중에 쓴 댓글", List.of(), LocalDateTime.of(2026, 8, 2, 18, 0)));
+
+    PageResult<TaskComment> firstPage = adapter().findAllByTaskId(taskId, 0, 1);
+
+    assertThat(firstPage.content()).extracting(TaskComment::getId).containsExactly(older.getId());
+    assertThat(firstPage.hasNext()).isTrue();
+
+    PageResult<TaskComment> secondPage = adapter().findAllByTaskId(taskId, 1, 1);
+    assertThat(secondPage.content()).extracting(TaskComment::getId).containsExactly(newer.getId());
+    assertThat(secondPage.hasNext()).isFalse();
+  }
+
+  @Test
+  void findAllByTaskIdExcludesOtherTaskComments() {
+    WorkspaceJpaEntity workspace =
+        workspaceJpaRepository.save(WorkspaceJpaEntity.create(1L, "워크스페이스", 10L));
+    Long taskId = givenTaskId(workspace);
+    Long otherTaskId = givenTaskId(workspace);
+    adapter().save(TaskComment.create(taskId, 10L, "이 업무 댓글", List.of(), LocalDateTime.of(2026, 8, 1, 9, 0)));
+    adapter().save(TaskComment.create(otherTaskId, 10L, "다른 업무 댓글", List.of(), LocalDateTime.of(2026, 8, 1, 9, 0)));
+
+    PageResult<TaskComment> page = adapter().findAllByTaskId(taskId, 0, 20);
+
+    assertThat(page.content()).hasSize(1);
+    assertThat(page.content().get(0).getContent()).isEqualTo("이 업무 댓글");
   }
 }
