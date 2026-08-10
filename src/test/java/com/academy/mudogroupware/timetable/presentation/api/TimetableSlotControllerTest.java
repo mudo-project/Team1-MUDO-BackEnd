@@ -37,6 +37,7 @@ import com.academy.mudogroupware.timetable.application.usecase.DeleteTimetableSl
 import com.academy.mudogroupware.timetable.application.usecase.UpdateTimetableSlotUseCase;
 import com.academy.mudogroupware.timetable.domain.exception.TimetableSlotNotFoundException;
 import com.academy.mudogroupware.timetable.domain.model.ClassType;
+import com.academy.mudogroupware.timetable.domain.model.Grade;
 
 @WebMvcTest(TimetableSlotController.class)
 class TimetableSlotControllerTest {
@@ -63,7 +64,7 @@ class TimetableSlotControllerTest {
                   "classroomCode": "601",
                   "startTime": "09:00:00",
                   "endTime": "11:00:00",
-                  "grade": "고3",
+                  "grade": "HIGH_3",
                   "teacherName": "정T",
                   "subjectName": "미적분"
                 }
@@ -80,6 +81,52 @@ class TimetableSlotControllerTest {
     }
 
     @Test
+    void createSlotReturns400WhenGradeIsMissing() throws Exception {
+        String body = """
+                {
+                  "classType": "CLASS",
+                  "dayOfWeek": "MONDAY",
+                  "classroomCode": "601",
+                  "startTime": "09:00:00",
+                  "endTime": "11:00:00",
+                  "teacherName": "정T",
+                  "subjectName": "미적분"
+                }
+                """;
+
+        mockMvc.perform(post("/api/timetables/1/slots")
+                        .with(authentication(authenticatedUser("TIMETABLE:MANAGE")))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_400_1"));
+    }
+
+    @Test
+    void createSlotReturns400WhenGradeIsNotValidEnumValue() throws Exception {
+        String body = """
+                {
+                  "classType": "CLASS",
+                  "dayOfWeek": "MONDAY",
+                  "classroomCode": "601",
+                  "startTime": "09:00:00",
+                  "endTime": "11:00:00",
+                  "grade": "고3",
+                  "teacherName": "정T",
+                  "subjectName": "미적분"
+                }
+                """;
+
+        mockMvc.perform(post("/api/timetables/1/slots")
+                        .with(authentication(authenticatedUser("TIMETABLE:MANAGE")))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void createSlotReturns401WhenUnauthenticated() throws Exception {
         mockMvc.perform(post("/api/timetables/1/slots").with(csrf()).contentType(MediaType.APPLICATION_JSON).content("{}"))
                 .andExpect(status().isUnauthorized());
@@ -89,26 +136,28 @@ class TimetableSlotControllerTest {
     void getSlotsReturns200WithList() throws Exception {
         when(getTimetableSlotsUseCase.getSlots(1L, 1L)).thenReturn(List.of(
                 new TimetableSlotView(100L, ClassType.CLASS, DayOfWeek.MONDAY, "601",
-                        LocalTime.of(9, 0), LocalTime.of(11, 0), "고3", "정T", "미적분")));
+                        LocalTime.of(9, 0), LocalTime.of(11, 0), Grade.HIGH_3, "정T", "미적분")));
 
         mockMvc.perform(get("/api/timetables/1/slots")
                         .with(authentication(authenticatedUser())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("TIMETABLE_200_3"))
-                .andExpect(jsonPath("$.data[0].classroomCode").value("601"));
+                .andExpect(jsonPath("$.data[0].classroomCode").value("601"))
+                .andExpect(jsonPath("$.data[0].grade").value("HIGH_3"));
     }
 
     @Test
     void getSlotReturns200WithDetail() throws Exception {
         when(getTimetableSlotUseCase.getSlot(1L, 1L, 100L)).thenReturn(
                 new TimetableSlotView(100L, ClassType.CLASS, DayOfWeek.MONDAY, "601",
-                        LocalTime.of(9, 0), LocalTime.of(11, 0), "고3", "정T", "미적분"));
+                        LocalTime.of(9, 0), LocalTime.of(11, 0), Grade.HIGH_3, "정T", "미적분"));
 
         mockMvc.perform(get("/api/timetables/1/slots/100")
                         .with(authentication(authenticatedUser())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("TIMETABLE_200_4"))
-                .andExpect(jsonPath("$.data.teacherName").value("정T"));
+                .andExpect(jsonPath("$.data.teacherName").value("정T"))
+                .andExpect(jsonPath("$.data.grade").value("HIGH_3"));
     }
 
     @Test
@@ -131,7 +180,7 @@ class TimetableSlotControllerTest {
                   "classroomCode": "602",
                   "startTime": "13:00:00",
                   "endTime": "15:00:00",
-                  "grade": "고2",
+                  "grade": "HIGH_2",
                   "teacherName": "오T",
                   "subjectName": "물리"
                 }

@@ -41,8 +41,9 @@
 
 ### 필드와 제약
 
-- `classType`(CLASS/SPECIAL/CLINIC/STANDING/EXAM), `dayOfWeek`, `classroomCode`, `startTime`/`endTime`(시작이 종료보다 이전이어야 함)은 필수다.
-- `grade`/`teacherName`/`subjectName`은 선택값이다.
+- `classType`(CLASS/SPECIAL/CLINIC/STANDING/EXAM), `dayOfWeek`, `classroomCode`, `startTime`/`endTime`(시작이 종료보다 이전이어야 함), `grade`는 필수다.
+- `grade`는 초1~고3 12단계로 고정된 `Grade` enum이다(`ELEMENTARY_1`~`ELEMENTARY_6`/`MIDDLE_1`~`MIDDLE_3`/`HIGH_1`~`HIGH_3`). 자유 입력 문자열이 아니다.
+- `teacherName`/`subjectName`은 선택값이다.
 - `effectiveFrom`/`effectiveUntil`은 슬롯이 실제로 적용되는 기간이며, 등록 시점에는 항상 소속 시간표 세트의 `startDate`/`endDate`와 같은 값으로 자동 설정된다(사용자가 직접 입력하지 않음).
 
 ### 겹침 검사(등록·수정 공통)
@@ -61,7 +62,7 @@
 - 엑셀(.xlsx)/PDF(A3 가로)/PNG 3개 포맷을 지원한다. 구글 스프레드시트로 저장은 화면 설계상 별도 기능으로, 이번 범위가 아니며 후속 계획도 없다.
 - 세 포맷 모두 슬롯을 요일→시작시각 순으로 정렬한 표(리스트) 형태로 내보낸다. 화면에 보이는 요일×시간 시각적 그리드를 재현하지 않는다.
 - **필터**: `EXCEL`/`PNG`는 화면의 `dayOfWeek`/`floor`/`classType` 필터 상태를 그대로 반영해 내보낸다. `PDF`는 인쇄용 고정 산출물이라 필터와 무관하게 항상 세트 전체를 내보낸다.
-- **색상**: 배경색은 `colorCriterion`(`CLASSROOM`/`TEACHER`/`GRADE`)으로 지정한 기준의 값을 키로, `colorMap`(JSON, 기준값→6자리 hex)에서 조회해 적용한다. `colorMap`에 없는 값이거나 슬롯의 해당 필드가 비어 있으면 흰색으로 표시한다. 형식이 6자리 16진수가 아니거나 `colorMap`이 올바른 JSON이 아니면 400(`TIMETABLE_400_5`)으로 거절한다. 백엔드는 팔레트를 계산하지 않고 프론트가 지정한 값을 그대로 쓴다.
+- **색상**: 배경색은 `colorCriterion`(`CLASSROOM`/`TEACHER`)으로 지정한 기준의 값을 키로, `colorMap`(JSON, 기준값→6자리 hex)에서 조회해 적용한다. `colorMap`에 없는 값이거나 슬롯의 해당 필드가 비어 있으면 흰색으로 표시한다. 형식이 6자리 16진수가 아니거나 `colorMap`이 올바른 JSON이 아니면 400(`TIMETABLE_400_5`)으로 거절한다. 백엔드는 팔레트를 계산하지 않고 프론트가 지정한 값을 그대로 쓴다. 학년은 색 기준에서 제외하기로 확정됐다.
 - **밀도**: `density`(`COMPACT`/`NORMAL`/`SPACIOUS`)로 행 높이·글자 크기를 조절하며 세 포맷 모두에 적용된다. 생략 시 `NORMAL`.
 - PNG는 슬롯 수가 매우 많아 결과 이미지가 허용 픽셀 수(2000만)를 초과하면 400(`TIMETABLE_400_6`)으로 거절한다.
 - 조회 계열과 동일하게 권한 무관, 같은 학원 소속 인증 사용자면 누구나 호출 가능하다.

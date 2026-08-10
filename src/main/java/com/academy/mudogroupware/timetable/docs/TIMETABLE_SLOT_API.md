@@ -20,7 +20,7 @@
   "classroomCode": "601",
   "startTime": "09:00",
   "endTime": "11:00",
-  "grade": "고3",
+  "grade": "HIGH_3",
   "teacherName": "정T",
   "subjectName": "미적분"
 }
@@ -33,7 +33,7 @@
 | `classroomCode` | String | true | 강의실 코드. 같은 세트 안에서 겹침 검사의 기준이 됨 |
 | `startTime` | LocalTime | true | 시작 시각. `endTime`보다 이전이어야 함 |
 | `endTime` | LocalTime | true | 종료 시각 |
-| `grade` | String | false | 학년 |
+| `grade` | Enum | true | 학년. `ELEMENTARY_1`~`ELEMENTARY_6`/`MIDDLE_1`~`MIDDLE_3`/`HIGH_1`~`HIGH_3` 중 하나(초1~고3 고정 12단계) |
 | `teacherName` | String | false | 강사명 |
 | `subjectName` | String | false | 과목 |
 
@@ -92,7 +92,7 @@ HTTP `200 OK`
       "classroomCode": "601",
       "startTime": "09:00:00",
       "endTime": "11:00:00",
-      "grade": "고3",
+      "grade": "HIGH_3",
       "teacherName": "정T",
       "subjectName": "미적분"
     }
@@ -136,7 +136,7 @@ HTTP `200 OK`
     "classroomCode": "601",
     "startTime": "09:00:00",
     "endTime": "11:00:00",
-    "grade": "고3",
+    "grade": "HIGH_3",
     "teacherName": "정T",
     "subjectName": "미적분"
   }
@@ -173,7 +173,7 @@ HTTP `200 OK`
   "classroomCode": "602",
   "startTime": "13:00",
   "endTime": "15:00",
-  "grade": "고2",
+  "grade": "HIGH_2",
   "teacherName": "오T",
   "subjectName": "물리"
 }

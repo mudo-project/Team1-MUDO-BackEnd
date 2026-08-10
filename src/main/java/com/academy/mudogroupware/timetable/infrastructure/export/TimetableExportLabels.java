@@ -45,7 +45,7 @@ final class TimetableExportLabels {
                 classType(slot.classType()),
                 slot.teacherName() != null ? slot.teacherName() : "",
                 slot.subjectName() != null ? slot.subjectName() : "",
-                slot.grade() != null ? slot.grade() : ""
+                slot.grade().label()
         };
     }
 }

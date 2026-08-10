@@ -84,7 +84,7 @@ public class ExcelTimetableExportRenderer implements TimetableExportRenderer {
             Row row = sheet.createRow(rowIndex++);
             row.setHeightInPoints(rowHeightPoints);
             String[] values = TimetableExportLabels.toRow(slot);
-            TimetableExportColor color = options.colorFor(slot.classroomCode(), slot.teacherName(), slot.grade());
+            TimetableExportColor color = options.colorFor(slot.classroomCode(), slot.teacherName());
             CellStyle style = stylesByColorKey.computeIfAbsent(
                     color.red() + "," + color.green() + "," + color.blue(),
                     key -> buildStyle(workbook, font, color));
