@@ -6,6 +6,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
@@ -125,4 +127,44 @@ public interface TaskJpaRepository extends JpaRepository<TaskJpaEntity, Long> {
   @Modifying
   @Query("delete from TaskStatusHistoryJpaEntity h where h.task.id = :taskId")
   void deleteStatusHistoriesByTaskId(@Param("taskId") Long taskId);
+
+  // 내 업무 모아보기: 요청자가 멤버인 워크스페이스의 업무만, 지정한 상태로 필터링해 기한 오름차순으로 조회한다.
+  // 반복 업무는 due_at이 없으므로 scheduled_for의 날짜로 대체한다(둘 다 없을 수는 없다 — Task 도메인 불변식).
+  @Query(
+      """
+      select t.id as taskId,
+          t.workspace.id as workspaceId,
+          t.workspace.name as workspaceName,
+          t.title as title,
+          coalesce(t.dueAt, cast(t.scheduledFor as date)) as dueAt,
+          t.status as status
+      from TaskJpaEntity t
+      where exists (
+              select 1
+              from WorkspaceMemberJpaEntity wm
+              where wm.workspace = t.workspace and wm.id.userId = :userId)
+          and t.status in :statuses
+          and (:workspaceId is null or t.workspace.id = :workspaceId)
+      order by coalesce(t.dueAt, cast(t.scheduledFor as date)) asc, t.id asc
+      """)
+  Slice<MyTaskRow> findMine(
+      @Param("userId") Long userId,
+      @Param("statuses") List<TaskStatus> statuses,
+      @Param("workspaceId") Long workspaceId,
+      Pageable pageable);
+
+  interface MyTaskRow {
+
+    Long getTaskId();
+
+    Long getWorkspaceId();
+
+    String getWorkspaceName();
+
+    String getTitle();
+
+    LocalDate getDueAt();
+
+    TaskStatus getStatus();
+  }
 }
