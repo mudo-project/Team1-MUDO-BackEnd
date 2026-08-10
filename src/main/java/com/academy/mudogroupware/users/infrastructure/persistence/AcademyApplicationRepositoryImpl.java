@@ -2,10 +2,13 @@ package com.academy.mudogroupware.users.infrastructure.persistence;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Repository;
 
+import com.academy.mudogroupware.users.domain.exception.UsernameDuplicateException;
 import com.academy.mudogroupware.users.domain.model.AcademyApplication;
 import com.academy.mudogroupware.users.domain.model.AcademyApplicationStatus;
 import com.academy.mudogroupware.users.domain.repository.AcademyApplicationRepository;
@@ -15,6 +18,9 @@ import lombok.RequiredArgsConstructor;
 @Repository
 @RequiredArgsConstructor
 public class AcademyApplicationRepositoryImpl implements AcademyApplicationRepository {
+
+    private static final String REQUESTED_LOGIN_ID_UNIQUE_CONSTRAINT =
+            "uk_academy_application_requested_login_id_active";
 
     private final AcademyApplicationJpaRepository academyApplicationJpaRepository;
 
@@ -31,7 +37,14 @@ public class AcademyApplicationRepositoryImpl implements AcademyApplicationRepos
                 .createdAt(application.getCreatedAt())
                 .updatedAt(application.getUpdatedAt())
                 .build();
-        return toDomain(academyApplicationJpaRepository.save(entity));
+        try {
+            return toDomain(academyApplicationJpaRepository.saveAndFlush(entity));
+        } catch (DataIntegrityViolationException exception) {
+            if (containsConstraint(exception, REQUESTED_LOGIN_ID_UNIQUE_CONSTRAINT)) {
+                throw new UsernameDuplicateException(exception);
+            }
+            throw exception;
+        }
     }
 
     @Override
@@ -70,5 +83,17 @@ public class AcademyApplicationRepositoryImpl implements AcademyApplicationRepos
                 entity.getRepresentativePhone(), entity.getPlan(), entity.getBusinessLicenseFileId(),
                 entity.getStatus(), entity.getRejectReason(), entity.getReviewedByUserId(), entity.getReviewedAt(),
                 entity.getCreatedAt(), entity.getUpdatedAt());
+    }
+
+    private boolean containsConstraint(Throwable throwable, String constraintName) {
+        Throwable current = throwable;
+        while (current != null) {
+            String message = current.getMessage();
+            if (message != null && message.toLowerCase(Locale.ROOT).contains(constraintName)) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 }
