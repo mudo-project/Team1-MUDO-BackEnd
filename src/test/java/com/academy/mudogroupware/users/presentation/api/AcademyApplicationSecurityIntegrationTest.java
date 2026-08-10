@@ -31,6 +31,7 @@ import com.academy.mudogroupware.users.application.usecase.ApproveAcademyApplica
 import com.academy.mudogroupware.users.application.usecase.GetAcademyApplicationUseCase;
 import com.academy.mudogroupware.users.application.usecase.ListAcademyApplicationsUseCase;
 import com.academy.mudogroupware.users.application.usecase.RejectAcademyApplicationUseCase;
+import com.academy.mudogroupware.users.application.usecase.SubmitAcademyApplicationUseCase;
 import com.academy.mudogroupware.users.domain.exception.AcademyApplicationNotFoundException;
 import com.academy.mudogroupware.users.domain.model.AcademyApplication;
 import com.academy.mudogroupware.users.domain.model.AcademyApplicationStatus;
@@ -55,6 +56,9 @@ class AcademyApplicationSecurityIntegrationTest {
     private MockMvc mockMvc;
 
     @MockitoBean
+    private SubmitAcademyApplicationUseCase submitAcademyApplicationUseCase;
+
+    @MockitoBean
     private ListAcademyApplicationsUseCase listAcademyApplicationsUseCase;
 
     @MockitoBean
@@ -65,6 +69,27 @@ class AcademyApplicationSecurityIntegrationTest {
 
     @MockitoBean
     private RejectAcademyApplicationUseCase rejectAcademyApplicationUseCase;
+
+    @Test
+    void submitIsAllowedWithoutAuthentication() throws Exception {
+        when(submitAcademyApplicationUseCase.submit(any())).thenReturn(1L);
+
+        mockMvc.perform(post("/api/academy-applications")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "requestedLoginId": "academy01",
+                                  "academyName": "테스트학원",
+                                  "representativeName": "홍길동",
+                                  "representativeEmail": "hong@example.com",
+                                  "representativePhone": "010-0000-0000",
+                                  "plan": "FREE"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.code").value("ACADEMY_APPLICATION_201_1"));
+    }
 
     @Test
     void listIsUnauthorizedWithoutAuthentication() throws Exception {
