@@ -44,8 +44,8 @@ public class AcademyApplicationRepositoryImpl implements AcademyApplicationRepos
     private AcademyApplication toDomain(AcademyApplicationEntity entity) {
         return AcademyApplication.restore(entity.getId(), entity.getRequestedLoginId(), entity.getAcademyName(),
                 entity.getBusinessNo(), entity.getRepresentativeName(), entity.getRepresentativeEmail(),
-                entity.getRepresentativePhone(), entity.getBusinessLicenseFileId(), entity.getStatus(),
-                entity.getRejectReason(), entity.getReviewedByUserId(), entity.getReviewedAt(),
+                entity.getRepresentativePhone(), entity.getPlan(), entity.getBusinessLicenseFileId(),
+                entity.getStatus(), entity.getRejectReason(), entity.getReviewedByUserId(), entity.getReviewedAt(),
                 entity.getCreatedAt(), entity.getUpdatedAt());
     }
 }

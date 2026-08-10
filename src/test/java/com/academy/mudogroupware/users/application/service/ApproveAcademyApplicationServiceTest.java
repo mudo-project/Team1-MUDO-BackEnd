@@ -31,6 +31,7 @@ import com.academy.mudogroupware.users.domain.exception.AcademyApplicationNotFou
 import com.academy.mudogroupware.users.domain.model.Academy;
 import com.academy.mudogroupware.users.domain.model.AcademyApplication;
 import com.academy.mudogroupware.users.domain.model.AcademyApplicationStatus;
+import com.academy.mudogroupware.users.domain.model.Plan;
 import com.academy.mudogroupware.users.domain.model.User;
 import com.academy.mudogroupware.users.domain.model.UserStatus;
 import com.academy.mudogroupware.users.domain.repository.AcademyApplicationRepository;
@@ -48,8 +49,8 @@ class ApproveAcademyApplicationServiceTest {
 
     private AcademyApplication pendingApplication() {
         return AcademyApplication.restore(1L, "newacademy01", "새학원", "111-11-11111", "홍길동",
-                "hong@example.com", "010-1111-2222", null, AcademyApplicationStatus.PENDING, null, null, null,
-                LocalDateTime.now(), LocalDateTime.now());
+                "hong@example.com", "010-1111-2222", Plan.FREE, null, AcademyApplicationStatus.PENDING, null, null,
+                null, LocalDateTime.now(), LocalDateTime.now());
     }
 
     @Test
@@ -63,8 +64,8 @@ class ApproveAcademyApplicationServiceTest {
     @Test
     void throwsWhenAlreadyReviewed() {
         AcademyApplication reviewed = AcademyApplication.restore(1L, "newacademy01", "새학원", "111-11-11111",
-                "홍길동", "hong@example.com", "010-1111-2222", null, AcademyApplicationStatus.APPROVED, null, 5L,
-                LocalDateTime.now(), LocalDateTime.now(), LocalDateTime.now());
+                "홍길동", "hong@example.com", "010-1111-2222", Plan.FREE, null, AcademyApplicationStatus.APPROVED,
+                null, 5L, LocalDateTime.now(), LocalDateTime.now(), LocalDateTime.now());
         when(academyApplicationRepository.findById(1L)).thenReturn(Optional.of(reviewed));
 
         assertThatThrownBy(() -> service.approve(new ApproveAcademyApplicationCommand(1L, 99L)))

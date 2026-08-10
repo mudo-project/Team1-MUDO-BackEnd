@@ -3,6 +3,7 @@ package com.academy.mudogroupware.users.infrastructure.persistence;
 import java.time.LocalDateTime;
 
 import com.academy.mudogroupware.users.domain.model.AcademyApplicationStatus;
+import com.academy.mudogroupware.users.domain.model.Plan;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -13,6 +14,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -33,7 +35,7 @@ public class AcademyApplicationEntity {
     @Column(name = "academy_name", nullable = false, length = 100)
     private String academyName;
 
-    @Column(name = "business_no", nullable = false, length = 20)
+    @Column(name = "business_no", length = 20)
     private String businessNo;
 
     @Column(name = "representative_name", nullable = false, length = 50)
@@ -44,6 +46,10 @@ public class AcademyApplicationEntity {
 
     @Column(name = "representative_phone", nullable = false, length = 20)
     private String representativePhone;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 10)
+    private Plan plan;
 
     @Column(name = "business_license_file_id")
     private Long businessLicenseFileId;
@@ -66,6 +72,22 @@ public class AcademyApplicationEntity {
 
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    @Builder
+    private AcademyApplicationEntity(String requestedLoginId, String academyName, Plan plan,
+                                      String representativeName, String representativeEmail,
+                                      String representativePhone, AcademyApplicationStatus status,
+                                      LocalDateTime createdAt, LocalDateTime updatedAt) {
+        this.requestedLoginId = requestedLoginId;
+        this.academyName = academyName;
+        this.plan = plan;
+        this.representativeName = representativeName;
+        this.representativeEmail = representativeEmail;
+        this.representativePhone = representativePhone;
+        this.status = status;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+    }
 
     void markApproved(Long reviewerId, LocalDateTime reviewedAt) {
         this.status = AcademyApplicationStatus.APPROVED;

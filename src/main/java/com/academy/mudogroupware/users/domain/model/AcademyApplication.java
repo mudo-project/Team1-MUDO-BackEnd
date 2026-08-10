@@ -13,6 +13,7 @@ public final class AcademyApplication {
     private final String representativeName;
     private final String representativeEmail;
     private final String representativePhone;
+    private final Plan plan;
     private final Long businessLicenseFileId;
     private final AcademyApplicationStatus status;
     private final String rejectReason;
@@ -23,9 +24,9 @@ public final class AcademyApplication {
 
     private AcademyApplication(Long id, String requestedLoginId, String academyName, String businessNo,
                                 String representativeName, String representativeEmail, String representativePhone,
-                                Long businessLicenseFileId, AcademyApplicationStatus status, String rejectReason,
-                                Long reviewedByUserId, LocalDateTime reviewedAt, LocalDateTime createdAt,
-                                LocalDateTime updatedAt) {
+                                Plan plan, Long businessLicenseFileId, AcademyApplicationStatus status,
+                                String rejectReason, Long reviewedByUserId, LocalDateTime reviewedAt,
+                                LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.requestedLoginId = requestedLoginId;
         this.academyName = academyName;
@@ -33,6 +34,7 @@ public final class AcademyApplication {
         this.representativeName = representativeName;
         this.representativeEmail = representativeEmail;
         this.representativePhone = representativePhone;
+        this.plan = plan;
         this.businessLicenseFileId = businessLicenseFileId;
         this.status = status;
         this.rejectReason = rejectReason;
@@ -44,13 +46,21 @@ public final class AcademyApplication {
 
     public static AcademyApplication restore(Long id, String requestedLoginId, String academyName,
                                               String businessNo, String representativeName,
-                                              String representativeEmail, String representativePhone,
+                                              String representativeEmail, String representativePhone, Plan plan,
                                               Long businessLicenseFileId, AcademyApplicationStatus status,
                                               String rejectReason, Long reviewedByUserId, LocalDateTime reviewedAt,
                                               LocalDateTime createdAt, LocalDateTime updatedAt) {
         return new AcademyApplication(id, requestedLoginId, academyName, businessNo, representativeName,
-                representativeEmail, representativePhone, businessLicenseFileId, status, rejectReason,
+                representativeEmail, representativePhone, plan, businessLicenseFileId, status, rejectReason,
                 reviewedByUserId, reviewedAt, createdAt, updatedAt);
+    }
+
+    public static AcademyApplication submit(String requestedLoginId, String academyName, String representativeName,
+                                             String representativeEmail, String representativePhone, Plan plan,
+                                             LocalDateTime now) {
+        return new AcademyApplication(null, requestedLoginId, academyName, null, representativeName,
+                representativeEmail, representativePhone, plan, null, AcademyApplicationStatus.PENDING, null,
+                null, null, now, now);
     }
 
     public void ensurePending() {
@@ -85,6 +95,10 @@ public final class AcademyApplication {
 
     public String getRepresentativePhone() {
         return representativePhone;
+    }
+
+    public Plan getPlan() {
+        return plan;
     }
 
     public Long getBusinessLicenseFileId() {
