@@ -38,14 +38,14 @@ class DeleteTimetableSetServiceTest {
     }
 
     @Test
-    void deleteTimetableSetDeletesWhenBelongsToAcademy() {
+    void deleteTimetableSetDeletesExistingSet() {
         TimetableSet set = TimetableSet.restore(
-                1L, 1L, "이름", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16),
+                1L, "이름", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16),
                 LocalTime.of(8, 30), LocalTime.of(22, 0), Set.of(DayOfWeek.MONDAY), 30,
                 List.of(new TimetableClassroom("6층", "601")), null, null);
         when(timetableSetRepository.findById(1L)).thenReturn(Optional.of(set));
 
-        service.deleteTimetableSet(new DeleteTimetableSetCommand(1L, 1L));
+        service.deleteTimetableSet(new DeleteTimetableSetCommand(1L));
 
         verify(timetableSetRepository).deleteById(1L);
     }
@@ -54,7 +54,7 @@ class DeleteTimetableSetServiceTest {
     void deleteTimetableSetThrowsWhenNotFound() {
         when(timetableSetRepository.findById(999L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.deleteTimetableSet(new DeleteTimetableSetCommand(1L, 999L)))
+        assertThatThrownBy(() -> service.deleteTimetableSet(new DeleteTimetableSetCommand(999L)))
                 .isInstanceOf(TimetableSetNotFoundException.class);
         verify(timetableSetRepository, never()).deleteById(anyLong());
     }

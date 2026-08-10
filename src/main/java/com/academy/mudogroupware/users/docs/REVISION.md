@@ -1,5 +1,5 @@
 > 작성일: 2026-08-04
-> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청/승인 워크플로우(PR 1·2·3/3, "계정 발급 체계" 2단계) 완료, 역할 관리 API 7개(생성/목록/상세/수정/삭제/권한 조립/권한 카탈로그 조회) 완료, 사용자 역할 변경 API 완료, 학원 구성원 검색 API 완료, 역할 색상/인원수 완료, CodeRabbit 피드백 반영 + 로깅 컨벤션 전체 도메인(Service 17개) 적용 완료, 직원 계정 발급 API 완료("계정 발급 체계" 3단계 완료), 학원 신청 접수 API 완료(최소 스코프, "계정 발급 체계" 2단계 최종 완결), 학원 신청 접수 시점 requestedLoginId 중복확인 완료 · 후속 작업: 이메일 발송, mustChangePw 로그인 흐름 연동, 사업자등록증 검증(OCR·국세청 API)
+> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청/승인 워크플로우(PR 1·2·3/3, "계정 발급 체계" 2단계) 완료, 역할 관리 API 7개(생성/목록/상세/수정/삭제/권한 조립/권한 카탈로그 조회) 완료, 사용자 역할 변경 API 완료, 학원 구성원 검색 API 완료, 역할 색상/인원수 완료, CodeRabbit 피드백 반영 + 로깅 컨벤션 전체 도메인(Service 17개) 적용 완료, 직원 계정 발급 API 완료("계정 발급 체계" 3단계 완료), 학원 신청 접수 API 완료(최소 스코프, "계정 발급 체계" 2단계 최종 완결), 학원 신청 접수 시점 requestedLoginId 중복확인 완료, 비밀번호 설정 링크 + 계정 발급 흐름 통합 완료(원장 역할 자동 생성·전체 권한 배정 포함) · 후속 작업: 이메일 발송, 사업자등록증 검증(OCR·국세청 API), 비밀번호 설정 링크 재발급 흐름
 
 ## 🎯 변경 목적
 
@@ -28,6 +28,40 @@
 - [x] `SubmitAcademyApplicationService` 사전 중복 체크(TDD: 계정 중복/대기중 신청서 중복/정상 2케이스)
 - [x] 로컬 curl e2e(정상 접수 → 같은 아이디 재접수 409 → 기존 계정 아이디 접수 409 → 반려 후 같은 아이디 재신청 정상) + Swagger(OpenAPI) 스키마 확인
 - [x] `./gradlew build` 통과
+
+---
+
+## ✅ 2026-08-10 · 비밀번호 설정 링크 + 계정 발급 흐름 통합
+
+### 배경
+
+"슈퍼어드민인데 권한이 없다고 뜬다"는 버그 리포트를 조사하는 과정에서(원인은 결국 Wi-Fi IP 등록 정책과 academy_id 시딩 실수 두 가지로, 둘 다 코드 버그는 아니었다) 별개로 실제 설계 공백 하나를 발견했다: 학원 신청이 승인되면 원장 계정(`account_type=ADMIN`, `admin_scope=ACADEMY`)이 생성되지만 이 계정에 배정할 역할이 없어서, 원장이 로그인해도 아무 기능도 쓸 수 없었다. 이 문제를 계기로 계정 발급 체계 전반(원장 승인 발급 + 직원 계정 발급이 공유하는 `AccountIssuer`)의 임시 비밀번호 전달 방식도 함께 재검토했다 — 지금까지는 응답 바디에 임시 비밀번호를 평문으로 담아 관리자가 수동으로 전달하는 방식이었는데, 평문 비밀번호가 API 응답과 로그에 남는 게 계속 마음에 걸리던 부분이었다.
+
+### 확정된 정책
+
+- **별도 토큰 테이블을 만들지 않고 기존 `users.password`/`users.must_change_pw` 컬럼을 재사용한다.** 계정 발급 시 임시 비밀번호를 해싱해 `users.password`에 그대로 저장하고 `must_change_pw=true`로 세팅한다. 비밀번호 설정 API(`POST /api/users/password-setup`)는 아이디+임시 비밀번호로 `PasswordEncoder.matches()` 검증 후 새 비밀번호로 교체한다 — 이 임시 비밀번호 자체가 "토큰" 역할을 겸한다. 만료 시간은 별도로 두지 않았다: 설정에 성공하면 비밀번호가 즉시 바뀌어 링크가 자기 자신을 무효화하고(self-invalidating), `must_change_pw=true`라는 명시적 가드가 이미 설정을 마친 계정의 재사용(또는 실제 비밀번호가 유출된 경우의 오남용)을 막는다. 별도 테이블·만료 로직 없이 두 가지 방어가 이미 확보되는 구조라 추가 복잡도를 들이지 않기로 했다.
+- **`must_change_pw`는 로그인 흐름을 막는 강제 로직으로 쓰지 않는다.** 원래 컬럼 의도는 "다음 로그인 시 비밀번호 변경을 강제"였지만, 이번엔 "최초 설정을 아직 안 마쳤음"을 나타내는 1회성 플래그로만 쓴다 — 비밀번호 설정 API가 성공하면 `false`로 바뀌고, 이 값을 이유로 다른 API 호출을 막는 필터나 체크는 추가하지 않았다. 로그인 자체를 막을지, 막는다면 어떤 API까지 막을지는 프론트 UX와 맞물린 별도 논의가 필요해 이번 스코프에서 제외했다.
+- **원장 역할은 승인 시점의 권한 카탈로그 스냅샷으로 자동 생성한다.** `ApproveAcademyApplicationService`가 승인 시 `academy_id` 범위의 "원장" 역할을 새로 만들고(`Role.create`), 그 시점에 `PermissionRepository.findAll()`로 조회되는 모든 권한 코드를 그 역할에 배정한다(`RoleRepository.updatePermissions`). PLATFORM 관리자(`PlatformAdminPermissionPort`)처럼 "역할 없이 동적으로 전체 권한 부여"하는 방식은 채택하지 않았다 — `admin_scope=ACADEMY`에 그런 동적 바이패스를 추가하려면 `JwtAuthenticationConverter`의 분기 로직을 건드려야 하는데, 이는 이번 버그 수정 스코프를 넘어서는 별도 서브프로젝트로 판단해 미뤘다(아래 "범위 밖" 참고). 스냅샷 방식의 트레이드오프: 승인 이후 새 기능이 추가돼 권한 카탈로그가 늘어나도 기존 원장 역할엔 자동으로 반영되지 않는다 — 기존 역할 권한 조립 API(`PUT /api/roles/{roleId}/permissions`)로 수동 갱신해야 한다.
+- **`AccountIssuer.issue()`가 임시 비밀번호 대신 비밀번호 설정 링크를 반환하도록 통일했다.** 원장 승인(`ApproveAcademyApplicationService`)과 직원 계정 발급(`CreateAccountService`)이 공유하는 `AccountIssuer`에 `PasswordSetupLinkBuilder`(신규, `app.frontend-url` 설정값 기반으로 `UriComponentsBuilder`가 링크를 조립)를 추가해, 두 흐름 모두 응답 필드명을 `passwordSetupLink`로 통일했다(`temporaryPassword`에서 변경). 프론트 URL은 `${APP_FRONTEND_URL:http://localhost:3000}`로 환경별 오버라이드 가능하게 뒀다.
+
+### 범위 밖 (명시적으로 미룸)
+
+- `admin_scope` 컬럼 구조 자체를 단순화하는 스키마 변경 — 별도 스펙으로 분리하기로 함(이번 조사 중 블라스트 반경을 확인했으나 착수하지 않음).
+- 학원별 별도 스키마 도입으로 `academy` 테이블을 제거하는 테넌트 분리 마이그레이션 — 방향은 확정됐으나 사용자가 명시적으로 요청하기 전까지는 건드리지 않기로 함.
+- 비밀번호 설정 링크가 만료되거나 분실됐을 때의 재발급(resend) 흐름 — 이번엔 다루지 않음.
+- 이메일 자동 발송, 사업자등록증 검증(OCR·국세청 진위확인 API) — 기존부터 이어져 온 후속 작업, 이번에도 미룸(원장 신청 시 username 중복 확인은 같은 날 별도 작업으로 완료됨 — 위 "학원 신청 접수 시점 requestedLoginId 중복확인" 섹션 참고).
+
+### 완료 기준
+
+- [x] `UserRepository.completePasswordSetup(userId, newPasswordHash)` + `UserEntity.completePasswordSetup()` mutator + `DataJpaTest`
+- [x] `PasswordSetupCommand`/`PasswordSetupUseCase`/`PasswordSetupService`(TDD: 아이디 없음/이미 설정 완료/임시 비밀번호 불일치/성공 4케이스)
+- [x] `POST /api/users/password-setup` 컨트롤러 핸들러 + `SecurityConfig` `permitAll`
+- [x] `PasswordSetupLinkBuilder`(`.encode()` 포함 — 특수문자 포함 임시 비밀번호가 쿼리 파라미터에서 깨지지 않도록)
+- [x] `AccountIssuer`/`IssuedAccount`/`CreateAccountResult`/`ApproveAcademyApplicationResult` 및 대응 응답 DTO `temporaryPassword` → `passwordSetupLink` 필드 전환
+- [x] `ApproveAcademyApplicationService`에 `RoleRepository`/`PermissionRepository` 의존성 추가, 원장 역할 자동 생성 + 전체 권한 배정 로직(TDD)
+- [x] 로컬 curl e2e(학원 신청 승인 → 원장 역할·권한 자동 배정 확인 → 비밀번호 설정 링크로 최초 설정 → 새 비밀번호로 로그인 → 원장 권한으로 기능 호출 성공 확인)
+- [x] Swagger(OpenAPI) 문서로 신규/변경 엔드포인트 응답 스키마 재검증
+- [x] `./gradlew build` 통과(신규 `app.frontend-url` 설정값을 `src/test/resources/application.yaml`에도 반영해 무관한 도메인 통합 테스트 36건 컨텍스트 로딩 실패 해결)
 
 ---
 

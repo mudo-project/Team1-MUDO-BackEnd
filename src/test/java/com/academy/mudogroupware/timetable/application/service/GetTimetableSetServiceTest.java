@@ -41,14 +41,14 @@ class GetTimetableSetServiceTest {
     }
 
     @Test
-    void getTimetableSetReturnsDetailWhenBelongsToAcademy() {
+    void getTimetableSetReturnsExistingDetail() {
         TimetableSet set = TimetableSet.restore(
-                1L, 1L, "2026 여름특강", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16),
+                1L, "2026 여름특강", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16),
                 LocalTime.of(8, 30), LocalTime.of(22, 0), Set.of(DayOfWeek.MONDAY), 30,
                 List.of(new TimetableClassroom("6층", "601")), null, null);
         when(timetableSetRepository.findById(1L)).thenReturn(Optional.of(set));
 
-        TimetableSetDetailView view = service.getTimetableSet(1L, 1L);
+        TimetableSetDetailView view = service.getTimetableSet(1L);
 
         assertThat(view.name()).isEqualTo("2026 여름특강");
         assertThat(view.classrooms()).containsExactly(new TimetableClassroom("6층", "601"));
@@ -58,19 +58,20 @@ class GetTimetableSetServiceTest {
     void getTimetableSetThrowsWhenNotFound() {
         when(timetableSetRepository.findById(999L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.getTimetableSet(1L, 999L))
+        assertThatThrownBy(() -> service.getTimetableSet(999L))
                 .isInstanceOf(TimetableSetNotFoundException.class);
     }
 
     @Test
-    void getTimetableSetThrowsWhenBelongsToDifferentAcademy() {
+    void getTimetableSetReturnsExistingSet() {
         TimetableSet set = TimetableSet.restore(
-                1L, 2L, "다른 학원 세트", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16),
+                1L, "다른 세트", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16),
                 LocalTime.of(8, 30), LocalTime.of(22, 0), Set.of(DayOfWeek.MONDAY), 30,
                 List.of(new TimetableClassroom("6층", "601")), null, null);
         when(timetableSetRepository.findById(1L)).thenReturn(Optional.of(set));
 
-        assertThatThrownBy(() -> service.getTimetableSet(1L, 1L))
-                .isInstanceOf(TimetableSetNotFoundException.class);
+        TimetableSetDetailView view = service.getTimetableSet(1L);
+
+        assertThat(view.timetableSetId()).isEqualTo(1L);
     }
 }

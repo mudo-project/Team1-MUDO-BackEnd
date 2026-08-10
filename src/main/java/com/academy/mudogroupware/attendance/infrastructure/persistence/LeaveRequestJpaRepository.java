@@ -16,35 +16,31 @@ public interface LeaveRequestJpaRepository extends JpaRepository<LeaveRequestJpa
     Optional<LeaveRequestJpaEntity> findByDocumentId(Long documentId);
 
     @Query("select l.userId from LeaveRequestJpaEntity l "
-            + "where l.academyId = :academyId and l.status = :status "
+            + "where l.status = :status "
             + "and :date between l.startDate and l.endDate")
-    List<Long> findUserIdsByAcademyIdAndStatusAndDateBetween(@Param("academyId") Long academyId,
-                                                              @Param("status") LeaveRequestStatus status,
+    List<Long> findUserIdsByStatusAndDateBetween(@Param("status") LeaveRequestStatus status,
                                                               @Param("date") LocalDate date);
 
     @Query("select (count(l) > 0) from LeaveRequestJpaEntity l "
-            + "where l.academyId = :academyId and l.userId = :userId and l.status in :statuses "
+            + "where l.userId = :userId and l.status in :statuses "
             + "and l.startDate <= :endDate and l.endDate >= :startDate")
-    boolean existsOverlapping(@Param("academyId") Long academyId,
-                              @Param("userId") Long userId,
+    boolean existsOverlapping(@Param("userId") Long userId,
                               @Param("statuses") Set<LeaveRequestStatus> statuses,
                               @Param("startDate") LocalDate startDate,
                               @Param("endDate") LocalDate endDate);
 
     @Query("select coalesce(sum(l.usedDays), 0) from LeaveRequestJpaEntity l "
-            + "where l.academyId = :academyId and l.userId = :userId and l.status in :statuses "
+            + "where l.userId = :userId and l.status in :statuses "
             + "and l.startDate >= :periodStart and l.endDate <= :periodEnd")
-    int sumUsedDays(@Param("academyId") Long academyId,
-                    @Param("userId") Long userId,
+    int sumUsedDays(@Param("userId") Long userId,
                     @Param("statuses") Set<LeaveRequestStatus> statuses,
                     @Param("periodStart") LocalDate periodStart,
                     @Param("periodEnd") LocalDate periodEnd);
 
     @Query("select l from LeaveRequestJpaEntity l "
-            + "where l.academyId = :academyId and l.userId = :userId and l.status = :status "
+            + "where l.userId = :userId and l.status = :status "
             + "and l.startDate <= :endDate and l.endDate >= :startDate")
     List<LeaveRequestJpaEntity> findOverlapping(
-            @Param("academyId") Long academyId,
             @Param("userId") Long userId,
             @Param("status") LeaveRequestStatus status,
             @Param("startDate") LocalDate startDate,

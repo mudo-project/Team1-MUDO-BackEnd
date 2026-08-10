@@ -33,6 +33,6 @@ public class MyEmploymentSummaryController {
         return GlobalApiResponse.ok(
                 AttendanceResponseCode.MY_EMPLOYMENT_SUMMARY_RETRIEVED,
                 MyEmploymentSummaryResponse.from(employmentSummaryUseCase.getSummary(
-                        authUser.userId(), authUser.academyId())));
+                        authUser.userId())));
     }
 }

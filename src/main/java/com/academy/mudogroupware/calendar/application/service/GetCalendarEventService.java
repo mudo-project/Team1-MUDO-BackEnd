@@ -18,12 +18,8 @@ public class GetCalendarEventService implements GetCalendarEventUseCase {
     private final CalendarEventRepository calendarEventRepository;
 
     @Override
-    public CalendarEvent getEvent(Long academyId, Long eventId) {
-        CalendarEvent event = calendarEventRepository.findById(eventId)
+    public CalendarEvent getEvent(Long eventId) {
+        return calendarEventRepository.findById(eventId)
                 .orElseThrow(() -> new CalendarEventNotFoundException(eventId));
-        if (!event.getAcademyId().equals(academyId)) {
-            throw new CalendarEventNotFoundException(eventId);
-        }
-        return event;
     }
 }

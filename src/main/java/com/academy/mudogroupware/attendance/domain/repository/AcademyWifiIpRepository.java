@@ -5,11 +5,11 @@ import java.util.List;
 import com.academy.mudogroupware.attendance.domain.model.AcademyWifiIp;
 
 public interface AcademyWifiIpRepository {
-    boolean existsByAcademyIdAndIpAddress(Long academyId, String ipAddress);
+    boolean existsByIpAddress(String ipAddress);
 
     AcademyWifiIp save(AcademyWifiIp wifiIp);
 
-    List<AcademyWifiIp> findAllByAcademyId(Long academyId);
+    List<AcademyWifiIp> findAll();
 
-    boolean deleteByIdAndAcademyId(Long wifiIpId, Long academyId);
+    boolean deleteById(Long wifiIpId);
 }

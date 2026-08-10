@@ -36,7 +36,7 @@ public record CreateCalendarEventRequest(
 
     public CreateCalendarEventCommand toCommand(AuthUser authUser) {
         return new CreateCalendarEventCommand(
-                authUser.academyId(), title, content, eventStartAt, eventEndAt,
+                title, content, eventStartAt, eventEndAt,
                 allDay, color, authUser.userId());
     }
 }

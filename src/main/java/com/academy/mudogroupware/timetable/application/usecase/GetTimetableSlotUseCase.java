@@ -4,5 +4,5 @@ import com.academy.mudogroupware.timetable.application.query.TimetableSlotView;
 
 public interface GetTimetableSlotUseCase {
 
-    TimetableSlotView getSlot(Long academyId, Long timetableSetId, Long timetableSlotId);
+    TimetableSlotView getSlot(Long timetableSetId, Long timetableSlotId);
 }

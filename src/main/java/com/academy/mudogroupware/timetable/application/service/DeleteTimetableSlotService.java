@@ -30,7 +30,6 @@ public class DeleteTimetableSlotService implements DeleteTimetableSlotUseCase {
         }
 
         timetableSetRepository.findById(command.timetableSetId())
-                .filter(found -> found.getAcademyId().equals(command.academyId()))
                 .orElseThrow(TimetableSetNotFoundException::new);
 
         TimetableSlot slot = timetableSlotRepository.findById(command.timetableSlotId())

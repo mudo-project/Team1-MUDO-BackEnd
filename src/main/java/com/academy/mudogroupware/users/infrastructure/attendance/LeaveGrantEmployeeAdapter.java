@@ -21,7 +21,7 @@ public class LeaveGrantEmployeeAdapter implements LeaveGrantEmployeePort {
     public List<LeaveGrantEmployee> findActiveEmployeesWithJoinedDate() {
         return userJpaRepository.findAllByStatusAndJoinedAtIsNotNull(UserStatus.ACTIVE).stream()
                 .map(user -> new LeaveGrantEmployee(
-                        user.getId(), user.getAcademyId(), user.getJoinedAt().toLocalDate()))
+                        user.getId(), user.getJoinedAt().toLocalDate()))
                 .toList();
     }
 }

@@ -8,7 +8,7 @@ public interface GoogleAccountConnectionRepository {
 
     GoogleAccountConnection save(GoogleAccountConnection connection);
 
-    Optional<GoogleAccountConnection> findByAcademyId(Long academyId);
+    Optional<GoogleAccountConnection> find();
 
-    void deleteByAcademyId(Long academyId);
+    void deleteAll();
 }

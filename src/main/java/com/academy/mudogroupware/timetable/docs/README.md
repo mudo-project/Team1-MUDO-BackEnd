@@ -19,7 +19,7 @@
 
 ## 소유하는 주요 데이터와 상태
 
-- `TimetableSet` — DB 테이블 `timetable_set`(academy_id, name(세트 내 유일), start_date, end_date, operating_start_time, operating_end_time, operating_days(콤마 구분 요일 문자열), slot_unit_minutes, created_at, updated_at)
+- `TimetableSet` — DB 테이블 `timetable_set`(name(테넌트 DB 내 유일), start_date, end_date, operating_start_time, operating_end_time, operating_days(콤마 구분 요일 문자열), slot_unit_minutes, created_at, updated_at)
 - `TimetableClassroom` — DB 테이블 `timetable_set_classroom`(timetable_set_id, floor, code — 세트 내 code 유일). JPA `@ElementCollection`으로 매핑, 별도 Entity/Repository 없음.
 - `TimetableSlot` — DB 테이블 `timetable_slot`(timetable_set_id, class_type, day_of_week, classroom_code, start_time, end_time, grade, teacher_name, subject_name, effective_from, effective_until, created_at, updated_at). `effective_from`/`effective_until`은 현재 항상 소속 세트의 `start_date`/`end_date`와 같다(회차 단위 기간 분할은 아직 미구현).
 - `timetable_slot_exception` 테이블은 "해당 회차만" 적용 범위를 위해 마이그레이션만 미리 만들어 뒀고, 이번 범위의 코드에서는 사용하지 않는다.

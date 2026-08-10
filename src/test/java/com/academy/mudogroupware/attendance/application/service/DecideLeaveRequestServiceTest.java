@@ -64,7 +64,7 @@ class DecideLeaveRequestServiceTest {
     }
 
     private LeaveRequest pendingRequest() {
-        return LeaveRequest.submit(1L, 2L, 10L, LocalDate.of(2026, 8, 10),
+        return LeaveRequest.submit(2L, 10L, LocalDate.of(2026, 8, 10),
                 LocalDate.of(2026, 8, 11), 2, LocalDateTime.of(2026, 8, 6, 10, 0));
     }
 }

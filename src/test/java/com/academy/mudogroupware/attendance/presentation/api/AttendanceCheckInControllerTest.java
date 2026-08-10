@@ -35,7 +35,7 @@ class AttendanceCheckInControllerTest {
         AuthUser authUser = new AuthUser(10L, "employee", 1L, 2L, "EMPLOYEE");
         LocalDateTime clockInAt = LocalDateTime.of(2026, 8, 5, 9, 11);
         CheckInCommand command = new CheckInCommand(
-                10L, 1L, "203.0.113.10", "교통 정체");
+                10L, "203.0.113.10", "교통 정체");
         when(clientIpResolver.resolve(servletRequest)).thenReturn("203.0.113.10");
         when(checkInUseCase.checkIn(command)).thenReturn(new CheckInResult(
                 5L, LocalDate.of(2026, 8, 5), clockInAt,

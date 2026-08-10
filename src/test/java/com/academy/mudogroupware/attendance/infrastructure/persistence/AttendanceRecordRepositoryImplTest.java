@@ -27,7 +27,6 @@ class AttendanceRecordRepositoryImplTest {
         when(jpaRepository.saveAndFlush(any(AttendanceRecordJpaEntity.class)))
                 .thenThrow(violation);
         AttendanceRecord record = AttendanceRecord.checkIn(
-                1L,
                 10L,
                 LocalDateTime.of(2026, 8, 5, 9, 0),
                 LocalTime.of(9, 0),

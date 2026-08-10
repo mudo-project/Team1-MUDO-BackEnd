@@ -5,6 +5,6 @@ import java.time.LocalDateTime;
 
 public interface LeaveRequestSubmissionPort {
 
-    void submit(Long documentId, Long academyId, Long requesterId, LocalDate startDate, LocalDate endDate,
+    void submit(Long documentId, Long requesterId, LocalDate startDate, LocalDate endDate,
                 LocalDateTime submittedAt);
 }

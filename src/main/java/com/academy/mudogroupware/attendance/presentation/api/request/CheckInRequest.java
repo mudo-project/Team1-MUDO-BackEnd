@@ -12,7 +12,7 @@ public record CheckInRequest(
         @Size(max = 255, message = "출근 메모는 255자 이하여야 합니다.")
         String clockInNote
 ) {
-    public CheckInCommand toCommand(Long userId, Long academyId, String detectedIpAddress) {
-        return new CheckInCommand(userId, academyId, detectedIpAddress, clockInNote);
+    public CheckInCommand toCommand(Long userId, String detectedIpAddress) {
+        return new CheckInCommand(userId, detectedIpAddress, clockInNote);
     }
 }

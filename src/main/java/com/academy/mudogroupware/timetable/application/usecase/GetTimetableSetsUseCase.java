@@ -6,5 +6,5 @@ import com.academy.mudogroupware.timetable.application.query.TimetableSetSummary
 
 public interface GetTimetableSetsUseCase {
 
-    List<TimetableSetSummaryView> getTimetableSets(Long academyId);
+    List<TimetableSetSummaryView> getTimetableSets();
 }

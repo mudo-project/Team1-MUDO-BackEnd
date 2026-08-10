@@ -5,5 +5,5 @@ import java.util.List;
 
 public interface WeeklyEmployeeDetailQueryPort {
     List<WeeklyEmployeeDetail> findByEmployee(
-            Long academyId, Long userId, LocalDate startDate, LocalDate endDate);
+            Long userId, LocalDate startDate, LocalDate endDate);
 }

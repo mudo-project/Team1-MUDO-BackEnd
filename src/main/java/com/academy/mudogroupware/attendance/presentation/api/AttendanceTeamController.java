@@ -40,7 +40,7 @@ public class AttendanceTeamController {
     public GlobalApiResponse<TodayTeamAttendanceResponse> getToday(
             @AuthenticationPrincipal AuthUser authUser) {
         TodayTeamAttendanceView view = getTodayTeamAttendanceUseCase.getToday(
-                authUser.userId(), authUser.academyId());
+                authUser.userId());
         return GlobalApiResponse.ok(
                 AttendanceResponseCode.TODAY_TEAM_ATTENDANCE_RETRIEVED,
                 TodayTeamAttendanceResponse.from(view));

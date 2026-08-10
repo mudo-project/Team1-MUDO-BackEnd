@@ -31,8 +31,8 @@ public class CalendarEventPersistenceAdapter implements CalendarEventRepository 
     }
 
     @Override
-    public List<CalendarEvent> findAllByAcademyIdAndPeriod(Long academyId, LocalDateTime from, LocalDateTime to) {
-        return calendarEventJpaRepository.findAllByAcademyIdAndEventStartAtBetween(academyId, from, to).stream()
+    public List<CalendarEvent> findAllByPeriod(LocalDateTime from, LocalDateTime to) {
+        return calendarEventJpaRepository.findAllByEventStartAtBetween(from, to).stream()
                 .map(this::toDomain)
                 .toList();
     }
@@ -52,7 +52,6 @@ public class CalendarEventPersistenceAdapter implements CalendarEventRepository 
     private CalendarEventEntity toEntity(CalendarEvent domain) {
         return CalendarEventEntity.builder()
                 .id(domain.getId())
-                .academyId(domain.getAcademyId())
                 .title(domain.getTitle())
                 .content(domain.getContent())
                 .eventStartAt(domain.getEventStartAt())
@@ -65,7 +64,7 @@ public class CalendarEventPersistenceAdapter implements CalendarEventRepository 
 
     private CalendarEvent toDomain(CalendarEventEntity entity) {
         return CalendarEvent.restore(
-                entity.getId(), entity.getAcademyId(), entity.getTitle(), entity.getContent(),
+                entity.getId(), entity.getTitle(), entity.getContent(),
                 entity.getEventStartAt(), entity.getEventEndAt(), entity.isAllDay(), entity.getColor(),
                 entity.getCreatedBy(), entity.getCreatedAt(), entity.getUpdatedAt());
     }

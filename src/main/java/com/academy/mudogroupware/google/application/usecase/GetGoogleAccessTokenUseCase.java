@@ -12,5 +12,5 @@ public interface GetGoogleAccessTokenUseCase {
      * @throws com.academy.mudogroupware.google.domain.exception.GoogleAccountConnectionInvalidException
      *         연동이 만료됐거나 필요한 scope가 부족해 재연결이 필요한 경우
      */
-    String getAccessToken(Long academyId);
+    String getAccessToken();
 }

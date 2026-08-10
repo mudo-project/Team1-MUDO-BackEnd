@@ -21,10 +21,10 @@ public class GetCalendarEventsService implements GetCalendarEventsUseCase {
     private final CalendarEventRepository calendarEventRepository;
 
     @Override
-    public List<CalendarEvent> getEvents(Long academyId, LocalDateTime from, LocalDateTime to) {
+    public List<CalendarEvent> getEvents(LocalDateTime from, LocalDateTime to) {
         if (to.isBefore(from)) {
             throw new InvalidCalendarPeriodException();
         }
-        return calendarEventRepository.findAllByAcademyIdAndPeriod(academyId, from, to);
+        return calendarEventRepository.findAllByPeriod(from, to);
     }
 }

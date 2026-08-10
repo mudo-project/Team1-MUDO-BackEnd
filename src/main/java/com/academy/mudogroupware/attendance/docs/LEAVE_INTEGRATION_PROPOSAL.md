@@ -24,7 +24,7 @@
    → 반려: PENDING → REJECTED
 
 3. 오늘 팀 근태 조회
-   → academyId와 오늘 날짜로 APPROVED 휴가 직원 ID를 한 번에 조회
+   → 현재 스키마와 오늘 날짜로 APPROVED 휴가 직원 ID를 한 번에 조회
    → 출근 기록이 없고 승인 휴가 기간이면 LEAVE로 표시
 ```
 
@@ -55,7 +55,7 @@ PENDING → REJECTED
 - `AttendanceLeaveGrantScheduler`가 매일 00:05 KST에 실행된다.
 - 기존 Global `SchedulingConfig`와 공통 `Clock`을 재사용한다.
 - 스케줄러는 현재 지급 기간의 이력이 없을 때만 `leave_grant`를 생성한다.
-- `UNIQUE (academy_id, user_id, grant_date)`가 중복 지급을 최종 방어한다.
+- `UNIQUE (user_id, grant_date)`가 중복 지급을 최종 방어한다.
 
 ## 모듈 경계
 

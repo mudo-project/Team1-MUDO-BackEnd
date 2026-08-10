@@ -6,7 +6,7 @@ import com.academy.mudogroupware.attendance.application.query.WeeklyEmployeeAtte
 import com.academy.mudogroupware.attendance.domain.model.MyAttendanceDayStatus;
 
 public interface GetWeeklyEmployeeAttendanceUseCase {
-    WeeklyEmployeeAttendanceView getWeekly(Long requesterId, Long academyId, LocalDate date,
+    WeeklyEmployeeAttendanceView getWeekly(Long requesterId, LocalDate date,
                                             String keyword, MyAttendanceDayStatus status,
                                             int page, int size);
 }

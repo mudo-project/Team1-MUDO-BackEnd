@@ -21,7 +21,6 @@ public class UpdateTimetableSetService implements UpdateTimetableSetUseCase {
     @Override
     public void updateTimetableSet(UpdateTimetableSetCommand command) {
         TimetableSet set = timetableSetRepository.findById(command.timetableSetId())
-                .filter(found -> found.getAcademyId().equals(command.academyId()))
                 .orElseThrow(TimetableSetNotFoundException::new);
 
         set.update(command.name(), command.startDate(), command.endDate(), command.operatingStartTime(),

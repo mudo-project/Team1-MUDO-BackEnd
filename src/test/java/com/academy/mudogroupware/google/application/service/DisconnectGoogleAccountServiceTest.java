@@ -16,7 +16,6 @@ import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.academy.mudogroupware.google.application.command.DisconnectGoogleAccountCommand;
 import com.academy.mudogroupware.google.application.port.GoogleOAuthPort;
 import com.academy.mudogroupware.google.domain.exception.GoogleAccountNotConnectedException;
 import com.academy.mudogroupware.google.domain.model.GoogleAccountConnection;
@@ -40,23 +39,23 @@ class DisconnectGoogleAccountServiceTest {
     @Test
     void disconnectRevokesTokenAndDeletesConnection() {
         GoogleAccountConnection connection = GoogleAccountConnection.restore(
-                10L, 1L, "a@b.com", 7L, "scope", "refresh-token", NOW.minusDays(1), NOW.plusDays(59),
+                10L, "a@b.com", 7L, "scope", "refresh-token", NOW.minusDays(1), NOW.plusDays(59),
                 NOW.minusDays(1), false);
-        when(googleAccountConnectionRepository.findByAcademyId(1L)).thenReturn(Optional.of(connection));
+        when(googleAccountConnectionRepository.find()).thenReturn(Optional.of(connection));
 
-        service.disconnect(new DisconnectGoogleAccountCommand(1L));
+        service.disconnect();
 
         InOrder order = inOrder(googleOAuthPort, googleAccountConnectionRepository);
         order.verify(googleOAuthPort).revoke("refresh-token");
-        order.verify(googleAccountConnectionRepository).deleteByAcademyId(1L);
+        order.verify(googleAccountConnectionRepository).deleteAll();
     }
 
     @Test
     void disconnectThrowsWhenNotConnected() {
-        when(googleAccountConnectionRepository.findByAcademyId(1L)).thenReturn(Optional.empty());
+        when(googleAccountConnectionRepository.find()).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.disconnect(new DisconnectGoogleAccountCommand(1L)))
+        assertThatThrownBy(service::disconnect)
                 .isInstanceOf(GoogleAccountNotConnectedException.class);
-        verify(googleAccountConnectionRepository, never()).deleteByAcademyId(1L);
+        verify(googleAccountConnectionRepository, never()).deleteAll();
     }
 }

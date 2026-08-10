@@ -53,10 +53,10 @@ class CheckOutServiceTest {
     @Test
     void checksOutPreviousDayOpenRecordFromRegisteredIp() {
         AttendanceRecord openRecord = openRecord();
-        when(academyWifiIpRepository.existsByAcademyIdAndIpAddress(
-                1L, "203.0.113.10")).thenReturn(true);
+        when(academyWifiIpRepository.existsByIpAddress(
+                "203.0.113.10")).thenReturn(true);
         when(attendanceRecordRepository.findLatestOpenSince(
-                1L, 10L, LocalDate.of(2026, 8, 5)))
+                10L, LocalDate.of(2026, 8, 5)))
                 .thenReturn(Optional.of(openRecord));
         when(attendanceRecordRepository.save(any(AttendanceRecord.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
@@ -72,10 +72,10 @@ class CheckOutServiceTest {
 
     @Test
     void allowsNullClockOutNote() {
-        when(academyWifiIpRepository.existsByAcademyIdAndIpAddress(
-                1L, "203.0.113.10")).thenReturn(true);
+        when(academyWifiIpRepository.existsByIpAddress(
+                "203.0.113.10")).thenReturn(true);
         when(attendanceRecordRepository.findLatestOpenSince(
-                1L, 10L, LocalDate.of(2026, 8, 5)))
+                10L, LocalDate.of(2026, 8, 5)))
                 .thenReturn(Optional.of(openRecord()));
         when(attendanceRecordRepository.save(any(AttendanceRecord.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
@@ -88,8 +88,8 @@ class CheckOutServiceTest {
 
     @Test
     void rejectsCheckOutFromUnregisteredIp() {
-        when(academyWifiIpRepository.existsByAcademyIdAndIpAddress(
-                1L, "203.0.113.10")).thenReturn(false);
+        when(academyWifiIpRepository.existsByIpAddress(
+                "203.0.113.10")).thenReturn(false);
 
         AttendanceException exception = assertThrows(
                 AttendanceException.class,
@@ -104,7 +104,7 @@ class CheckOutServiceTest {
     void rejectsRepeatedCheckOutCompletedToday() {
         allowRegisteredIpWithoutOpenRecord();
         when(attendanceRecordRepository.existsCheckedOutBetween(
-                1L, 10L, LocalDate.of(2026, 8, 6).atStartOfDay(), NOW))
+                10L, LocalDate.of(2026, 8, 6).atStartOfDay(), NOW))
                 .thenReturn(true);
 
         AttendanceException exception = assertThrows(
@@ -119,7 +119,7 @@ class CheckOutServiceTest {
     void rejectsCheckOutWithoutRecentCheckIn() {
         allowRegisteredIpWithoutOpenRecord();
         when(attendanceRecordRepository.existsCheckedOutBetween(
-                1L, 10L, LocalDate.of(2026, 8, 6).atStartOfDay(), NOW))
+                10L, LocalDate.of(2026, 8, 6).atStartOfDay(), NOW))
                 .thenReturn(false);
 
         AttendanceException exception = assertThrows(
@@ -131,22 +131,22 @@ class CheckOutServiceTest {
     }
 
     private void allowRegisteredIpWithoutOpenRecord() {
-        when(academyWifiIpRepository.existsByAcademyIdAndIpAddress(
-                1L, "203.0.113.10")).thenReturn(true);
+        when(academyWifiIpRepository.existsByIpAddress(
+                "203.0.113.10")).thenReturn(true);
         when(attendanceRecordRepository.findLatestOpenSince(
-                1L, 10L, LocalDate.of(2026, 8, 5)))
+                10L, LocalDate.of(2026, 8, 5)))
                 .thenReturn(Optional.empty());
     }
 
     private AttendanceRecord openRecord() {
         LocalDateTime clockInAt = LocalDateTime.of(2026, 8, 5, 22, 0);
         return AttendanceRecord.restore(
-                5L, 1L, 10L, clockInAt.toLocalDate(), clockInAt,
+                5L, 10L, clockInAt.toLocalDate(), clockInAt,
                 null, null, null, null, AttendanceStatus.NORMAL,
                 clockInAt, clockInAt);
     }
 
     private CheckOutCommand command(ClockOutType type, String note) {
-        return new CheckOutCommand(10L, 1L, "203.0.113.10", type, note);
+        return new CheckOutCommand(10L, "203.0.113.10", type, note);
     }
 }
