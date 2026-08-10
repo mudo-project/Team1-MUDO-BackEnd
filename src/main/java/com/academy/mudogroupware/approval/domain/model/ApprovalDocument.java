@@ -14,6 +14,7 @@ public final class ApprovalDocument {
     private final Long id;
     private final Long academyId;
     private final Long templateId;
+    private final ApprovalDocumentSourceType sourceType;
     private final String title;
     private final ApprovalContent content;
     private final Long creatorId;
@@ -23,7 +24,8 @@ public final class ApprovalDocument {
     private final LocalDateTime createdAt;
     private LocalDateTime resubmittedAt;
 
-    private ApprovalDocument(Long id, Long academyId, Long templateId, String title, ApprovalContent content,
+    private ApprovalDocument(Long id, Long academyId, Long templateId, ApprovalDocumentSourceType sourceType,
+                              String title, ApprovalContent content,
                               Long creatorId, List<ApprovalDocumentLine> lines, List<ApprovalAttachment> attachments,
                               ApprovalStatus status, LocalDateTime createdAt, LocalDateTime resubmittedAt) {
         if (academyId == null) {
@@ -47,6 +49,7 @@ public final class ApprovalDocument {
         this.id = id;
         this.academyId = academyId;
         this.templateId = templateId;
+        this.sourceType = sourceType == null ? ApprovalDocumentSourceType.GENERAL : sourceType;
         this.title = title;
         this.content = content;
         this.creatorId = creatorId;
@@ -60,10 +63,17 @@ public final class ApprovalDocument {
     public static ApprovalDocument create(Long academyId, Long templateId, String title, ApprovalContent content,
                                            Long creatorId, List<Long> approverIds, List<Long> fileIds,
                                            LocalDateTime now) {
+        return create(academyId, templateId, ApprovalDocumentSourceType.GENERAL, title, content,
+                creatorId, approverIds, fileIds, now);
+    }
+
+    public static ApprovalDocument create(Long academyId, Long templateId, ApprovalDocumentSourceType sourceType,
+                                           String title, ApprovalContent content, Long creatorId,
+                                           List<Long> approverIds, List<Long> fileIds, LocalDateTime now) {
         List<ApprovalAttachment> attachments = fileIds != null
                 ? fileIds.stream().map(ApprovalAttachment::create).toList()
                 : List.of();
-        return new ApprovalDocument(null, academyId, templateId, title, content, creatorId, buildLines(approverIds),
+        return new ApprovalDocument(null, academyId, templateId, sourceType, title, content, creatorId, buildLines(approverIds),
                 attachments, ApprovalStatus.IN_PROGRESS, now, null);
     }
 
@@ -71,7 +81,17 @@ public final class ApprovalDocument {
                                             ApprovalContent content, Long creatorId, List<ApprovalDocumentLine> lines,
                                             List<ApprovalAttachment> attachments, ApprovalStatus status,
                                             LocalDateTime createdAt, LocalDateTime resubmittedAt) {
-        return new ApprovalDocument(id, academyId, templateId, title, content, creatorId, lines, attachments,
+        return restore(id, academyId, templateId, ApprovalDocumentSourceType.GENERAL, title, content,
+                creatorId, lines, attachments, status, createdAt, resubmittedAt);
+    }
+
+    public static ApprovalDocument restore(Long id, Long academyId, Long templateId,
+                                            ApprovalDocumentSourceType sourceType, String title,
+                                            ApprovalContent content, Long creatorId,
+                                            List<ApprovalDocumentLine> lines, List<ApprovalAttachment> attachments,
+                                            ApprovalStatus status, LocalDateTime createdAt,
+                                            LocalDateTime resubmittedAt) {
+        return new ApprovalDocument(id, academyId, templateId, sourceType, title, content, creatorId, lines, attachments,
                 status, createdAt, resubmittedAt);
     }
 
@@ -202,6 +222,10 @@ public final class ApprovalDocument {
 
     public Long getTemplateId() {
         return templateId;
+    }
+
+    public ApprovalDocumentSourceType getSourceType() {
+        return sourceType;
     }
 
     public String getTitle() {
