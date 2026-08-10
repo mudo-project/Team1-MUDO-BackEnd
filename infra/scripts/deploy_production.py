@@ -280,6 +280,11 @@ def render_app_task(
         "JWT_SECRET",
         "CORS_ALLOWED_ORIGINS",
         "WEBSOCKET_ALLOWED_ORIGINS",
+        "GOOGLE_TOKEN_ENCRYPTION_KEY",
+        "GOOGLE_CLIENT_ID",
+        "GOOGLE_CLIENT_SECRET",
+        "GOOGLE_REDIRECT_URI",
+        "GOOGLE_OAUTH_FRONTEND_REDIRECT_URI",
     )
     container["secrets"] = [
         {"name": name, "valueFrom": parameter_arn(region, account_id, code, name)}

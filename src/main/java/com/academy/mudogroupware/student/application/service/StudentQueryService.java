@@ -32,26 +32,23 @@ public class StudentQueryService implements StudentQueryUseCase {
     private final LectureCatalogPort lectureCatalogPort;
 
     @Override
-    public PageResult<StudentSummary> getStudents(Long academyId, String keyword, int page, int size) {
-        PageResult<Student> result = studentRepository.findAll(academyId, keyword, page, size);
+    public PageResult<StudentSummary> getStudents(String keyword, int page, int size) {
+        PageResult<Student> result = studentRepository.findAll(keyword, page, size);
         List<Long> studentIds = result.content().stream().map(Student::getId).toList();
-        Map<Long, Long> activeEnrollmentCounts = enrollmentRepository.countActiveByStudentIds(academyId, studentIds);
+        Map<Long, Long> activeEnrollmentCounts = enrollmentRepository.countActiveByStudentIds(studentIds);
 
         return result.map(student -> toSummary(student,
                 activeEnrollmentCounts.getOrDefault(student.getId(), 0L).intValue()));
     }
 
     @Override
-    public StudentDetail getStudentDetail(Long academyId, Long studentId) {
+    public StudentDetail getStudentDetail(Long studentId) {
         Student student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new StudentException(StudentErrorCode.STUDENT_NOT_FOUND));
-        if (!student.getAcademyId().equals(academyId)) {
-            throw new StudentException(StudentErrorCode.STUDENT_ACCESS_DENIED);
-        }
 
-        List<Enrollment> enrollments = enrollmentRepository.findActiveByStudentId(academyId, studentId);
+        List<Enrollment> enrollments = enrollmentRepository.findActiveByStudentId(studentId);
         List<Long> lectureIds = enrollments.stream().map(Enrollment::getLectureId).distinct().toList();
-        Map<Long, LectureCatalogInfo> lectures = lectureCatalogPort.findByIds(academyId, lectureIds);
+        Map<Long, LectureCatalogInfo> lectures = lectureCatalogPort.findByIds(lectureIds);
 
         return new StudentDetail(
                 student.getId(),

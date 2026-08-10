@@ -35,7 +35,6 @@ import com.academy.mudogroupware.lecture.domain.repository.TermRepository;
 
 class CreateLectureServiceTest {
 
-    private static final Long ACADEMY_ID = 1L;
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 5, 9, 0);
 
     private final TermRepository termRepository = mock(TermRepository.class);
@@ -53,19 +52,19 @@ class CreateLectureServiceTest {
     }
 
     private CreateLectureCommand command() {
-        return new CreateLectureCommand(ACADEMY_ID, "수학 기초반", Grade.MIDDLE_3, "2026 겨울방학 특강", "수학", 30L, "101호",
+        return new CreateLectureCommand("수학 기초반", Grade.MIDDLE_3, "2026 겨울방학 특강", "수학", 30L, "101호",
                 FeeType.PER_SESSION, 50000, List.of(new ScheduleInput(DayOfWeek.MONDAY, LocalTime.of(15, 0),
                 LocalTime.of(17, 0))), 99L);
     }
 
     @Test
     void reusesExistingTermSubjectClassroomWhenFound() {
-        when(termRepository.findByAcademyIdAndName(ACADEMY_ID, "2026 겨울방학 특강"))
-                .thenReturn(Optional.of(Term.restore(10L, ACADEMY_ID, "2026 겨울방학 특강", NOW)));
-        when(subjectRepository.findByAcademyIdAndName(ACADEMY_ID, "수학"))
-                .thenReturn(Optional.of(Subject.restore(20L, ACADEMY_ID, "수학", NOW)));
-        when(classroomRepository.findByAcademyIdAndName(ACADEMY_ID, "101호"))
-                .thenReturn(Optional.of(Classroom.restore(40L, ACADEMY_ID, "101호", NOW)));
+        when(termRepository.findByName("2026 겨울방학 특강"))
+                .thenReturn(Optional.of(Term.restore(10L, "2026 겨울방학 특강", NOW)));
+        when(subjectRepository.findByName("수학"))
+                .thenReturn(Optional.of(Subject.restore(20L, "수학", NOW)));
+        when(classroomRepository.findByName("101호"))
+                .thenReturn(Optional.of(Classroom.restore(40L, "101호", NOW)));
         when(lectureRepository.existsOverlap(40L, DayOfWeek.MONDAY, LocalTime.of(15, 0), LocalTime.of(17, 0)))
                 .thenReturn(false);
         when(lectureRepository.save(any(Lecture.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -79,13 +78,13 @@ class CreateLectureServiceTest {
 
     @Test
     void createsNewTermSubjectClassroomWhenNotFound() {
-        when(termRepository.findByAcademyIdAndName(ACADEMY_ID, "2026 겨울방학 특강")).thenReturn(Optional.empty());
-        when(termRepository.save(any(Term.class))).thenReturn(Term.restore(10L, ACADEMY_ID, "2026 겨울방학 특강", NOW));
-        when(subjectRepository.findByAcademyIdAndName(ACADEMY_ID, "수학")).thenReturn(Optional.empty());
-        when(subjectRepository.save(any(Subject.class))).thenReturn(Subject.restore(20L, ACADEMY_ID, "수학", NOW));
-        when(classroomRepository.findByAcademyIdAndName(ACADEMY_ID, "101호")).thenReturn(Optional.empty());
+        when(termRepository.findByName("2026 겨울방학 특강")).thenReturn(Optional.empty());
+        when(termRepository.save(any(Term.class))).thenReturn(Term.restore(10L, "2026 겨울방학 특강", NOW));
+        when(subjectRepository.findByName("수학")).thenReturn(Optional.empty());
+        when(subjectRepository.save(any(Subject.class))).thenReturn(Subject.restore(20L, "수학", NOW));
+        when(classroomRepository.findByName("101호")).thenReturn(Optional.empty());
         when(classroomRepository.save(any(Classroom.class)))
-                .thenReturn(Classroom.restore(40L, ACADEMY_ID, "101호", NOW));
+                .thenReturn(Classroom.restore(40L, "101호", NOW));
         when(lectureRepository.existsOverlap(40L, DayOfWeek.MONDAY, LocalTime.of(15, 0), LocalTime.of(17, 0)))
                 .thenReturn(false);
         when(lectureRepository.save(any(Lecture.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -99,12 +98,12 @@ class CreateLectureServiceTest {
 
     @Test
     void throwsWhenClassroomTimeConflictExists() {
-        when(termRepository.findByAcademyIdAndName(ACADEMY_ID, "2026 겨울방학 특강"))
-                .thenReturn(Optional.of(Term.restore(10L, ACADEMY_ID, "2026 겨울방학 특강", NOW)));
-        when(subjectRepository.findByAcademyIdAndName(ACADEMY_ID, "수학"))
-                .thenReturn(Optional.of(Subject.restore(20L, ACADEMY_ID, "수학", NOW)));
-        when(classroomRepository.findByAcademyIdAndName(ACADEMY_ID, "101호"))
-                .thenReturn(Optional.of(Classroom.restore(40L, ACADEMY_ID, "101호", NOW)));
+        when(termRepository.findByName("2026 겨울방학 특강"))
+                .thenReturn(Optional.of(Term.restore(10L, "2026 겨울방학 특강", NOW)));
+        when(subjectRepository.findByName("수학"))
+                .thenReturn(Optional.of(Subject.restore(20L, "수학", NOW)));
+        when(classroomRepository.findByName("101호"))
+                .thenReturn(Optional.of(Classroom.restore(40L, "101호", NOW)));
         when(lectureRepository.existsOverlap(40L, DayOfWeek.MONDAY, LocalTime.of(15, 0), LocalTime.of(17, 0)))
                 .thenReturn(true);
 
@@ -116,17 +115,17 @@ class CreateLectureServiceTest {
 
     @Test
     void createdLectureCarriesCommandValues() {
-        when(termRepository.findByAcademyIdAndName(ACADEMY_ID, "2026 겨울방학 특강"))
-                .thenReturn(Optional.of(Term.restore(10L, ACADEMY_ID, "2026 겨울방학 특강", NOW)));
-        when(subjectRepository.findByAcademyIdAndName(ACADEMY_ID, "수학"))
-                .thenReturn(Optional.of(Subject.restore(20L, ACADEMY_ID, "수학", NOW)));
-        when(classroomRepository.findByAcademyIdAndName(ACADEMY_ID, "101호"))
-                .thenReturn(Optional.of(Classroom.restore(40L, ACADEMY_ID, "101호", NOW)));
+        when(termRepository.findByName("2026 겨울방학 특강"))
+                .thenReturn(Optional.of(Term.restore(10L, "2026 겨울방학 특강", NOW)));
+        when(subjectRepository.findByName("수학"))
+                .thenReturn(Optional.of(Subject.restore(20L, "수학", NOW)));
+        when(classroomRepository.findByName("101호"))
+                .thenReturn(Optional.of(Classroom.restore(40L, "101호", NOW)));
         when(lectureRepository.existsOverlap(40L, DayOfWeek.MONDAY, LocalTime.of(15, 0), LocalTime.of(17, 0)))
                 .thenReturn(false);
         when(lectureRepository.save(any(Lecture.class))).thenAnswer(invocation -> {
             Lecture saved = invocation.getArgument(0);
-            return Lecture.restore(1L, saved.getAcademyId(), saved.getName(), saved.getGrade(), saved.getTermId(),
+            return Lecture.restore(1L, saved.getName(), saved.getGrade(), saved.getTermId(),
                     saved.getSubjectId(), saved.getTeacherId(), saved.getClassroomId(), saved.getFeeType(),
                     saved.getFeeAmount(), saved.getSchedules(), saved.getCreatedAt());
         });

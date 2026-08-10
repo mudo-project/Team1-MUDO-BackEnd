@@ -22,23 +22,23 @@ class WorkspaceQueryServiceTest {
   void delegatesMineScopeToFindMine() {
     WorkspaceQueryService service = new WorkspaceQueryService(queryPort);
     List<WorkspaceListItem> expected = List.of(new WorkspaceListItem(100L, "Workspace", 2));
-    when(queryPort.findMine(1L, 10L)).thenReturn(expected);
+    when(queryPort.findMine(10L)).thenReturn(expected);
 
-    List<WorkspaceListItem> result = service.getWorkspaces(1L, 10L, WorkspaceListScope.MINE);
+    List<WorkspaceListItem> result = service.getWorkspaces(10L, WorkspaceListScope.MINE);
 
     assertThat(result).isSameAs(expected);
-    verify(queryPort).findMine(1L, 10L);
+    verify(queryPort).findMine(10L);
   }
 
   @Test
   void delegatesAllScopeToFindAll() {
     WorkspaceQueryService service = new WorkspaceQueryService(queryPort);
     List<WorkspaceListItem> expected = List.of(new WorkspaceListItem(100L, "Workspace", 2));
-    when(queryPort.findAll(1L, 10L)).thenReturn(expected);
+    when(queryPort.findAll(10L)).thenReturn(expected);
 
-    List<WorkspaceListItem> result = service.getWorkspaces(1L, 10L, WorkspaceListScope.ALL);
+    List<WorkspaceListItem> result = service.getWorkspaces(10L, WorkspaceListScope.ALL);
 
     assertThat(result).isSameAs(expected);
-    verify(queryPort).findAll(1L, 10L);
+    verify(queryPort).findAll(10L);
   }
 }

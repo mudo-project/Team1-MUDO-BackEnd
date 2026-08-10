@@ -6,7 +6,6 @@ import com.academy.mudogroupware.lecture.domain.model.FeeType;
 import com.academy.mudogroupware.lecture.domain.model.Grade;
 
 public record CreateLectureCommand(
-        Long academyId,
         String name,
         Grade grade,
         String termName,

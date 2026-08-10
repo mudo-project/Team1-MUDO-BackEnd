@@ -1,5 +1,46 @@
 # Messenger Revision
 
+## (예정) academyId 완전 제거 — users/file 쪽 인터페이스 변경 대기 중
+
+### 배경
+
+academy 테이블 자체를 시스템 전체에서 없애기로 해서, messenger에 남아있는 academyId 관련 코드도 전부 없앨 계획이다. 단, 아래 두 곳은 messenger 소유가 아니라 다른 도메인의 public 계약이라 그쪽이 먼저 academyId를 빼야 messenger도 뺄 수 있다.
+
+- `UserDirectoryUseCase.findActiveUserIds(Long academyId, Set<Long> userIds)` — users 도메인 소유.
+- `GetFileDownloadUrlUseCase.getDownloadUrls(List<Long> fileIds, Long academyId)` — file 도메인 소유(minseo0327).
+
+두 인터페이스가 여전히 academyId를 필수로 받기 때문에, 지금 messenger 쪽 호출부(`ChatMemberDirectoryPortAdapter`, `SendMessageService`, `ChatMessageQueryService`)와 `ChatMemberInfo`/`ChatMemberInfoEntity`의 academyId를 먼저 없애면 컴파일이 깨진다.
+
+### 진행 예정
+
+users/file 도메인 쪽에서 위 두 시그니처의 academyId 파라미터를 제거하면(develop 병합 확인), 그다음 messenger에서:
+
+- `ChatMemberInfo`/`ChatMemberInfoEntity`의 `academyId` 필드 제거.
+- `ChatMemberDirectoryPortAdapter`가 `findActiveUserIds` 호출 시 넘기던 academyId 제거.
+- `SendMessageService`/`ChatMessageQueryService`가 `getDownloadUrls` 호출 시 넘기던 academyId(`chatMemberDirectoryPort.getMember(...).academyId()`) 제거.
+
+> 작성일: 2026-08-10
+> 상태: 대기 중 (users/file 도메인 인터페이스 변경 선행 필요)
+
+## 2026-08-10 · 채팅방 academy_id 제거
+
+### 배경
+
+채팅방을 더 이상 학원 단위로 제한할 필요가 없어져, `ChatRoom.academyId`와 관련 로직을 전부 없애기로 했다.
+
+### 변경 내용
+
+- `ChatRoom` 도메인 모델에서 `academyId` 필드/검증 제거. `create()`/`restore()` 시그니처에서도 제거.
+- `chat_room.academy_id` 컬럼 제거(`V6.1.6`). FK나 인덱스가 걸려있지 않아 데이터 유실 걱정 없이 바로 드롭.
+- `ChatRoomRepository.findAllByMember`/`findDirectMessage`에서 `academyId` 파라미터 제거, JPQL 쿼리의 `academy_id` 조건도 제거.
+- `CreateChatRoomService`에서 참여자 학원 일치 검증(`crossAcademy` 체크, `CROSS_ACADEMY_INVITE` 예외) 제거. `INVALID_PARTICIPANT`(참여자 존재 여부) 검증은 그대로 유지.
+- `ChatRoomQueryService.getRooms()`에서 academyId 조회 목적으로만 쓰던 `chatMemberDirectoryPort.getMember()` 호출 자체를 제거(다른 용도로 쓰이지 않아서).
+- `SendMessageService`/`ChatMessageQueryService`가 파일 다운로드 URL을 조회할 때 쓰던 `chatRoom.getAcademyId()`를 요청자 본인의 academyId(`chatMemberDirectoryPort.getMember(requesterId/senderId).academyId()`)로 교체 — 파일 접근 권한은 채팅방이 아니라 요청자 본인의 학원 소속 여부로 결정되는 별개의 문제라, `ChatRoom`이 academyId를 잃어도 이 스코프 검증 자체는 그대로 유지된다.
+- `MessengerErrorCode.CROSS_ACADEMY_INVITE`(`MESSENGER_400_8`) 제거.
+
+> 작성일: 2026-08-10
+> 상태: 구현 완료, 테스트 통과.
+
 ## 2026-08-10 · 메시지 첨부파일 참조 방식을 fileUrl → fileId로 전환
 
 ### 배경

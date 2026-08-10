@@ -11,26 +11,22 @@ import com.academy.mudogroupware.approval.domain.exception.ApprovalException;
 public final class ApprovalTemplate {
 
     private final Long id;
-    private final Long academyId;
     private String name;
     private final Long creatorId;
     private final List<ApprovalTemplateLine> lines;
     private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    private ApprovalTemplate(Long id, Long academyId, String name, Long creatorId, List<ApprovalTemplateLine> lines,
+    private ApprovalTemplate(Long id, String name, Long creatorId, List<ApprovalTemplateLine> lines,
                               LocalDateTime createdAt, LocalDateTime updatedAt) {
-        if (academyId == null) {
-            throw new IllegalArgumentException("academyId must not be null");
-        }
         if (name == null || name.isBlank()) {
             throw new ApprovalException(ApprovalErrorCode.TEMPLATE_NAME_REQUIRED);
         }
         if (creatorId == null) {
             throw new IllegalArgumentException("creatorId must not be null");
         }
-        if (lines == null) {
-            throw new IllegalArgumentException("lines must not be null");
+        if (lines == null || lines.isEmpty()) {
+            throw new ApprovalException(ApprovalErrorCode.LINES_REQUIRED);
         }
         if (createdAt == null) {
             throw new IllegalArgumentException("createdAt must not be null");
@@ -39,7 +35,6 @@ public final class ApprovalTemplate {
             throw new IllegalArgumentException("updatedAt must not be null");
         }
         this.id = id;
-        this.academyId = academyId;
         this.name = name;
         this.creatorId = creatorId;
         this.lines = new ArrayList<>(lines);
@@ -47,19 +42,15 @@ public final class ApprovalTemplate {
         this.updatedAt = updatedAt;
     }
 
-    public static ApprovalTemplate create(Long academyId, String name, Long creatorId, List<Long> approverIds,
+    public static ApprovalTemplate create(String name, Long creatorId, List<Long> approverIds,
                                            LocalDateTime now) {
-        List<ApprovalTemplateLine> lines = buildLines(approverIds);
-        if (lines.isEmpty()) {
-            throw new ApprovalException(ApprovalErrorCode.LINES_REQUIRED);
-        }
-        return new ApprovalTemplate(null, academyId, name, creatorId, lines, now, now);
+        return new ApprovalTemplate(null, name, creatorId, buildLines(approverIds), now, now);
     }
 
-    public static ApprovalTemplate restore(Long id, Long academyId, String name, Long creatorId,
+    public static ApprovalTemplate restore(Long id, String name, Long creatorId,
                                             List<ApprovalTemplateLine> lines, LocalDateTime createdAt,
                                             LocalDateTime updatedAt) {
-        return new ApprovalTemplate(id, academyId, name, creatorId, lines, createdAt, updatedAt);
+        return new ApprovalTemplate(id, name, creatorId, lines, createdAt, updatedAt);
     }
 
     public void update(String name, List<Long> approverIds, LocalDateTime now) {
@@ -99,10 +90,6 @@ public final class ApprovalTemplate {
 
     public Long getId() {
         return id;
-    }
-
-    public Long getAcademyId() {
-        return academyId;
     }
 
     public String getName() {

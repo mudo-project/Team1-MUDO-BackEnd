@@ -4,5 +4,5 @@ import java.time.LocalDate;
 
 public interface ExportAttendanceSheetUseCase {
 
-    byte[] exportSheet(Long lectureId, Long academyId, LocalDate date);
+    byte[] exportSheet(Long lectureId, LocalDate date);
 }

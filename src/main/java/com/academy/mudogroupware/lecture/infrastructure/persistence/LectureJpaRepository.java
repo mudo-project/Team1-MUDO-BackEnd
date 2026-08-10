@@ -13,8 +13,8 @@ import com.academy.mudogroupware.lecture.domain.model.Grade;
 
 public interface LectureJpaRepository extends JpaRepository<LectureEntity, Long> {
 
-    @Query("select l from LectureEntity l where l.academyId = :academyId "
-            + "and (:termId is null or l.termId = :termId) "
+    @Query("select l from LectureEntity l where "
+            + "(:termId is null or l.termId = :termId) "
             + "and (:grade is null or l.grade = :grade) "
             + "and (:subjectId is null or l.subjectId = :subjectId) "
             + "and (:teacherId is null or l.teacherId = :teacherId) "
@@ -22,8 +22,7 @@ public interface LectureJpaRepository extends JpaRepository<LectureEntity, Long>
             + "and (:dayOfWeek is null or exists ("
             + "  select 1 from LectureScheduleEntity s where s.lecture = l and s.dayOfWeek = :dayOfWeek)) "
             + "order by l.id desc")
-    Slice<LectureEntity> findAllByFilter(@Param("academyId") Long academyId,
-                                          @Param("termId") Long termId,
+    Slice<LectureEntity> findAllByFilter(@Param("termId") Long termId,
                                           @Param("grade") Grade grade,
                                           @Param("subjectId") Long subjectId,
                                           @Param("teacherId") Long teacherId,

@@ -29,7 +29,6 @@ public class DataImportJobRepositoryImpl implements DataImportJobRepository {
     public DataImportJob save(DataImportJob job) {
         DataImportJobEntity entity = DataImportJobEntity.of(
                 job.getId(),
-                job.getAcademyId(),
                 job.getCreatedBy(),
                 job.getStatus(),
                 writeJson(job.getSourceFileNames()),
@@ -48,7 +47,6 @@ public class DataImportJobRepositoryImpl implements DataImportJobRepository {
     private DataImportJob toDomain(DataImportJobEntity entity) {
         return DataImportJob.restore(
                 entity.getId(),
-                entity.getAcademyId(),
                 entity.getCreatedBy(),
                 entity.getStatus(),
                 readJson(entity.getSourceFileNames(), STRING_LIST_TYPE),

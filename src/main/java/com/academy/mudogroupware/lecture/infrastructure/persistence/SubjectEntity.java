@@ -24,15 +24,11 @@ public class SubjectEntity extends CreatedAtEntity {
     @Column(name = "subject_id")
     private Long id;
 
-    @Column(name = "academy_id", nullable = false)
-    private Long academyId;
-
     @Column(nullable = false, length = 100)
     private String name;
 
     @Builder
-    private SubjectEntity(Long academyId, String name) {
-        this.academyId = academyId;
+    private SubjectEntity(String name) {
         this.name = name;
     }
 }

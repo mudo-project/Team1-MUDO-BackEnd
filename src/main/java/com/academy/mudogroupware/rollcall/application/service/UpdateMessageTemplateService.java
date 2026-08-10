@@ -25,7 +25,6 @@ public class UpdateMessageTemplateService implements UpdateMessageTemplateUseCas
     @Override
     public void updateTemplate(UpdateMessageTemplateCommand command) {
         MessageTemplate template = messageTemplateRepository.findById(command.templateId())
-                .filter(t -> t.getAcademyId().equals(command.academyId()))
                 .orElseThrow(MessageTemplateNotFoundException::new);
 
         template.update(command.name(), command.content(), LocalDateTime.now(clock));

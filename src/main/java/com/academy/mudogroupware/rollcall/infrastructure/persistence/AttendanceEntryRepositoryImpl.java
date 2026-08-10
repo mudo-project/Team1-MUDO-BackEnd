@@ -39,7 +39,6 @@ public class AttendanceEntryRepositoryImpl implements AttendanceEntryRepository 
 
     private AttendanceEntryEntity toNewEntity(AttendanceEntry entry) {
         return AttendanceEntryEntity.builder()
-                .academyId(entry.getAcademyId())
                 .lectureId(entry.getLectureId())
                 .studentId(entry.getStudentId())
                 .date(entry.getDate())
@@ -55,8 +54,8 @@ public class AttendanceEntryRepositoryImpl implements AttendanceEntryRepository 
     }
 
     private AttendanceEntry toDomain(AttendanceEntryEntity entity) {
-        return AttendanceEntry.restore(entity.getId(), entity.getAcademyId(), entity.getLectureId(),
-                entity.getStudentId(), entity.getDate(), entity.getStatus(), entity.getNote(), entity.getCreatedAt(),
+        return AttendanceEntry.restore(entity.getId(), entity.getLectureId(), entity.getStudentId(), entity.getDate(),
+                entity.getStatus(), entity.getNote(), entity.getCreatedAt(),
                 entity.getUpdatedAt());
     }
 }

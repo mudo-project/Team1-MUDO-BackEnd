@@ -20,10 +20,10 @@ class WorkspacePersistenceAdapterTest {
         org.mockito.Mockito.mock(WorkspacePersistenceMapper.class);
     WorkspacePersistenceAdapter adapter = new WorkspacePersistenceAdapter(jpaRepository, mapper);
     Workspace workspace = workspace();
-    when(mapper.toEntity(workspace)).thenReturn(WorkspaceJpaEntity.create(1L, "개발팀", 10L));
+    when(mapper.toEntity(workspace)).thenReturn(WorkspaceJpaEntity.create("개발팀", 10L));
     DataIntegrityViolationException violation =
         new DataIntegrityViolationException(
-            "Duplicate entry for key 'uk_workspace_academy_active_name'");
+            "Duplicate entry for key 'uk_workspace_active_name'");
     when(jpaRepository.saveAndFlush(any(WorkspaceJpaEntity.class))).thenThrow(violation);
 
     assertThatThrownBy(() -> adapter.save(workspace))
@@ -41,13 +41,13 @@ class WorkspacePersistenceAdapterTest {
     Workspace workspace = workspace();
     DataIntegrityViolationException violation =
         new DataIntegrityViolationException("foreign key violation");
-    when(mapper.toEntity(workspace)).thenReturn(WorkspaceJpaEntity.create(1L, "개발팀", 10L));
+    when(mapper.toEntity(workspace)).thenReturn(WorkspaceJpaEntity.create("개발팀", 10L));
     when(jpaRepository.saveAndFlush(any(WorkspaceJpaEntity.class))).thenThrow(violation);
 
     assertThatThrownBy(() -> adapter.save(workspace)).isSameAs(violation);
   }
 
   private Workspace workspace() {
-    return Workspace.create(1L, "개발팀", 10L, Set.of());
+    return Workspace.create("개발팀", 10L, Set.of());
   }
 }

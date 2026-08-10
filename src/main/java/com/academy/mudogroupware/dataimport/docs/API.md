@@ -37,7 +37,7 @@ Request Part
 | `lectureFile` | `MultipartFile` | `false` | 강의 정보 파일입니다. 강의명, 학년, 학기, 과목, 강사 ID, 교실, 요일, 시간, 수강료 등을 포함합니다. |
 | `enrollmentFile` | `MultipartFile` | `false` | 수강 관계 파일입니다. 어떤 학생이 어떤 강의를 듣는지 연결 정보를 포함합니다. |
 
-파일은 최소 1개 이상 업로드해야 한다. 지원 확장자는 `.csv`, `.xlsx`이다.
+파일은 최소 1개 이상 업로드해야 한다. 지원 확장자는 `.csv`, `.xlsx`이다. 서버에 `GEMINI_API_KEY`가 있으면 헤더와 샘플 행을 이용해 컬럼 매핑을 보정하고, 호출 실패 시에는 기존 parser 결과로 초안을 생성한다.
 
 # **[response]**
 
@@ -168,6 +168,7 @@ Response Body
 `PATCH /api/data-imports/onboarding/{importId}/draft`
 
 검토 화면에서 사용자가 수정/제외한 초안을 전체 교체한다. 프론트는 조회한 초안과 같은 구조로 수정된 전체 초안을 전송한다.
+서버는 요청으로 받은 `status`, `messages`, `studentRowId`, `lectureRowId`를 그대로 신뢰하지 않고 필수값과 수강 관계 연결을 다시 계산해 저장한다.
 
 # **[request]**
 
@@ -224,6 +225,7 @@ Response Body
 `POST /api/data-imports/onboarding/{importId}/confirm`
 
 선택된 `READY` 후보만 실제 학생/강의/수강 데이터로 저장한다.
+확정 직전에도 서버가 초안을 다시 검증한다. 선택되어 있던 행이 재검증 결과 `READY`가 아니면 전체 확정이 거절된다.
 
 # **[request]**
 

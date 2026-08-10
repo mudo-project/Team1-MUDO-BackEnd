@@ -54,12 +54,12 @@ class CreateChatRoomServiceTest {
 
     @Test
     void reusesExistingDirectMessageRoomInsteadOfCreatingDuplicate() {
-        ChatRoom existing = ChatRoom.restore(99L, 10L, null, ChatRoomType.DM, 1L,
+        ChatRoom existing = ChatRoom.restore(99L, null, ChatRoomType.DM, 1L,
                 List.of(ChatRoomMember.restore(1L, null), ChatRoomMember.restore(2L, null)), ROOM_CREATED_AT);
         when(chatMemberDirectoryPort.getMember(1L)).thenReturn(new ChatMemberInfo(1L, "requester", 10L));
         when(chatMemberDirectoryPort.getMembers(List.of(2L))).thenReturn(
                 Map.of(2L, new ChatMemberInfo(2L, "participant", 10L)));
-        when(chatRoomRepository.findDirectMessage(10L, 1L, 2L)).thenReturn(Optional.of(existing));
+        when(chatRoomRepository.findDirectMessage(1L, 2L)).thenReturn(Optional.of(existing));
 
         Long roomId = service.createRoom(new CreateChatRoomCommand(1L, List.of(2L), null));
 

@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.academy.mudogroupware.dataimport.application.command.CreateOnboardingImportCommand;
+import com.academy.mudogroupware.dataimport.application.port.ImportAnalysisPort;
 import com.academy.mudogroupware.dataimport.application.port.ParsedImportSheet;
 import com.academy.mudogroupware.dataimport.application.port.ImportFileParserPort;
 import com.academy.mudogroupware.dataimport.application.usecase.CreateOnboardingImportUseCase;
@@ -18,7 +19,9 @@ import com.academy.mudogroupware.dataimport.domain.model.ImportDraft;
 import com.academy.mudogroupware.dataimport.domain.repository.DataImportJobRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -26,6 +29,7 @@ public class CreateOnboardingImportService implements CreateOnboardingImportUseC
 
     private final DataImportJobRepository dataImportJobRepository;
     private final ImportFileParserPort importFileParserPort;
+    private final ImportAnalysisPort importAnalysisPort;
     private final ImportDraftBuilder importDraftBuilder;
     private final Clock clock;
 
@@ -37,7 +41,7 @@ public class CreateOnboardingImportService implements CreateOnboardingImportUseC
         List<ParsedImportSheet> sheets = command.files().stream()
                 .map(importFileParserPort::parse)
                 .toList();
-        ImportDraft draft = importDraftBuilder.build(sheets);
+        ImportDraft draft = importDraftBuilder.build(analyzeOrFallback(sheets));
         if (draft.isEmpty()) {
             throw new DataImportException(DataImportErrorCode.EMPTY_ANALYSIS_RESULT);
         }
@@ -45,8 +49,18 @@ public class CreateOnboardingImportService implements CreateOnboardingImportUseC
         List<String> sourceFileNames = command.files().stream()
                 .map(file -> file.fileName())
                 .toList();
-        DataImportJob job = DataImportJob.create(command.academyId(), command.createdBy(), sourceFileNames, draft,
+        DataImportJob job = DataImportJob.create(command.createdBy(), sourceFileNames, draft,
                 now);
         return dataImportJobRepository.save(job).getId();
+    }
+
+    private List<ParsedImportSheet> analyzeOrFallback(List<ParsedImportSheet> sheets) {
+        try {
+            List<ParsedImportSheet> analyzedSheets = importAnalysisPort.analyze(sheets);
+            return analyzedSheets != null ? analyzedSheets : sheets;
+        } catch (RuntimeException e) {
+            log.warn("event=data_import_analysis_fallback reason={}", e.getMessage());
+            return sheets;
+        }
     }
 }

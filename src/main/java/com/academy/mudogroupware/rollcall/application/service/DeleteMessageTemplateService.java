@@ -18,9 +18,8 @@ public class DeleteMessageTemplateService implements DeleteMessageTemplateUseCas
     private final MessageTemplateRepository messageTemplateRepository;
 
     @Override
-    public void deleteTemplate(Long templateId, Long academyId) {
+    public void deleteTemplate(Long templateId) {
         MessageTemplate template = messageTemplateRepository.findById(templateId)
-                .filter(t -> t.getAcademyId().equals(academyId))
                 .orElseThrow(MessageTemplateNotFoundException::new);
 
         messageTemplateRepository.deleteById(template.getId());

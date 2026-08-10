@@ -49,7 +49,7 @@ public class WorkspaceDetailQueryService implements WorkspaceDetailQueryUseCase 
 
   @Override
   public WorkspaceDetail getWorkspaceDetail(
-      Long academyId, Long userId, Long workspaceId, LocalDate date, boolean canReadAll
+      Long userId, Long workspaceId, LocalDate date, boolean canReadAll
   ) {
     log.info(
         "event=workspace_detail_시작 workspaceId={}, date={}",
@@ -61,7 +61,7 @@ public class WorkspaceDetailQueryService implements WorkspaceDetailQueryUseCase 
             .orElseThrow(WorkspaceNotFoundException::new);
 
     // 워크스페이스 접근 권한 확인
-    if (!workspaceListQueryPort.existsAccessible(workspaceId, academyId, userId, canReadAll)) {
+    if (!workspaceListQueryPort.existsAccessible(workspaceId, userId, canReadAll)) {
       throw new WorkspaceAccessDeniedException();
     }
 

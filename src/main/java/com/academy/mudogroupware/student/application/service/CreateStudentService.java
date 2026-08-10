@@ -24,7 +24,7 @@ public class CreateStudentService implements CreateStudentUseCase {
     @Override
     public Long createStudent(CreateStudentCommand command) {
         LocalDateTime now = LocalDateTime.now(clock);
-        Student student = Student.create(command.academyId(), command.name(), command.grade(), command.school(),
+        Student student = Student.create(command.name(), command.grade(), command.school(),
                 command.phone(), command.parentPhone(), command.note(), now);
         return studentRepository.save(student).getId();
     }

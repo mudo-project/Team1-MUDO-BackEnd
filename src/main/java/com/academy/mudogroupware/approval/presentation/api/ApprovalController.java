@@ -75,7 +75,8 @@ public class ApprovalController {
     public ResponseEntity<GlobalApiResponse<ApprovalCreateResponse>> createDocument(
             @AuthenticationPrincipal AuthUser authUser,
             @Valid @RequestBody CreateApprovalDocumentRequest request) {
-        Long documentId = createApprovalDocumentUseCase.createDocument(request.toCommand(authUser.userId()));
+        Long documentId = createApprovalDocumentUseCase.createDocument(
+                request.toCommand(authUser.userId()));
         ApprovalCreateResponse data = ApprovalCreateResponse.from(documentId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(GlobalApiResponse.created(ApprovalResponseCode.DOCUMENT_CREATED, data));
@@ -89,7 +90,7 @@ public class ApprovalController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         SliceResponse<ApprovalSubmittedSummaryResponse> data = SliceResponse.from(
-                approvalQueryUseCase.getAllApprovals(authUser.academyId(), page, size),
+                approvalQueryUseCase.getAllApprovals(page, size),
                 ApprovalSubmittedSummaryResponse::from);
         return ResponseEntity.ok(GlobalApiResponse.ok(ApprovalResponseCode.ALL_APPROVALS_RETRIEVED, data));
     }
@@ -154,7 +155,7 @@ public class ApprovalController {
             Authentication authentication,
             @PathVariable Long documentId) {
         ApprovalDetailView view = approvalQueryUseCase.getApprovalDetail(documentId, authUser.userId(),
-                authUser.academyId(), hasApprovalReadAll(authentication));
+                hasApprovalReadAll(authentication));
         ApprovalDetailResponse data = ApprovalDetailResponse.from(view);
         return ResponseEntity.ok(GlobalApiResponse.ok(ApprovalResponseCode.DOCUMENT_DETAIL_RETRIEVED, data));
     }

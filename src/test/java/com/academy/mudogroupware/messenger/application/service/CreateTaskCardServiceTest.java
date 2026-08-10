@@ -45,7 +45,7 @@ class CreateTaskCardServiceTest {
 
     @Test
     void createsTaskCardAndPublishesCreatedEvent() {
-        ChatRoom chatRoom = ChatRoom.restore(1L, 10L, null, ChatRoomType.GROUP, 2L,
+        ChatRoom chatRoom = ChatRoom.restore(1L, null, ChatRoomType.GROUP, 2L,
                 List.of(ChatRoomMember.restore(2L, null), ChatRoomMember.restore(3L, null),
                         ChatRoomMember.restore(4L, null)), ROOM_CREATED_AT);
         when(chatRoomRepository.findById(1L)).thenReturn(Optional.of(chatRoom));
@@ -69,7 +69,7 @@ class CreateTaskCardServiceTest {
 
     @Test
     void throwsAndPublishesNothingWhenAssigneeIsNotRoomMember() {
-        ChatRoom chatRoom = ChatRoom.restore(1L, 10L, null, ChatRoomType.GROUP, 2L,
+        ChatRoom chatRoom = ChatRoom.restore(1L, null, ChatRoomType.GROUP, 2L,
                 List.of(ChatRoomMember.restore(2L, null), ChatRoomMember.restore(3L, null)), ROOM_CREATED_AT);
         when(chatRoomRepository.findById(1L)).thenReturn(Optional.of(chatRoom));
 

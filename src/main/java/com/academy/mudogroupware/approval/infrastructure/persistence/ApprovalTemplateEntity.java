@@ -39,9 +39,6 @@ public class ApprovalTemplateEntity extends BaseTimeEntity {
     @Column(name = "template_id")
     private Long id;
 
-    @Column(name = "academy_id", nullable = false)
-    private Long academyId;
-
     @Column(name = "file_id")
     private Long fileId;
 
@@ -61,9 +58,8 @@ public class ApprovalTemplateEntity extends BaseTimeEntity {
     private List<ApprovalTemplateLineEntity> lines = new ArrayList<>();
 
     @Builder
-    private ApprovalTemplateEntity(Long id, Long academyId, String name, Long creatorId) {
+    private ApprovalTemplateEntity(Long id, String name, Long creatorId) {
         this.id = id;
-        this.academyId = academyId;
         this.fileId = null;
         this.type = TYPE;
         this.name = name;

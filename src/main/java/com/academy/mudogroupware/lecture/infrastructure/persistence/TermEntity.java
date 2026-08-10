@@ -24,15 +24,11 @@ public class TermEntity extends CreatedAtEntity {
     @Column(name = "term_id")
     private Long id;
 
-    @Column(name = "academy_id", nullable = false)
-    private Long academyId;
-
     @Column(nullable = false, length = 100)
     private String name;
 
     @Builder
-    private TermEntity(Long academyId, String name) {
-        this.academyId = academyId;
+    private TermEntity(String name) {
         this.name = name;
     }
 }

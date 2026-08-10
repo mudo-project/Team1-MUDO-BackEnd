@@ -15,8 +15,6 @@ public enum StudentErrorCode implements ErrorCode {
     STUDENT_GRADE_REQUIRED(HttpStatus.BAD_REQUEST, "STUDENT_400_2", "학생 학년은 필수입니다."),
     LECTURE_REQUIRED(HttpStatus.BAD_REQUEST, "STUDENT_400_3", "등록할 강의는 필수입니다."),
 
-    STUDENT_ACCESS_DENIED(HttpStatus.FORBIDDEN, "STUDENT_403_1", "해당 학생에 접근할 권한이 없습니다."),
-
     STUDENT_NOT_FOUND(HttpStatus.NOT_FOUND, "STUDENT_404_1", "학생을 찾을 수 없습니다."),
     ENROLLMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "STUDENT_404_2", "수강 등록 정보를 찾을 수 없습니다."),
 

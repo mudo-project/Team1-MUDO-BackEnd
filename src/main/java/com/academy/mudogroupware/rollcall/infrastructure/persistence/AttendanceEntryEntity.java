@@ -29,9 +29,6 @@ public class AttendanceEntryEntity extends BaseTimeEntity {
     @Column(name = "entry_id")
     private Long id;
 
-    @Column(name = "academy_id", nullable = false)
-    private Long academyId;
-
     @Column(name = "lecture_id", nullable = false)
     private Long lectureId;
 
@@ -49,9 +46,8 @@ public class AttendanceEntryEntity extends BaseTimeEntity {
     private String note;
 
     @Builder
-    private AttendanceEntryEntity(Long academyId, Long lectureId, Long studentId, LocalDate date,
+    private AttendanceEntryEntity(Long lectureId, Long studentId, LocalDate date,
                                    AttendanceStatus status, String note) {
-        this.academyId = academyId;
         this.lectureId = lectureId;
         this.studentId = studentId;
         this.date = date;

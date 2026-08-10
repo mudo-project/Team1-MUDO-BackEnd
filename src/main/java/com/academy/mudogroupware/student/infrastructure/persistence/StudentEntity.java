@@ -28,9 +28,6 @@ public class StudentEntity extends SoftDeleteTimeEntity {
     @Column(name = "student_id")
     private Long id;
 
-    @Column(name = "academy_id", nullable = false)
-    private Long academyId;
-
     @Setter
     @Column(nullable = false, length = 50)
     private String name;
@@ -57,10 +54,9 @@ public class StudentEntity extends SoftDeleteTimeEntity {
     private String note;
 
     @Builder
-    private StudentEntity(Long id, Long academyId, String name, StudentGrade grade, String school, String phone,
+    private StudentEntity(Long id, String name, StudentGrade grade, String school, String phone,
                           String parentPhone, String note) {
         this.id = id;
-        this.academyId = academyId;
         this.name = name;
         this.grade = grade;
         this.school = school;

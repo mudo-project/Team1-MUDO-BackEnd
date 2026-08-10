@@ -17,7 +17,7 @@ class AttendanceEntryTest {
 
     @Test
     void createsEntryWithPresentStatus() {
-        AttendanceEntry entry = AttendanceEntry.create(1L, 10L, 20L, DATE, AttendanceStatus.PRESENT, null, NOW);
+        AttendanceEntry entry = AttendanceEntry.create(10L, 20L, DATE, AttendanceStatus.PRESENT, null, NOW);
 
         assertThat(entry.getStatus()).isEqualTo(AttendanceStatus.PRESENT);
         assertThat(entry.getNote()).isNull();
@@ -25,20 +25,20 @@ class AttendanceEntryTest {
 
     @Test
     void throwsWhenEtcStatusHasNoNote() {
-        assertThatThrownBy(() -> AttendanceEntry.create(1L, 10L, 20L, DATE, AttendanceStatus.ETC, null, NOW))
+        assertThatThrownBy(() -> AttendanceEntry.create(10L, 20L, DATE, AttendanceStatus.ETC, null, NOW))
                 .isInstanceOf(EtcNoteRequiredException.class);
     }
 
     @Test
     void discardsNoteWhenStatusIsNotEtc() {
-        AttendanceEntry entry = AttendanceEntry.create(1L, 10L, 20L, DATE, AttendanceStatus.PRESENT, "무시될 사유", NOW);
+        AttendanceEntry entry = AttendanceEntry.create(10L, 20L, DATE, AttendanceStatus.PRESENT, "무시될 사유", NOW);
 
         assertThat(entry.getNote()).isNull();
     }
 
     @Test
     void changeStatusUpdatesStatusAndUpdatedAt() {
-        AttendanceEntry entry = AttendanceEntry.create(1L, 10L, 20L, DATE, AttendanceStatus.PRESENT, null, NOW);
+        AttendanceEntry entry = AttendanceEntry.create(10L, 20L, DATE, AttendanceStatus.PRESENT, null, NOW);
         LocalDateTime later = NOW.plusHours(1);
 
         entry.changeStatus(AttendanceStatus.ETC, "조퇴", later);
@@ -50,7 +50,7 @@ class AttendanceEntryTest {
 
     @Test
     void changeStatusThrowsWhenEtcStatusHasNoNote() {
-        AttendanceEntry entry = AttendanceEntry.create(1L, 10L, 20L, DATE, AttendanceStatus.PRESENT, null, NOW);
+        AttendanceEntry entry = AttendanceEntry.create(10L, 20L, DATE, AttendanceStatus.PRESENT, null, NOW);
 
         assertThatThrownBy(() -> entry.changeStatus(AttendanceStatus.ETC, " ", NOW.plusHours(1)))
                 .isInstanceOf(EtcNoteRequiredException.class);

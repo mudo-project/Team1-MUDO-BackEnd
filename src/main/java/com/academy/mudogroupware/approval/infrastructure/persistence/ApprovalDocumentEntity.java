@@ -38,9 +38,6 @@ public class ApprovalDocumentEntity {
     @Column(name = "approval_document_id")
     private Long id;
 
-    @Column(name = "academy_id", nullable = false)
-    private Long academyId;
-
     @Column(name = "template_id", nullable = false)
     private Long templateId;
 
@@ -81,11 +78,10 @@ public class ApprovalDocumentEntity {
     private List<ApprovalAttachmentEntity> attachments = new ArrayList<>();
 
     @Builder
-    private ApprovalDocumentEntity(Long id, Long academyId, Long templateId, ApprovalDocumentSourceType sourceType, String title,
+    private ApprovalDocumentEntity(Long id, Long templateId, ApprovalDocumentSourceType sourceType, String title,
                                     ApprovalContentType contentType, String text, Long creatorId,
                                     ApprovalStatus status, LocalDateTime createdAt, LocalDateTime resubmittedAt) {
         this.id = id;
-        this.academyId = academyId;
         this.templateId = templateId;
         this.sourceType = sourceType;
         this.title = title;

@@ -22,8 +22,8 @@ class ChatTaskCardJpaRepositoryTest {
 
     private void insertChatRoom(long chatRoomId) {
         jdbcTemplate.update("""
-                insert into chat_room (chat_room_id, academy_id, type, created_by, created_at)
-                values (?, 10, 'GROUP', 1, current_timestamp)
+                insert into chat_room (chat_room_id, type, created_by, created_at)
+                values (?, 'GROUP', 1, current_timestamp)
                 """, chatRoomId);
     }
 

@@ -22,13 +22,13 @@ public class WorkspaceRecentAccessService implements RecordWorkspaceRecentAccess
   private final Clock clock;
 
   @Override
-  public void recordRecentAccess(Long academyId, Long userId, Long workspaceId, boolean canReadAll) {
+  public void recordRecentAccess(Long userId, Long workspaceId, boolean canReadAll) {
     log.info(
         "event=workspace_recent_access_record_시작 workspaceId={}, userId={}",
         workspaceId,
         userId);
 
-    if (!workspaceListQueryPort.existsAccessible(workspaceId, academyId, userId, canReadAll)) {
+    if (!workspaceListQueryPort.existsAccessible(workspaceId, userId, canReadAll)) {
       throw new ForbiddenException();
     }
 

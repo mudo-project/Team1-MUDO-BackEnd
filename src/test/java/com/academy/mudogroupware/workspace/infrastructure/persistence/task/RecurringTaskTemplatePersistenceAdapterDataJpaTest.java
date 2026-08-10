@@ -247,8 +247,8 @@ class RecurringTaskTemplatePersistenceAdapterDataJpaTest {
   private void insertWorkspace(long workspaceId) {
     LocalDateTime now = LocalDateTime.now();
     jdbcTemplate.update(
-        "insert into workspace (workspace_id, academy_id, name, created_by, created_at, updated_at) "
-            + "values (?, 1, ?, ?, ?, ?)",
+        "insert into workspace (workspace_id, name, created_by, created_at, updated_at) "
+            + "values (?, ?, ?, ?, ?)",
         workspaceId,
         "워크스페이스" + workspaceId,
         CREATOR_ID,

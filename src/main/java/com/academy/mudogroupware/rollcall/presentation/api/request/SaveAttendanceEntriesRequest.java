@@ -13,8 +13,8 @@ public record SaveAttendanceEntriesRequest(
         @NotEmpty List<@Valid AttendanceEntryRequestItem> entries
 ) {
 
-    public SaveAttendanceEntriesCommand toCommand(Long lectureId, Long academyId, LocalDate date) {
+    public SaveAttendanceEntriesCommand toCommand(Long lectureId, LocalDate date) {
         List<AttendanceEntryInput> inputs = entries.stream().map(AttendanceEntryRequestItem::toInput).toList();
-        return new SaveAttendanceEntriesCommand(lectureId, academyId, date, inputs);
+        return new SaveAttendanceEntriesCommand(lectureId, date, inputs);
     }
 }

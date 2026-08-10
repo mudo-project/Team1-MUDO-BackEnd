@@ -6,5 +6,5 @@ import java.time.LocalDate;
 public interface WorkspaceDetailQueryUseCase {
 
   WorkspaceDetail getWorkspaceDetail(
-      Long academyId, Long userId, Long workspaceId, LocalDate date, boolean canReadAll);
+      Long userId, Long workspaceId, LocalDate date, boolean canReadAll);
 }

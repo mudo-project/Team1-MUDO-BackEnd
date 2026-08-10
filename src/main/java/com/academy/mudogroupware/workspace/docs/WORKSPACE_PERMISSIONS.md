@@ -7,7 +7,7 @@
 | 항목 | 설명 |
 |------|------|
 | **코드** | `WORKSPACE:READ_ALL` |
-| **설명** | 같은 학원의 모든 활성 워크스페이스와 그 하위(업무 상세·댓글 목록·반복 업무 템플릿 목록)를 참여 여부와 무관하게 조회할 수 있습니다. |
+| **설명** | 모든 활성 워크스페이스와 그 하위(업무 상세·댓글 목록·반복 업무 템플릿 목록)를 참여 여부와 무관하게 조회할 수 있습니다. (2026-08-10 정정: academyId 검증은 하지 않습니다 — 실제 배포가 학원별 DB 스키마 분리 구조라 애플리케이션 레벨 검증이 불필요합니다.) |
 | **적용 대상** | 학원 관리 권한자(원장, 관리자) |
 | **구현 상태** | ✅ 구현 완료 |
 | **적용 API** | `GET /api/workspaces?scope=ALL`, `GET /api/workspaces/{id}`, `GET /api/workspaces/{id}/tasks/{taskId}`, `GET /api/workspaces/{id}/tasks/{taskId}/comments`, `GET /api/workspaces/{id}/recurring-templates` |

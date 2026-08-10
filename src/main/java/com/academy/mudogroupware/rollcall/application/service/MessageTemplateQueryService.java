@@ -19,8 +19,8 @@ public class MessageTemplateQueryService implements MessageTemplateQueryUseCase 
     private final MessageTemplateRepository messageTemplateRepository;
 
     @Override
-    public List<MessageTemplateView> getTemplates(Long academyId) {
-        return messageTemplateRepository.findByAcademyId(academyId).stream()
+    public List<MessageTemplateView> getTemplates() {
+        return messageTemplateRepository.findAll().stream()
                 .map(template -> new MessageTemplateView(template.getId(), template.getName(), template.getStatus(),
                         template.getContent(), template.getCreatedAt(), template.getUpdatedAt()))
                 .toList();

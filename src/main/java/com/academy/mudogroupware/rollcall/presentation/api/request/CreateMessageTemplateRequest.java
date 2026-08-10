@@ -12,7 +12,7 @@ public record CreateMessageTemplateRequest(
         @NotBlank String content
 ) {
 
-    public CreateMessageTemplateCommand toCommand(Long academyId, Long createdBy) {
-        return new CreateMessageTemplateCommand(academyId, name, status, content, createdBy);
+    public CreateMessageTemplateCommand toCommand(Long createdBy) {
+        return new CreateMessageTemplateCommand(name, status, content, createdBy);
     }
 }

@@ -12,9 +12,9 @@ public interface ChatRoomRepository {
 
     Optional<ChatRoom> findById(Long id);
 
-    Optional<ChatRoom> findDirectMessage(Long academyId, Long userId, Long otherUserId);
+    Optional<ChatRoom> findDirectMessage(Long userId, Long otherUserId);
 
-    List<ChatRoom> findAllByMember(Long academyId, Long userId);
+    List<ChatRoom> findAllByMember(Long userId);
 
     // 요청자 행만 원자적으로 갱신한다(방 전체를 다시 저장하는 방식은 동시에 다른 멤버의 읽음 갱신을 덮어쓸 위험이 있어 대신 사용).
     void markRead(Long chatRoomId, Long userId, LocalDateTime readAt);

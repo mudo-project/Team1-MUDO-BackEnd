@@ -38,9 +38,9 @@ public class CreateLectureService implements CreateLectureUseCase {
     public Long createLecture(CreateLectureCommand command) {
         LocalDateTime now = LocalDateTime.now(clock);
 
-        Long termId = findOrCreateTerm(command.academyId(), command.termName(), now);
-        Long subjectId = findOrCreateSubject(command.academyId(), command.subjectName(), now);
-        Long classroomId = findOrCreateClassroom(command.academyId(), command.classroomName(), now);
+        Long termId = findOrCreateTerm(command.termName(), now);
+        Long subjectId = findOrCreateSubject(command.subjectName(), now);
+        Long classroomId = findOrCreateClassroom(command.classroomName(), now);
 
         List<LectureSchedule> schedules = command.schedules().stream()
                 .map(this::toSchedule)
@@ -53,7 +53,7 @@ public class CreateLectureService implements CreateLectureUseCase {
             }
         }
 
-        Lecture lecture = Lecture.create(command.academyId(), command.name(), command.grade(), termId, subjectId,
+        Lecture lecture = Lecture.create(command.name(), command.grade(), termId, subjectId,
                 command.teacherId(), classroomId, command.feeType(), command.feeAmount(), schedules, now);
 
         return lectureRepository.save(lecture).getId();
@@ -63,21 +63,21 @@ public class CreateLectureService implements CreateLectureUseCase {
         return LectureSchedule.create(input.dayOfWeek(), input.startTime(), input.endTime());
     }
 
-    private Long findOrCreateTerm(Long academyId, String name, LocalDateTime now) {
-        return termRepository.findByAcademyIdAndName(academyId, name)
+    private Long findOrCreateTerm(String name, LocalDateTime now) {
+        return termRepository.findByName(name)
                 .map(Term::getId)
-                .orElseGet(() -> termRepository.save(Term.create(academyId, name, now)).getId());
+                .orElseGet(() -> termRepository.save(Term.create(name, now)).getId());
     }
 
-    private Long findOrCreateSubject(Long academyId, String name, LocalDateTime now) {
-        return subjectRepository.findByAcademyIdAndName(academyId, name)
+    private Long findOrCreateSubject(String name, LocalDateTime now) {
+        return subjectRepository.findByName(name)
                 .map(Subject::getId)
-                .orElseGet(() -> subjectRepository.save(Subject.create(academyId, name, now)).getId());
+                .orElseGet(() -> subjectRepository.save(Subject.create(name, now)).getId());
     }
 
-    private Long findOrCreateClassroom(Long academyId, String name, LocalDateTime now) {
-        return classroomRepository.findByAcademyIdAndName(academyId, name)
+    private Long findOrCreateClassroom(String name, LocalDateTime now) {
+        return classroomRepository.findByName(name)
                 .map(Classroom::getId)
-                .orElseGet(() -> classroomRepository.save(Classroom.create(academyId, name, now)).getId());
+                .orElseGet(() -> classroomRepository.save(Classroom.create(name, now)).getId());
     }
 }

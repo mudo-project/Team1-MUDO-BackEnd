@@ -21,16 +21,17 @@ import lombok.RequiredArgsConstructor;
 public class UpdateImportDraftService implements UpdateImportDraftUseCase {
 
     private final DataImportJobRepository dataImportJobRepository;
+    private final ImportDraftSanitizer importDraftSanitizer;
     private final Clock clock;
 
     @Override
     public void updateDraft(UpdateImportDraftCommand command) {
         DataImportJob job = dataImportJobRepository.findById(command.importId())
                 .orElseThrow(() -> new DataImportException(DataImportErrorCode.IMPORT_NOT_FOUND));
-        if (!job.getAcademyId().equals(command.academyId())) {
+        if (!job.getCreatedBy().equals(command.requesterId())) {
             throw new DataImportException(DataImportErrorCode.IMPORT_ACCESS_DENIED);
         }
-        job.updateDraft(command.draft(), LocalDateTime.now(clock));
+        job.updateDraft(importDraftSanitizer.sanitize(command.draft()), LocalDateTime.now(clock));
         dataImportJobRepository.save(job);
     }
 }

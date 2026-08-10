@@ -11,7 +11,6 @@ import com.academy.mudogroupware.lecture.domain.exception.LectureScheduleRequire
 public final class Lecture {
 
     private final Long id;
-    private final Long academyId;
     private final String name;
     private final Grade grade;
     private final Long termId;
@@ -23,12 +22,9 @@ public final class Lecture {
     private final List<LectureSchedule> schedules;
     private final LocalDateTime createdAt;
 
-    private Lecture(Long id, Long academyId, String name, Grade grade, Long termId, Long subjectId, Long teacherId,
+    private Lecture(Long id, String name, Grade grade, Long termId, Long subjectId, Long teacherId,
                      Long classroomId, FeeType feeType, Integer feeAmount, List<LectureSchedule> schedules,
                      LocalDateTime createdAt) {
-        if (academyId == null) {
-            throw new IllegalArgumentException("academyId must not be null");
-        }
         if (name == null || name.isBlank()) {
             throw new LectureNameRequiredException();
         }
@@ -54,7 +50,6 @@ public final class Lecture {
             throw new IllegalArgumentException("createdAt must not be null");
         }
         this.id = id;
-        this.academyId = academyId;
         this.name = name;
         this.grade = grade;
         this.termId = termId;
@@ -67,17 +62,17 @@ public final class Lecture {
         this.createdAt = createdAt;
     }
 
-    public static Lecture create(Long academyId, String name, Grade grade, Long termId, Long subjectId,
+    public static Lecture create(String name, Grade grade, Long termId, Long subjectId,
                                   Long teacherId, Long classroomId, FeeType feeType, Integer feeAmount,
                                   List<LectureSchedule> schedules, LocalDateTime now) {
-        return new Lecture(null, academyId, name, grade, termId, subjectId, teacherId, classroomId, feeType,
+        return new Lecture(null, name, grade, termId, subjectId, teacherId, classroomId, feeType,
                 feeAmount, schedules, now);
     }
 
-    public static Lecture restore(Long id, Long academyId, String name, Grade grade, Long termId, Long subjectId,
+    public static Lecture restore(Long id, String name, Grade grade, Long termId, Long subjectId,
                                    Long teacherId, Long classroomId, FeeType feeType, Integer feeAmount,
                                    List<LectureSchedule> schedules, LocalDateTime createdAt) {
-        return new Lecture(id, academyId, name, grade, termId, subjectId, teacherId, classroomId, feeType,
+        return new Lecture(id, name, grade, termId, subjectId, teacherId, classroomId, feeType,
                 feeAmount, schedules, createdAt);
     }
 
@@ -87,10 +82,6 @@ public final class Lecture {
 
     public Long getId() {
         return id;
-    }
-
-    public Long getAcademyId() {
-        return academyId;
     }
 
     public String getName() {

@@ -49,6 +49,6 @@ public class ApprovalApproverDirectoryAdapter implements ApproverDirectoryPort {
     }
 
     private ApproverInfo toApproverInfo(User user) {
-        return new ApproverInfo(user.getId(), user.getName(), user.getAcademyId());
+        return new ApproverInfo(user.getId(), user.getName());
     }
 }

@@ -29,7 +29,7 @@ public class LectureEnrollmentPortAdapter implements LectureEnrollmentPort {
     @Override
     public Optional<LectureRef> findLecture(Long lectureId) {
         return lectureRepository.findById(lectureId)
-                .map(lecture -> new LectureRef(lecture.getId(), lecture.getName(), lecture.getAcademyId()));
+                .map(lecture -> new LectureRef(lecture.getId(), lecture.getName()));
     }
 
     @Override
@@ -39,7 +39,7 @@ public class LectureEnrollmentPortAdapter implements LectureEnrollmentPort {
             return List.of();
         }
 
-        return enrolledStudentsPort.findByLectureId(lecture.get().getAcademyId(), lectureId).stream()
+        return enrolledStudentsPort.findByLectureId(lectureId).stream()
                 .map(student -> new EnrolledStudentRef(student.studentId(), student.name(), student.grade(),
                         student.parentPhone()))
                 .toList();

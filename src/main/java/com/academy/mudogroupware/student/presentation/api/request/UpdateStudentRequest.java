@@ -35,7 +35,7 @@ public record UpdateStudentRequest(
         String note
 ) {
 
-    public UpdateStudentCommand toCommand(Long academyId, Long studentId) {
-        return new UpdateStudentCommand(academyId, studentId, name, grade, school, phone, parentPhone, note);
+    public UpdateStudentCommand toCommand(Long studentId) {
+        return new UpdateStudentCommand(studentId, name, grade, school, phone, parentPhone, note);
     }
 }

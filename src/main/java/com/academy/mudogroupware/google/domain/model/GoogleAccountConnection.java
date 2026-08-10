@@ -2,11 +2,9 @@ package com.academy.mudogroupware.google.domain.model;
 
 import java.time.LocalDateTime;
 import java.util.Set;
-
 public final class GoogleAccountConnection {
 
-    private static final long TOKEN_VALID_DAYS = 60;
-    private static final long EXPIRING_WARNING_DAYS = 3;
+    private static final long EXPIRING_WARNING_DAYS = 7;
 
     private final Long id;
     private final String googleEmail;
@@ -14,13 +12,13 @@ public final class GoogleAccountConnection {
     private final String scope;
     private final String refreshToken;
     private final LocalDateTime connectedAt;
-    private final LocalDateTime tokenExpiresAt;
+    private final LocalDateTime refreshTokenExpiresAt;
     private LocalDateTime lastCheckedAt;
     private boolean failed;
 
     private GoogleAccountConnection(Long id, String googleEmail, Long connectedByUserId,
                                      String scope, String refreshToken, LocalDateTime connectedAt,
-                                     LocalDateTime tokenExpiresAt, LocalDateTime lastCheckedAt, boolean failed) {
+                                     LocalDateTime refreshTokenExpiresAt, LocalDateTime lastCheckedAt, boolean failed) {
         if (googleEmail == null || googleEmail.isBlank()) {
             throw new IllegalArgumentException("googleEmail must not be null or blank");
         }
@@ -36,23 +34,24 @@ public final class GoogleAccountConnection {
         this.scope = scope;
         this.refreshToken = refreshToken;
         this.connectedAt = connectedAt;
-        this.tokenExpiresAt = tokenExpiresAt;
+        this.refreshTokenExpiresAt = refreshTokenExpiresAt;
         this.lastCheckedAt = lastCheckedAt;
         this.failed = failed;
     }
 
     public static GoogleAccountConnection connect(String googleEmail, Long connectedByUserId,
-                                                   String scope, String refreshToken, LocalDateTime connectedAt) {
+                                                   String scope, String refreshToken, LocalDateTime connectedAt,
+                                                   LocalDateTime refreshTokenExpiresAt) {
         return new GoogleAccountConnection(null, googleEmail, connectedByUserId, scope, refreshToken,
-                connectedAt, connectedAt.plusDays(TOKEN_VALID_DAYS), connectedAt, false);
+                connectedAt, refreshTokenExpiresAt, connectedAt, false);
     }
 
     public static GoogleAccountConnection restore(Long id, String googleEmail,
                                                    Long connectedByUserId, String scope, String refreshToken,
-                                                   LocalDateTime connectedAt, LocalDateTime tokenExpiresAt,
+                                                   LocalDateTime connectedAt, LocalDateTime refreshTokenExpiresAt,
                                                    LocalDateTime lastCheckedAt, boolean failed) {
         return new GoogleAccountConnection(id, googleEmail, connectedByUserId, scope, refreshToken,
-                connectedAt, tokenExpiresAt, lastCheckedAt, failed);
+                connectedAt, refreshTokenExpiresAt, lastCheckedAt, failed);
     }
 
     public void markCheckResult(LocalDateTime checkedAt, boolean valid) {
@@ -60,27 +59,30 @@ public final class GoogleAccountConnection {
         this.failed = !valid;
     }
 
-    public GoogleConnectionStatus deriveStatus(LocalDateTime now, Set<String> requiredScopes) {
-        if (failed || !hasAllScopes(requiredScopes)) {
+    public GoogleConnectionStatus deriveStatus(LocalDateTime now) {
+        if (failed) {
             return GoogleConnectionStatus.FAILED;
         }
-        if (!now.isBefore(tokenExpiresAt)) {
+        if (refreshTokenExpiresAt == null) {
+            return GoogleConnectionStatus.CONNECTED;
+        }
+        if (!now.isBefore(refreshTokenExpiresAt)) {
             return GoogleConnectionStatus.EXPIRED;
         }
-        if (!now.isBefore(tokenExpiresAt.minusDays(EXPIRING_WARNING_DAYS))) {
+        if (!now.isBefore(refreshTokenExpiresAt.minusDays(EXPIRING_WARNING_DAYS))) {
             return GoogleConnectionStatus.EXPIRING;
         }
         return GoogleConnectionStatus.CONNECTED;
     }
 
-    private boolean hasAllScopes(Set<String> requiredScopes) {
+    public boolean hasAllScopes(Set<String> requiredScopes) {
         if (requiredScopes == null || requiredScopes.isEmpty()) {
             return true;
         }
-        Set<String> granted = scope == null || scope.isBlank()
+        Set<String> grantedScopes = scope == null || scope.isBlank()
                 ? Set.of()
                 : Set.of(scope.trim().split("\\s+"));
-        return granted.containsAll(requiredScopes);
+        return grantedScopes.containsAll(requiredScopes);
     }
 
     public Long getId() {
@@ -107,8 +109,8 @@ public final class GoogleAccountConnection {
         return connectedAt;
     }
 
-    public LocalDateTime getTokenExpiresAt() {
-        return tokenExpiresAt;
+    public LocalDateTime getRefreshTokenExpiresAt() {
+        return refreshTokenExpiresAt;
     }
 
     public LocalDateTime getLastCheckedAt() {

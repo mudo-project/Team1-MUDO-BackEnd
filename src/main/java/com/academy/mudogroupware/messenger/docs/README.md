@@ -10,7 +10,7 @@ BE6 메신저 담당
 
 ## 소유하는 주요 데이터와 상태
 
-- `ChatRoom` — DB 테이블 `chat_room` (academy_id, name, type(DM/GROUP), created_by)
+- `ChatRoom` — DB 테이블 `chat_room` (name, type(DM/GROUP), created_by). `academy_id`는 2026-08-10에 제거했다 — 더 이상 학원 단위로 채팅방을 제한하지 않는다.
 - `ChatRoomMember` — DB 테이블 `chat_room_member` (chat_room_id + user_id 진짜 복합키, last_read_at — 안읽은 메시지 수 계산에 사용). JPA는 `@ElementCollection`으로 매핑(값 객체라 자체 identity 없음, 복합키라 surrogate id 없이도 매핑 가능).
 - `ChatMessage` — DB 테이블 `chat_message` (message_type: TEXT/IMAGE/FILE, TEXT는 content 필수, IMAGE/FILE은 file_id 필수)
 - `ChatTaskCard` — DB 테이블 `chat_task_card` (chat_room_id, assigner_user_id, content, due_date(nullable))

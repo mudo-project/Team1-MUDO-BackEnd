@@ -13,26 +13,26 @@ public class WorkspaceListQueryAdapter implements WorkspaceListQueryPort {
   private final WorkspaceJpaRepository workspaceJpaRepository;
 
   @Override
-  public List<WorkspaceListItem> findMine(Long academyId, Long userId) {
-    return workspaceJpaRepository.findMineWorkspaceList(academyId, userId).stream()
+  public List<WorkspaceListItem> findMine(Long userId) {
+    return workspaceJpaRepository.findMineWorkspaceList(userId).stream()
         .map(this::toWorkspaceListItem)
         .toList();
   }
 
   @Override
-  public List<WorkspaceListItem> findAll(Long academyId, Long userId) {
-    return workspaceJpaRepository.findAllWorkspaceList(academyId, userId).stream()
+  public List<WorkspaceListItem> findAll(Long userId) {
+    return workspaceJpaRepository.findAllWorkspaceList(userId).stream()
         .map(this::toWorkspaceListItem)
         .toList();
   }
 
   @Override
-  public boolean existsAccessible(Long workspaceId, Long academyId, Long userId, boolean canReadAll) {
+  public boolean existsAccessible(Long workspaceId, Long userId, boolean canReadAll) {
     if (canReadAll) {
-      return workspaceJpaRepository.countActiveWorkspace(workspaceId, academyId) > 0;
+      return workspaceJpaRepository.countActiveWorkspace(workspaceId) > 0;
     }
 
-    return workspaceJpaRepository.countAccessibleMineWorkspace(workspaceId, academyId, userId) > 0;
+    return workspaceJpaRepository.countAccessibleMineWorkspace(workspaceId, userId) > 0;
   }
 
   private WorkspaceListItem toWorkspaceListItem(WorkspaceJpaRepository.WorkspaceListRow row) {

@@ -155,7 +155,8 @@ GET /api/data-imports/onboarding/{importId}/result
 
 AI adapter는 `ImportAnalysisPort` 뒤에 둔다.
 
-- Gemini API 키가 있으면 헤더 매핑, 컬럼 의미 추론, 값 정규화에 사용할 수 있다.
+- Gemini API 키가 있으면 헤더 매핑과 컬럼 의미 추론에 사용할 수 있다.
+- Gemini에는 전체 파일 대신 헤더와 최대 5개 샘플 행만 전달한다.
 - API 키가 없거나 호출 실패하면 deterministic parser 결과만 사용한다.
 - AI 결과도 반드시 백엔드 검증을 통과해야 한다.
 - AI 결과가 검증을 우회할 수 없다.
@@ -167,7 +168,6 @@ AI adapter는 `ImportAnalysisPort` 뒤에 둔다.
 ```text
 data_import_job
 - id
-- academy_id
 - created_by
 - status
 - source_file_names

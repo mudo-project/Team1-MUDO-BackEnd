@@ -47,8 +47,8 @@ public class ApprovalQueryService implements ApprovalQueryUseCase {
     }
 
     @Override
-    public PageResult<ApprovalSubmittedSummaryView> getAllApprovals(Long academyId, int page, int size) {
-        PageResult<ApprovalDocument> result = approvalDocumentRepository.findAllByAcademyId(academyId, page, size);
+    public PageResult<ApprovalSubmittedSummaryView> getAllApprovals(int page, int size) {
+        PageResult<ApprovalDocument> result = approvalDocumentRepository.findAll(page, size);
         SummaryLookup lookup = buildSummaryLookup(result.content());
         return result.map(document -> toSubmittedSummaryView(document, lookup));
     }
@@ -73,15 +73,13 @@ public class ApprovalQueryService implements ApprovalQueryUseCase {
     }
 
     @Override
-    public ApprovalDetailView getApprovalDetail(Long documentId, Long requesterId, Long requesterAcademyId,
-                                                boolean canReadAll) {
+    public ApprovalDetailView getApprovalDetail(Long documentId, Long requesterId, boolean canReadAll) {
         ApprovalDocument approvalDocument = approvalDocumentRepository.findById(documentId)
                 .orElseThrow(() -> new ApprovalException(ApprovalErrorCode.DOCUMENT_NOT_FOUND));
 
         boolean canReadAsParticipant = approvalDocument.isApprover(requesterId)
                 || approvalDocument.getCreatorId().equals(requesterId);
-        boolean canReadAsAcademyManager = canReadAll && approvalDocument.getAcademyId().equals(requesterAcademyId);
-        if (!canReadAsParticipant && !canReadAsAcademyManager) {
+        if (!canReadAsParticipant && !canReadAll) {
             throw new ApprovalException(ApprovalErrorCode.DOCUMENT_ACCESS_DENIED);
         }
 

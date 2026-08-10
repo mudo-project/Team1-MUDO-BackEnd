@@ -9,7 +9,7 @@ import com.academy.mudogroupware.rollcall.domain.model.AttendanceStatus;
 
 public interface MessageTemplateJpaRepository extends JpaRepository<MessageTemplateEntity, Long> {
 
-    List<MessageTemplateEntity> findAllByAcademyId(Long academyId);
+    List<MessageTemplateEntity> findAllByOrderByIdAsc();
 
-    Optional<MessageTemplateEntity> findByAcademyIdAndStatus(Long academyId, AttendanceStatus status);
+    Optional<MessageTemplateEntity> findByStatus(AttendanceStatus status);
 }

@@ -52,7 +52,7 @@ class TaskCardQueryServiceTest {
     @Test
     void returnsHasNextTrueWhenMoreCardsExistBeyondPageSize() {
         LocalDateTime createdAt = LocalDateTime.of(2026, 8, 7, 10, 0);
-        ChatRoom chatRoom = ChatRoom.restore(1L, 10L, "group", ChatRoomType.GROUP, 1L,
+        ChatRoom chatRoom = ChatRoom.restore(1L, "group", ChatRoomType.GROUP, 1L,
                 List.of(ChatRoomMember.restore(1L, null)), createdAt.minusHours(1));
         ChatTaskCard first = ChatTaskCard.restore(30L, 1L, 1L, "card30", null,
                 List.of(ChatTaskAssignee.restore(1L, null)), createdAt.plusSeconds(2), null);
@@ -75,7 +75,7 @@ class TaskCardQueryServiceTest {
     @Test
     void throwsWhenRequesterIsNotRoomMember() {
         LocalDateTime createdAt = LocalDateTime.of(2026, 8, 7, 10, 0);
-        ChatRoom chatRoom = ChatRoom.restore(1L, 10L, "group", ChatRoomType.GROUP, 1L,
+        ChatRoom chatRoom = ChatRoom.restore(1L, "group", ChatRoomType.GROUP, 1L,
                 List.of(ChatRoomMember.restore(1L, null)), createdAt.minusHours(1));
         when(chatRoomRepository.findById(1L)).thenReturn(Optional.of(chatRoom));
 

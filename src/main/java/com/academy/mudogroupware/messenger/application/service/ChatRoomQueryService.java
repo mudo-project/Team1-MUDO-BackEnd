@@ -35,8 +35,7 @@ public class ChatRoomQueryService implements ChatRoomQueryUseCase {
     @Override
     public List<ChatRoomSummaryView> getRooms(Long requesterId) {
         log.info("event=chat_room_list_시작 requesterId={}", requesterId);
-        ChatMemberInfo requester = chatMemberDirectoryPort.getMember(requesterId);
-        List<ChatRoom> chatRooms = chatRoomRepository.findAllByMember(requester.academyId(), requesterId);
+        List<ChatRoom> chatRooms = chatRoomRepository.findAllByMember(requesterId);
 
         List<Long> otherMemberIds = chatRooms.stream()
                 .filter(chatRoom -> chatRoom.getType() == ChatRoomType.DM)

@@ -8,18 +8,14 @@ import com.academy.mudogroupware.student.domain.exception.StudentException;
 public final class Enrollment {
 
     private final Long id;
-    private final Long academyId;
     private final Long studentId;
     private final Long lectureId;
     private EnrollmentStatus status;
     private LocalDateTime enrolledAt;
     private LocalDateTime endedAt;
 
-    private Enrollment(Long id, Long academyId, Long studentId, Long lectureId, EnrollmentStatus status,
+    private Enrollment(Long id, Long studentId, Long lectureId, EnrollmentStatus status,
                        LocalDateTime enrolledAt, LocalDateTime endedAt) {
-        if (academyId == null) {
-            throw new IllegalArgumentException("academyId must not be null");
-        }
         if (studentId == null) {
             throw new IllegalArgumentException("studentId must not be null");
         }
@@ -33,7 +29,6 @@ public final class Enrollment {
             throw new IllegalArgumentException("enrolledAt must not be null");
         }
         this.id = id;
-        this.academyId = academyId;
         this.studentId = studentId;
         this.lectureId = lectureId;
         this.status = status;
@@ -41,13 +36,13 @@ public final class Enrollment {
         this.endedAt = endedAt;
     }
 
-    public static Enrollment create(Long academyId, Long studentId, Long lectureId, LocalDateTime enrolledAt) {
-        return new Enrollment(null, academyId, studentId, lectureId, EnrollmentStatus.ACTIVE, enrolledAt, null);
+    public static Enrollment create(Long studentId, Long lectureId, LocalDateTime enrolledAt) {
+        return new Enrollment(null, studentId, lectureId, EnrollmentStatus.ACTIVE, enrolledAt, null);
     }
 
-    public static Enrollment restore(Long id, Long academyId, Long studentId, Long lectureId,
+    public static Enrollment restore(Long id, Long studentId, Long lectureId,
                                      EnrollmentStatus status, LocalDateTime enrolledAt, LocalDateTime endedAt) {
-        return new Enrollment(id, academyId, studentId, lectureId, status, enrolledAt, endedAt);
+        return new Enrollment(id, studentId, lectureId, status, enrolledAt, endedAt);
     }
 
     public boolean isActive() {
@@ -73,10 +68,6 @@ public final class Enrollment {
 
     public Long getId() {
         return id;
-    }
-
-    public Long getAcademyId() {
-        return academyId;
     }
 
     public Long getStudentId() {

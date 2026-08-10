@@ -9,7 +9,7 @@ public interface WorkspaceRepository {
 
   Workspace save(Workspace workspace);
 
-  boolean existsByAcademyIdAndName(Long academyId, String name);
+  boolean existsByName(String name);
 
   // 활성 워크스페이스를 락 없이 조회. 참여자 검증처럼 읽기만 필요한 경로에서 쓴다
   // (업무 생성·수정·삭제). 쓰기 경로는 findByIdForUpdate를 쓴다.

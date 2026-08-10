@@ -29,7 +29,7 @@ public class UpdateApprovalDocumentLinesService implements UpdateApprovalDocumen
             throw new ApprovalException(ApprovalErrorCode.NOT_DOCUMENT_OWNER_LINES);
         }
 
-        approverValidator.validate(command.approverIds(), approvalDocument.getAcademyId());
+        approverValidator.validate(command.approverIds());
 
         approvalDocument.updateLines(command.approverIds());
 

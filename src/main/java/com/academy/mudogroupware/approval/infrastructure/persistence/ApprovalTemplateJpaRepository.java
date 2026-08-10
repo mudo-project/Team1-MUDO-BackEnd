@@ -9,7 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ApprovalTemplateJpaRepository extends JpaRepository<ApprovalTemplateEntity, Long> {
 
-    Slice<ApprovalTemplateEntity> findAllByTypeAndAcademyId(String type, Long academyId, Pageable pageable);
+    Slice<ApprovalTemplateEntity> findAllByType(String type, Pageable pageable);
 
     List<ApprovalTemplateEntity> findAllByIdInAndType(List<Long> ids, String type);
 

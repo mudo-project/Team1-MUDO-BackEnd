@@ -21,33 +21,22 @@ class ApproverValidatorTest {
     private final ApproverValidator approverValidator = new ApproverValidator(approverDirectoryPort);
 
     @Test
-    void passesWhenAllApproversExistInSameAcademy() {
+    void passesWhenAllApproversExist() {
         when(approverDirectoryPort.getApprovers(List.of(1L, 2L))).thenReturn(Map.of(
-                1L, new ApproverInfo(1L, "이민준", 10L),
-                2L, new ApproverInfo(2L, "김지수", 10L)));
+                1L, new ApproverInfo(1L, "이민준"),
+                2L, new ApproverInfo(2L, "김지수")));
 
-        assertThatCode(() -> approverValidator.validate(List.of(1L, 2L), 10L)).doesNotThrowAnyException();
+        assertThatCode(() -> approverValidator.validate(List.of(1L, 2L))).doesNotThrowAnyException();
     }
 
     @Test
     void throwsWhenApproverDoesNotExist() {
         when(approverDirectoryPort.getApprovers(List.of(1L, 999L))).thenReturn(Map.of(
-                1L, new ApproverInfo(1L, "이민준", 10L)));
+                1L, new ApproverInfo(1L, "이민준")));
 
-        assertThatThrownBy(() -> approverValidator.validate(List.of(1L, 999L), 10L))
+        assertThatThrownBy(() -> approverValidator.validate(List.of(1L, 999L)))
                 .isInstanceOf(ApprovalException.class)
                 .extracting(e -> ((ApprovalException) e).getErrorCode())
                 .isEqualTo(ApprovalErrorCode.APPROVER_NOT_FOUND);
-    }
-
-    @Test
-    void throwsWhenApproverBelongsToDifferentAcademy() {
-        when(approverDirectoryPort.getApprovers(List.of(1L))).thenReturn(Map.of(
-                1L, new ApproverInfo(1L, "이민준", 20L)));
-
-        assertThatThrownBy(() -> approverValidator.validate(List.of(1L), 10L))
-                .isInstanceOf(ApprovalException.class)
-                .extracting(e -> ((ApprovalException) e).getErrorCode())
-                .isEqualTo(ApprovalErrorCode.CROSS_ACADEMY_APPROVER);
     }
 }
