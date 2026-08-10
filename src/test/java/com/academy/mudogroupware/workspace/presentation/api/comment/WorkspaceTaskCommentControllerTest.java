@@ -122,7 +122,7 @@ class WorkspaceTaskCommentControllerTest {
         new TaskCommentListItem(
             1L, "수학A반 완료", new WorkspaceMemberInfo(10L, "윤예진"), true,
             LocalDateTime.of(2026, 8, 1, 16, 0));
-    when(taskCommentListQueryUseCase.getComments(1L, 101L, 10L, 0, 20, false))
+    when(taskCommentListQueryUseCase.getComments(1L, 101L, 10L, 0, 20, 1L, false))
         .thenReturn(PageResult.of(List.of(item), 0, 20, false));
 
     mockMvc
@@ -171,7 +171,7 @@ class WorkspaceTaskCommentControllerTest {
 
   @Test
   void getCommentsUsesRequestedPageAndSize() throws Exception {
-    when(taskCommentListQueryUseCase.getComments(1L, 101L, 10L, 2, 5, false))
+    when(taskCommentListQueryUseCase.getComments(1L, 101L, 10L, 2, 5, 1L, false))
         .thenReturn(PageResult.of(List.of(), 2, 5, false));
 
     mockMvc
@@ -181,12 +181,12 @@ class WorkspaceTaskCommentControllerTest {
         .andExpect(jsonPath("$.data.page").value(2))
         .andExpect(jsonPath("$.data.size").value(5));
 
-    verify(taskCommentListQueryUseCase).getComments(1L, 101L, 10L, 2, 5, false);
+    verify(taskCommentListQueryUseCase).getComments(1L, 101L, 10L, 2, 5, 1L, false);
   }
 
   @Test
   void getCommentsPropagatesTaskNotFound() throws Exception {
-    when(taskCommentListQueryUseCase.getComments(1L, 101L, 10L, 0, 20, false))
+    when(taskCommentListQueryUseCase.getComments(1L, 101L, 10L, 0, 20, 1L, false))
         .thenThrow(new TaskNotFoundException());
 
     mockMvc
@@ -197,7 +197,7 @@ class WorkspaceTaskCommentControllerTest {
 
   @Test
   void getCommentsPropagatesAccessDenied() throws Exception {
-    when(taskCommentListQueryUseCase.getComments(1L, 101L, 10L, 0, 20, false))
+    when(taskCommentListQueryUseCase.getComments(1L, 101L, 10L, 0, 20, 1L, false))
         .thenThrow(new WorkspaceAccessDeniedException());
 
     mockMvc
@@ -208,7 +208,7 @@ class WorkspaceTaskCommentControllerTest {
 
   @Test
   void getCommentsForwardsReadAllAuthority() throws Exception {
-    when(taskCommentListQueryUseCase.getComments(1L, 101L, 10L, 0, 20, true))
+    when(taskCommentListQueryUseCase.getComments(1L, 101L, 10L, 0, 20, 1L, true))
         .thenReturn(PageResult.of(List.of(), 0, 20, false));
 
     mockMvc
@@ -217,7 +217,7 @@ class WorkspaceTaskCommentControllerTest {
                 .with(authentication(auth("WORKSPACE:READ_ALL"))))
         .andExpect(status().isOk());
 
-    verify(taskCommentListQueryUseCase).getComments(1L, 101L, 10L, 0, 20, true);
+    verify(taskCommentListQueryUseCase).getComments(1L, 101L, 10L, 0, 20, 1L, true);
   }
 
   @Test

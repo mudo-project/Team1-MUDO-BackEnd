@@ -63,7 +63,7 @@ class WorkspaceRecurringTaskTemplateControllerTest {
     RecurringTaskTemplate template =
         RecurringTaskTemplate.restore(
             1L, 1L, "주간 출결 현황 정리", RecurrenceType.WEEKLY, Map.of("daysOfWeek", List.of(1)), 10L);
-    when(getRecurringTaskTemplatesUseCase.getTemplates(1L, AUTH_USER.userId(), 0, 20, false))
+    when(getRecurringTaskTemplatesUseCase.getTemplates(1L, AUTH_USER.userId(), 0, 20, AUTH_USER.academyId(), false))
         .thenReturn(PageResult.of(List.of(template), 0, 20, false));
 
     mockMvc
@@ -97,7 +97,7 @@ class WorkspaceRecurringTaskTemplateControllerTest {
 
   @Test
   void getTemplatesForwardsReadAllAuthority() throws Exception {
-    when(getRecurringTaskTemplatesUseCase.getTemplates(1L, AUTH_USER.userId(), 0, 20, true))
+    when(getRecurringTaskTemplatesUseCase.getTemplates(1L, AUTH_USER.userId(), 0, 20, AUTH_USER.academyId(), true))
         .thenReturn(PageResult.of(List.of(), 0, 20, false));
 
     mockMvc
@@ -106,12 +106,12 @@ class WorkspaceRecurringTaskTemplateControllerTest {
                 .with(authentication(auth("WORKSPACE:READ_ALL"))))
         .andExpect(status().isOk());
 
-    verify(getRecurringTaskTemplatesUseCase).getTemplates(1L, AUTH_USER.userId(), 0, 20, true);
+    verify(getRecurringTaskTemplatesUseCase).getTemplates(1L, AUTH_USER.userId(), 0, 20, AUTH_USER.academyId(), true);
   }
 
   @Test
   void getTemplatesPropagatesWorkspaceNotFound() throws Exception {
-    when(getRecurringTaskTemplatesUseCase.getTemplates(anyLong(), anyLong(), anyInt(), anyInt(), anyBoolean()))
+    when(getRecurringTaskTemplatesUseCase.getTemplates(anyLong(), anyLong(), anyInt(), anyInt(), anyLong(), anyBoolean()))
         .thenThrow(new WorkspaceNotFoundException());
 
     mockMvc
@@ -122,7 +122,7 @@ class WorkspaceRecurringTaskTemplateControllerTest {
 
   @Test
   void getTemplatesPropagatesAccessDenied() throws Exception {
-    when(getRecurringTaskTemplatesUseCase.getTemplates(anyLong(), anyLong(), anyInt(), anyInt(), anyBoolean()))
+    when(getRecurringTaskTemplatesUseCase.getTemplates(anyLong(), anyLong(), anyInt(), anyInt(), anyLong(), anyBoolean()))
         .thenThrow(new WorkspaceAccessDeniedException());
 
     mockMvc

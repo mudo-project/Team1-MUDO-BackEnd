@@ -34,10 +34,20 @@ public class TaskCommentListQueryService implements TaskCommentListQueryUseCase 
 
   @Override
   public PageResult<TaskCommentListItem> getComments(
-      Long workspaceId, Long taskId, Long requesterId, int page, int size, boolean canReadAll) {
+      Long workspaceId,
+      Long taskId,
+      Long requesterId,
+      int page,
+      int size,
+      Long academyId,
+      boolean canReadAll) {
     Workspace workspace =
         workspaceRepository.findById(workspaceId).orElseThrow(WorkspaceNotFoundException::new);
 
+    // canReadAll이어도 다른 학원 워크스페이스는 볼 수 없다 — 같은 학원인지 항상 먼저 확인한다.
+    if (!workspace.getAcademyId().equals(academyId)) {
+      throw new WorkspaceAccessDeniedException();
+    }
     if (!workspace.getMemberIds().contains(requesterId) && !canReadAll) {
       throw new WorkspaceAccessDeniedException();
     }

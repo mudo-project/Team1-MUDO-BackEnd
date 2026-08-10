@@ -68,10 +68,10 @@ public class WorkspaceTaskController {
 
   @Operation(
       summary = "업무 상세 조회",
-      description = "현재 참여자만 조회할 수 있습니다. 최종 상태 변경 이력이 없으면 lastStatusChangedAt 필드가 생략됩니다.")
+      description = "현재 참여자이거나 WORKSPACE:READ_ALL 권한 보유자만 조회할 수 있습니다(같은 학원 소속에 한함). 최종 상태 변경 이력이 없으면 lastStatusChangedAt 필드가 생략됩니다.")
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "업무 상세 조회 성공"),
-    @ApiResponse(responseCode = "403", description = "참여자가 아님"),
+    @ApiResponse(responseCode = "403", description = "참여자가 아니고 WORKSPACE:READ_ALL 권한도 없음, 또는 다른 학원 소속"),
     @ApiResponse(responseCode = "404", description = "워크스페이스 또는 업무가 존재하지 않음")
   })
   @GetMapping("/{taskId}")
@@ -84,7 +84,8 @@ public class WorkspaceTaskController {
         authentication.getAuthorities().stream()
             .anyMatch(authority -> "WORKSPACE:READ_ALL".equals(authority.getAuthority()));
     TaskDetail detail =
-        taskDetailQueryUseCase.getTaskDetail(workspaceId, taskId, authUser.userId(), canReadAll);
+        taskDetailQueryUseCase.getTaskDetail(
+            workspaceId, taskId, authUser.userId(), authUser.academyId(), canReadAll);
     return ResponseEntity.ok(
         GlobalApiResponse.ok(WorkspaceResponseCode.TASK_DETAIL_RETRIEVED, TaskDetailResponse.from(detail)));
   }
