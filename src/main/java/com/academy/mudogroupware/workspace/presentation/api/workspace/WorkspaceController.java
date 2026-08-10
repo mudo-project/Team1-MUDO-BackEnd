@@ -176,7 +176,6 @@ public class WorkspaceController {
     @ApiResponse(responseCode = "404", description = "워크스페이스가 존재하지 않거나 삭제됨"),
     @ApiResponse(responseCode = "409", description = "같은 학원에 동일한 활성 워크스페이스 이름이 존재함")
   })
-  // TODO: 권한 모듈의 WORKSPACE:CREATE 권한이 준비되면 @PreAuthorize를 추가한다.
   @PatchMapping("/{workspaceId}")
   public ResponseEntity<GlobalApiResponse<WorkspaceRenameResponse>> renameWorkspace(
       @AuthenticationPrincipal AuthUser authUser,
@@ -194,8 +193,6 @@ public class WorkspaceController {
     @ApiResponse(responseCode = "403", description = "참여자가 아님"),
     @ApiResponse(responseCode = "404", description = "워크스페이스가 존재하지 않거나 이미 삭제됨")
   })
-  // TODO: 권한 모듈의 WORKSPACE:DELETE 권한이 준비되면 @PreAuthorize를 추가한다.
-  // 단, 본인이 유일한 참여자인 경우의 삭제는 자진 탈퇴의 대체 행위이므로 계속 권한 없이 허용한다.
   @DeleteMapping("/{workspaceId}")
   public ResponseEntity<GlobalApiResponse<Void>> deleteWorkspace(
       @AuthenticationPrincipal AuthUser authUser, @PathVariable Long workspaceId) {
@@ -210,7 +207,6 @@ public class WorkspaceController {
     @ApiResponse(responseCode = "403", description = "참여자가 아님"),
     @ApiResponse(responseCode = "404", description = "워크스페이스가 존재하지 않거나 삭제됨")
   })
-  // TODO: 권한 모듈의 WORKSPACE:CREATE 권한이 준비되면 @PreAuthorize를 추가한다.
   @PostMapping("/{workspaceId}/members")
   public ResponseEntity<GlobalApiResponse<WorkspaceMemberAddResponse>> addWorkspaceMembers(
       @AuthenticationPrincipal AuthUser authUser,
@@ -231,8 +227,7 @@ public class WorkspaceController {
     @ApiResponse(responseCode = "403", description = "요청자가 참여자가 아님"),
     @ApiResponse(responseCode = "404", description = "워크스페이스가 없거나 대상이 참여자가 아님")
   })
-  // TODO: 권한 모듈의 WORKSPACE:CREATE 권한이 준비되면 타인 제거에만 참여자 조건에 추가한다.
-  // 자진 탈퇴(본인 대상)는 앞으로도 권한 없이 허용한다.
+  // 자진 탈퇴(본인 대상)와 타인 제거 모두 참여자만 가능하다. 권한 체크는 두지 않는다.
   @DeleteMapping("/{workspaceId}/members/{userId}")
   public ResponseEntity<GlobalApiResponse<Void>> removeWorkspaceMember(
       @AuthenticationPrincipal AuthUser authUser,
@@ -252,7 +247,6 @@ public class WorkspaceController {
     @ApiResponse(responseCode = "404", description = "워크스페이스가 존재하지 않음"),
     @ApiResponse(responseCode = "409", description = "이미 활성 상태이거나 이름 충돌")
   })
-  // TODO: 권한 모듈의 WORKSPACE:CREATE 권한이 준비되면 @PreAuthorize를 추가한다.
   @PostMapping("/{workspaceId}/recover")
   public ResponseEntity<GlobalApiResponse<WorkspaceRecoverResponse>> recoverWorkspace(
       @AuthenticationPrincipal AuthUser authUser, @PathVariable Long workspaceId) {
