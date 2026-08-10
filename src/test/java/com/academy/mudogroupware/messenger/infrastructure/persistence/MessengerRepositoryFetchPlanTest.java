@@ -10,7 +10,7 @@ class MessengerRepositoryFetchPlanTest {
 
     @Test
     void chatRoomMemberListQueryFetchesAllMembers() throws NoSuchMethodException {
-        Query query = ChatRoomJpaRepository.class.getMethod("findAllByMember", Long.class, Long.class)
+        Query query = ChatRoomJpaRepository.class.getMethod("findAllByMember", Long.class)
                 .getAnnotation(Query.class);
 
         assertThat(query.value()).contains("join fetch r.members");

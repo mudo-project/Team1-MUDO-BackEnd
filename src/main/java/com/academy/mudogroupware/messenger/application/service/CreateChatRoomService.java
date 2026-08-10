@@ -42,19 +42,13 @@ public class CreateChatRoomService implements CreateChatRoomUseCase {
         if (participants.size() < participantIds.stream().distinct().count()) {
             throw new MessengerException(MessengerErrorCode.INVALID_PARTICIPANT);
         }
-        boolean crossAcademy = participants.values().stream()
-                .anyMatch(participant -> !participant.academyId().equals(requester.academyId()));
-        if (crossAcademy) {
-            throw new MessengerException(MessengerErrorCode.CROSS_ACADEMY_INVITE);
-        }
 
         Set<Long> inviteeIds = new LinkedHashSet<>(participantIds);
         inviteeIds.remove(requester.userId());
         Long chatRoomId;
         if (inviteeIds.size() == 1) {
             Long otherUserId = inviteeIds.iterator().next();
-            chatRoomId = chatRoomRepository.findDirectMessage(requester.academyId(), requester.userId(),
-                            otherUserId)
+            chatRoomId = chatRoomRepository.findDirectMessage(requester.userId(), otherUserId)
                     .map(ChatRoom::getId)
                     .orElseGet(() -> createRoom(requester, participantIds, command.name()));
         } else {
@@ -65,8 +59,7 @@ public class CreateChatRoomService implements CreateChatRoomUseCase {
     }
 
     private Long createRoom(ChatMemberInfo requester, List<Long> participantIds, String name) {
-        ChatRoom chatRoom = ChatRoom.create(requester.academyId(), requester.userId(), participantIds,
-                name, LocalDateTime.now(clock));
+        ChatRoom chatRoom = ChatRoom.create(requester.userId(), participantIds, name, LocalDateTime.now(clock));
         return chatRoomRepository.save(chatRoom).getId();
     }
 }
