@@ -43,6 +43,7 @@ class DeleteTaskCardServiceTest {
         ChatTaskCard chatTaskCard = ChatTaskCard.restore(7L, 1L, 2L, "과제 제출", null,
                 List.of(ChatTaskAssignee.restore(3L, null)), CARD_CREATED_AT);
         when(chatTaskCardRepository.findById(7L)).thenReturn(Optional.of(chatTaskCard));
+        when(chatTaskCardRepository.markDeleted(7L, NOW)).thenReturn(true);
 
         service.delete(new DeleteTaskCardCommand(1L, 7L, 2L));
 
@@ -75,10 +76,25 @@ class DeleteTaskCardServiceTest {
         ChatTaskCard chatTaskCard = ChatTaskCard.restore(7L, 1L, 2L, "과제 제출", null,
                 List.of(ChatTaskAssignee.restore(3L, null)), CARD_CREATED_AT, firstDeletedAt);
         when(chatTaskCardRepository.findById(7L)).thenReturn(Optional.of(chatTaskCard));
+        when(chatTaskCardRepository.markDeleted(7L, firstDeletedAt)).thenReturn(false);
 
         service.delete(new DeleteTaskCardCommand(1L, 7L, 2L));
 
-        verify(chatTaskCardRepository, never()).markDeleted(any(), any());
+        verify(chatTaskCardRepository).markDeleted(7L, firstDeletedAt);
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void concurrentDeleteThatLosesTheRaceSkipsEvent() {
+        ChatTaskCard chatTaskCard = ChatTaskCard.restore(7L, 1L, 2L, "과제 제출", null,
+                List.of(ChatTaskAssignee.restore(3L, null)), CARD_CREATED_AT);
+        when(chatTaskCardRepository.findById(7L)).thenReturn(Optional.of(chatTaskCard));
+        // 다른 트랜잭션이 먼저 삭제를 커밋해서 이 요청의 UPDATE는 0건에 영향을 준 상황을 흉내낸다.
+        when(chatTaskCardRepository.markDeleted(7L, NOW)).thenReturn(false);
+
+        service.delete(new DeleteTaskCardCommand(1L, 7L, 2L));
+
+        verify(chatTaskCardRepository).markDeleted(7L, NOW);
         verify(eventPublisher, never()).publishEvent(any());
     }
 }
