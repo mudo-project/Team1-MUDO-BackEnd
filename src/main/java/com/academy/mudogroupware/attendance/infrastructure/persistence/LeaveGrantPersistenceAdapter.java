@@ -22,24 +22,23 @@ public class LeaveGrantPersistenceAdapter implements LeaveGrantRepository {
     }
 
     @Override
-    public boolean existsByAcademyIdAndUserIdAndGrantDate(Long academyId, Long userId, LocalDate grantDate) {
-        return leaveGrantJpaRepository.existsByAcademyIdAndUserIdAndGrantDate(academyId, userId, grantDate);
+    public boolean existsByUserIdAndGrantDate(Long userId, LocalDate grantDate) {
+        return leaveGrantJpaRepository.existsByUserIdAndGrantDate(userId, grantDate);
     }
 
     @Override
-    public Optional<LeaveGrant> findActiveForUpdate(Long academyId, Long userId, LocalDate date) {
-        return leaveGrantJpaRepository.findActiveForUpdate(academyId, userId, date).map(this::toDomain);
+    public Optional<LeaveGrant> findActiveForUpdate(Long userId, LocalDate date) {
+        return leaveGrantJpaRepository.findActiveForUpdate(userId, date).map(this::toDomain);
     }
 
     @Override
-    public Optional<LeaveGrant> findActive(Long academyId, Long userId, LocalDate date) {
-        return leaveGrantJpaRepository.findActive(academyId, userId, date).map(this::toDomain);
+    public Optional<LeaveGrant> findActive(Long userId, LocalDate date) {
+        return leaveGrantJpaRepository.findActive(userId, date).map(this::toDomain);
     }
 
     private LeaveGrantJpaEntity toEntity(LeaveGrant grant) {
         return LeaveGrantJpaEntity.builder()
                 .id(grant.getId())
-                .academyId(grant.getAcademyId())
                 .userId(grant.getUserId())
                 .grantDate(grant.getGrantDate())
                 .expirationDate(grant.getExpirationDate())
@@ -49,7 +48,7 @@ public class LeaveGrantPersistenceAdapter implements LeaveGrantRepository {
     }
 
     private LeaveGrant toDomain(LeaveGrantJpaEntity entity) {
-        return LeaveGrant.restore(entity.getId(), entity.getAcademyId(), entity.getUserId(), entity.getGrantDate(),
+        return LeaveGrant.restore(entity.getId(), entity.getUserId(), entity.getGrantDate(),
                 entity.getExpirationDate(), entity.getGrantedDays(), entity.getCreatedAt());
     }
 }

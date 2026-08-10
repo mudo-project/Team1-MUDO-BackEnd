@@ -61,7 +61,7 @@ public class CreateApprovalDocumentService implements CreateApprovalDocumentUseC
         Long documentId = approvalDocumentRepository.save(approvalDocument).getId();
 
         if (command.leaveStartDate() != null) {
-            leaveRequestSubmissionPort.submit(documentId, approvalTemplate.getAcademyId(), command.creatorId(),
+            leaveRequestSubmissionPort.submit(documentId, command.creatorId(),
                     command.leaveStartDate(), command.leaveEndDate(), now);
         }
 

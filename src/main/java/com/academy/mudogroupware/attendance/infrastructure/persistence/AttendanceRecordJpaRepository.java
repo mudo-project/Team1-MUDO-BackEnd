@@ -12,20 +12,20 @@ import jakarta.persistence.LockModeType;
 
 public interface AttendanceRecordJpaRepository
         extends JpaRepository<AttendanceRecordJpaEntity, Long> {
-    boolean existsByAcademyIdAndUserIdAndWorkDate(
-            Long academyId, Long userId, LocalDate workDate);
+    boolean existsByUserIdAndWorkDate(
+            Long userId, LocalDate workDate);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<AttendanceRecordJpaEntity>
-            findFirstByAcademyIdAndUserIdAndWorkDateGreaterThanEqualAndClockOutAtIsNullOrderByClockInAtDesc(
-                    Long academyId, Long userId, LocalDate earliestWorkDate);
+            findFirstByUserIdAndWorkDateGreaterThanEqualAndClockOutAtIsNullOrderByClockInAtDesc(
+                    Long userId, LocalDate earliestWorkDate);
 
-    boolean existsByAcademyIdAndUserIdAndClockOutAtBetween(
-            Long academyId, Long userId, LocalDateTime from, LocalDateTime to);
+    boolean existsByUserIdAndClockOutAtBetween(
+            Long userId, LocalDateTime from, LocalDateTime to);
 
-    Optional<AttendanceRecordJpaEntity> findByAcademyIdAndUserIdAndWorkDate(
-            Long academyId, Long userId, LocalDate workDate);
+    Optional<AttendanceRecordJpaEntity> findByUserIdAndWorkDate(
+            Long userId, LocalDate workDate);
 
-    List<AttendanceRecordJpaEntity> findAllByAcademyIdAndUserIdAndWorkDateBetweenOrderByWorkDate(
-            Long academyId, Long userId, LocalDate startDate, LocalDate endDate);
+    List<AttendanceRecordJpaEntity> findAllByUserIdAndWorkDateBetweenOrderByWorkDate(
+            Long userId, LocalDate startDate, LocalDate endDate);
 }

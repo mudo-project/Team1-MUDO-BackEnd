@@ -12,8 +12,6 @@ import com.academy.mudogroupware.attendance.domain.exception.AttendanceErrorCode
 import com.academy.mudogroupware.attendance.domain.exception.AttendanceException;
 import com.academy.mudogroupware.attendance.domain.model.AttendancePolicy;
 import com.academy.mudogroupware.attendance.domain.model.AttendancePolicyWeekday;
-import com.academy.mudogroupware.attendance.domain.model.OwnedAcademy;
-import com.academy.mudogroupware.attendance.domain.repository.AcademyRepository;
 import com.academy.mudogroupware.attendance.domain.repository.AttendancePolicyRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -25,24 +23,19 @@ import lombok.extern.slf4j.Slf4j;
 @Transactional
 public class SaveAttendancePolicyService implements SaveAttendancePolicyUseCase {
 
-    private final AcademyRepository academyRepository;
     private final AttendancePolicyRepository attendancePolicyRepository;
 
     @Override
     public SaveAttendancePolicyResult save(SaveAttendancePolicyCommand command) {
         log.info("event=attendance_policy_save_시작 requesterId={}", command.requesterId());
         try {
-            OwnedAcademy academy = academyRepository.findByOwnerUserId(command.requesterId())
-                    .orElseThrow(() -> new AttendanceException(
-                            AttendanceErrorCode.ATTENDANCE_POLICY_SAVE_FORBIDDEN));
-
-        AttendancePolicy policy = attendancePolicyRepository.findByAcademyId(academy.id())
+        AttendancePolicy policy = attendancePolicyRepository.findCurrent()
                 .map(existing -> existing.update(
                         command.defaultStartTime(), command.defaultEndTime(),
                         command.lateGraceMinutes(), command.weekdayExceptionEnabled(),
                         command.weekdays()))
                 .orElseGet(() -> AttendancePolicy.create(
-                        academy.id(), command.defaultStartTime(), command.defaultEndTime(),
+                        command.defaultStartTime(), command.defaultEndTime(),
                         command.lateGraceMinutes(), command.weekdayExceptionEnabled(),
                         command.weekdays() == null ? List.<AttendancePolicyWeekday>of()
                                 : command.weekdays()));

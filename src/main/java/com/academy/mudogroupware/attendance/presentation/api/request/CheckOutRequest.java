@@ -21,8 +21,8 @@ public record CheckOutRequest(
         @Size(max = 255, message = "퇴근 메모는 255자 이하여야 합니다.")
         String clockOutNote
 ) {
-    public CheckOutCommand toCommand(Long userId, Long academyId, String detectedIpAddress) {
+    public CheckOutCommand toCommand(Long userId, String detectedIpAddress) {
         return new CheckOutCommand(
-                userId, academyId, detectedIpAddress, clockOutType, clockOutNote);
+                userId, detectedIpAddress, clockOutType, clockOutNote);
     }
 }

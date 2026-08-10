@@ -13,8 +13,8 @@ public record CreateAttendanceCorrectionRequest(
         @Size(max = 255) String requestedClockInNote,
         @Size(max = 255) String requestedClockOutNote,
         @NotBlank @Size(max = 500) @Schema(example = "출근 버튼을 늦게 눌렀습니다.") String reason) {
-    public CreateAttendanceCorrectionCommand toCommand(Long academyId, Long userId) {
-        return new CreateAttendanceCorrectionCommand(academyId, userId, date, type, requestedClockInTime,
+    public CreateAttendanceCorrectionCommand toCommand(Long userId) {
+        return new CreateAttendanceCorrectionCommand(userId, date, type, requestedClockInTime,
                 requestedClockOutTime, requestedClockInNote, requestedClockOutNote, reason);
     }
 }

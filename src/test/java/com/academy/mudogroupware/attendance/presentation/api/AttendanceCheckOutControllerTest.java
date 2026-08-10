@@ -77,7 +77,7 @@ class AttendanceCheckOutControllerTest {
         LocalDateTime clockInAt = LocalDateTime.of(2026, 8, 5, 22, 0);
         LocalDateTime clockOutAt = LocalDateTime.of(2026, 8, 6, 2, 0);
         CheckOutCommand command = new CheckOutCommand(
-                10L, 1L, "203.0.113.10", ClockOutType.NORMAL, null);
+                10L, "203.0.113.10", ClockOutType.NORMAL, null);
         when(clientIpResolver.resolve(servletRequest)).thenReturn("203.0.113.10");
         when(checkOutUseCase.checkOut(command)).thenReturn(new CheckOutResult(
                 5L, LocalDate.of(2026, 8, 5), clockInAt,

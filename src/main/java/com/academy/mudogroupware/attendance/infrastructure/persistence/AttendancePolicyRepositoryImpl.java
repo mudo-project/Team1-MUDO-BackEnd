@@ -19,8 +19,8 @@ public class AttendancePolicyRepositoryImpl implements AttendancePolicyRepositor
     private final AttendancePolicyWeekdayJpaRepository weekdayJpaRepository;
 
     @Override
-    public Optional<AttendancePolicy> findByAcademyId(Long academyId) {
-        return attendancePolicyJpaRepository.findByAcademyId(academyId).map(this::toDomain);
+    public Optional<AttendancePolicy> findCurrent() {
+        return attendancePolicyJpaRepository.findFirstByOrderByIdAsc().map(this::toDomain);
     }
 
     @Override
@@ -28,7 +28,6 @@ public class AttendancePolicyRepositoryImpl implements AttendancePolicyRepositor
         AttendancePolicyJpaEntity saved = attendancePolicyJpaRepository.saveAndFlush(
                 AttendancePolicyJpaEntity.builder()
                         .id(policy.getId())
-                        .academyId(policy.getAcademyId())
                         .defaultStartTime(policy.getDefaultStartTime())
                         .defaultEndTime(policy.getDefaultEndTime())
                         .lateGraceMinutes(policy.getLateGraceMinutes())
@@ -55,7 +54,7 @@ public class AttendancePolicyRepositoryImpl implements AttendancePolicyRepositor
                         weekday.getStartTime(), weekday.getEndTime()))
                 .toList();
         return AttendancePolicy.restore(
-                entity.getId(), entity.getAcademyId(), entity.getDefaultStartTime(),
+                entity.getId(), entity.getDefaultStartTime(),
                 entity.getDefaultEndTime(), entity.getLateGraceMinutes(),
                 entity.isWeekdayExceptionEnabled(), weekdays,
                 entity.getCreatedAt(), entity.getUpdatedAt());

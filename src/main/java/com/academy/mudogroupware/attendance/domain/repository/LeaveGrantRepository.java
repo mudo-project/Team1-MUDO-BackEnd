@@ -9,9 +9,9 @@ public interface LeaveGrantRepository {
 
     LeaveGrant save(LeaveGrant leaveGrant);
 
-    boolean existsByAcademyIdAndUserIdAndGrantDate(Long academyId, Long userId, LocalDate grantDate);
+    boolean existsByUserIdAndGrantDate(Long userId, LocalDate grantDate);
 
-    Optional<LeaveGrant> findActiveForUpdate(Long academyId, Long userId, LocalDate date);
+    Optional<LeaveGrant> findActiveForUpdate(Long userId, LocalDate date);
 
-    Optional<LeaveGrant> findActive(Long academyId, Long userId, LocalDate date);
+    Optional<LeaveGrant> findActive(Long userId, LocalDate date);
 }

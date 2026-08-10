@@ -12,38 +12,33 @@ import com.academy.mudogroupware.attendance.domain.exception.AttendanceException
 public final class AcademyWifiIp {
 
     private final Long id;
-    private final Long academyId;
     private final String ipAddress;
     private final String note;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
 
-    private AcademyWifiIp(Long id, Long academyId, String ipAddress, String note,
+    private AcademyWifiIp(Long id, String ipAddress, String note,
                           LocalDateTime createdAt, LocalDateTime updatedAt) {
-        if (academyId == null) {
-            throw new AttendanceException(AttendanceErrorCode.INVALID_WIFI_IP);
-        }
         String normalizedIpAddress = normalizeIpAddress(ipAddress);
         String normalizedNote = normalizeNote(note);
         if (normalizedNote != null && normalizedNote.length() > 100) {
             throw new AttendanceException(AttendanceErrorCode.INVALID_WIFI_IP_NOTE);
         }
         this.id = id;
-        this.academyId = academyId;
         this.ipAddress = normalizedIpAddress;
         this.note = normalizedNote;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
 
-    public static AcademyWifiIp create(Long academyId, String ipAddress, String note) {
+    public static AcademyWifiIp create(String ipAddress, String note) {
         LocalDateTime now = LocalDateTime.now();
-        return new AcademyWifiIp(null, academyId, ipAddress, note, now, now);
+        return new AcademyWifiIp(null, ipAddress, note, now, now);
     }
 
-    public static AcademyWifiIp restore(Long id, Long academyId, String ipAddress, String note,
+    public static AcademyWifiIp restore(Long id, String ipAddress, String note,
                                          LocalDateTime createdAt, LocalDateTime updatedAt) {
-        return new AcademyWifiIp(id, academyId, ipAddress, note, createdAt, updatedAt);
+        return new AcademyWifiIp(id, ipAddress, note, createdAt, updatedAt);
     }
 
     private static String normalizeIpAddress(String ipAddress) {
@@ -105,7 +100,6 @@ public final class AcademyWifiIp {
     }
 
     public Long getId() { return id; }
-    public Long getAcademyId() { return academyId; }
     public String getIpAddress() { return ipAddress; }
     public String getNote() { return note; }
     public LocalDateTime getCreatedAt() { return createdAt; }

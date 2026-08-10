@@ -57,13 +57,13 @@ class CheckInServiceTest {
     @Test
     void checksInLateEmployeeWithRequiredNoteFromRegisteredIp() {
         allowIpAndPolicy(defaultPolicy());
-        when(attendanceRecordRepository.existsByAcademyIdAndUserIdAndWorkDate(
-                1L, 10L, NOW.toLocalDate())).thenReturn(false);
+        when(attendanceRecordRepository.existsByUserIdAndWorkDate(
+                10L, NOW.toLocalDate())).thenReturn(false);
         when(attendanceRecordRepository.save(any(AttendanceRecord.class)))
                 .thenAnswer(invocation -> {
                     AttendanceRecord record = invocation.getArgument(0);
                     return AttendanceRecord.restore(
-                            5L, record.getAcademyId(), record.getUserId(),
+                            5L, record.getUserId(),
                             record.getWorkDate(), record.getClockInAt(),
                             record.getClockInNote(), null, null, null,
                             record.getStatus(),
@@ -79,8 +79,8 @@ class CheckInServiceTest {
 
     @Test
     void rejectsCheckInFromUnregisteredIp() {
-        when(academyWifiIpRepository.existsByAcademyIdAndIpAddress(
-                1L, "203.0.113.10")).thenReturn(false);
+        when(academyWifiIpRepository.existsByIpAddress(
+                "203.0.113.10")).thenReturn(false);
 
         AttendanceException exception = assertThrows(
                 AttendanceException.class,
@@ -104,7 +104,7 @@ class CheckInServiceTest {
     @Test
     void rejectsCheckInOnConfiguredNonWorkday() {
         AttendancePolicy policy = AttendancePolicy.restore(
-                1L, 1L, LocalTime.of(9, 0), LocalTime.of(18, 0),
+                1L, LocalTime.of(9, 0), LocalTime.of(18, 0),
                 10, true, List.of(new AttendancePolicyWeekday(3, false, null, null)),
                 NOW.minusDays(1), NOW.minusDays(1));
         allowIpAndPolicy(policy);
@@ -120,8 +120,8 @@ class CheckInServiceTest {
     @Test
     void rejectsDuplicateCheckInForSameWorkDate() {
         allowIpAndPolicy(defaultPolicy());
-        when(attendanceRecordRepository.existsByAcademyIdAndUserIdAndWorkDate(
-                1L, 10L, NOW.toLocalDate())).thenReturn(true);
+        when(attendanceRecordRepository.existsByUserIdAndWorkDate(
+                10L, NOW.toLocalDate())).thenReturn(true);
 
         AttendanceException exception = assertThrows(
                 AttendanceException.class,
@@ -132,19 +132,19 @@ class CheckInServiceTest {
     }
 
     private void allowIpAndPolicy(AttendancePolicy policy) {
-        when(academyWifiIpRepository.existsByAcademyIdAndIpAddress(
-                1L, "203.0.113.10")).thenReturn(true);
-        when(attendancePolicyRepository.findByAcademyId(1L))
+        when(academyWifiIpRepository.existsByIpAddress(
+                "203.0.113.10")).thenReturn(true);
+        when(attendancePolicyRepository.findCurrent())
                 .thenReturn(Optional.of(policy));
     }
 
     private AttendancePolicy defaultPolicy() {
         return AttendancePolicy.restore(
-                1L, 1L, LocalTime.of(9, 0), LocalTime.of(18, 0),
+                1L, LocalTime.of(9, 0), LocalTime.of(18, 0),
                 10, false, List.of(), NOW.minusDays(1), NOW.minusDays(1));
     }
 
     private CheckInCommand command(String note) {
-        return new CheckInCommand(10L, 1L, "203.0.113.10", note);
+        return new CheckInCommand(10L, "203.0.113.10", note);
     }
 }

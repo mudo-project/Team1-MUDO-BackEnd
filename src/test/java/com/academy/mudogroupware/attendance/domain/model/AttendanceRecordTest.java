@@ -17,8 +17,7 @@ class AttendanceRecordTest {
 
     @Test
     void treatsLateThresholdAsNormal() {
-        AttendanceRecord record = AttendanceRecord.checkIn(
-                1L, 10L, LocalDateTime.of(2026, 8, 5, 9, 10),
+        AttendanceRecord record = AttendanceRecord.checkIn( 10L, LocalDateTime.of(2026, 8, 5, 9, 10),
                 LocalTime.of(9, 0), 10, null);
 
         assertEquals(AttendanceStatus.NORMAL, record.getStatus());
@@ -29,8 +28,7 @@ class AttendanceRecordTest {
     void requiresNoteAfterLateThreshold() {
         AttendanceException exception = assertThrows(
                 AttendanceException.class,
-                () -> AttendanceRecord.checkIn(
-                        1L, 10L, LocalDateTime.of(2026, 8, 5, 9, 10, 1),
+                () -> AttendanceRecord.checkIn( 10L, LocalDateTime.of(2026, 8, 5, 9, 10, 1),
                         LocalTime.of(9, 0), 10, "   "));
 
         assertSame(AttendanceErrorCode.LATE_NOTE_REQUIRED, exception.getErrorCode());
@@ -38,8 +36,7 @@ class AttendanceRecordTest {
 
     @Test
     void trimsLateNote() {
-        AttendanceRecord record = AttendanceRecord.checkIn(
-                1L, 10L, LocalDateTime.of(2026, 8, 5, 9, 11),
+        AttendanceRecord record = AttendanceRecord.checkIn( 10L, LocalDateTime.of(2026, 8, 5, 9, 11),
                 LocalTime.of(9, 0), 10, " 교통 정체 ");
 
         assertEquals(AttendanceStatus.LATE, record.getStatus());
@@ -49,7 +46,7 @@ class AttendanceRecordTest {
     @Test
     void checksOutWithOptionalTrimmedNote() {
         AttendanceRecord checkedIn = AttendanceRecord.restore(
-                5L, 1L, 10L, java.time.LocalDate.of(2026, 8, 5),
+                5L, 10L, java.time.LocalDate.of(2026, 8, 5),
                 LocalDateTime.of(2026, 8, 5, 22, 0), null,
                 null, null, null, AttendanceStatus.NORMAL,
                 LocalDateTime.of(2026, 8, 5, 22, 0),
@@ -68,7 +65,7 @@ class AttendanceRecordTest {
     @Test
     void convertsBlankClockOutNoteToNull() {
         AttendanceRecord checkedIn = AttendanceRecord.restore(
-                5L, 1L, 10L, java.time.LocalDate.of(2026, 8, 5),
+                5L, 10L, java.time.LocalDate.of(2026, 8, 5),
                 LocalDateTime.of(2026, 8, 5, 9, 0), null,
                 null, null, null, AttendanceStatus.NORMAL,
                 LocalDateTime.of(2026, 8, 5, 9, 0),
@@ -84,7 +81,7 @@ class AttendanceRecordTest {
     @Test
     void requiresNoteForOvertimeCheckOut() {
         AttendanceRecord checkedIn = AttendanceRecord.restore(
-                5L, 1L, 10L, java.time.LocalDate.of(2026, 8, 5),
+                5L, 10L, java.time.LocalDate.of(2026, 8, 5),
                 LocalDateTime.of(2026, 8, 5, 9, 0), null,
                 null, null, null, AttendanceStatus.NORMAL,
                 LocalDateTime.of(2026, 8, 5, 9, 0),
@@ -156,7 +153,7 @@ class AttendanceRecordTest {
     private AttendanceRecord openRecord() {
         LocalDateTime clockInAt = LocalDateTime.of(2026, 8, 5, 9, 0);
         return AttendanceRecord.restore(
-                5L, 1L, 10L, clockInAt.toLocalDate(), clockInAt, null,
+                5L, 10L, clockInAt.toLocalDate(), clockInAt, null,
                 null, null, null, AttendanceStatus.NORMAL,
                 clockInAt, clockInAt);
     }
