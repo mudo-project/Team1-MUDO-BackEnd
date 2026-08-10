@@ -45,7 +45,7 @@ public class ResubmitApprovalDocumentService implements ResubmitApprovalDocument
                 .toList();
 
         ApprovalDocument resubmitted = ApprovalDocument.create(
-                original.getAcademyId(), original.getTemplateId(), original.getSourceType(), original.getTitle(), original.getContent(),
+                original.getTemplateId(), original.getSourceType(), original.getTitle(), original.getContent(),
                 original.getCreatorId(), approverIds, fileIds, now);
 
         Long newDocumentId = approvalDocumentRepository.save(resubmitted).getId();

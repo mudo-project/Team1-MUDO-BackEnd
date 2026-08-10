@@ -11,7 +11,6 @@ import com.academy.mudogroupware.student.application.usecase.EnrollStudentUseCas
 import com.academy.mudogroupware.student.domain.exception.StudentErrorCode;
 import com.academy.mudogroupware.student.domain.exception.StudentException;
 import com.academy.mudogroupware.student.domain.model.Enrollment;
-import com.academy.mudogroupware.student.domain.model.Student;
 import com.academy.mudogroupware.student.domain.repository.EnrollmentRepository;
 import com.academy.mudogroupware.student.domain.repository.StudentRepository;
 
@@ -28,18 +27,15 @@ public class EnrollStudentService implements EnrollStudentUseCase {
 
     @Override
     public Long enroll(EnrollStudentCommand command) {
-        Student student = studentRepository.findById(command.studentId())
+        studentRepository.findById(command.studentId())
                 .orElseThrow(() -> new StudentException(StudentErrorCode.STUDENT_NOT_FOUND));
-        if (!student.getAcademyId().equals(command.academyId())) {
-            throw new StudentException(StudentErrorCode.STUDENT_ACCESS_DENIED);
-        }
 
         LocalDateTime now = LocalDateTime.now(clock);
         return enrollmentRepository
-                .findByStudentIdAndLectureId(command.academyId(), command.studentId(), command.lectureId())
+                .findByStudentIdAndLectureId(command.studentId(), command.lectureId())
                 .map(existing -> enrollExisting(existing, now))
                 .orElseGet(() -> enrollmentRepository.save(
-                        Enrollment.create(command.academyId(), command.studentId(), command.lectureId(), now)))
+                        Enrollment.create(command.studentId(), command.lectureId(), now)))
                 .getId();
     }
 

@@ -16,11 +16,10 @@ class DataImportJobTest {
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 10, 10, 0);
 
     @Test
-    void createsDraftJobWithAcademyScope() {
+    void createsDraftJobWithCreatorScope() {
         ImportDraft draft = ImportDraft.empty();
-        DataImportJob job = DataImportJob.create(1L, 10L, List.of("students.xlsx"), draft, NOW);
+        DataImportJob job = DataImportJob.create(10L, List.of("students.xlsx"), draft, NOW);
 
-        assertThat(job.getAcademyId()).isEqualTo(1L);
         assertThat(job.getCreatedBy()).isEqualTo(10L);
         assertThat(job.getStatus()).isEqualTo(DataImportStatus.DRAFT);
         assertThat(job.getSourceFileNames()).containsExactly("students.xlsx");
@@ -29,7 +28,7 @@ class DataImportJobTest {
 
     @Test
     void cannotUpdateDraftAfterConfirmed() {
-        DataImportJob job = DataImportJob.create(1L, 10L, List.of("students.xlsx"), ImportDraft.empty(), NOW);
+        DataImportJob job = DataImportJob.create(10L, List.of("students.xlsx"), ImportDraft.empty(), NOW);
         job.confirm(new ImportResult(1, 0, 0, 0, 0), NOW);
 
         assertThatThrownBy(() -> job.updateDraft(ImportDraft.empty(), NOW))

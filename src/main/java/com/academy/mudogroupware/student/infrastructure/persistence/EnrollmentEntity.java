@@ -30,9 +30,6 @@ public class EnrollmentEntity extends BaseTimeEntity {
     @Column(name = "enrollment_id")
     private Long id;
 
-    @Column(name = "academy_id", nullable = false)
-    private Long academyId;
-
     @Column(name = "student_id", nullable = false)
     private Long studentId;
 
@@ -53,10 +50,9 @@ public class EnrollmentEntity extends BaseTimeEntity {
     private LocalDateTime endedAt;
 
     @Builder
-    private EnrollmentEntity(Long id, Long academyId, Long studentId, Long lectureId, EnrollmentStatus status,
+    private EnrollmentEntity(Long id, Long studentId, Long lectureId, EnrollmentStatus status,
                              LocalDateTime enrolledAt, LocalDateTime endedAt) {
         this.id = id;
-        this.academyId = academyId;
         this.studentId = studentId;
         this.lectureId = lectureId;
         this.status = status;

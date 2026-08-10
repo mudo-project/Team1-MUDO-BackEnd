@@ -27,9 +27,6 @@ public class DeleteStudentService implements DeleteStudentUseCase {
     public void deleteStudent(DeleteStudentCommand command) {
         Student student = studentRepository.findById(command.studentId())
                 .orElseThrow(() -> new StudentException(StudentErrorCode.STUDENT_NOT_FOUND));
-        if (!student.getAcademyId().equals(command.academyId())) {
-            throw new StudentException(StudentErrorCode.STUDENT_ACCESS_DENIED);
-        }
         studentRepository.markDeleted(student.getId(), LocalDateTime.now(clock));
     }
 }

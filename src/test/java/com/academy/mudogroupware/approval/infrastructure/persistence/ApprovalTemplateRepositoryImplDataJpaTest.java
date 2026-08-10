@@ -28,7 +28,7 @@ class ApprovalTemplateRepositoryImplDataJpaTest {
         // 일반적인 수정에서도 항상 기존 step_order와 충돌한다(clearLines 후 재삽입 시
         // orphanRemoval DELETE보다 INSERT가 먼저 나가는 Hibernate flush 순서 문제).
         ApprovalTemplate created = approvalTemplateRepository.save(
-                ApprovalTemplate.create(1L, "휴가 신청서", 100L, List.of(10L, 20L), NOW));
+                ApprovalTemplate.create("휴가 신청서", 100L, List.of(10L, 20L), NOW));
 
         ApprovalTemplate toUpdate = approvalTemplateRepository.findById(created.getId()).orElseThrow();
         toUpdate.update("휴가 신청서(수정)", List.of(30L, 40L), NOW.plusMinutes(1));
@@ -43,7 +43,7 @@ class ApprovalTemplateRepositoryImplDataJpaTest {
     @Test
     void updatingWithFewerApproversRemovesOrphanedLines() {
         ApprovalTemplate created = approvalTemplateRepository.save(
-                ApprovalTemplate.create(1L, "휴가 신청서", 100L, List.of(10L, 20L, 30L), NOW));
+                ApprovalTemplate.create("휴가 신청서", 100L, List.of(10L, 20L, 30L), NOW));
 
         ApprovalTemplate toUpdate = approvalTemplateRepository.findById(created.getId()).orElseThrow();
         toUpdate.update("휴가 신청서", List.of(40L), NOW.plusMinutes(1));

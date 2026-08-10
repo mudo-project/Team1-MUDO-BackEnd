@@ -46,9 +46,9 @@ public class ApprovalTemplateRepositoryImpl implements ApprovalTemplateRepositor
     }
 
     @Override
-    public PageResult<ApprovalTemplate> findAll(Long academyId, int page, int size) {
-        Slice<ApprovalTemplateEntity> slice = approvalTemplateJpaRepository.findAllByTypeAndAcademyId(
-                ApprovalTemplateEntity.TYPE, academyId, PageRequest.of(page, size, latestFirstSort()));
+    public PageResult<ApprovalTemplate> findAll(int page, int size) {
+        Slice<ApprovalTemplateEntity> slice = approvalTemplateJpaRepository.findAllByType(
+                ApprovalTemplateEntity.TYPE, PageRequest.of(page, size, latestFirstSort()));
         List<ApprovalTemplate> content = slice.getContent().stream().map(this::toDomain).toList();
         return PageResult.of(content, slice.getNumber(), slice.getSize(), slice.hasNext());
     }
@@ -64,7 +64,6 @@ public class ApprovalTemplateRepositoryImpl implements ApprovalTemplateRepositor
 
     private ApprovalTemplateEntity toNewEntity(ApprovalTemplate domain) {
         ApprovalTemplateEntity entity = ApprovalTemplateEntity.builder()
-                .academyId(domain.getAcademyId())
                 .name(domain.getName())
                 .creatorId(domain.getCreatorId())
                 .build();
@@ -98,7 +97,7 @@ public class ApprovalTemplateRepositoryImpl implements ApprovalTemplateRepositor
                         line.getRoleId()))
                 .toList();
 
-        return ApprovalTemplate.restore(entity.getId(), entity.getAcademyId(), entity.getName(),
+        return ApprovalTemplate.restore(entity.getId(), entity.getName(),
                 entity.getCreatorId(), lines, entity.getCreatedAt(), entity.getUpdatedAt());
     }
 }

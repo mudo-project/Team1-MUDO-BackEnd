@@ -24,15 +24,11 @@ public class ClassroomEntity extends CreatedAtEntity {
     @Column(name = "classroom_id")
     private Long id;
 
-    @Column(name = "academy_id", nullable = false)
-    private Long academyId;
-
     @Column(nullable = false, length = 100)
     private String name;
 
     @Builder
-    private ClassroomEntity(Long academyId, String name) {
-        this.academyId = academyId;
+    private ClassroomEntity(String name) {
         this.name = name;
     }
 }

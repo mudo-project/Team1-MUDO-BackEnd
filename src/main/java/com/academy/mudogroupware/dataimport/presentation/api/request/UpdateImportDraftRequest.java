@@ -14,7 +14,7 @@ public record UpdateImportDraftRequest(
         List<ImportEnrollmentCandidate> enrollments
 ) {
 
-    public UpdateImportDraftCommand toCommand(Long academyId, Long importId) {
-        return new UpdateImportDraftCommand(academyId, importId, new ImportDraft(students, lectures, enrollments));
+    public UpdateImportDraftCommand toCommand(Long requesterId, Long importId) {
+        return new UpdateImportDraftCommand(requesterId, importId, new ImportDraft(students, lectures, enrollments));
     }
 }

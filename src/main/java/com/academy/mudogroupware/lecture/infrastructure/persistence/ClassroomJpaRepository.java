@@ -6,5 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ClassroomJpaRepository extends JpaRepository<ClassroomEntity, Long> {
 
-    Optional<ClassroomEntity> findByAcademyIdAndName(Long academyId, String name);
+    Optional<ClassroomEntity> findByName(String name);
 }

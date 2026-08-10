@@ -20,10 +20,10 @@ public class GetImportResultService implements GetImportResultUseCase {
     private final DataImportJobRepository dataImportJobRepository;
 
     @Override
-    public ImportResult getResult(Long academyId, Long importId) {
+    public ImportResult getResult(Long requesterId, Long importId) {
         DataImportJob job = dataImportJobRepository.findById(importId)
                 .orElseThrow(() -> new DataImportException(DataImportErrorCode.IMPORT_NOT_FOUND));
-        if (!job.getAcademyId().equals(academyId)) {
+        if (!job.getCreatedBy().equals(requesterId)) {
             throw new DataImportException(DataImportErrorCode.IMPORT_ACCESS_DENIED);
         }
         if (job.getResult() == null) {

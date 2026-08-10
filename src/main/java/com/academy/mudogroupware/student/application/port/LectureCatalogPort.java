@@ -5,5 +5,5 @@ import java.util.Map;
 
 public interface LectureCatalogPort {
 
-    Map<Long, LectureCatalogInfo> findByIds(Long academyId, List<Long> lectureIds);
+    Map<Long, LectureCatalogInfo> findByIds(List<Long> lectureIds);
 }

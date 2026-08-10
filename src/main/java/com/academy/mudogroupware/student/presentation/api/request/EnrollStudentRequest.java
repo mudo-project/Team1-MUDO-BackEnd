@@ -13,7 +13,7 @@ public record EnrollStudentRequest(
         Long lectureId
 ) {
 
-    public EnrollStudentCommand toCommand(Long academyId, Long studentId) {
-        return new EnrollStudentCommand(academyId, studentId, lectureId);
+    public EnrollStudentCommand toCommand(Long studentId) {
+        return new EnrollStudentCommand(studentId, lectureId);
     }
 }

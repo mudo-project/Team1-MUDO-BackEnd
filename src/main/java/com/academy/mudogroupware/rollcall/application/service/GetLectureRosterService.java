@@ -31,9 +31,8 @@ public class GetLectureRosterService implements GetLectureRosterUseCase {
     private final AttendanceEntryRepository attendanceEntryRepository;
 
     @Override
-    public RosterView getRoster(Long lectureId, Long academyId, LocalDate date) {
+    public RosterView getRoster(Long lectureId, LocalDate date) {
         LectureRef lecture = lectureEnrollmentPort.findLecture(lectureId)
-                .filter(ref -> ref.academyId().equals(academyId))
                 .orElseThrow(RollcallLectureNotFoundException::new);
 
         List<EnrolledStudentRef> students = lectureEnrollmentPort.getEnrolledStudents(lectureId);

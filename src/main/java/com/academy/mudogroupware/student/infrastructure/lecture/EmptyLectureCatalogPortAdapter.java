@@ -9,7 +9,7 @@ import com.academy.mudogroupware.student.application.port.LectureCatalogPort;
 public class EmptyLectureCatalogPortAdapter implements LectureCatalogPort {
 
     @Override
-    public Map<Long, LectureCatalogInfo> findByIds(Long academyId, List<Long> lectureIds) {
+    public Map<Long, LectureCatalogInfo> findByIds(List<Long> lectureIds) {
         return Map.of();
     }
 }

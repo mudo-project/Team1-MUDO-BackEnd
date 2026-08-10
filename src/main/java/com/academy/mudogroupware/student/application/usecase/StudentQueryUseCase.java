@@ -6,7 +6,7 @@ import com.academy.mudogroupware.student.application.query.StudentSummary;
 
 public interface StudentQueryUseCase {
 
-    PageResult<StudentSummary> getStudents(Long academyId, String keyword, int page, int size);
+    PageResult<StudentSummary> getStudents(String keyword, int page, int size);
 
-    StudentDetail getStudentDetail(Long academyId, Long studentId);
+    StudentDetail getStudentDetail(Long studentId);
 }

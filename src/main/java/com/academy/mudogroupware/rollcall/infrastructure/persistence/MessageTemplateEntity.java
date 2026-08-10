@@ -27,9 +27,6 @@ public class MessageTemplateEntity extends BaseTimeEntity {
     @Column(name = "template_id")
     private Long id;
 
-    @Column(name = "academy_id", nullable = false)
-    private Long academyId;
-
     @Column(nullable = false, length = 100)
     private String name;
 
@@ -44,9 +41,7 @@ public class MessageTemplateEntity extends BaseTimeEntity {
     private Long createdBy;
 
     @Builder
-    private MessageTemplateEntity(Long academyId, String name, AttendanceStatus status, String content,
-                                   Long createdBy) {
-        this.academyId = academyId;
+    private MessageTemplateEntity(String name, AttendanceStatus status, String content, Long createdBy) {
         this.name = name;
         this.status = status;
         this.content = content;

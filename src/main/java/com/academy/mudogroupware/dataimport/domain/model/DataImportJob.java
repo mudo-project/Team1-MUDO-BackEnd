@@ -9,7 +9,6 @@ import com.academy.mudogroupware.dataimport.domain.exception.DataImportException
 public final class DataImportJob {
 
     private final Long id;
-    private final Long academyId;
     private final Long createdBy;
     private DataImportStatus status;
     private final List<String> sourceFileNames;
@@ -18,12 +17,9 @@ public final class DataImportJob {
     private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    private DataImportJob(Long id, Long academyId, Long createdBy, DataImportStatus status,
+    private DataImportJob(Long id, Long createdBy, DataImportStatus status,
                           List<String> sourceFileNames, ImportDraft draft, ImportResult result,
                           LocalDateTime createdAt, LocalDateTime updatedAt) {
-        if (academyId == null) {
-            throw new IllegalArgumentException("academyId must not be null");
-        }
         if (createdBy == null) {
             throw new IllegalArgumentException("createdBy must not be null");
         }
@@ -40,7 +36,6 @@ public final class DataImportJob {
             throw new IllegalArgumentException("updatedAt must not be null");
         }
         this.id = id;
-        this.academyId = academyId;
         this.createdBy = createdBy;
         this.status = status;
         this.sourceFileNames = sourceFileNames != null ? List.copyOf(sourceFileNames) : List.of();
@@ -50,16 +45,16 @@ public final class DataImportJob {
         this.updatedAt = updatedAt;
     }
 
-    public static DataImportJob create(Long academyId, Long createdBy, List<String> sourceFileNames,
+    public static DataImportJob create(Long createdBy, List<String> sourceFileNames,
                                        ImportDraft draft, LocalDateTime now) {
-        return new DataImportJob(null, academyId, createdBy, DataImportStatus.DRAFT, sourceFileNames, draft,
+        return new DataImportJob(null, createdBy, DataImportStatus.DRAFT, sourceFileNames, draft,
                 null, now, now);
     }
 
-    public static DataImportJob restore(Long id, Long academyId, Long createdBy, DataImportStatus status,
+    public static DataImportJob restore(Long id, Long createdBy, DataImportStatus status,
                                         List<String> sourceFileNames, ImportDraft draft, ImportResult result,
                                         LocalDateTime createdAt, LocalDateTime updatedAt) {
-        return new DataImportJob(id, academyId, createdBy, status, sourceFileNames, draft, result, createdAt,
+        return new DataImportJob(id, createdBy, status, sourceFileNames, draft, result, createdAt,
                 updatedAt);
     }
 
@@ -94,10 +89,6 @@ public final class DataImportJob {
 
     public Long getId() {
         return id;
-    }
-
-    public Long getAcademyId() {
-        return academyId;
     }
 
     public Long getCreatedBy() {

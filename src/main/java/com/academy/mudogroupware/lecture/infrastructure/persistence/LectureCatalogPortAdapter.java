@@ -30,12 +30,10 @@ public class LectureCatalogPortAdapter implements LectureCatalogPort {
     private final TeacherDirectoryPort teacherDirectoryPort;
 
     @Override
-    public Map<Long, LectureCatalogInfo> findByIds(Long academyId, List<Long> lectureIds) {
-        List<Lecture> lectures = lectureRepository.findAllById(lectureIds).stream()
-                .filter(lecture -> lecture.getAcademyId().equals(academyId))
-                .toList();
+    public Map<Long, LectureCatalogInfo> findByIds(List<Long> lectureIds) {
+        List<Lecture> lectures = lectureRepository.findAllById(lectureIds);
         Map<Long, TeacherInfo> teachers = teacherDirectoryPort.findTeachers(
-                academyId, lectures.stream().map(Lecture::getTeacherId).distinct().toList());
+                lectures.stream().map(Lecture::getTeacherId).distinct().toList());
 
         Map<Long, LectureCatalogInfo> result = new HashMap<>();
         for (Lecture lecture : lectures) {

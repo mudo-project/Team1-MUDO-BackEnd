@@ -9,5 +9,5 @@ public interface NoticeAuthorDirectoryPort {
 
     Map<Long, AuthorInfo> getAuthors(List<Long> userIds);
 
-    long countActiveUsers(Long academyId);
+    long countActiveUsers();
 }

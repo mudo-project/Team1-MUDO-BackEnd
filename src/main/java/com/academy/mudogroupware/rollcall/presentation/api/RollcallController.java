@@ -9,7 +9,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -19,7 +18,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.academy.mudogroupware.global.presentation.api.common.GlobalApiResponse;
-import com.academy.mudogroupware.global.presentation.security.AuthUser;
 import com.academy.mudogroupware.rollcall.application.query.RosterView;
 import com.academy.mudogroupware.rollcall.application.usecase.ExportAttendanceSheetUseCase;
 import com.academy.mudogroupware.rollcall.application.usecase.GetLectureRosterUseCase;
@@ -51,10 +49,9 @@ public class RollcallController {
     @PreAuthorize("hasAuthority('ROLLCALL:MANAGE')")
     @GetMapping
     public ResponseEntity<GlobalApiResponse<RosterResponse>> getRoster(
-            @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long lectureId,
             @RequestParam LocalDate date) {
-        RosterView roster = getLectureRosterUseCase.getRoster(lectureId, authUser.academyId(), date);
+        RosterView roster = getLectureRosterUseCase.getRoster(lectureId, date);
         return ResponseEntity.ok(GlobalApiResponse.ok(RollcallResponseCode.ROSTER_RETRIEVED,
                 RosterResponse.from(roster)));
     }
@@ -63,11 +60,10 @@ public class RollcallController {
     @PreAuthorize("hasAuthority('ROLLCALL:MANAGE')")
     @PutMapping
     public ResponseEntity<Void> saveEntries(
-            @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long lectureId,
             @RequestParam LocalDate date,
             @Valid @RequestBody SaveAttendanceEntriesRequest request) {
-        saveAttendanceEntriesUseCase.saveEntries(request.toCommand(lectureId, authUser.academyId(), date));
+        saveAttendanceEntriesUseCase.saveEntries(request.toCommand(lectureId, date));
         return ResponseEntity.noContent().build();
     }
 
@@ -77,10 +73,9 @@ public class RollcallController {
     @PreAuthorize("hasAuthority('ROLLCALL:MANAGE')")
     @GetMapping("/export")
     public ResponseEntity<byte[]> exportSheet(
-            @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long lectureId,
             @RequestParam LocalDate date) {
-        byte[] sheet = exportAttendanceSheetUseCase.exportSheet(lectureId, authUser.academyId(), date);
+        byte[] sheet = exportAttendanceSheetUseCase.exportSheet(lectureId, date);
         String filename = "attendance_" + lectureId + "_" + date + ".xlsx";
         ContentDisposition contentDisposition = ContentDisposition.attachment()
                 .filename(filename, StandardCharsets.UTF_8)
@@ -98,11 +93,10 @@ public class RollcallController {
     @PreAuthorize("hasAuthority('ROLLCALL:MANAGE')")
     @GetMapping("/message-candidates")
     public ResponseEntity<GlobalApiResponse<List<MessageSendCandidateResponse>>> getMessageCandidates(
-            @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long lectureId,
             @RequestParam LocalDate date) {
         List<MessageSendCandidateResponse> candidates = getMessageSendCandidatesUseCase
-                .getCandidates(lectureId, authUser.academyId(), date).stream()
+                .getCandidates(lectureId, date).stream()
                 .map(MessageSendCandidateResponse::from)
                 .toList();
         return ResponseEntity.ok(GlobalApiResponse.ok(RollcallResponseCode.MESSAGE_CANDIDATES_RETRIEVED,

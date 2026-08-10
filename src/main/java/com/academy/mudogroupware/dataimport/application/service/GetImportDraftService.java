@@ -20,14 +20,14 @@ public class GetImportDraftService implements GetImportDraftUseCase {
     private final DataImportJobRepository dataImportJobRepository;
 
     @Override
-    public ImportDraft getDraft(Long academyId, Long importId) {
-        return loadScopedJob(academyId, importId).getDraft();
+    public ImportDraft getDraft(Long requesterId, Long importId) {
+        return loadScopedJob(requesterId, importId).getDraft();
     }
 
-    private DataImportJob loadScopedJob(Long academyId, Long importId) {
+    private DataImportJob loadScopedJob(Long requesterId, Long importId) {
         DataImportJob job = dataImportJobRepository.findById(importId)
                 .orElseThrow(() -> new DataImportException(DataImportErrorCode.IMPORT_NOT_FOUND));
-        if (!job.getAcademyId().equals(academyId)) {
+        if (!job.getCreatedBy().equals(requesterId)) {
             throw new DataImportException(DataImportErrorCode.IMPORT_ACCESS_DENIED);
         }
         return job;

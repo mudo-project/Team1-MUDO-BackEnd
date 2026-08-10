@@ -6,5 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface TermJpaRepository extends JpaRepository<TermEntity, Long> {
 
-    Optional<TermEntity> findByAcademyIdAndName(Long academyId, String name);
+    Optional<TermEntity> findByName(String name);
 }

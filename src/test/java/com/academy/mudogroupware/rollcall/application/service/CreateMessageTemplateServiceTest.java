@@ -22,7 +22,6 @@ import com.academy.mudogroupware.rollcall.domain.repository.MessageTemplateRepos
 
 class CreateMessageTemplateServiceTest {
 
-    private static final Long ACADEMY_ID = 100L;
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 5, 9, 0);
 
     private final MessageTemplateRepository messageTemplateRepository = mock(MessageTemplateRepository.class);
@@ -37,26 +36,26 @@ class CreateMessageTemplateServiceTest {
 
     @Test
     void throwsWhenTemplateAlreadyExistsForStatus() {
-        when(messageTemplateRepository.findByAcademyIdAndStatus(ACADEMY_ID, AttendanceStatus.ABSENT))
-                .thenReturn(Optional.of(MessageTemplate.create(ACADEMY_ID, "결석 안내", AttendanceStatus.ABSENT,
+        when(messageTemplateRepository.findByStatus(AttendanceStatus.ABSENT))
+                .thenReturn(Optional.of(MessageTemplate.create("결석 안내", AttendanceStatus.ABSENT,
                         "내용", 1L, NOW)));
 
         assertThatThrownBy(() -> service.createTemplate(
-                new CreateMessageTemplateCommand(ACADEMY_ID, "결석 안내2", AttendanceStatus.ABSENT, "내용2", 1L)))
+                new CreateMessageTemplateCommand("결석 안내2", AttendanceStatus.ABSENT, "내용2", 1L)))
                 .isInstanceOf(MessageTemplateStatusConflictException.class);
     }
 
     @Test
     void createsTemplateWhenNoneExistsForStatus() {
-        when(messageTemplateRepository.findByAcademyIdAndStatus(ACADEMY_ID, AttendanceStatus.ABSENT))
+        when(messageTemplateRepository.findByStatus(AttendanceStatus.ABSENT))
                 .thenReturn(Optional.empty());
         when(messageTemplateRepository.save(any(MessageTemplate.class))).thenAnswer(invocation -> {
             MessageTemplate saved = invocation.getArgument(0);
-            return MessageTemplate.restore(1L, saved.getAcademyId(), saved.getName(), saved.getStatus(),
+            return MessageTemplate.restore(1L, saved.getName(), saved.getStatus(),
                     saved.getContent(), saved.getCreatedBy(), saved.getCreatedAt(), saved.getUpdatedAt());
         });
 
-        service.createTemplate(new CreateMessageTemplateCommand(ACADEMY_ID, "결석 안내", AttendanceStatus.ABSENT,
+        service.createTemplate(new CreateMessageTemplateCommand("결석 안내", AttendanceStatus.ABSENT,
                 "내용", 1L));
 
         verify(messageTemplateRepository).save(any(MessageTemplate.class));

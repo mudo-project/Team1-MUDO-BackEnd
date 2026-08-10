@@ -31,7 +31,7 @@ class ApprovalApproverDirectoryAdapterTest {
 
         ApproverInfo result = adapter.getApprover(10L);
 
-        assertThat(result).isEqualTo(new ApproverInfo(10L, "Approver Lee", 1L));
+        assertThat(result).isEqualTo(new ApproverInfo(10L, "Approver Lee"));
     }
 
     @Test
@@ -52,8 +52,8 @@ class ApprovalApproverDirectoryAdapterTest {
 
         Map<Long, ApproverInfo> result = adapter.getApprovers(List.of(10L, 20L));
 
-        assertThat(result).containsEntry(10L, new ApproverInfo(10L, "Approver Lee", 1L));
-        assertThat(result).containsEntry(20L, new ApproverInfo(20L, "Approver Park", 1L));
+        assertThat(result).containsEntry(10L, new ApproverInfo(10L, "Approver Lee"));
+        assertThat(result).containsEntry(20L, new ApproverInfo(20L, "Approver Park"));
     }
 
     private User user(Long id, Long academyId, String name) {

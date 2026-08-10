@@ -32,7 +32,6 @@ public class SaveAttendanceEntriesService implements SaveAttendanceEntriesUseCas
     @Override
     public void saveEntries(SaveAttendanceEntriesCommand command) {
         lectureEnrollmentPort.findLecture(command.lectureId())
-                .filter(ref -> ref.academyId().equals(command.academyId()))
                 .orElseThrow(RollcallLectureNotFoundException::new);
 
         LocalDateTime now = LocalDateTime.now(clock);
@@ -48,8 +47,8 @@ public class SaveAttendanceEntriesService implements SaveAttendanceEntriesUseCas
                 entry.changeStatus(input.status(), input.note(), now);
                 attendanceEntryRepository.save(entry);
             } else {
-                AttendanceEntry entry = AttendanceEntry.create(command.academyId(), command.lectureId(),
-                        input.studentId(), command.date(), input.status(), input.note(), now);
+                AttendanceEntry entry = AttendanceEntry.create(command.lectureId(), input.studentId(), command.date(),
+                        input.status(), input.note(), now);
                 attendanceEntryRepository.save(entry);
             }
         }

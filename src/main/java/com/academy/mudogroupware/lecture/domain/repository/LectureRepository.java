@@ -16,7 +16,7 @@ public interface LectureRepository {
 
     List<Lecture> findAllById(List<Long> ids);
 
-    PageResult<Lecture> findAll(Long academyId, LectureFilter filter, int page, int size);
+    PageResult<Lecture> findAll(LectureFilter filter, int page, int size);
 
     boolean existsOverlap(Long classroomId, DayOfWeek dayOfWeek, LocalTime startTime, LocalTime endTime);
 }

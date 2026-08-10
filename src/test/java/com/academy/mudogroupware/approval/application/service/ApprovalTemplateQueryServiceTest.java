@@ -38,13 +38,12 @@ class ApprovalTemplateQueryServiceTest {
     void getTemplatesResolvesAllLineApproversInOneBatch() {
         ApprovalTemplate first = template(1L, "Vacation", List.of(10L, 11L));
         ApprovalTemplate second = template(2L, "Expense", List.of(12L));
-        when(approverDirectoryPort.getApprover(7L)).thenReturn(new ApproverInfo(7L, "Requester", 100L));
-        when(approvalTemplateRepository.findAll(100L, 0, 20))
+        when(approvalTemplateRepository.findAll(0, 20))
                 .thenReturn(PageResult.of(List.of(first, second), 0, 20, false));
         when(approverDirectoryPort.getApprovers(List.of(10L, 11L, 12L))).thenReturn(Map.of(
-                10L, new ApproverInfo(10L, "Approver A", 100L),
-                11L, new ApproverInfo(11L, "Approver B", 100L),
-                12L, new ApproverInfo(12L, "Approver C", 100L)));
+                10L, new ApproverInfo(10L, "Approver A"),
+                11L, new ApproverInfo(11L, "Approver B"),
+                12L, new ApproverInfo(12L, "Approver C")));
 
         PageResult<ApprovalTemplateSummaryView> result = service.getTemplates(7L, 0, 20);
 
@@ -60,6 +59,6 @@ class ApprovalTemplateQueryServiceTest {
         List<ApprovalTemplateLine> lines = approverIds.stream()
                 .map(approverId -> ApprovalTemplateLine.create(approverIds.indexOf(approverId) + 1, approverId))
                 .toList();
-        return ApprovalTemplate.restore(id, 100L, name, 7L, lines, NOW, NOW);
+        return ApprovalTemplate.restore(id, name, 7L, lines, NOW, NOW);
     }
 }

@@ -82,7 +82,7 @@ class HideApprovalHistoryServiceTest {
     }
 
     private ApprovalDocument document() {
-        return ApprovalDocument.create(1L, 1L, "Vacation", ApprovalContent.create(ApprovalContentType.TEXT, "content"),
+        return ApprovalDocument.create(1L, "Vacation", ApprovalContent.create(ApprovalContentType.TEXT, "content"),
                 7L, List.of(12L), List.of(), CREATED_AT);
     }
 }

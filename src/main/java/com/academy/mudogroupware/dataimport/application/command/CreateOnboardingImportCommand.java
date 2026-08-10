@@ -5,7 +5,6 @@ import java.util.List;
 import com.academy.mudogroupware.dataimport.application.port.ImportFile;
 
 public record CreateOnboardingImportCommand(
-        Long academyId,
         Long createdBy,
         List<ImportFile> files
 ) {

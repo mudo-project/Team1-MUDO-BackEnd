@@ -64,9 +64,9 @@ public class ApprovalDocumentRepositoryImpl implements ApprovalDocumentRepositor
     }
 
     @Override
-    public PageResult<ApprovalDocument> findAllByAcademyId(Long academyId, int page, int size) {
-        Slice<ApprovalDocumentEntity> slice = approvalDocumentJpaRepository.findAllByAcademyId(
-                academyId, PageRequest.of(page, size, latestFirstSort()));
+    public PageResult<ApprovalDocument> findAll(int page, int size) {
+        Slice<ApprovalDocumentEntity> slice = approvalDocumentJpaRepository.findAllBy(
+                PageRequest.of(page, size, latestFirstSort()));
         return toPageResult(slice);
     }
 
@@ -91,7 +91,6 @@ public class ApprovalDocumentRepositoryImpl implements ApprovalDocumentRepositor
     private ApprovalDocumentEntity toEntity(ApprovalDocument domain) {
         ApprovalDocumentEntity entity = ApprovalDocumentEntity.builder()
                 .id(domain.getId())
-                .academyId(domain.getAcademyId())
                 .templateId(domain.getTemplateId())
                 .sourceType(domain.getSourceType())
                 .title(domain.getTitle())
@@ -139,7 +138,7 @@ public class ApprovalDocumentRepositoryImpl implements ApprovalDocumentRepositor
         ApprovalContent content = ApprovalContent.restore(entity.getContentType(), entity.getText());
 
         return ApprovalDocument.restore(
-                entity.getId(), entity.getAcademyId(), entity.getTemplateId(), entity.getSourceType(), entity.getTitle(), content,
+                entity.getId(), entity.getTemplateId(), entity.getSourceType(), entity.getTitle(), content,
                 entity.getCreatorId(), lines, attachments, entity.getStatus(), entity.getCreatedAt(),
                 entity.getResubmittedAt());
     }

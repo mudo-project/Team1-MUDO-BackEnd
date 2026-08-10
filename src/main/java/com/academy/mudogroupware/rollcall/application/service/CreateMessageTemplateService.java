@@ -25,15 +25,15 @@ public class CreateMessageTemplateService implements CreateMessageTemplateUseCas
     @Override
     public Long createTemplate(CreateMessageTemplateCommand command) {
         boolean alreadyExists = messageTemplateRepository
-                .findByAcademyIdAndStatus(command.academyId(), command.status())
+                .findByStatus(command.status())
                 .isPresent();
         if (alreadyExists) {
             throw new MessageTemplateStatusConflictException();
         }
 
         LocalDateTime now = LocalDateTime.now(clock);
-        MessageTemplate template = MessageTemplate.create(command.academyId(), command.name(), command.status(),
-                command.content(), command.createdBy(), now);
+        MessageTemplate template = MessageTemplate.create(command.name(), command.status(), command.content(),
+                command.createdBy(), now);
         return messageTemplateRepository.save(template).getId();
     }
 }

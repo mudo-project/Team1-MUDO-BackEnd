@@ -29,8 +29,8 @@ public class EnrolledStudentsPortAdapter implements EnrolledStudentsPort {
     private final StudentRepository studentRepository;
 
     @Override
-    public List<EnrolledStudentInfo> findByLectureId(Long academyId, Long lectureId) {
-        List<Enrollment> enrollments = enrollmentRepository.findActiveByLectureId(academyId, lectureId);
+    public List<EnrolledStudentInfo> findByLectureId(Long lectureId) {
+        List<Enrollment> enrollments = enrollmentRepository.findActiveByLectureId(lectureId);
         List<Long> studentIds = enrollments.stream().map(Enrollment::getStudentId).distinct().toList();
 
         Map<Long, Student> studentsById = studentRepository.findAllById(studentIds).stream()
@@ -45,7 +45,7 @@ public class EnrolledStudentsPortAdapter implements EnrolledStudentsPort {
     }
 
     @Override
-    public Map<Long, Long> countByLectureIds(Long academyId, List<Long> lectureIds) {
-        return enrollmentRepository.countActiveByLectureIds(academyId, lectureIds);
+    public Map<Long, Long> countByLectureIds(List<Long> lectureIds) {
+        return enrollmentRepository.countActiveByLectureIds(lectureIds);
     }
 }

@@ -20,7 +20,7 @@ public interface ApprovalDocumentRepository {
 
     PageResult<ApprovalDocument> findAllByCreatorId(Long creatorId, int page, int size);
 
-    PageResult<ApprovalDocument> findAllByAcademyId(Long academyId, int page, int size);
+    PageResult<ApprovalDocument> findAll(int page, int size);
 
     PageResult<ApprovalDocument> findHistoryByApproverId(Long approverId, int page, int size);
 }

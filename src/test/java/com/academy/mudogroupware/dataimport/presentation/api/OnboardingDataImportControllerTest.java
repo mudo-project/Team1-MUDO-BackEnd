@@ -88,7 +88,7 @@ class OnboardingDataImportControllerTest {
 
     @Test
     void getDraftReturnsDraftTabs() throws Exception {
-        when(getImportDraftUseCase.getDraft(1L, 1L)).thenReturn(ImportDraft.empty());
+        when(getImportDraftUseCase.getDraft(7L, 1L)).thenReturn(ImportDraft.empty());
 
         mockMvc.perform(get("/api/data-imports/onboarding/1/draft")
                         .with(authentication(authenticatedUser())))
@@ -101,7 +101,7 @@ class OnboardingDataImportControllerTest {
 
     @Test
     void confirmReturnsResult() throws Exception {
-        when(confirmOnboardingImportUseCase.confirm(1L, 1L, 7L))
+        when(confirmOnboardingImportUseCase.confirm(1L, 7L))
                 .thenReturn(new ImportResult(1, 2, 3, 4, 0));
 
         mockMvc.perform(post("/api/data-imports/onboarding/1/confirm")
@@ -116,7 +116,7 @@ class OnboardingDataImportControllerTest {
 
     @Test
     void getResultReturnsStoredResult() throws Exception {
-        when(getImportResultUseCase.getResult(1L, 1L)).thenReturn(new ImportResult(1, 2, 3, 4, 0));
+        when(getImportResultUseCase.getResult(7L, 1L)).thenReturn(new ImportResult(1, 2, 3, 4, 0));
 
         mockMvc.perform(get("/api/data-imports/onboarding/1/result")
                         .with(authentication(authenticatedUser())))

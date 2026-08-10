@@ -35,9 +35,9 @@ public class NoticeRepositoryImpl implements NoticeRepository {
     }
 
     @Override
-    public PageResult<Notice> findAll(Long academyId, String titleKeyword, int page, int size) {
-        Slice<NoticeEntity> slice = noticeJpaRepository.findAllByAcademyIdAndTitleKeyword(
-                academyId, titleKeyword, PageRequest.of(page, size));
+    public PageResult<Notice> findAll(String titleKeyword, int page, int size) {
+        Slice<NoticeEntity> slice = noticeJpaRepository.findAllByTitleKeyword(
+                titleKeyword, PageRequest.of(page, size));
         List<Notice> content = slice.getContent().stream().map(this::toDomain).toList();
         return PageResult.of(content, slice.getNumber(), slice.getSize(), slice.hasNext());
     }
@@ -49,7 +49,6 @@ public class NoticeRepositoryImpl implements NoticeRepository {
 
     private NoticeEntity toNewEntity(Notice domain) {
         NoticeEntity entity = NoticeEntity.builder()
-                .academyId(domain.getAcademyId())
                 .authorUserId(domain.getAuthorUserId())
                 .title(domain.getTitle())
                 .content(domain.getContent())
@@ -85,7 +84,7 @@ public class NoticeRepositoryImpl implements NoticeRepository {
                 .map(this::toAttachmentDomain)
                 .toList();
 
-        return Notice.restore(entity.getId(), entity.getAcademyId(), entity.getAuthorUserId(), entity.getTitle(),
+        return Notice.restore(entity.getId(), entity.getAuthorUserId(), entity.getTitle(),
                 entity.getContent(), entity.isPinned(), entity.getViewCount(), attachments, entity.getCreatedAt(),
                 entity.getUpdatedAt());
     }

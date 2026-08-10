@@ -50,17 +50,18 @@ class ConfirmOnboardingImportServiceTest {
     private final Clock clock = Clock.fixed(NOW.plusMinutes(10).atZone(ZoneId.of("Asia/Seoul")).toInstant(),
             ZoneId.of("Asia/Seoul"));
     private final ConfirmOnboardingImportService service = new ConfirmOnboardingImportService(
-            repository, createStudentUseCase, createLectureUseCase, enrollStudentUseCase, clock);
+            repository, createStudentUseCase, createLectureUseCase, enrollStudentUseCase,
+            new ImportDraftSanitizer(new ImportDraftValidator()), clock);
 
     @Test
     void confirmCreatesSelectedReadyRowsOnly() {
-        DataImportJob job = repository.save(DataImportJob.create(1L, 10L, List.of("import.csv"),
+        DataImportJob job = repository.save(DataImportJob.create(10L, List.of("import.csv"),
                 draftWithReadyStudentLectureEnrollment(), NOW));
         when(createStudentUseCase.createStudent(any())).thenReturn(100L);
         when(createLectureUseCase.createLecture(any())).thenReturn(200L);
         when(enrollStudentUseCase.enroll(any())).thenReturn(300L);
 
-        ImportResult result = service.confirm(1L, job.getId(), 10L);
+        ImportResult result = service.confirm(job.getId(), 10L);
 
         assertThat(result.createdStudents()).isEqualTo(1);
         assertThat(result.createdLectures()).isEqualTo(1);
@@ -68,15 +69,39 @@ class ConfirmOnboardingImportServiceTest {
         assertThat(repository.findById(job.getId()).orElseThrow().getResult()).isEqualTo(result);
         verify(createStudentUseCase).createStudent(any(CreateStudentCommand.class));
         verify(createLectureUseCase).createLecture(any(CreateLectureCommand.class));
-        verify(enrollStudentUseCase).enroll(new EnrollStudentCommand(1L, 100L, 200L));
+        verify(enrollStudentUseCase).enroll(new EnrollStudentCommand(100L, 200L));
+    }
+
+    @Test
+    void confirmRejectsOtherUsersJob() {
+        DataImportJob job = repository.save(DataImportJob.create(10L, List.of("import.csv"),
+                draftWithReadyStudentLectureEnrollment(), NOW));
+
+        assertThatThrownBy(() -> service.confirm(job.getId(), 11L))
+                .isInstanceOf(DataImportException.class)
+                .extracting("errorCode")
+                .isEqualTo(DataImportErrorCode.IMPORT_ACCESS_DENIED);
     }
 
     @Test
     void confirmRejectsSelectedRowsThatAreNotReady() {
-        DataImportJob job = repository.save(DataImportJob.create(1L, 10L, List.of("import.csv"),
+        DataImportJob job = repository.save(DataImportJob.create(10L, List.of("import.csv"),
                 draftWithSelectedNeedsReviewLecture(), NOW));
 
-        assertThatThrownBy(() -> service.confirm(1L, job.getId(), 10L))
+        assertThatThrownBy(() -> service.confirm(job.getId(), 10L))
+                .isInstanceOf(DataImportException.class)
+                .extracting("errorCode")
+                .isEqualTo(DataImportErrorCode.SELECTED_ROW_NOT_READY);
+    }
+
+    @Test
+    void confirmRevalidatesDraftInsteadOfTrustingStoredReadyStatus() {
+        ImportStudentCandidate invalidButReady = new ImportStudentCandidate("S1", true, ImportRowStatus.READY,
+                "Kim", null, "Mudo High", "010-1111-2222", null, null, List.of());
+        DataImportJob job = repository.save(DataImportJob.create(10L, List.of("students.csv"),
+                new ImportDraft(List.of(invalidButReady), List.of(), List.of()), NOW));
+
+        assertThatThrownBy(() -> service.confirm(job.getId(), 10L))
                 .isInstanceOf(DataImportException.class)
                 .extracting("errorCode")
                 .isEqualTo(DataImportErrorCode.SELECTED_ROW_NOT_READY);
@@ -112,7 +137,6 @@ class ConfirmOnboardingImportServiceTest {
         public DataImportJob save(DataImportJob job) {
             DataImportJob saved = DataImportJob.restore(
                     job.getId() != null ? job.getId() : sequence++,
-                    job.getAcademyId(),
                     job.getCreatedBy(),
                     job.getStatus(),
                     job.getSourceFileNames(),

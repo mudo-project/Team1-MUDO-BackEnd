@@ -25,9 +25,6 @@ public class DataImportJobEntity {
     @Column(name = "id")
     private Long id;
 
-    @Column(name = "academy_id", nullable = false)
-    private Long academyId;
-
     @Column(name = "created_by", nullable = false)
     private Long createdBy;
 
@@ -56,11 +53,10 @@ public class DataImportJobEntity {
     protected DataImportJobEntity() {
     }
 
-    private DataImportJobEntity(Long id, Long academyId, Long createdBy, DataImportStatus status,
+    private DataImportJobEntity(Long id, Long createdBy, DataImportStatus status,
                                 String sourceFileNames, String draftJson, String resultJson,
                                 LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
-        this.academyId = academyId;
         this.createdBy = createdBy;
         this.status = status;
         this.sourceFileNames = sourceFileNames;
@@ -70,10 +66,10 @@ public class DataImportJobEntity {
         this.updatedAt = updatedAt;
     }
 
-    static DataImportJobEntity of(Long id, Long academyId, Long createdBy, DataImportStatus status,
+    static DataImportJobEntity of(Long id, Long createdBy, DataImportStatus status,
                                   String sourceFileNames, String draftJson, String resultJson,
                                   LocalDateTime createdAt, LocalDateTime updatedAt) {
-        return new DataImportJobEntity(id, academyId, createdBy, status, sourceFileNames, draftJson, resultJson,
+        return new DataImportJobEntity(id, createdBy, status, sourceFileNames, draftJson, resultJson,
                 createdAt, updatedAt);
     }
 }

@@ -8,7 +8,6 @@ import com.academy.mudogroupware.student.domain.exception.StudentException;
 public final class Student {
 
     private final Long id;
-    private final Long academyId;
     private String name;
     private StudentGrade grade;
     private String school;
@@ -18,11 +17,10 @@ public final class Student {
     private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    private Student(Long id, Long academyId, String name, StudentGrade grade, String school, String phone,
+    private Student(Long id, String name, StudentGrade grade, String school, String phone,
                     String parentPhone, String note, LocalDateTime createdAt, LocalDateTime updatedAt) {
-        validateRequired(academyId, name, grade, createdAt, updatedAt);
+        validateRequired(name, grade, createdAt, updatedAt);
         this.id = id;
-        this.academyId = academyId;
         this.name = name.trim();
         this.grade = grade;
         this.school = normalize(school);
@@ -33,20 +31,20 @@ public final class Student {
         this.updatedAt = updatedAt;
     }
 
-    public static Student create(Long academyId, String name, StudentGrade grade, String school, String phone,
+    public static Student create(String name, StudentGrade grade, String school, String phone,
                                  String parentPhone, String note, LocalDateTime now) {
-        return new Student(null, academyId, name, grade, school, phone, parentPhone, note, now, now);
+        return new Student(null, name, grade, school, phone, parentPhone, note, now, now);
     }
 
-    public static Student restore(Long id, Long academyId, String name, StudentGrade grade, String school,
+    public static Student restore(Long id, String name, StudentGrade grade, String school,
                                   String phone, String parentPhone, String note, LocalDateTime createdAt,
                                   LocalDateTime updatedAt) {
-        return new Student(id, academyId, name, grade, school, phone, parentPhone, note, createdAt, updatedAt);
+        return new Student(id, name, grade, school, phone, parentPhone, note, createdAt, updatedAt);
     }
 
     public void update(String name, StudentGrade grade, String school, String phone, String parentPhone, String note,
                        LocalDateTime updatedAt) {
-        validateRequired(academyId, name, grade, createdAt, updatedAt);
+        validateRequired(name, grade, createdAt, updatedAt);
         this.name = name.trim();
         this.grade = grade;
         this.school = normalize(school);
@@ -56,11 +54,8 @@ public final class Student {
         this.updatedAt = updatedAt;
     }
 
-    private static void validateRequired(Long academyId, String name, StudentGrade grade, LocalDateTime createdAt,
+    private static void validateRequired(String name, StudentGrade grade, LocalDateTime createdAt,
                                          LocalDateTime updatedAt) {
-        if (academyId == null) {
-            throw new IllegalArgumentException("academyId must not be null");
-        }
         if (name == null || name.isBlank()) {
             throw new StudentException(StudentErrorCode.STUDENT_NAME_REQUIRED);
         }
@@ -81,10 +76,6 @@ public final class Student {
 
     public Long getId() {
         return id;
-    }
-
-    public Long getAcademyId() {
-        return academyId;
     }
 
     public String getName() {
