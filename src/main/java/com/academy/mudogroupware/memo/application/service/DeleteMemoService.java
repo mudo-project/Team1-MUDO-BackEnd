@@ -24,18 +24,12 @@ public class DeleteMemoService implements DeleteMemoUseCase {
     @Override
     public void deleteMemo(DeleteMemoCommand command) {
         log.info("event=memo_delete_시작 memoId={}, userId={}", command.memoId(), command.userId());
-        try {
-            Memo memo = memoRepository.findById(command.memoId())
-                    .orElseThrow(() -> new MemoException(MemoErrorCode.MEMO_NOT_FOUND));
-            if (!memo.isOwnedBy(command.userId())) {
-                throw new MemoException(MemoErrorCode.NOT_MEMO_OWNER);
-            }
-            memoRepository.deleteById(command.memoId());
-            log.info("event=memo_delete_완료 memoId={}, userId={}", command.memoId(), command.userId());
-        } catch (RuntimeException e) {
-            log.warn("event=memo_delete_실패 memoId={}, userId={}, reason={}", command.memoId(), command.userId(),
-                    e.getMessage(), e);
-            throw e;
+        Memo memo = memoRepository.findById(command.memoId())
+                .orElseThrow(() -> new MemoException(MemoErrorCode.MEMO_NOT_FOUND));
+        if (!memo.isOwnedBy(command.userId())) {
+            throw new MemoException(MemoErrorCode.NOT_MEMO_OWNER);
         }
+        memoRepository.deleteById(command.memoId());
+        log.info("event=memo_delete_완료 memoId={}, userId={}", command.memoId(), command.userId());
     }
 }
