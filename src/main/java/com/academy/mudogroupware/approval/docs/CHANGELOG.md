@@ -1,5 +1,11 @@
 # approval Changelog
 
+## 2026-08-10
+
+- `GET /api/approvals/{documentId}/attachments/{fileId}/download-url` 결재 첨부파일 전용 다운로드 URL 조회 API를 추가했다.
+- `file` 모듈의 범용 `GET /api/files/{fileId}/download-url`은 academyId만 검증해 같은 학원 소속이면 결재선과 무관한 사용자도 기밀 첨부파일 URL을 받을 수 있었다. 이 API는 신청자/결재선 참여자 여부와 fileId의 문서 소속 여부를 먼저 검증한 뒤에만 `file` 모듈에 URL 발급을 위임한다.
+- `GetApprovalAttachmentDownloadUrlUseCase`/`GetApprovalAttachmentDownloadUrlService`를 추가했다. 검증 로직은 기존 `SummarizeApprovalAttachmentService`와 동일한 `isApprover`/`getCreatorId`/`findAttachmentByFileId` 조합을 재사용한다.
+
 ## 2026-08-08
 
 - 결재 신청/재상신은 `APPROVAL:SUBMIT` 권한으로 제한했다.
