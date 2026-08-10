@@ -27,6 +27,9 @@ public class PasswordSetupService implements PasswordSetupUseCase {
                 .filter(u -> passwordEncoder.matches(command.tempPassword(), u.getPassword()))
                 .orElseThrow(PasswordSetupFailedException::new);
 
-        userRepository.completePasswordSetup(user.getId(), passwordEncoder.encode(command.newPassword()));
+        boolean updated = userRepository.completePasswordSetup(user.getId(), passwordEncoder.encode(command.newPassword()));
+        if (!updated) {
+            throw new PasswordSetupFailedException();
+        }
     }
 }

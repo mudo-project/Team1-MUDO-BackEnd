@@ -60,11 +60,8 @@ public class UserRepositoryImpl implements UserRepository {
     }
 
     @Override
-    public void completePasswordSetup(Long userId, String newPasswordHash) {
-        UserEntity entity = userJpaRepository.findById(userId)
-                .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
-        entity.completePasswordSetup(newPasswordHash);
-        userJpaRepository.flush();
+    public boolean completePasswordSetup(Long userId, String newPasswordHash) {
+        return userJpaRepository.completePasswordSetupIfMustChange(userId, newPasswordHash) > 0;
     }
 
     @Override

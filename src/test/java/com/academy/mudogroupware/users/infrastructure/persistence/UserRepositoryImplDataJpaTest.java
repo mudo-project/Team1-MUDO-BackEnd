@@ -90,10 +90,23 @@ class UserRepositoryImplDataJpaTest {
     void completePasswordSetupReplacesPasswordAndClearsMustChangePw() {
         insertUserWithPasswordAndMustChangePw(1L, 1L, "pending", "old-hash", true);
 
-        userRepository.completePasswordSetup(1L, "new-hash");
+        boolean updated = userRepository.completePasswordSetup(1L, "new-hash");
 
+        assertThat(updated).isTrue();
         User found = userRepository.findById(1L).orElseThrow();
         assertThat(found.getPassword()).isEqualTo("new-hash");
+        assertThat(found.isMustChangePw()).isFalse();
+    }
+
+    @Test
+    void completePasswordSetupReturnsFalseWhenAlreadyCompleted() {
+        insertUserWithPasswordAndMustChangePw(2L, 1L, "done", "already-hash", false);
+
+        boolean updated = userRepository.completePasswordSetup(2L, "new-hash");
+
+        assertThat(updated).isFalse();
+        User found = userRepository.findById(2L).orElseThrow();
+        assertThat(found.getPassword()).isEqualTo("already-hash");
         assertThat(found.isMustChangePw()).isFalse();
     }
 

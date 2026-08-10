@@ -78,10 +78,25 @@ class PasswordSetupServiceTest {
         when(userRepository.findByUsername("teacher01")).thenReturn(Optional.of(pendingUser("hash")));
         when(passwordEncoder.matches("correct-temp", "hash")).thenReturn(true);
         when(passwordEncoder.encode("newPassword1!")).thenReturn("new-hash");
+        when(userRepository.completePasswordSetup(1L, "new-hash")).thenReturn(true);
         PasswordSetupService service = new PasswordSetupService(userRepository, passwordEncoder);
 
         service.setup(new PasswordSetupCommand("teacher01", "correct-temp", "newPassword1!"));
 
         verify(userRepository).completePasswordSetup(1L, "new-hash");
+    }
+
+    @Test
+    void throwsWhenCompletePasswordSetupLosesConcurrentRace() {
+        UserRepository userRepository = mock(UserRepository.class);
+        PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
+        when(userRepository.findByUsername("teacher01")).thenReturn(Optional.of(pendingUser("hash")));
+        when(passwordEncoder.matches("correct-temp", "hash")).thenReturn(true);
+        when(passwordEncoder.encode("newPassword1!")).thenReturn("new-hash");
+        when(userRepository.completePasswordSetup(1L, "new-hash")).thenReturn(false);
+        PasswordSetupService service = new PasswordSetupService(userRepository, passwordEncoder);
+
+        assertThatThrownBy(() -> service.setup(new PasswordSetupCommand("teacher01", "correct-temp", "newPassword1!")))
+                .isInstanceOf(PasswordSetupFailedException.class);
     }
 }
