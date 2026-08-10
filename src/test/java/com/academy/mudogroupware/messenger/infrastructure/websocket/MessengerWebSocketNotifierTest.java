@@ -32,7 +32,7 @@ class MessengerWebSocketNotifierTest {
     void sendsMessageEventToRoomTopic() {
         LocalDateTime createdAt = LocalDateTime.of(2026, 8, 5, 14, 30);
         ChatMessageSentEvent event = new ChatMessageSentEvent(
-                1L, 5L, 2L, MessageType.TEXT, "hello", null, null, createdAt, 3L);
+                1L, 5L, 2L, MessageType.TEXT, "hello", null, null, null, createdAt, 3L);
 
         notifier.handle(event);
 
@@ -40,6 +40,21 @@ class MessengerWebSocketNotifierTest {
         verify(eventPublisher).publish(eq("/topic/messenger/rooms/1"), captor.capture());
         assertThat(captor.getValue().messageId()).isEqualTo(5L);
         assertThat(captor.getValue().unreadCount()).isEqualTo(3L);
+    }
+
+    @Test
+    void sendsImageMessageEventWithFileIdAndDownloadUrl() {
+        LocalDateTime createdAt = LocalDateTime.of(2026, 8, 5, 14, 30);
+        ChatMessageSentEvent event = new ChatMessageSentEvent(
+                1L, 5L, 2L, MessageType.IMAGE, null, 99L, "https://example.com/download/99", "photo.png",
+                createdAt, 3L);
+
+        notifier.handle(event);
+
+        ArgumentCaptor<ChatMessageSocketResponse> captor = ArgumentCaptor.forClass(ChatMessageSocketResponse.class);
+        verify(eventPublisher).publish(eq("/topic/messenger/rooms/1"), captor.capture());
+        assertThat(captor.getValue().fileId()).isEqualTo(99L);
+        assertThat(captor.getValue().fileDownloadUrl()).isEqualTo("https://example.com/download/99");
     }
 
     @Test

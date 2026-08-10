@@ -1,6 +1,7 @@
 package com.academy.mudogroupware.workspace.presentation.api.task;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.verify;
@@ -62,7 +63,7 @@ class WorkspaceRecurringTaskTemplateControllerTest {
     RecurringTaskTemplate template =
         RecurringTaskTemplate.restore(
             1L, 1L, "주간 출결 현황 정리", RecurrenceType.WEEKLY, Map.of("daysOfWeek", List.of(1)), 10L);
-    when(getRecurringTaskTemplatesUseCase.getTemplates(1L, AUTH_USER.userId(), 0, 20))
+    when(getRecurringTaskTemplatesUseCase.getTemplates(1L, AUTH_USER.userId(), 0, 20, AUTH_USER.academyId(), false))
         .thenReturn(PageResult.of(List.of(template), 0, 20, false));
 
     mockMvc
@@ -95,8 +96,22 @@ class WorkspaceRecurringTaskTemplateControllerTest {
   }
 
   @Test
+  void getTemplatesForwardsReadAllAuthority() throws Exception {
+    when(getRecurringTaskTemplatesUseCase.getTemplates(1L, AUTH_USER.userId(), 0, 20, AUTH_USER.academyId(), true))
+        .thenReturn(PageResult.of(List.of(), 0, 20, false));
+
+    mockMvc
+        .perform(
+            get("/api/workspaces/1/recurring-templates")
+                .with(authentication(auth("WORKSPACE:READ_ALL"))))
+        .andExpect(status().isOk());
+
+    verify(getRecurringTaskTemplatesUseCase).getTemplates(1L, AUTH_USER.userId(), 0, 20, AUTH_USER.academyId(), true);
+  }
+
+  @Test
   void getTemplatesPropagatesWorkspaceNotFound() throws Exception {
-    when(getRecurringTaskTemplatesUseCase.getTemplates(anyLong(), anyLong(), anyInt(), anyInt()))
+    when(getRecurringTaskTemplatesUseCase.getTemplates(anyLong(), anyLong(), anyInt(), anyInt(), anyLong(), anyBoolean()))
         .thenThrow(new WorkspaceNotFoundException());
 
     mockMvc
@@ -107,7 +122,7 @@ class WorkspaceRecurringTaskTemplateControllerTest {
 
   @Test
   void getTemplatesPropagatesAccessDenied() throws Exception {
-    when(getRecurringTaskTemplatesUseCase.getTemplates(anyLong(), anyLong(), anyInt(), anyInt()))
+    when(getRecurringTaskTemplatesUseCase.getTemplates(anyLong(), anyLong(), anyInt(), anyInt(), anyLong(), anyBoolean()))
         .thenThrow(new WorkspaceAccessDeniedException());
 
     mockMvc
@@ -372,7 +387,12 @@ class WorkspaceRecurringTaskTemplateControllerTest {
         .andExpect(jsonPath("$.code").value("WORKSPACE_404_5"));
   }
 
-  private Authentication auth() {
-    return new UsernamePasswordAuthenticationToken(AUTH_USER, null, java.util.List.of());
+  private Authentication auth(String... authorities) {
+    return new UsernamePasswordAuthenticationToken(
+        AUTH_USER,
+        null,
+        java.util.List.of(authorities).stream()
+            .map(org.springframework.security.core.authority.SimpleGrantedAuthority::new)
+            .toList());
   }
 }

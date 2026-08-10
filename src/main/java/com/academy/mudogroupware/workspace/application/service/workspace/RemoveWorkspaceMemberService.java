@@ -33,8 +33,7 @@ public class RemoveWorkspaceMemberService implements RemoveWorkspaceMemberUseCas
             .findByIdForUpdate(command.workspaceId())
             .orElseThrow(WorkspaceNotFoundException::new);
 
-    // 자진 탈퇴(requesterId == targetUserId)는 참여자이기만 하면 항상 허용.
-    // 타인 제거는 TODO: 권한 모듈의 WORKSPACE:CREATE 권한이 준비되면 참여자 조건에 추가한다.
+    // 자진 탈퇴와 타인 제거 모두 참여자면 허용한다. 권한 체크는 두지 않는다.
     if (!workspace.getMemberIds().contains(command.requesterId())) {
       throw new WorkspaceAccessDeniedException();
     }

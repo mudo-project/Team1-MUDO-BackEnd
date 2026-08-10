@@ -3,11 +3,13 @@ package com.academy.mudogroupware.messenger.application.service;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.academy.mudogroupware.file.application.usecase.GetFileDownloadUrlUseCase;
 import com.academy.mudogroupware.messenger.application.port.ChatMemberDirectoryPort;
 import com.academy.mudogroupware.messenger.application.port.ChatMemberInfo;
 import com.academy.mudogroupware.messenger.application.query.ChatMessagePageView;
@@ -33,6 +35,7 @@ public class ChatMessageQueryService implements ChatMessageQueryUseCase {
     private final ChatRoomRepository chatRoomRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final ChatMemberDirectoryPort chatMemberDirectoryPort;
+    private final GetFileDownloadUrlUseCase getFileDownloadUrlUseCase;
     private final ApplicationEventPublisher eventPublisher;
 
     @Override
@@ -72,8 +75,18 @@ public class ChatMessageQueryService implements ChatMessageQueryUseCase {
         Map<Long, ChatMemberInfo> senders = chatMemberDirectoryPort.getMembers(senderIds);
         List<Long> messageIds = pageMessages.stream().map(ChatMessage::getId).toList();
         Map<Long, Long> unreadCounts = chatMessageRepository.countUnreadByMessageIds(chatRoomId, messageIds);
+        // 삭제된 메시지는 응답에서 fileId/fileDownloadUrl이 항상 마스킹되므로, 조회 대상에서도 제외해
+        // file 모듈에 불필요한 호출을 보내지 않는다.
+        List<Long> fileIds = pageMessages.stream()
+                .filter(message -> message.getDeletedAt() == null)
+                .map(ChatMessage::getFileId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        Map<Long, String> downloadUrls = fileIds.isEmpty() ? Map.of()
+                : getFileDownloadUrlUseCase.getDownloadUrls(fileIds, chatRoom.getAcademyId());
         List<ChatMessageView> messageViews = pageMessages.stream()
-                .map(message -> toMessageView(message, senders, unreadCounts))
+                .map(message -> toMessageView(message, senders, unreadCounts, downloadUrls))
                 .toList();
 
         ChatMessage lastInPage = pageMessages.isEmpty() ? null : pageMessages.get(pageMessages.size() - 1);
@@ -86,11 +99,13 @@ public class ChatMessageQueryService implements ChatMessageQueryUseCase {
     }
 
     private ChatMessageView toMessageView(ChatMessage message, Map<Long, ChatMemberInfo> senders,
-                                          Map<Long, Long> unreadCounts) {
+                                          Map<Long, Long> unreadCounts, Map<Long, String> downloadUrls) {
         ChatMemberInfo sender = senders.get(message.getSenderUserId());
+        String downloadUrl = message.getFileId() == null ? null : downloadUrls.get(message.getFileId());
         return new ChatMessageView(message.getId(), message.getSenderUserId(),
                 sender != null ? sender.name() : null, message.getMessageType(), message.getContent(),
-                message.getFileUrl(), message.getFileName(), message.getCreatedAt(), message.getEditedAt(),
-                message.getDeletedAt(), unreadCounts.getOrDefault(message.getId(), 0L));
+                message.getFileId(), downloadUrl, message.getFileName(),
+                message.getCreatedAt(), message.getEditedAt(), message.getDeletedAt(),
+                unreadCounts.getOrDefault(message.getId(), 0L));
     }
 }

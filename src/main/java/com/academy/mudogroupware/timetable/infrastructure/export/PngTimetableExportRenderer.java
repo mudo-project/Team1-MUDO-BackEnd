@@ -62,7 +62,7 @@ public class PngTimetableExportRenderer implements TimetableExportRenderer {
             y += headerHeight;
 
             for (TimetableSlotView slot : sortedSlots) {
-                TimetableExportColor color = options.colorFor(slot.classroomCode(), slot.teacherName(), slot.grade());
+                TimetableExportColor color = options.colorFor(slot.classroomCode(), slot.teacherName());
                 Color rowColor = new Color(color.red(), color.green(), color.blue());
                 drawRow(g, y, rowHeight, TimetableExportLabels.toRow(slot), rowColor, false, fontSize);
                 y += rowHeight;

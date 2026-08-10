@@ -31,6 +31,8 @@ class GetRecurringTaskTemplatesServiceTest {
   private static final long WORKSPACE_ID = 1L;
   private static final long MEMBER_ID = 10L;
   private static final long OUTSIDER_ID = 99L;
+  private static final long ACADEMY_ID = 1L;
+  private static final long OTHER_ACADEMY_ID = 2L;
 
   @Mock private WorkspaceRepository workspaceRepository;
   @Mock private RecurringTaskTemplateRepository recurringTaskTemplateRepository;
@@ -49,7 +51,8 @@ class GetRecurringTaskTemplatesServiceTest {
     when(recurringTaskTemplateRepository.findAllByWorkspaceId(WORKSPACE_ID, 0, 20))
         .thenReturn(PageResult.of(List.of(template), 0, 20, false));
 
-    PageResult<RecurringTaskTemplate> result = service().getTemplates(WORKSPACE_ID, MEMBER_ID, 0, 20);
+    PageResult<RecurringTaskTemplate> result =
+        service().getTemplates(WORKSPACE_ID, MEMBER_ID, 0, 20, ACADEMY_ID, false);
 
     assertThat(result.content()).containsExactly(template);
     assertThat(result.hasNext()).isFalse();
@@ -59,7 +62,19 @@ class GetRecurringTaskTemplatesServiceTest {
   void rejectsMissingWorkspace() {
     when(workspaceRepository.findById(WORKSPACE_ID)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> service().getTemplates(WORKSPACE_ID, OUTSIDER_ID, 0, 20))
+    assertThatThrownBy(
+            () -> service().getTemplates(WORKSPACE_ID, OUTSIDER_ID, 0, 20, ACADEMY_ID, false))
+        .isInstanceOf(WorkspaceNotFoundException.class);
+
+    verify(recurringTaskTemplateRepository, never()).findAllByWorkspaceId(anyLong(), anyInt(), anyInt());
+  }
+
+  @Test
+  void rejectsMissingWorkspaceEvenWhenCanReadAllIsTrue() {
+    when(workspaceRepository.findById(WORKSPACE_ID)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(
+            () -> service().getTemplates(WORKSPACE_ID, OUTSIDER_ID, 0, 20, ACADEMY_ID, true))
         .isInstanceOf(WorkspaceNotFoundException.class);
 
     verify(recurringTaskTemplateRepository, never()).findAllByWorkspaceId(anyLong(), anyInt(), anyInt());
@@ -69,14 +84,45 @@ class GetRecurringTaskTemplatesServiceTest {
   void rejectsNonMember() {
     givenWorkspaceWithMember();
 
-    assertThatThrownBy(() -> service().getTemplates(WORKSPACE_ID, OUTSIDER_ID, 0, 20))
+    assertThatThrownBy(
+            () -> service().getTemplates(WORKSPACE_ID, OUTSIDER_ID, 0, 20, ACADEMY_ID, false))
         .isInstanceOf(WorkspaceAccessDeniedException.class);
 
     verify(recurringTaskTemplateRepository, never()).findAllByWorkspaceId(anyLong(), anyInt(), anyInt());
   }
 
+  @Test
+  void rejectsOtherAcademyEvenWhenCanReadAllIsTrue() {
+    givenWorkspaceWithMember();
+
+    assertThatThrownBy(
+            () ->
+                service()
+                    .getTemplates(WORKSPACE_ID, OUTSIDER_ID, 0, 20, OTHER_ACADEMY_ID, true))
+        .isInstanceOf(WorkspaceAccessDeniedException.class);
+
+    verify(recurringTaskTemplateRepository, never()).findAllByWorkspaceId(anyLong(), anyInt(), anyInt());
+  }
+
+  @Test
+  void allowsNonMemberWhenCanReadAllIsTrue() {
+    givenWorkspaceWithMember();
+    RecurringTaskTemplate template =
+        RecurringTaskTemplate.restore(
+            1L, WORKSPACE_ID, "주간 출결 현황 정리", RecurrenceType.WEEKLY,
+            Map.of("daysOfWeek", List.of(1)), MEMBER_ID);
+    when(recurringTaskTemplateRepository.findAllByWorkspaceId(WORKSPACE_ID, 0, 20))
+        .thenReturn(PageResult.of(List.of(template), 0, 20, false));
+
+    PageResult<RecurringTaskTemplate> result =
+        service().getTemplates(WORKSPACE_ID, OUTSIDER_ID, 0, 20, ACADEMY_ID, true);
+
+    assertThat(result.content()).containsExactly(template);
+  }
+
   private void givenWorkspaceWithMember() {
-    Workspace workspace = Workspace.restore(WORKSPACE_ID, 1L, "8월 학사 운영", MEMBER_ID, Set.of(MEMBER_ID));
+    Workspace workspace =
+        Workspace.restore(WORKSPACE_ID, ACADEMY_ID, "8월 학사 운영", MEMBER_ID, Set.of(MEMBER_ID));
     when(workspaceRepository.findById(WORKSPACE_ID)).thenReturn(Optional.of(workspace));
   }
 }

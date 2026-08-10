@@ -1,6 +1,6 @@
 # 📌 계정·권한(users) API
 
-> 기준일: 2026-08-04
+> 기준일: 2026-08-10
 > 공통 응답 형식: `status`, `code`, `message`, `data` (204 No Content는 본문 없음)
 
 ## 1. 로그인
@@ -206,7 +206,56 @@
 
 ---
 
-## 7. 학원 신청 목록 조회
+## 7. 학원 신청 접수
+
+`POST /api/academy-applications`
+권한: 없음 (공개 API — 계정 없는 학원이 직접 호출)
+
+### Request
+
+```json
+{
+  "requestedLoginId": "academy01",
+  "academyName": "우리학원",
+  "representativeName": "홍길동",
+  "representativeEmail": "hong@example.com",
+  "representativePhone": "010-0000-0000",
+  "plan": "FREE"
+}
+```
+
+| name | type | required | 설명 |
+| --- | --- | --- | --- |
+| `requestedLoginId` | String | true | 원장이 요청하는 로그인 아이디(최대 50자) |
+| `academyName` | String | true | 학원명(최대 100자) |
+| `representativeName` | String | true | 대표자(원장) 이름(최대 50자) |
+| `representativeEmail` | String | true | 대표자 이메일(최대 100자) |
+| `representativePhone` | String | true | 대표자 전화번호(최대 20자) |
+| `plan` | String | true | 신청 플랜, `FREE` 또는 `PAID` |
+
+### Response · `201 Created`
+
+```json
+{
+  "status": 201,
+  "code": "ACADEMY_APPLICATION_201_1",
+  "message": "학원 신청이 접수되었습니다.",
+  "data": {
+    "applicationId": 1
+  }
+}
+```
+
+### 검증 및 정책
+
+- 사업자등록번호·사업자등록증 파일은 이번 스코프에서 받지 않습니다(`businessNo`/`businessLicenseFileId`는 항상 `null`로 생성됨). 접수 시점에는 신청자가 실제 사업자 소유주인지 자동으로 확인할 자료가 없으므로, SUPER ADMIN이 승인 전에 별도 채널(서류 대조·전화 확인 등)로 소유권을 수동 검증하는 것을 전제로 합니다 — 이 수동 검증은 시스템이 강제하지 않고 운영 절차로만 존재합니다.
+- 접수 시점에는 `requestedLoginId` 중복 확인을 하지 않아 같은 아이디로 여러 건이 `PENDING` 상태로 쌓일 수 있습니다. 승인 시점에 해당 아이디가 이미 사용 중이면(먼저 접수된 다른 신청이 이미 승인됐거나, 다른 경로로 같은 아이디의 계정이 생성된 경우) `409 USER_409_6`으로 거절되고 승인이 이루어지지 않습니다.
+- rate limit 등 악의적 공격 방어 로직은 이번 스코프에 포함되지 않습니다 — 인증 없이 대표자 이름·이메일·전화번호를 저장하므로, 운영 공개 전에는 게이트웨이 또는 애플리케이션 레벨 rate limit과 모니터링 도입이 필요합니다(현재는 팀이 위험을 수용하고 별도 후속 작업으로 미룬 상태).
+- `plan`은 `FREE`/`PAID` 중 하나를 선택해야 하며, 실제 기능 제한이나 결제 처리는 이번 스코프에 포함되지 않습니다(선택값만 저장).
+
+---
+
+## 8. 학원 신청 목록 조회
 
 `GET /api/academy-applications`
 권한: `PLATFORM:SUPER_ADMIN` 필요 (SUPER ADMIN 계정만 — `ROLE:MANAGE` 등 카탈로그 권한과는 별개)
@@ -227,10 +276,11 @@
       "applicationId": 1,
       "requestedLoginId": "academy01",
       "academyName": "우리학원",
-      "businessNo": "123-45-67890",
+      "businessNo": null,
       "representativeName": "홍길동",
       "representativeEmail": "hong@example.com",
       "representativePhone": "010-0000-0000",
+      "plan": "FREE",
       "status": "PENDING",
       "rejectReason": null,
       "createdAt": "2026-08-07T10:00:00"
@@ -243,11 +293,11 @@
 
 - 페이지네이션이 없습니다(기존 역할/권한 목록 조회와 동일한 전례).
 - `PLATFORM:SUPER_ADMIN`은 `@PreAuthorize` 권한 코드가 아니라 `SecurityConfig` 필터체인 URL 매칭으로 확인합니다 — 학원 관리자는 이 authority를 절대 자기 역할에 배정할 수 없습니다.
-- 신청 접수(`POST`) API는 아직 없습니다(파일 업로드 인프라 선행 필요) — 테스트 데이터는 수동으로 DB에 넣어야 합니다.
+- `businessNo`는 접수 API가 사업자등록번호를 받지 않아 항상 `null`입니다(컬럼은 향후 검증 기능 추가를 대비해 유지).
 
 ---
 
-## 8. 학원 신청 상세 조회
+## 9. 학원 신청 상세 조회
 
 `GET /api/academy-applications/{applicationId}`
 권한: `PLATFORM:SUPER_ADMIN` 필요
@@ -269,10 +319,11 @@
     "applicationId": 1,
     "requestedLoginId": "academy01",
     "academyName": "우리학원",
-    "businessNo": "123-45-67890",
+    "businessNo": null,
     "representativeName": "홍길동",
     "representativeEmail": "hong@example.com",
     "representativePhone": "010-0000-0000",
+    "plan": "FREE",
     "status": "PENDING",
     "rejectReason": null,
     "createdAt": "2026-08-07T10:00:00"
@@ -287,7 +338,7 @@
 
 ---
 
-## 9. 학원 신청 승인
+## 10. 학원 신청 승인
 
 `POST /api/academy-applications/{applicationId}/approve`
 권한: `PLATFORM:SUPER_ADMIN` 필요
@@ -316,11 +367,12 @@
 ### 검증 및 정책
 
 - `applicationId`가 존재하지 않으면 `USER_404_3`, 이미 승인/반려된 신청서면 `USER_409_5`로 응답합니다.
+- `requestedLoginId`가 이미 사용 중인 아이디면(다른 신청 승인 등으로 먼저 선점된 경우) `409 USER_409_6`으로 거절하고 계정을 만들지 않습니다 — 접수 시점에는 중복 확인을 하지 않으므로 승인 시점에 최종 확인합니다.
 - 새로 발급되는 계정은 `account_type=ADMIN`, `admin_scope=ACADEMY`, `must_change_pw=true`로 생성되어 최초 로그인 시 비밀번호 변경이 강제됩니다.
 
 ---
 
-## 10. 학원 신청 반려
+## 11. 학원 신청 반려
 
 `POST /api/academy-applications/{applicationId}/reject`
 권한: `PLATFORM:SUPER_ADMIN` 필요
@@ -347,7 +399,7 @@
 
 ---
 
-## 11. 역할 목록 조회
+## 12. 역할 목록 조회
 
 `GET /api/roles`
 권한: `ROLE:MANAGE` 필요
@@ -383,7 +435,7 @@
 
 ---
 
-## 12. 역할 상세 조회
+## 13. 역할 상세 조회
 
 `GET /api/roles/{roleId}`
 권한: `ROLE:MANAGE` 필요
@@ -418,7 +470,7 @@
 
 ---
 
-## 13. 역할 수정
+## 14. 역할 수정
 
 `PUT /api/roles/{roleId}`
 권한: `ROLE:MANAGE` 필요
@@ -446,7 +498,7 @@
 
 ---
 
-## 14. 역할 삭제
+## 15. 역할 삭제
 
 `DELETE /api/roles/{roleId}`
 권한: `ROLE:MANAGE` 필요
@@ -467,7 +519,7 @@
 
 ---
 
-## 15. 사용자 역할 변경
+## 16. 사용자 역할 변경
 
 `PATCH /api/users/{userId}/role`
 권한: `ACCOUNT:MANAGE` 필요
@@ -497,7 +549,7 @@
 
 ---
 
-## 16. 학원 구성원 검색
+## 17. 학원 구성원 검색
 
 `GET /api/users?keyword=`
 권한: 없음 (로그인만 되면 호출 가능)
@@ -530,7 +582,7 @@
 
 ---
 
-## 17. 직원 계정 발급
+## 18. 직원 계정 발급
 
 `POST /api/users`
 권한: `ACCOUNT:MANAGE` 필요

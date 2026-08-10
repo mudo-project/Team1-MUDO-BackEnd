@@ -40,7 +40,6 @@ public class RecoverWorkspaceService implements RecoverWorkspaceUseCase {
             .findDeletedByIdForUpdate(command.workspaceId())
             .orElseThrow(WorkspaceNotFoundException::new);
 
-    // TODO: 권한 모듈의 WORKSPACE:CREATE 권한이 준비되면 참여자 조건에 추가한다.
     if (!workspace.getMemberIds().contains(command.requesterId())) {
       throw new WorkspaceAccessDeniedException();
     }

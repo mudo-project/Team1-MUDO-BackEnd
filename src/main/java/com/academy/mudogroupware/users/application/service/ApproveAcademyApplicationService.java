@@ -16,10 +16,12 @@ import com.academy.mudogroupware.users.application.service.support.IssuedAccount
 import com.academy.mudogroupware.users.application.usecase.ApproveAcademyApplicationUseCase;
 import com.academy.mudogroupware.users.domain.event.AcademyApplicationApprovedEvent;
 import com.academy.mudogroupware.users.domain.exception.AcademyApplicationNotFoundException;
+import com.academy.mudogroupware.users.domain.exception.UsernameDuplicateException;
 import com.academy.mudogroupware.users.domain.model.Academy;
 import com.academy.mudogroupware.users.domain.model.AcademyApplication;
 import com.academy.mudogroupware.users.domain.repository.AcademyApplicationRepository;
 import com.academy.mudogroupware.users.domain.repository.AcademyRepository;
+import com.academy.mudogroupware.users.domain.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +34,7 @@ public class ApproveAcademyApplicationService implements ApproveAcademyApplicati
 
     private final AcademyApplicationRepository academyApplicationRepository;
     private final AcademyRepository academyRepository;
+    private final UserRepository userRepository;
     private final AccountIssuer accountIssuer;
     private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
@@ -44,6 +47,9 @@ public class ApproveAcademyApplicationService implements ApproveAcademyApplicati
             AcademyApplication application = academyApplicationRepository.findById(command.applicationId())
                     .orElseThrow(AcademyApplicationNotFoundException::new);
             application.ensurePending();
+            if (userRepository.existsByUsername(application.getRequestedLoginId())) {
+                throw new UsernameDuplicateException();
+            }
 
             LocalDateTime now = LocalDateTime.now(clock);
             academyApplicationRepository.markApproved(command.applicationId(), command.reviewerId(), now);

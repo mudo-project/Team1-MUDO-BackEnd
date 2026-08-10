@@ -28,28 +28,32 @@ import com.academy.mudogroupware.users.application.service.support.IssuedAccount
 import com.academy.mudogroupware.users.domain.event.AcademyApplicationApprovedEvent;
 import com.academy.mudogroupware.users.domain.exception.AcademyApplicationAlreadyReviewedException;
 import com.academy.mudogroupware.users.domain.exception.AcademyApplicationNotFoundException;
+import com.academy.mudogroupware.users.domain.exception.UsernameDuplicateException;
 import com.academy.mudogroupware.users.domain.model.Academy;
 import com.academy.mudogroupware.users.domain.model.AcademyApplication;
 import com.academy.mudogroupware.users.domain.model.AcademyApplicationStatus;
+import com.academy.mudogroupware.users.domain.model.Plan;
 import com.academy.mudogroupware.users.domain.model.User;
 import com.academy.mudogroupware.users.domain.model.UserStatus;
 import com.academy.mudogroupware.users.domain.repository.AcademyApplicationRepository;
 import com.academy.mudogroupware.users.domain.repository.AcademyRepository;
+import com.academy.mudogroupware.users.domain.repository.UserRepository;
 
 class ApproveAcademyApplicationServiceTest {
 
     private final AcademyApplicationRepository academyApplicationRepository = mock(AcademyApplicationRepository.class);
     private final AcademyRepository academyRepository = mock(AcademyRepository.class);
+    private final UserRepository userRepository = mock(UserRepository.class);
     private final AccountIssuer accountIssuer = mock(AccountIssuer.class);
     private final ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
     private final Clock clock = Clock.fixed(Instant.parse("2026-08-07T00:00:00Z"), ZoneId.of("UTC"));
     private final ApproveAcademyApplicationService service = new ApproveAcademyApplicationService(
-            academyApplicationRepository, academyRepository, accountIssuer, eventPublisher, clock);
+            academyApplicationRepository, academyRepository, userRepository, accountIssuer, eventPublisher, clock);
 
     private AcademyApplication pendingApplication() {
         return AcademyApplication.restore(1L, "newacademy01", "새학원", "111-11-11111", "홍길동",
-                "hong@example.com", "010-1111-2222", null, AcademyApplicationStatus.PENDING, null, null, null,
-                LocalDateTime.now(), LocalDateTime.now());
+                "hong@example.com", "010-1111-2222", Plan.FREE, null, AcademyApplicationStatus.PENDING, null, null,
+                null, LocalDateTime.now(), LocalDateTime.now());
     }
 
     @Test
@@ -63,12 +67,24 @@ class ApproveAcademyApplicationServiceTest {
     @Test
     void throwsWhenAlreadyReviewed() {
         AcademyApplication reviewed = AcademyApplication.restore(1L, "newacademy01", "새학원", "111-11-11111",
-                "홍길동", "hong@example.com", "010-1111-2222", null, AcademyApplicationStatus.APPROVED, null, 5L,
-                LocalDateTime.now(), LocalDateTime.now(), LocalDateTime.now());
+                "홍길동", "hong@example.com", "010-1111-2222", Plan.FREE, null, AcademyApplicationStatus.APPROVED,
+                null, 5L, LocalDateTime.now(), LocalDateTime.now(), LocalDateTime.now());
         when(academyApplicationRepository.findById(1L)).thenReturn(Optional.of(reviewed));
 
         assertThatThrownBy(() -> service.approve(new ApproveAcademyApplicationCommand(1L, 99L)))
                 .isInstanceOf(AcademyApplicationAlreadyReviewedException.class);
+    }
+
+    @Test
+    void throwsWhenRequestedLoginIdAlreadyInUse() {
+        when(academyApplicationRepository.findById(1L)).thenReturn(Optional.of(pendingApplication()));
+        when(userRepository.existsByUsername("newacademy01")).thenReturn(true);
+
+        assertThatThrownBy(() -> service.approve(new ApproveAcademyApplicationCommand(1L, 99L)))
+                .isInstanceOf(UsernameDuplicateException.class);
+
+        verify(academyApplicationRepository, times(0)).markApproved(any(), any(), any());
+        verify(accountIssuer, times(0)).issue(any(), any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test

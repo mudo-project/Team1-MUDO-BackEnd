@@ -34,8 +34,7 @@ public class DeleteWorkspaceService implements DeleteWorkspaceUseCase {
             .findByIdForUpdate(command.workspaceId())
             .orElseThrow(WorkspaceNotFoundException::new);
 
-    // 참여자 2인 이상: TODO 권한 모듈의 WORKSPACE:DELETE 권한이 준비되면 참여자 조건에 추가한다.
-    // 참여자가 본인 1인뿐인 경우: 자진 탈퇴의 대체 행위이므로 앞으로도 권한 없이 허용한다.
+    // 참여자면 인원수와 무관하게 삭제를 허용한다(소프트 삭제라 복구 가능, 내부 직원용 기능이라 저위험).
     if (!workspace.getMemberIds().contains(command.requesterId())) {
       throw new WorkspaceAccessDeniedException();
     }

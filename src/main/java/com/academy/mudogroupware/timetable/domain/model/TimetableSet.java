@@ -12,6 +12,7 @@ import java.util.Set;
 
 import com.academy.mudogroupware.timetable.domain.exception.DuplicateClassroomCodeException;
 import com.academy.mudogroupware.timetable.domain.exception.InvalidTimetablePeriodException;
+import com.academy.mudogroupware.timetable.domain.exception.InvalidTimetableSetException;
 import com.academy.mudogroupware.timetable.domain.exception.TimetableNameRequiredException;
 
 public final class TimetableSet {
@@ -34,7 +35,7 @@ public final class TimetableSet {
                           int slotUnitMinutes, List<TimetableClassroom> classrooms, LocalDateTime createdAt,
                           LocalDateTime updatedAt) {
         if (academyId == null) {
-            throw new IllegalArgumentException("academyId must not be null");
+            throw new InvalidTimetableSetException("academyId");
         }
         validateAndAssign(name, startDate, endDate, operatingStartTime, operatingEndTime, operatingDays,
                 slotUnitMinutes, classrooms);
@@ -76,19 +77,19 @@ public final class TimetableSet {
             throw new TimetableNameRequiredException();
         }
         if (startDate == null || endDate == null) {
-            throw new IllegalArgumentException("startDate/endDate must not be null");
+            throw new InvalidTimetableSetException("period");
         }
         if (endDate.isBefore(startDate)) {
             throw new InvalidTimetablePeriodException();
         }
         if (operatingStartTime == null || operatingEndTime == null) {
-            throw new IllegalArgumentException("operatingStartTime/operatingEndTime must not be null");
+            throw new InvalidTimetableSetException("operatingTime");
         }
         if (operatingDays == null || operatingDays.isEmpty()) {
-            throw new IllegalArgumentException("operatingDays must not be empty");
+            throw new InvalidTimetableSetException("operatingDays");
         }
         if (classrooms == null || classrooms.isEmpty()) {
-            throw new IllegalArgumentException("classrooms must not be empty");
+            throw new InvalidTimetableSetException("classrooms");
         }
         Set<String> codes = new HashSet<>();
         for (TimetableClassroom classroom : classrooms) {

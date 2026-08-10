@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import com.academy.mudogroupware.timetable.application.query.TimetableSlotView;
 import com.academy.mudogroupware.timetable.domain.exception.ExportImageTooLargeException;
 import com.academy.mudogroupware.timetable.domain.model.ClassType;
+import com.academy.mudogroupware.timetable.domain.model.Grade;
 import com.academy.mudogroupware.timetable.domain.model.TimetableExportColor;
 import com.academy.mudogroupware.timetable.domain.model.TimetableExportColorCriterion;
 import com.academy.mudogroupware.timetable.domain.model.TimetableExportDensity;
@@ -43,7 +44,7 @@ class PngTimetableExportRendererTest {
     void renderProducesReadablePngImage() throws Exception {
         List<TimetableSlotView> slots = List.of(new TimetableSlotView(
                 100L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                "고3", "정T", "미적분"));
+                Grade.HIGH_3, "정T", "미적분"));
 
         byte[] bytes = renderer.render(
                 "2026 여름특강", slots, options(TimetableExportColorCriterion.CLASSROOM, "601", TimetableExportDensity.NORMAL));
@@ -59,7 +60,7 @@ class PngTimetableExportRendererTest {
     void renderPaintsClassroomCriterionColorOnDataRow() throws Exception {
         List<TimetableSlotView> slots = List.of(new TimetableSlotView(
                 100L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                "고3", "정T", "미적분"));
+                Grade.HIGH_3, "정T", "미적분"));
 
         byte[] bytes = renderer.render(
                 "2026 여름특강", slots, options(TimetableExportColorCriterion.CLASSROOM, "601", TimetableExportDensity.NORMAL));
@@ -75,7 +76,7 @@ class PngTimetableExportRendererTest {
     void renderPaintsTeacherCriterionColorOnDataRow() throws Exception {
         List<TimetableSlotView> slots = List.of(new TimetableSlotView(
                 100L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                "고3", "정T", "미적분"));
+                Grade.HIGH_3, "정T", "미적분"));
 
         byte[] bytes = renderer.render(
                 "2026 여름특강", slots, options(TimetableExportColorCriterion.TEACHER, "정T", TimetableExportDensity.NORMAL));
@@ -86,24 +87,10 @@ class PngTimetableExportRendererTest {
     }
 
     @Test
-    void renderPaintsGradeCriterionColorOnDataRow() throws Exception {
-        List<TimetableSlotView> slots = List.of(new TimetableSlotView(
-                100L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                "고3", "정T", "미적분"));
-
-        byte[] bytes = renderer.render(
-                "2026 여름특강", slots, options(TimetableExportColorCriterion.GRADE, "고3", TimetableExportDensity.NORMAL));
-        BufferedImage image = ImageIO.read(new ByteArrayInputStream(bytes));
-
-        int pixel = image.getRGB(45, 78) & 0xFFFFFF;
-        assertThat(pixel).isEqualTo(0xFFCC00);
-    }
-
-    @Test
     void renderAppliesDensityToHeaderHeightAsWellAsRowHeight() throws Exception {
         List<TimetableSlotView> slots = List.of(new TimetableSlotView(
                 100L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                "고3", "정T", "미적분"));
+                Grade.HIGH_3, "정T", "미적분"));
 
         // title(30) + header(density rowHeight) + 1 row(density rowHeight)
         byte[] compactBytes = renderer.render(
@@ -124,7 +111,7 @@ class PngTimetableExportRendererTest {
         for (int i = 0; i < 700_000; i++) {
             hugeSlotList.add(new TimetableSlotView(
                     (long) i, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                    "고3", "정T", "미적분"));
+                    Grade.HIGH_3, "정T", "미적분"));
         }
 
         assertThatThrownBy(() -> renderer.render(

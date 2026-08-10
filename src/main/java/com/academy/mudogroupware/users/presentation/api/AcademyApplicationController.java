@@ -2,6 +2,7 @@ package com.academy.mudogroupware.users.presentation.api;
 
 import java.util.List;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,10 +20,13 @@ import com.academy.mudogroupware.users.application.usecase.ApproveAcademyApplica
 import com.academy.mudogroupware.users.application.usecase.GetAcademyApplicationUseCase;
 import com.academy.mudogroupware.users.application.usecase.ListAcademyApplicationsUseCase;
 import com.academy.mudogroupware.users.application.usecase.RejectAcademyApplicationUseCase;
+import com.academy.mudogroupware.users.application.usecase.SubmitAcademyApplicationUseCase;
 import com.academy.mudogroupware.users.presentation.api.common.AcademyApplicationResponseCode;
 import com.academy.mudogroupware.users.presentation.api.request.RejectAcademyApplicationRequest;
+import com.academy.mudogroupware.users.presentation.api.request.SubmitAcademyApplicationRequest;
 import com.academy.mudogroupware.users.presentation.api.response.AcademyApplicationApproveResponse;
 import com.academy.mudogroupware.users.presentation.api.response.AcademyApplicationResponse;
+import com.academy.mudogroupware.users.presentation.api.response.AcademyApplicationSubmitResponse;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -30,16 +34,30 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
-@Tag(name = "학원 신청", description = "학원 신청 목록/상세 조회, 승인/반려 API (PLATFORM:SUPER_ADMIN 전용)")
+@Tag(name = "학원 신청", description = "학원 신청 접수(공개)/목록·상세 조회/승인·반려(PLATFORM:SUPER_ADMIN 전용)")
 @RestController
 @RequestMapping("/api/academy-applications")
 @RequiredArgsConstructor
 public class AcademyApplicationController {
 
+    private final SubmitAcademyApplicationUseCase submitAcademyApplicationUseCase;
     private final ListAcademyApplicationsUseCase listAcademyApplicationsUseCase;
     private final GetAcademyApplicationUseCase getAcademyApplicationUseCase;
     private final ApproveAcademyApplicationUseCase approveAcademyApplicationUseCase;
     private final RejectAcademyApplicationUseCase rejectAcademyApplicationUseCase;
+
+    @Operation(
+            summary = "학원 신청 접수",
+            description = "학원이 계정 없이 신청서를 제출합니다. 인증이 필요 없는 공개 API입니다. "
+                    + "사업자등록증 등 서류 검증은 이번 스코프에서 제외되었으며, SUPER ADMIN이 승인 단계에서 별도로 확인합니다.")
+    @PostMapping
+    public ResponseEntity<GlobalApiResponse<AcademyApplicationSubmitResponse>> submit(
+            @Valid @RequestBody SubmitAcademyApplicationRequest request) {
+        Long applicationId = submitAcademyApplicationUseCase.submit(request.toCommand());
+        AcademyApplicationSubmitResponse data = AcademyApplicationSubmitResponse.from(applicationId);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(GlobalApiResponse.created(AcademyApplicationResponseCode.ACADEMY_APPLICATION_SUBMITTED, data));
+    }
 
     @Operation(
             summary = "학원 신청 목록 조회",

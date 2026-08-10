@@ -178,7 +178,7 @@ class WorkspaceTaskControllerTest {
             101L, "성적 데이터 7월분 엑셀 정리", new WorkspaceMemberInfo(10L, "윤예진"),
             LocalDateTime.of(2026, 7, 29, 9, 30), TaskStatus.IN_PROGRESS,
             LocalDate.of(2026, 8, 5), LocalDateTime.of(2026, 8, 2, 9, 0));
-    when(taskDetailQueryUseCase.getTaskDetail(1L, 101L, 10L)).thenReturn(detail);
+    when(taskDetailQueryUseCase.getTaskDetail(1L, 101L, 10L, 1L, false)).thenReturn(detail);
 
     mockMvc
         .perform(get("/api/workspaces/1/tasks/101").with(authentication(auth())))
@@ -201,7 +201,7 @@ class WorkspaceTaskControllerTest {
             101L, "업무", new WorkspaceMemberInfo(10L, "윤예진"),
             LocalDateTime.of(2026, 7, 29, 9, 30), TaskStatus.WAITING,
             LocalDate.of(2026, 8, 5), null);
-    when(taskDetailQueryUseCase.getTaskDetail(1L, 101L, 10L)).thenReturn(detail);
+    when(taskDetailQueryUseCase.getTaskDetail(1L, 101L, 10L, 1L, false)).thenReturn(detail);
 
     mockMvc
         .perform(get("/api/workspaces/1/tasks/101").with(authentication(auth())))
@@ -211,7 +211,7 @@ class WorkspaceTaskControllerTest {
 
   @Test
   void getTaskDetailPropagatesTaskNotFound() throws Exception {
-    when(taskDetailQueryUseCase.getTaskDetail(1L, 101L, 10L))
+    when(taskDetailQueryUseCase.getTaskDetail(1L, 101L, 10L, 1L, false))
         .thenThrow(new TaskNotFoundException());
 
     mockMvc
@@ -222,13 +222,29 @@ class WorkspaceTaskControllerTest {
 
   @Test
   void getTaskDetailPropagatesAccessDenied() throws Exception {
-    when(taskDetailQueryUseCase.getTaskDetail(1L, 101L, 10L))
+    when(taskDetailQueryUseCase.getTaskDetail(1L, 101L, 10L, 1L, false))
         .thenThrow(new WorkspaceAccessDeniedException());
 
     mockMvc
         .perform(get("/api/workspaces/1/tasks/101").with(authentication(auth())))
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.code").value("WORKSPACE_403_1"));
+  }
+
+  @Test
+  void getTaskDetailForwardsReadAllAuthority() throws Exception {
+    TaskDetail detail =
+        new TaskDetail(
+            101L, "성적 데이터 7월분 엑셀 정리", new WorkspaceMemberInfo(10L, "윤예진"),
+            LocalDateTime.of(2026, 7, 29, 9, 30), TaskStatus.IN_PROGRESS,
+            LocalDate.of(2026, 8, 5), LocalDateTime.of(2026, 8, 2, 9, 0));
+    when(taskDetailQueryUseCase.getTaskDetail(1L, 101L, 10L, 1L, true)).thenReturn(detail);
+
+    mockMvc
+        .perform(get("/api/workspaces/1/tasks/101").with(authentication(auth("WORKSPACE:READ_ALL"))))
+        .andExpect(status().isOk());
+
+    verify(taskDetailQueryUseCase).getTaskDetail(1L, 101L, 10L, 1L, true);
   }
 
   @Test
@@ -373,7 +389,12 @@ class WorkspaceTaskControllerTest {
         .andExpect(jsonPath("$.code").value("WORKSPACE_403_1"));
   }
 
-  private Authentication auth() {
-    return new UsernamePasswordAuthenticationToken(AUTH_USER, null, java.util.List.of());
+  private Authentication auth(String... authorities) {
+    return new UsernamePasswordAuthenticationToken(
+        AUTH_USER,
+        null,
+        java.util.List.of(authorities).stream()
+            .map(org.springframework.security.core.authority.SimpleGrantedAuthority::new)
+            .toList());
   }
 }

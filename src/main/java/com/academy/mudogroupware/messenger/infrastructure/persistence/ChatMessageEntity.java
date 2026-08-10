@@ -42,8 +42,8 @@ public class ChatMessageEntity {
     @Lob
     private String content;
 
-    @Column(name = "file_url", length = 500)
-    private String fileUrl;
+    @Column(name = "file_id")
+    private Long fileId;
 
     @Column(name = "file_name", length = 200)
     private String fileName;
@@ -59,14 +59,14 @@ public class ChatMessageEntity {
 
     @Builder
     private ChatMessageEntity(Long id, Long chatRoomId, Long senderUserId, MessageType messageType, String content,
-                               String fileUrl, String fileName, LocalDateTime createdAt, LocalDateTime editedAt,
+                               Long fileId, String fileName, LocalDateTime createdAt, LocalDateTime editedAt,
                                LocalDateTime deletedAt) {
         this.id = id;
         this.chatRoomId = chatRoomId;
         this.senderUserId = senderUserId;
         this.messageType = messageType;
         this.content = content;
-        this.fileUrl = fileUrl;
+        this.fileId = fileId;
         this.fileName = fileName;
         this.createdAt = createdAt;
         this.editedAt = editedAt;
