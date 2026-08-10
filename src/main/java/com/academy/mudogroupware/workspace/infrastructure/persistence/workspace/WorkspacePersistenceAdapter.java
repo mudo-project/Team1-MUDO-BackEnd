@@ -19,8 +19,7 @@ import org.springframework.stereotype.Repository;
 @RequiredArgsConstructor
 public class WorkspacePersistenceAdapter implements WorkspaceRepository {
 
-  private static final String ACTIVE_NAME_UNIQUE_CONSTRAINT =
-      "uk_workspace_academy_active_name";
+  private static final String ACTIVE_NAME_UNIQUE_CONSTRAINT = "uk_workspace_active_name";
 
   private final WorkspaceJpaRepository workspaceJpaRepository;
   private final WorkspacePersistenceMapper workspacePersistenceMapper;

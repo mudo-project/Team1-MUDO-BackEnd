@@ -23,12 +23,11 @@ class WorkspacePersistenceAdapterDataJpaTest {
   @Test
   void savesWorkspaceAndReturnsItsPersistedAggregate() {
     Workspace workspace =
-        Workspace.create(1L, "\uac1c\ubc1c\ud300", 10L, Set.of(20L));
+        Workspace.create("\uac1c\ubc1c\ud300", 10L, Set.of(20L));
 
     Workspace saved = workspaceRepository.save(workspace);
 
     assertThat(saved.getId()).isNotNull();
-    assertThat(saved.getAcademyId()).isEqualTo(1L);
     assertThat(saved.getName()).isEqualTo("\uac1c\ubc1c\ud300");
     assertThat(saved.getCreatedBy()).isEqualTo(10L);
     assertThat(saved.getMemberIds()).containsExactlyInAnyOrder(10L, 20L);
@@ -39,7 +38,7 @@ class WorkspacePersistenceAdapterDataJpaTest {
     assertThat(workspaceRepository.existsByName("\uac1c\ubc1c\ud300")).isFalse();
 
     workspaceRepository.save(
-        Workspace.create(1L, "\uac1c\ubc1c\ud300", 10L, Set.of()));
+        Workspace.create("\uac1c\ubc1c\ud300", 10L, Set.of()));
 
     assertThat(workspaceRepository.existsByName("\uac1c\ubc1c\ud300")).isTrue();
     assertThat(workspaceRepository.existsByName("\uc6b4\uc601\ud300")).isFalse();
@@ -48,7 +47,7 @@ class WorkspacePersistenceAdapterDataJpaTest {
   @Test
   void findsActiveWorkspaceForUpdateByIdIncludingMembers() {
     Workspace saved =
-        workspaceRepository.save(Workspace.create(1L, "\uac1c\ubc1c\ud300", 10L, Set.of(20L)));
+        workspaceRepository.save(Workspace.create("\uac1c\ubc1c\ud300", 10L, Set.of(20L)));
 
     Optional<Workspace> found = workspaceRepository.findByIdForUpdate(saved.getId());
 
@@ -65,7 +64,7 @@ class WorkspacePersistenceAdapterDataJpaTest {
 
   @Test
   void renamesWorkspace() {
-    Workspace saved = workspaceRepository.save(Workspace.create(1L, "\uac1c\ubc1c\ud300", 10L, Set.of()));
+    Workspace saved = workspaceRepository.save(Workspace.create("\uac1c\ubc1c\ud300", 10L, Set.of()));
 
     workspaceRepository.rename(saved.getId(), "\uc6b4\uc601\ud300");
 
@@ -76,8 +75,8 @@ class WorkspacePersistenceAdapterDataJpaTest {
 
   @Test
   void rejectsRenameToDuplicateActiveNameInSameAcademy() {
-    workspaceRepository.save(Workspace.create(1L, "\uc6b4\uc601\ud300", 10L, Set.of()));
-    Workspace saved = workspaceRepository.save(Workspace.create(1L, "\uac1c\ubc1c\ud300", 10L, Set.of()));
+    workspaceRepository.save(Workspace.create("\uc6b4\uc601\ud300", 10L, Set.of()));
+    Workspace saved = workspaceRepository.save(Workspace.create("\uac1c\ubc1c\ud300", 10L, Set.of()));
 
     assertThatThrownBy(() -> workspaceRepository.rename(saved.getId(), "\uc6b4\uc601\ud300"))
         .isInstanceOf(WorkspaceNameConflictException.class);
@@ -87,9 +86,9 @@ class WorkspacePersistenceAdapterDataJpaTest {
   // 소프트 삭제된 워크스페이스의 이름은 유니크 제약에서 제외되어야 한다.
   @Test
   void allowsRenamingToNameOfSoftDeletedWorkspaceInSameAcademy() {
-    Workspace deleted = workspaceRepository.save(Workspace.create(1L, "운영팀", 10L, Set.of()));
+    Workspace deleted = workspaceRepository.save(Workspace.create("운영팀", 10L, Set.of()));
     workspaceRepository.delete(deleted.getId(), java.time.LocalDateTime.of(2026, 8, 6, 12, 0));
-    Workspace saved = workspaceRepository.save(Workspace.create(1L, "개발팀", 10L, Set.of()));
+    Workspace saved = workspaceRepository.save(Workspace.create("개발팀", 10L, Set.of()));
 
     workspaceRepository.rename(saved.getId(), "운영팀");
 
@@ -101,7 +100,7 @@ class WorkspacePersistenceAdapterDataJpaTest {
   @Test
   void addsAndRemovesMembersToMatchTargetSet() {
     Workspace saved =
-        workspaceRepository.save(Workspace.create(1L, "\uac1c\ubc1c\ud300", 10L, Set.of(20L, 30L)));
+        workspaceRepository.save(Workspace.create("\uac1c\ubc1c\ud300", 10L, Set.of(20L, 30L)));
 
     workspaceRepository.updateMembers(saved.getId(), Set.of(10L, 40L));
 
@@ -112,7 +111,7 @@ class WorkspacePersistenceAdapterDataJpaTest {
 
   @Test
   void marksWorkspaceDeletedAndExcludesItFromActiveLookup() {
-    Workspace saved = workspaceRepository.save(Workspace.create(1L, "\uac1c\ubc1c\ud300", 10L, Set.of()));
+    Workspace saved = workspaceRepository.save(Workspace.create("\uac1c\ubc1c\ud300", 10L, Set.of()));
 
     workspaceRepository.delete(saved.getId(), java.time.LocalDateTime.of(2026, 8, 6, 12, 0));
 
@@ -128,7 +127,7 @@ class WorkspacePersistenceAdapterDataJpaTest {
 
   @Test
   void rejectsFindingDeletedWorkspaceWhenItIsStillActive() {
-    Workspace saved = workspaceRepository.save(Workspace.create(1L, "개발팀", 10L, Set.of()));
+    Workspace saved = workspaceRepository.save(Workspace.create("개발팀", 10L, Set.of()));
 
     assertThatThrownBy(() -> workspaceRepository.findDeletedByIdForUpdate(saved.getId()))
         .isInstanceOf(WorkspaceAlreadyActiveException.class);
@@ -136,7 +135,7 @@ class WorkspacePersistenceAdapterDataJpaTest {
 
   @Test
   void findsDeletedWorkspaceForUpdate() {
-    Workspace saved = workspaceRepository.save(Workspace.create(1L, "개발팀", 10L, Set.of(20L)));
+    Workspace saved = workspaceRepository.save(Workspace.create("개발팀", 10L, Set.of(20L)));
     workspaceRepository.delete(saved.getId(), java.time.LocalDateTime.of(2026, 8, 6, 12, 0));
 
     Optional<Workspace> found = workspaceRepository.findDeletedByIdForUpdate(saved.getId());
@@ -148,7 +147,7 @@ class WorkspacePersistenceAdapterDataJpaTest {
 
   @Test
   void recoversDeletedWorkspaceWithNewName() {
-    Workspace saved = workspaceRepository.save(Workspace.create(1L, "개발팀", 10L, Set.of()));
+    Workspace saved = workspaceRepository.save(Workspace.create("개발팀", 10L, Set.of()));
     workspaceRepository.delete(saved.getId(), java.time.LocalDateTime.of(2026, 8, 6, 12, 0));
 
     workspaceRepository.recover(saved.getId(), "개발팀(20260806153012)");
@@ -160,8 +159,8 @@ class WorkspacePersistenceAdapterDataJpaTest {
 
   @Test
   void rejectsRecoverWhenNameConflictsWithActiveWorkspace() {
-    workspaceRepository.save(Workspace.create(1L, "운영팀", 10L, Set.of()));
-    Workspace saved = workspaceRepository.save(Workspace.create(1L, "개발팀", 10L, Set.of()));
+    workspaceRepository.save(Workspace.create("운영팀", 10L, Set.of()));
+    Workspace saved = workspaceRepository.save(Workspace.create("개발팀", 10L, Set.of()));
     workspaceRepository.delete(saved.getId(), java.time.LocalDateTime.of(2026, 8, 6, 12, 0));
 
     assertThatThrownBy(() -> workspaceRepository.recover(saved.getId(), "운영팀"))

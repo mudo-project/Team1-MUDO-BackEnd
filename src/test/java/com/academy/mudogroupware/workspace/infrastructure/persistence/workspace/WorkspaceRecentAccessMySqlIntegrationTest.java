@@ -120,11 +120,10 @@ class WorkspaceRecentAccessMySqlIntegrationTest {
     LocalDateTime createdAt = LocalDateTime.of(2026, 8, 5, 9, 0);
     jdbcTemplate.update(
         """
-        insert into workspace (workspace_id, academy_id, name, created_by, created_at, updated_at)
-        values (?, ?, ?, ?, ?, ?)
+        insert into workspace (workspace_id, name, created_by, created_at, updated_at)
+        values (?, ?, ?, ?, ?)
         """,
         workspaceId,
-        1L,
         "workspace-" + workspaceId,
         10L,
         createdAt,

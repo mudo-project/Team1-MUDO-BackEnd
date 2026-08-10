@@ -42,7 +42,7 @@ class RecoverWorkspaceServiceTest {
   @Test
   void recoversWithOriginalNameWhenNoConflict() {
     when(workspaceRepository.findDeletedByIdForUpdate(100L))
-        .thenReturn(Optional.of(Workspace.restore(100L, 1L, "개발팀", 10L, Set.of(10L))));
+        .thenReturn(Optional.of(Workspace.restore(100L, "개발팀", 10L, Set.of(10L))));
     when(workspaceRepository.existsByName("개발팀")).thenReturn(false);
 
     String name = recoverWorkspaceService.recover(new RecoverWorkspaceCommand(10L, 100L));
@@ -54,7 +54,7 @@ class RecoverWorkspaceServiceTest {
   @Test
   void recoversWithTimestampSuffixWhenNameConflicts() {
     when(workspaceRepository.findDeletedByIdForUpdate(100L))
-        .thenReturn(Optional.of(Workspace.restore(100L, 1L, "개발팀", 10L, Set.of(10L))));
+        .thenReturn(Optional.of(Workspace.restore(100L, "개발팀", 10L, Set.of(10L))));
     when(workspaceRepository.existsByName("개발팀")).thenReturn(true);
 
     String name = recoverWorkspaceService.recover(new RecoverWorkspaceCommand(10L, 100L));
@@ -67,7 +67,7 @@ class RecoverWorkspaceServiceTest {
   void truncatesOriginalNameSoSuffixedNameStaysWithin100Characters() {
     String longName = "가".repeat(100);
     when(workspaceRepository.findDeletedByIdForUpdate(100L))
-        .thenReturn(Optional.of(Workspace.restore(100L, 1L, longName, 10L, Set.of(10L))));
+        .thenReturn(Optional.of(Workspace.restore(100L, longName, 10L, Set.of(10L))));
     when(workspaceRepository.existsByName(longName)).thenReturn(true);
 
     String name = recoverWorkspaceService.recover(new RecoverWorkspaceCommand(10L, 100L));
@@ -79,7 +79,7 @@ class RecoverWorkspaceServiceTest {
   @Test
   void rejectsRecoverWhenRequesterWasNotAMemberAtDeletionTime() {
     when(workspaceRepository.findDeletedByIdForUpdate(100L))
-        .thenReturn(Optional.of(Workspace.restore(100L, 1L, "개발팀", 10L, Set.of(10L))));
+        .thenReturn(Optional.of(Workspace.restore(100L, "개발팀", 10L, Set.of(10L))));
 
     assertThatThrownBy(
             () -> recoverWorkspaceService.recover(new RecoverWorkspaceCommand(99L, 100L)))
@@ -113,7 +113,7 @@ class RecoverWorkspaceServiceTest {
   @Test
   void propagatesNameConflictExceptionWhenRecoverWriteRacesWithAnotherRequest() {
     when(workspaceRepository.findDeletedByIdForUpdate(100L))
-        .thenReturn(Optional.of(Workspace.restore(100L, 1L, "개발팀", 10L, Set.of(10L))));
+        .thenReturn(Optional.of(Workspace.restore(100L, "개발팀", 10L, Set.of(10L))));
     when(workspaceRepository.existsByName("개발팀")).thenReturn(false);
     org.mockito.Mockito.doThrow(new WorkspaceNameConflictException())
         .when(workspaceRepository)

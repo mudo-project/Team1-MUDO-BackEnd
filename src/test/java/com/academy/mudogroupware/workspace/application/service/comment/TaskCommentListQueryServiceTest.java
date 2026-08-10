@@ -37,7 +37,6 @@ class TaskCommentListQueryServiceTest {
   private static final long TASK_ID = 101L;
   private static final long MEMBER_ID = 10L;
   private static final long OUTSIDER_ID = 99L;
-  private static final long ACADEMY_ID = 1L;
 
   @Mock private WorkspaceRepository workspaceRepository;
   @Mock private TaskRepository taskRepository;
@@ -158,7 +157,7 @@ class TaskCommentListQueryServiceTest {
 
   private void givenWorkspaceWithMember() {
     Workspace workspace =
-        Workspace.restore(WORKSPACE_ID, ACADEMY_ID, "8월 학사 운영", MEMBER_ID, Set.of(MEMBER_ID));
+        Workspace.restore(WORKSPACE_ID, "8월 학사 운영", MEMBER_ID, Set.of(MEMBER_ID));
     when(workspaceRepository.findById(WORKSPACE_ID)).thenReturn(Optional.of(workspace));
   }
 

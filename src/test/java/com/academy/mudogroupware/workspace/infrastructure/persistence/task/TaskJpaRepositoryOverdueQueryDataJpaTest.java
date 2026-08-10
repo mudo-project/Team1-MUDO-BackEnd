@@ -86,8 +86,8 @@ class TaskJpaRepositoryOverdueQueryDataJpaTest {
 
   private void insertWorkspace(long workspaceId, LocalDateTime deletedAt) {
     jdbcTemplate.update(
-        "insert into workspace (workspace_id, academy_id, name, created_by, created_at, updated_at, deleted_at) "
-            + "values (?, 1, ?, 10, ?, ?, ?)",
+        "insert into workspace (workspace_id, name, created_by, created_at, updated_at, deleted_at) "
+            + "values (?, ?, 10, ?, ?, ?)",
         workspaceId,
         "ws" + workspaceId,
         at(2026, 8, 1),

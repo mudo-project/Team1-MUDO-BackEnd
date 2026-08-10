@@ -133,7 +133,7 @@ class DeleteTaskCommentServiceTest {
     for (long id : memberIds) {
       members.add(id);
     }
-    Workspace workspace = Workspace.restore(WORKSPACE_ID, 1L, "8월 학사 운영", MEMBER_ID, members);
+    Workspace workspace = Workspace.restore(WORKSPACE_ID, "8월 학사 운영", MEMBER_ID, members);
     when(workspaceRepository.findById(WORKSPACE_ID)).thenReturn(Optional.of(workspace));
   }
 

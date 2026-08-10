@@ -35,7 +35,7 @@ class RemoveWorkspaceMemberServiceTest {
   @Test
   void removesOtherMemberWhenRequesterIsCurrentMember() {
     when(workspaceRepository.findByIdForUpdate(100L))
-        .thenReturn(Optional.of(Workspace.restore(100L, 1L, "개발팀", 10L, Set.of(10L, 20L))));
+        .thenReturn(Optional.of(Workspace.restore(100L, "개발팀", 10L, Set.of(10L, 20L))));
 
     removeWorkspaceMemberService.removeMember(new RemoveWorkspaceMemberCommand(10L, 100L, 20L));
 
@@ -45,7 +45,7 @@ class RemoveWorkspaceMemberServiceTest {
   @Test
   void allowsSelfRemovalWhenMoreThanOneMemberRemains() {
     when(workspaceRepository.findByIdForUpdate(100L))
-        .thenReturn(Optional.of(Workspace.restore(100L, 1L, "개발팀", 10L, Set.of(10L, 20L))));
+        .thenReturn(Optional.of(Workspace.restore(100L, "개발팀", 10L, Set.of(10L, 20L))));
 
     removeWorkspaceMemberService.removeMember(new RemoveWorkspaceMemberCommand(20L, 100L, 20L));
 
@@ -55,7 +55,7 @@ class RemoveWorkspaceMemberServiceTest {
   @Test
   void rejectsSelfRemovalWhenRequesterIsTheOnlyRemainingMember() {
     when(workspaceRepository.findByIdForUpdate(100L))
-        .thenReturn(Optional.of(Workspace.restore(100L, 1L, "개발팀", 10L, Set.of(10L))));
+        .thenReturn(Optional.of(Workspace.restore(100L, "개발팀", 10L, Set.of(10L))));
 
     assertThatThrownBy(
             () -> removeWorkspaceMemberService.removeMember(
@@ -69,7 +69,7 @@ class RemoveWorkspaceMemberServiceTest {
   @Test
   void rejectsRemovingUserWhoIsNotAMember() {
     when(workspaceRepository.findByIdForUpdate(100L))
-        .thenReturn(Optional.of(Workspace.restore(100L, 1L, "개발팀", 10L, Set.of(10L, 20L))));
+        .thenReturn(Optional.of(Workspace.restore(100L, "개발팀", 10L, Set.of(10L, 20L))));
 
     assertThatThrownBy(
             () -> removeWorkspaceMemberService.removeMember(
@@ -80,7 +80,7 @@ class RemoveWorkspaceMemberServiceTest {
   @Test
   void rejectsRemovalWhenRequesterIsNotCurrentMember() {
     when(workspaceRepository.findByIdForUpdate(100L))
-        .thenReturn(Optional.of(Workspace.restore(100L, 1L, "개발팀", 10L, Set.of(10L, 20L))));
+        .thenReturn(Optional.of(Workspace.restore(100L, "개발팀", 10L, Set.of(10L, 20L))));
 
     assertThatThrownBy(
             () -> removeWorkspaceMemberService.removeMember(

@@ -122,8 +122,8 @@ class WorkspaceListQueryAdapterDataJpaTest {
   private void insertWorkspace(long workspaceId, String name, LocalDateTime createdAt) {
     jdbcTemplate.update(
         """
-        insert into workspace (workspace_id, academy_id, name, created_by, created_at, updated_at)
-        values (?, 1, ?, ?, ?, ?)
+        insert into workspace (workspace_id, name, created_by, created_at, updated_at)
+        values (?, ?, ?, ?, ?)
         """,
         workspaceId,
         name,
