@@ -1,5 +1,27 @@
 # Messenger Revision
 
+## 2026-08-10 · 메시지 첨부파일 참조 방식을 fileUrl → fileId로 전환
+
+### 배경
+
+`SendMessageRequest.fileUrl`은 프론트가 직접 채워서 보내는 문자열이었는데, 파일을 업로드해서 URL을 발급받는 API 자체가 없어 실제로 채울 수 없는 값이었다. approval/notice 첨부파일 이슈를 처리하던 팀원이 messenger도 같은 구조라고 공유해줬고, 확인 결과 동일한 문제였다. 팀은 이미 공용 `file` 모듈(presigned URL 업로드 → 등록 → `fileId` 발급 → 다운로드 URL 조회)을 만들어 notice(`V1.5.5`)에 먼저 적용한 상태였다.
+
+### 변경 내용 (1단계 — 쓰기 경로)
+
+- `chat_message.file_url` 컬럼을 `file_id`(FK `file_metadata`, nullable)로 교체(`V6.1.5`). 기존 `file_url`에 실제 값이 채워진 메시지는 0건으로 확인해 데이터 손실 없음(IMAGE/FILE 메시지 자체가 없었음).
+- `SendMessageRequest`/`SendMessageCommand`, `ChatMessage` 도메인, `ChatMessageEntity`/`ChatMessageRepositoryImpl`, `SendMessageService`를 `fileId`(Long) 기준으로 변경.
+- `ChatMessage`의 "IMAGE/FILE은 파일 필수" 검증을 `fileId == null` 체크로 변경. 에러코드는 `FILE_URL_REQUIRED` → `FILE_ID_REQUIRED`로 이름만 바꿨고 코드 값(`MESSENGER_400_6`)은 유지.
+- 읽기 경로(`ChatMessageView`/`ChatMessageResponse`/`ChatMessageSocketResponse`/`ChatMessageSentEvent`)의 `fileUrl` 필드도 이름만 `fileId`로 바꿔 컴파일을 맞췄다. 이 시점엔 `fileId`만 응답에 내려가고, 다운로드 URL은 클라이언트가 `GET /api/files/{fileId}/download-url`을 직접 호출해서 받는다(notice와 동일).
+
+### 2단계 검토 중 — 다운로드 URL을 응답에 포함할지
+
+notice/approval은 첨부파일을 한 번에 하나씩 보는 용도라 `fileId`만 반환하고 다운로드 URL 조회를 클라이언트에 맡겼다. 메신저는 메시지 목록을 한 번에 최대 100개씩 조회하고 그 안에 이미지/파일 메시지가 여러 개 섞일 수 있어, 목록 조회 시점에 다운로드 URL을 미리 조회해서 응답에 포함시키는 쪽으로 검토 중이다.
+
+- `GetFileDownloadUrlUseCase.getDownloadUrl(Long fileId)`가 단건 조회만 지원해서, 페이지 안의 여러 `fileId`를 조회하려면 file 모듈에 배치 메서드(`getDownloadUrls(List<Long>)`) 추가가 필요해 보인다. file 모듈 담당자(minseo0327)에게 문의 후 진행 예정.
+
+> 작성일: 2026-08-10
+> 상태: 1단계(쓰기 경로) 구현 완료, 테스트 통과. 2단계(다운로드 URL 포함 여부)는 file 모듈 담당자 확인 대기 중.
+
 ## 2026-08-07 · 업무지시 카드 목록조회 페이지네이션 추가
 
 ### 배경

@@ -6,7 +6,7 @@
 - `PATCH /api/messenger/rooms/{roomId}/messages/{messageId}` edits the sender's own TEXT message and returns `204 No Content`.
 - `DELETE /api/messenger/rooms/{roomId}/messages/{messageId}` soft-deletes the sender's own message and returns `204 No Content`.
 - Message list responses include `editedAt`, `deletedAt`, `deleted`, and `unreadCount`.
-- Deleted messages keep their row for cursor stability, but API responses mask `content`, `fileUrl`, and `fileName`.
+- Deleted messages keep their row for cursor stability, but API responses mask `content`, `fileId`, and `fileName`.
 - Messenger WebSocket uses the existing STOMP endpoint `/ws`.
 - Subscribe to `/topic/messenger/rooms/{roomId}` for `MESSAGE_SENT` and `MESSAGE_READ` events.
 
@@ -41,8 +41,9 @@
 
 - Method: `POST`
 - Endpoint: `/api/messenger/rooms/{roomId}/messages`
-- Body: `messageType`, `content`, `fileUrl`, `fileName`
-- 규칙: TEXT는 `content`, IMAGE/FILE은 `fileUrl`이 필수다. 발신자는 방 멤버여야 한다.
+- Body: `messageType`, `content`, `fileId`, `fileName`
+- 규칙: TEXT는 `content`, IMAGE/FILE은 `fileId`가 필수다. 발신자는 방 멤버여야 한다.
+- `fileId`는 `file` 모듈에 먼저 업로드해서 발급받는다 (`POST /api/files/presigned-url` → S3 업로드 → `POST /api/files`). 응답의 `fileId`로 실제 파일을 열람하려면 `GET /api/files/{fileId}/download-url`을 별도로 호출한다.
 
 ## 메시지 목록 조회
 

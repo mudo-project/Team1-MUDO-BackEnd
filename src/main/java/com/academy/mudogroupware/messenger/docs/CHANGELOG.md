@@ -1,5 +1,13 @@
 # Messenger Changelog
 
+## 2026-08-10 · 메시지 첨부파일 참조 방식을 fileUrl → fileId로 전환
+
+- 메시지 전송 API가 받던 `fileUrl`(프론트가 직접 채우는 문자열)을 `fileId`로 바꿨습니다. 파일을 업로드해서 URL을 발급받는 API가 없어 실제로는 채울 수 없는 값이었던 걸 approval/notice와 동일하게 공용 file 모듈에서 발급하는 `fileId` 참조 방식으로 통일했습니다.
+- 메시지 목록 조회/실시간 알림 응답의 `fileUrl` 필드도 `fileId`로 이름이 바뀌었습니다(breaking change) — 프론트 반영 필요.
+- 실제 파일을 열람하려면 `GET /api/files/{fileId}/download-url`을 별도로 호출해야 합니다.
+
+자세한 내용은 [REVISION.md](REVISION.md)를 참고해주세요.
+
 ## 2026-08-07 · 업무지시 카드 목록조회 페이지네이션 추가
 
 - 업무지시 카드 목록조회가 방의 카드를 전부 반환하던 방식에서, 메시지 목록조회와 동일한 커서 페이지네이션(기본 20개씩)으로 바뀌었습니다.
