@@ -76,7 +76,7 @@ GET /api/workspaces?scope=MINE|ALL
 
 `WorkspaceController`는 `AuthUser`의 `academyId`, `userId`를 사용한다. `scope`를 생략하면 `MINE`으로 바인딩된다.
 
-현재는 권한 모듈 연동 전이므로 Spring Method Security의 `@PreAuthorize`가 `scope=ALL` 요청을 차단한다. `WORKSPACE:READ_ALL` Authority 연동이 완료되면 해당 권한 보유자만 `ALL`을 조회하도록 확장한다.
+Spring Method Security의 `@PreAuthorize`가 `scope=ALL` 요청 시 `WORKSPACE:READ_ALL` Authority를 확인한다(연동 완료, 2026-08-10) — 없으면 UseCase 호출 전에 `403`으로 차단된다.
 
 ### 2. 조회 범위 선택
 

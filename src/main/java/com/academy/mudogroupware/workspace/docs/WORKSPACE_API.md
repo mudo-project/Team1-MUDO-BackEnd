@@ -9,8 +9,7 @@
 ### 인증 및 권한
 
 - `Authorization: Bearer {accessToken}` 헤더가 필요하다.
-- 현재 구현은 인증된 사용자라면 호출할 수 있다.
-- 워크스페이스 생성 권한인 `WORKSPACE:CREATE`은 권한 모듈 연동 후 `@PreAuthorize`로 적용 예정이다.
+- `WORKSPACE:CREATE` Authority가 있어야 호출할 수 있다(`@PreAuthorize`로 적용됨, 2026-08-10).
 
 ### Request Header
 
@@ -62,6 +61,7 @@ HTTP `201 Created`
 | `400 Bad Request` | `COMMON_400_1` | 이름 누락·공백·100자 초과, 참여자 번호가 양수가 아닌 경우 |
 | `400 Bad Request` | `WORKSPACE_400_1` | 생성자 또는 추가 참여자 중 같은 학원의 `ACTIVE` 사용자가 아닌 대상이 포함된 경우 |
 | `401 Unauthorized` | `COMMON_401_1` | Access Token이 없거나 유효하지 않은 경우 |
+| `403 Forbidden` | `COMMON_403_1` | `WORKSPACE:CREATE` Authority가 없는 경우 |
 | `409 Conflict` | `WORKSPACE_409_1` | 같은 학원에 동일한 활성 워크스페이스 이름이 이미 존재하는 경우 |
 | `500 Internal Server Error` | `COMMON_500_1` | 처리되지 않은 서버 오류 |
 
@@ -84,14 +84,13 @@ HTTP `201 Created`
 
 - `Authorization: Bearer {accessToken}` 헤더가 필요하다.
 - `scope=MINE`은 인증된 사용자가 호출할 수 있다.
-- 권한 모듈 연동 전에는 `scope=ALL` 요청을 조회 UseCase 호출 전에 `403 Forbidden`으로 차단한다.
-- 권한 모듈 연동 후에는 `WORKSPACE:READ_ALL` Authority가 있는 사용자만 `scope=ALL`을 호출할 수 있다.
+- `scope=ALL`은 `WORKSPACE:READ_ALL` Authority가 있는 사용자만 호출할 수 있다(없으면 `403 Forbidden`).
 
 ### Query Parameter
 
 | name | type | required | default | description |
 | --- | --- | --- | --- | --- |
-| `scope` | String | false | `MINE` | `MINE`: 사용자가 참여한 워크스페이스, `ALL`: 권한 모듈 연동 후 같은 학원의 전체 활성 워크스페이스 |
+| `scope` | String | false | `MINE` | `MINE`: 사용자가 참여한 워크스페이스, `ALL`: `WORKSPACE:READ_ALL` 권한자에게 같은 학원의 전체 활성 워크스페이스 |
 
 ### Success Response
 
@@ -135,7 +134,7 @@ HTTP `200 OK`
 | --- | --- | --- |
 | `400 Bad Request` | `COMMON_400_1` | `scope`가 `MINE`, `ALL` 중 하나가 아닌 경우 |
 | `401 Unauthorized` | `COMMON_401_1` | Access Token이 없거나 유효하지 않은 경우 |
-| `403 Forbidden` | `COMMON_403_1` | 권한 모듈 연동 전 `scope=ALL`을 요청한 경우. 연동 후에는 `WORKSPACE:READ_ALL` 없이 요청한 경우 |
+| `403 Forbidden` | `COMMON_403_1` | `WORKSPACE:READ_ALL` Authority 없이 `scope=ALL`을 요청한 경우 |
 
 ### Business Rules
 
