@@ -120,7 +120,7 @@ HTTP `200 OK`
 ### 응답 호환성 변경
 
 - 기존 `tokenExpiresAt` 필드는 `refreshTokenExpiresAt`으로 변경됐다.
-- `V5.1.6__align_google_refresh_token_expiration.sql`은 기존에 임의로 저장된 만료일을 모두 `NULL`로 초기화한다. 배포 직후 기존 연결의 `refreshTokenExpiresAt`은 `null`로 응답될 수 있다.
+- `V5.1.9__align_google_refresh_token_expiration.sql`은 기존에 임의로 저장된 만료일을 모두 `NULL`로 초기화한다. 배포 직후 기존 연결의 `refreshTokenExpiresAt`은 `null`로 응답될 수 있다.
 - 이전 `tokenExpiresAt` 별칭은 제공하지 않는다. 프론트는 `refreshTokenExpiresAt`만 사용해야 한다.
 
 ### Error Response
