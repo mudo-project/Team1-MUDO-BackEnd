@@ -18,6 +18,22 @@ public class AcademyApplicationRepositoryImpl implements AcademyApplicationRepos
     private final AcademyApplicationJpaRepository academyApplicationJpaRepository;
 
     @Override
+    public AcademyApplication save(AcademyApplication application) {
+        AcademyApplicationEntity entity = AcademyApplicationEntity.builder()
+                .requestedLoginId(application.getRequestedLoginId())
+                .academyName(application.getAcademyName())
+                .plan(application.getPlan())
+                .representativeName(application.getRepresentativeName())
+                .representativeEmail(application.getRepresentativeEmail())
+                .representativePhone(application.getRepresentativePhone())
+                .status(application.getStatus())
+                .createdAt(application.getCreatedAt())
+                .updatedAt(application.getUpdatedAt())
+                .build();
+        return toDomain(academyApplicationJpaRepository.save(entity));
+    }
+
+    @Override
     public List<AcademyApplication> findAll() {
         return academyApplicationJpaRepository.findAll().stream().map(this::toDomain).toList();
     }
