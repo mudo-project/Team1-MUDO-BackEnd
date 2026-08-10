@@ -36,7 +36,6 @@ class TaskDetailQueryServiceTest {
   private static final long MEMBER_ID = 10L;
   private static final long OUTSIDER_ID = 99L;
   private static final long ACADEMY_ID = 1L;
-  private static final long OTHER_ACADEMY_ID = 2L;
   private static final LocalDateTime CREATED_AT = LocalDateTime.of(2026, 7, 29, 9, 30);
 
   @Mock private WorkspaceRepository workspaceRepository;
@@ -58,7 +57,7 @@ class TaskDetailQueryServiceTest {
     when(taskStatusHistoryRepository.findLatestChangedAt(TASK_ID))
         .thenReturn(Optional.of(LocalDateTime.of(2026, 8, 2, 9, 0)));
 
-    TaskDetail detail = service().getTaskDetail(WORKSPACE_ID, TASK_ID, MEMBER_ID, ACADEMY_ID, false);
+    TaskDetail detail = service().getTaskDetail(WORKSPACE_ID, TASK_ID, MEMBER_ID, false);
 
     assertThat(detail.taskId()).isEqualTo(TASK_ID);
     assertThat(detail.creator()).isEqualTo(new WorkspaceMemberInfo(MEMBER_ID, "윤예진"));
@@ -74,7 +73,7 @@ class TaskDetailQueryServiceTest {
         .thenReturn(List.of(new WorkspaceMemberInfo(MEMBER_ID, "윤예진")));
     when(taskStatusHistoryRepository.findLatestChangedAt(TASK_ID)).thenReturn(Optional.empty());
 
-    TaskDetail detail = service().getTaskDetail(WORKSPACE_ID, TASK_ID, MEMBER_ID, ACADEMY_ID, false);
+    TaskDetail detail = service().getTaskDetail(WORKSPACE_ID, TASK_ID, MEMBER_ID, false);
 
     assertThat(detail.lastStatusChangedAt()).isNull();
   }
@@ -86,7 +85,7 @@ class TaskDetailQueryServiceTest {
     when(workspaceUserInfoPort.findUserInfo(Set.of(MEMBER_ID))).thenReturn(List.of());
     when(taskStatusHistoryRepository.findLatestChangedAt(TASK_ID)).thenReturn(Optional.empty());
 
-    TaskDetail detail = service().getTaskDetail(WORKSPACE_ID, TASK_ID, MEMBER_ID, ACADEMY_ID, false);
+    TaskDetail detail = service().getTaskDetail(WORKSPACE_ID, TASK_ID, MEMBER_ID, false);
 
     assertThat(detail.creator()).isEqualTo(new WorkspaceMemberInfo(MEMBER_ID, "알 수 없음"));
   }
@@ -96,7 +95,7 @@ class TaskDetailQueryServiceTest {
     when(workspaceRepository.findById(WORKSPACE_ID)).thenReturn(Optional.empty());
 
     assertThatThrownBy(
-            () -> service().getTaskDetail(WORKSPACE_ID, TASK_ID, MEMBER_ID, ACADEMY_ID, false))
+            () -> service().getTaskDetail(WORKSPACE_ID, TASK_ID, MEMBER_ID, false))
         .isInstanceOf(WorkspaceNotFoundException.class);
   }
 
@@ -105,7 +104,7 @@ class TaskDetailQueryServiceTest {
     when(workspaceRepository.findById(WORKSPACE_ID)).thenReturn(Optional.empty());
 
     assertThatThrownBy(
-            () -> service().getTaskDetail(WORKSPACE_ID, TASK_ID, OUTSIDER_ID, ACADEMY_ID, true))
+            () -> service().getTaskDetail(WORKSPACE_ID, TASK_ID, OUTSIDER_ID, true))
         .isInstanceOf(WorkspaceNotFoundException.class);
 
     verify(taskRepository, never()).findById(WORKSPACE_ID, TASK_ID);
@@ -116,21 +115,8 @@ class TaskDetailQueryServiceTest {
     givenWorkspaceWithMember();
 
     assertThatThrownBy(
-            () -> service().getTaskDetail(WORKSPACE_ID, TASK_ID, OUTSIDER_ID, ACADEMY_ID, false))
+            () -> service().getTaskDetail(WORKSPACE_ID, TASK_ID, OUTSIDER_ID, false))
         .isInstanceOf(WorkspaceAccessDeniedException.class);
-  }
-
-  @Test
-  void rejectsOtherAcademyEvenWhenCanReadAllIsTrue() {
-    givenWorkspaceWithMember();
-
-    assertThatThrownBy(
-            () ->
-                service()
-                    .getTaskDetail(WORKSPACE_ID, TASK_ID, OUTSIDER_ID, OTHER_ACADEMY_ID, true))
-        .isInstanceOf(WorkspaceAccessDeniedException.class);
-
-    verify(taskRepository, never()).findById(WORKSPACE_ID, TASK_ID);
   }
 
   @Test
@@ -142,7 +128,7 @@ class TaskDetailQueryServiceTest {
     when(taskStatusHistoryRepository.findLatestChangedAt(TASK_ID)).thenReturn(Optional.empty());
 
     TaskDetail detail =
-        service().getTaskDetail(WORKSPACE_ID, TASK_ID, OUTSIDER_ID, ACADEMY_ID, true);
+        service().getTaskDetail(WORKSPACE_ID, TASK_ID, OUTSIDER_ID, true);
 
     assertThat(detail.taskId()).isEqualTo(TASK_ID);
   }
@@ -153,7 +139,7 @@ class TaskDetailQueryServiceTest {
     when(taskRepository.findById(WORKSPACE_ID, TASK_ID)).thenReturn(Optional.empty());
 
     assertThatThrownBy(
-            () -> service().getTaskDetail(WORKSPACE_ID, TASK_ID, MEMBER_ID, ACADEMY_ID, false))
+            () -> service().getTaskDetail(WORKSPACE_ID, TASK_ID, MEMBER_ID, false))
         .isInstanceOf(TaskNotFoundException.class);
   }
 

@@ -85,7 +85,7 @@ public class WorkspaceTaskController {
             .anyMatch(authority -> "WORKSPACE:READ_ALL".equals(authority.getAuthority()));
     TaskDetail detail =
         taskDetailQueryUseCase.getTaskDetail(
-            workspaceId, taskId, authUser.userId(), authUser.academyId(), canReadAll);
+            workspaceId, taskId, authUser.userId(), canReadAll);
     return ResponseEntity.ok(
         GlobalApiResponse.ok(WorkspaceResponseCode.TASK_DETAIL_RETRIEVED, TaskDetailResponse.from(detail)));
   }
