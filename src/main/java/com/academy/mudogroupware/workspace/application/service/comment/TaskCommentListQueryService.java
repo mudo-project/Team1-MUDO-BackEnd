@@ -34,11 +34,11 @@ public class TaskCommentListQueryService implements TaskCommentListQueryUseCase 
 
   @Override
   public PageResult<TaskCommentListItem> getComments(
-      Long workspaceId, Long taskId, Long requesterId, int page, int size) {
+      Long workspaceId, Long taskId, Long requesterId, int page, int size, boolean canReadAll) {
     Workspace workspace =
         workspaceRepository.findById(workspaceId).orElseThrow(WorkspaceNotFoundException::new);
 
-    if (!workspace.getMemberIds().contains(requesterId)) {
+    if (!workspace.getMemberIds().contains(requesterId) && !canReadAll) {
       throw new WorkspaceAccessDeniedException();
     }
 

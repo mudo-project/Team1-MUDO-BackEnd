@@ -28,6 +28,7 @@ import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -88,12 +89,17 @@ public class WorkspaceTaskCommentController {
   @GetMapping
   public ResponseEntity<GlobalApiResponse<SliceResponse<TaskCommentListItemResponse>>> getComments(
       @AuthenticationPrincipal AuthUser authUser,
+      Authentication authentication,
       @PathVariable Long workspaceId,
       @PathVariable Long taskId,
       @RequestParam(defaultValue = "0") @Min(0) int page,
       @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
+    boolean canReadAll =
+        authentication.getAuthorities().stream()
+            .anyMatch(authority -> "WORKSPACE:READ_ALL".equals(authority.getAuthority()));
     PageResult<TaskCommentListItem> comments =
-        taskCommentListQueryUseCase.getComments(workspaceId, taskId, authUser.userId(), page, size);
+        taskCommentListQueryUseCase.getComments(
+            workspaceId, taskId, authUser.userId(), page, size, canReadAll);
     SliceResponse<TaskCommentListItemResponse> response =
         SliceResponse.from(comments, TaskCommentListItemResponse::from);
     return ResponseEntity.ok(

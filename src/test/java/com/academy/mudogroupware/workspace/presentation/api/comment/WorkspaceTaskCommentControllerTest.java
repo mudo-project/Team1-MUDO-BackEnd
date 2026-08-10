@@ -122,7 +122,7 @@ class WorkspaceTaskCommentControllerTest {
         new TaskCommentListItem(
             1L, "수학A반 완료", new WorkspaceMemberInfo(10L, "윤예진"), true,
             LocalDateTime.of(2026, 8, 1, 16, 0));
-    when(taskCommentListQueryUseCase.getComments(1L, 101L, 10L, 0, 20))
+    when(taskCommentListQueryUseCase.getComments(1L, 101L, 10L, 0, 20, false))
         .thenReturn(PageResult.of(List.of(item), 0, 20, false));
 
     mockMvc
@@ -171,7 +171,7 @@ class WorkspaceTaskCommentControllerTest {
 
   @Test
   void getCommentsUsesRequestedPageAndSize() throws Exception {
-    when(taskCommentListQueryUseCase.getComments(1L, 101L, 10L, 2, 5))
+    when(taskCommentListQueryUseCase.getComments(1L, 101L, 10L, 2, 5, false))
         .thenReturn(PageResult.of(List.of(), 2, 5, false));
 
     mockMvc
@@ -181,12 +181,12 @@ class WorkspaceTaskCommentControllerTest {
         .andExpect(jsonPath("$.data.page").value(2))
         .andExpect(jsonPath("$.data.size").value(5));
 
-    verify(taskCommentListQueryUseCase).getComments(1L, 101L, 10L, 2, 5);
+    verify(taskCommentListQueryUseCase).getComments(1L, 101L, 10L, 2, 5, false);
   }
 
   @Test
   void getCommentsPropagatesTaskNotFound() throws Exception {
-    when(taskCommentListQueryUseCase.getComments(1L, 101L, 10L, 0, 20))
+    when(taskCommentListQueryUseCase.getComments(1L, 101L, 10L, 0, 20, false))
         .thenThrow(new TaskNotFoundException());
 
     mockMvc
@@ -197,13 +197,27 @@ class WorkspaceTaskCommentControllerTest {
 
   @Test
   void getCommentsPropagatesAccessDenied() throws Exception {
-    when(taskCommentListQueryUseCase.getComments(1L, 101L, 10L, 0, 20))
+    when(taskCommentListQueryUseCase.getComments(1L, 101L, 10L, 0, 20, false))
         .thenThrow(new WorkspaceAccessDeniedException());
 
     mockMvc
         .perform(get("/api/workspaces/1/tasks/101/comments").with(authentication(auth())))
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.code").value("WORKSPACE_403_1"));
+  }
+
+  @Test
+  void getCommentsForwardsReadAllAuthority() throws Exception {
+    when(taskCommentListQueryUseCase.getComments(1L, 101L, 10L, 0, 20, true))
+        .thenReturn(PageResult.of(List.of(), 0, 20, false));
+
+    mockMvc
+        .perform(
+            get("/api/workspaces/1/tasks/101/comments")
+                .with(authentication(auth("WORKSPACE:READ_ALL"))))
+        .andExpect(status().isOk());
+
+    verify(taskCommentListQueryUseCase).getComments(1L, 101L, 10L, 0, 20, true);
   }
 
   @Test
@@ -288,7 +302,12 @@ class WorkspaceTaskCommentControllerTest {
         .toggleComplete(new ToggleTaskCommentCompleteCommand(1L, 101L, 501L, 10L));
   }
 
-  private Authentication auth() {
-    return new UsernamePasswordAuthenticationToken(AUTH_USER, null, java.util.List.of());
+  private Authentication auth(String... authorities) {
+    return new UsernamePasswordAuthenticationToken(
+        AUTH_USER,
+        null,
+        java.util.List.of(authorities).stream()
+            .map(org.springframework.security.core.authority.SimpleGrantedAuthority::new)
+            .toList());
   }
 }

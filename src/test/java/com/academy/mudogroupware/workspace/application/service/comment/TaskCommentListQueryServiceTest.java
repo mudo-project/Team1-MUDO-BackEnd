@@ -61,7 +61,7 @@ class TaskCommentListQueryServiceTest {
         .thenReturn(List.of(new WorkspaceMemberInfo(MEMBER_ID, "윤예진")));
 
     PageResult<TaskCommentListItem> result =
-        service().getComments(WORKSPACE_ID, TASK_ID, MEMBER_ID, 0, 20);
+        service().getComments(WORKSPACE_ID, TASK_ID, MEMBER_ID, 0, 20, false);
 
     assertThat(result.content()).hasSize(1);
     TaskCommentListItem item = result.content().get(0);
@@ -85,7 +85,7 @@ class TaskCommentListQueryServiceTest {
     when(workspaceUserInfoPort.findUserInfo(Set.of(MEMBER_ID))).thenReturn(List.of());
 
     PageResult<TaskCommentListItem> result =
-        service().getComments(WORKSPACE_ID, TASK_ID, MEMBER_ID, 0, 20);
+        service().getComments(WORKSPACE_ID, TASK_ID, MEMBER_ID, 0, 20, false);
 
     assertThat(result.content().get(0).author()).isEqualTo(new WorkspaceMemberInfo(MEMBER_ID, "알 수 없음"));
   }
@@ -94,7 +94,7 @@ class TaskCommentListQueryServiceTest {
   void rejectsMissingWorkspace() {
     when(workspaceRepository.findById(WORKSPACE_ID)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> service().getComments(WORKSPACE_ID, TASK_ID, MEMBER_ID, 0, 20))
+    assertThatThrownBy(() -> service().getComments(WORKSPACE_ID, TASK_ID, MEMBER_ID, 0, 20, false))
         .isInstanceOf(WorkspaceNotFoundException.class);
   }
 
@@ -102,8 +102,21 @@ class TaskCommentListQueryServiceTest {
   void rejectsNonMember() {
     givenWorkspaceWithMember();
 
-    assertThatThrownBy(() -> service().getComments(WORKSPACE_ID, TASK_ID, OUTSIDER_ID, 0, 20))
+    assertThatThrownBy(() -> service().getComments(WORKSPACE_ID, TASK_ID, OUTSIDER_ID, 0, 20, false))
         .isInstanceOf(WorkspaceAccessDeniedException.class);
+  }
+
+  @Test
+  void allowsNonMemberWhenCanReadAllIsTrue() {
+    givenWorkspaceWithMember();
+    givenTask();
+    when(taskCommentRepository.findAllByTaskId(TASK_ID, 0, 20))
+        .thenReturn(PageResult.of(List.of(), 0, 20, false));
+
+    PageResult<TaskCommentListItem> result =
+        service().getComments(WORKSPACE_ID, TASK_ID, OUTSIDER_ID, 0, 20, true);
+
+    assertThat(result.content()).isEmpty();
   }
 
   @Test
@@ -111,7 +124,7 @@ class TaskCommentListQueryServiceTest {
     givenWorkspaceWithMember();
     when(taskRepository.findById(WORKSPACE_ID, TASK_ID)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> service().getComments(WORKSPACE_ID, TASK_ID, MEMBER_ID, 0, 20))
+    assertThatThrownBy(() -> service().getComments(WORKSPACE_ID, TASK_ID, MEMBER_ID, 0, 20, false))
         .isInstanceOf(TaskNotFoundException.class);
   }
 
