@@ -41,7 +41,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-// TODO: 권한 모듈의 WORKSPACE:CREATE 권한이 준비되면 @PreAuthorize를 추가한다.
 @Tag(name = "업무 댓글", description = "업무 댓글 및 멘션 CRUD API")
 @RestController
 @RequestMapping("/api/workspaces/{workspaceId}/tasks/{taskId}/comments")

@@ -34,7 +34,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-// TODO: 권한 모듈의 WORKSPACE:CREATE 권한이 준비되면 @PreAuthorize를 추가한다.
 @Tag(name = "업무", description = "워크스페이스 업무 생성 및 관리 API")
 @RestController
 @RequestMapping("/api/workspaces/{workspaceId}/tasks")
