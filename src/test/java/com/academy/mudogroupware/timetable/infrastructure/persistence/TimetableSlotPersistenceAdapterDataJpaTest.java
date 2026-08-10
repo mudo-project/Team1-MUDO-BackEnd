@@ -36,6 +36,7 @@ class TimetableSlotPersistenceAdapterDataJpaTest {
 
         assertThat(found).isPresent();
         assertThat(found.get().getClassroomCode()).isEqualTo("601");
+        assertThat(found.get().getGrade()).isEqualTo(Grade.HIGH_3);
     }
 
     @Test

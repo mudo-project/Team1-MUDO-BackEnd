@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.timetable.application.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -72,6 +73,7 @@ class UpdateTimetableSlotServiceTest {
         service.updateSlot(command);
 
         verify(timetableSlotRepository).save(slot);
+        assertThat(slot.getGrade()).isEqualTo(Grade.HIGH_2);
     }
 
     @Test
