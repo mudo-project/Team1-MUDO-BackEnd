@@ -11,8 +11,8 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 
+import com.academy.mudogroupware.global.infrastructure.websocket.WebSocketEventPublisher;
 import com.academy.mudogroupware.messenger.domain.event.ChatMessageSentEvent;
 import com.academy.mudogroupware.messenger.domain.event.ChatRoomReadEvent;
 import com.academy.mudogroupware.messenger.domain.event.MessageDeletedEvent;
@@ -25,8 +25,8 @@ import com.academy.mudogroupware.messenger.domain.model.MessageType;
 
 class MessengerWebSocketNotifierTest {
 
-    private final SimpMessagingTemplate messagingTemplate = mock(SimpMessagingTemplate.class);
-    private final MessengerWebSocketNotifier notifier = new MessengerWebSocketNotifier(messagingTemplate);
+    private final WebSocketEventPublisher eventPublisher = mock(WebSocketEventPublisher.class);
+    private final MessengerWebSocketNotifier notifier = new MessengerWebSocketNotifier(eventPublisher);
 
     @Test
     void sendsMessageEventToRoomTopic() {
@@ -37,7 +37,7 @@ class MessengerWebSocketNotifierTest {
         notifier.handle(event);
 
         ArgumentCaptor<ChatMessageSocketResponse> captor = ArgumentCaptor.forClass(ChatMessageSocketResponse.class);
-        verify(messagingTemplate).convertAndSend(eq("/topic/messenger/rooms/1"), captor.capture());
+        verify(eventPublisher).publish(eq("/topic/messenger/rooms/1"), captor.capture());
         assertThat(captor.getValue().messageId()).isEqualTo(5L);
         assertThat(captor.getValue().unreadCount()).isEqualTo(3L);
     }
@@ -51,7 +51,7 @@ class MessengerWebSocketNotifierTest {
 
         ArgumentCaptor<ChatRoomReadSocketResponse> captor =
                 ArgumentCaptor.forClass(ChatRoomReadSocketResponse.class);
-        verify(messagingTemplate).convertAndSend(eq("/topic/messenger/rooms/1"), captor.capture());
+        verify(eventPublisher).publish(eq("/topic/messenger/rooms/1"), captor.capture());
         assertThat(captor.getValue().eventType()).isEqualTo("MESSAGE_READ");
         assertThat(captor.getValue().readerUserId()).isEqualTo(2L);
         assertThat(captor.getValue().readAt()).isEqualTo(readAt);
@@ -67,7 +67,7 @@ class MessengerWebSocketNotifierTest {
 
         ArgumentCaptor<TaskCardCreatedSocketResponse> captor =
                 ArgumentCaptor.forClass(TaskCardCreatedSocketResponse.class);
-        verify(messagingTemplate).convertAndSend(eq("/topic/messenger/rooms/1"), captor.capture());
+        verify(eventPublisher).publish(eq("/topic/messenger/rooms/1"), captor.capture());
         assertThat(captor.getValue().eventType()).isEqualTo("TASK_CARD_CREATED");
         assertThat(captor.getValue().cardId()).isEqualTo(7L);
         assertThat(captor.getValue().assigneeIds()).containsExactly(3L, 4L);
@@ -82,7 +82,7 @@ class MessengerWebSocketNotifierTest {
 
         ArgumentCaptor<TaskCardCompletedSocketResponse> captor =
                 ArgumentCaptor.forClass(TaskCardCompletedSocketResponse.class);
-        verify(messagingTemplate).convertAndSend(eq("/topic/messenger/rooms/1"), captor.capture());
+        verify(eventPublisher).publish(eq("/topic/messenger/rooms/1"), captor.capture());
         assertThat(captor.getValue().eventType()).isEqualTo("TASK_CARD_COMPLETED");
         assertThat(captor.getValue().completedUserId()).isEqualTo(3L);
         assertThat(captor.getValue().completedCount()).isEqualTo(1L);
@@ -99,7 +99,7 @@ class MessengerWebSocketNotifierTest {
 
         ArgumentCaptor<TaskCardCompletedSocketResponse> captor =
                 ArgumentCaptor.forClass(TaskCardCompletedSocketResponse.class);
-        verify(messagingTemplate).convertAndSend(eq("/topic/messenger/rooms/1"), captor.capture());
+        verify(eventPublisher).publish(eq("/topic/messenger/rooms/1"), captor.capture());
         assertThat(captor.getValue().completedCount()).isEqualTo(2L);
         assertThat(captor.getValue().assigneeCount()).isEqualTo(2);
         assertThat(captor.getValue().fullyCompleted()).isTrue();
@@ -114,7 +114,7 @@ class MessengerWebSocketNotifierTest {
 
         ArgumentCaptor<MessageEditedSocketResponse> captor =
                 ArgumentCaptor.forClass(MessageEditedSocketResponse.class);
-        verify(messagingTemplate).convertAndSend(eq("/topic/messenger/rooms/1"), captor.capture());
+        verify(eventPublisher).publish(eq("/topic/messenger/rooms/1"), captor.capture());
         assertThat(captor.getValue().eventType()).isEqualTo("MESSAGE_EDITED");
         assertThat(captor.getValue().messageId()).isEqualTo(5L);
         assertThat(captor.getValue().content()).isEqualTo("after");
@@ -129,7 +129,7 @@ class MessengerWebSocketNotifierTest {
 
         ArgumentCaptor<MessageDeletedSocketResponse> captor =
                 ArgumentCaptor.forClass(MessageDeletedSocketResponse.class);
-        verify(messagingTemplate).convertAndSend(eq("/topic/messenger/rooms/1"), captor.capture());
+        verify(eventPublisher).publish(eq("/topic/messenger/rooms/1"), captor.capture());
         assertThat(captor.getValue().eventType()).isEqualTo("MESSAGE_DELETED");
         assertThat(captor.getValue().messageId()).isEqualTo(5L);
         assertThat(captor.getValue().deleterUserId()).isEqualTo(2L);
@@ -144,7 +144,7 @@ class MessengerWebSocketNotifierTest {
 
         ArgumentCaptor<TaskCardUpdatedSocketResponse> captor =
                 ArgumentCaptor.forClass(TaskCardUpdatedSocketResponse.class);
-        verify(messagingTemplate).convertAndSend(eq("/topic/messenger/rooms/1"), captor.capture());
+        verify(eventPublisher).publish(eq("/topic/messenger/rooms/1"), captor.capture());
         assertThat(captor.getValue().eventType()).isEqualTo("TASK_CARD_UPDATED");
         assertThat(captor.getValue().cardId()).isEqualTo(7L);
         assertThat(captor.getValue().content()).isEqualTo("new content");
@@ -160,7 +160,7 @@ class MessengerWebSocketNotifierTest {
 
         ArgumentCaptor<TaskCardDeletedSocketResponse> captor =
                 ArgumentCaptor.forClass(TaskCardDeletedSocketResponse.class);
-        verify(messagingTemplate).convertAndSend(eq("/topic/messenger/rooms/1"), captor.capture());
+        verify(eventPublisher).publish(eq("/topic/messenger/rooms/1"), captor.capture());
         assertThat(captor.getValue().eventType()).isEqualTo("TASK_CARD_DELETED");
         assertThat(captor.getValue().cardId()).isEqualTo(7L);
         assertThat(captor.getValue().deletedAt()).isEqualTo(deletedAt);

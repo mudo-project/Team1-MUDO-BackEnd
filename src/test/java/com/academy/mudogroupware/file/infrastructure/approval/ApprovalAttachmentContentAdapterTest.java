@@ -24,7 +24,7 @@ class ApprovalAttachmentContentAdapterTest {
 
     @Test
     void loadsUtf8TextContentByFileId() {
-        FileMetadataEntity metadata = FileMetadataEntity.restore(10L, "approval/10.txt", "text/plain");
+        FileMetadataEntity metadata = FileMetadataEntity.restore(10L, 1L, "approval/10.txt", "text/plain");
         when(fileMetadataJpaRepository.findById(10L)).thenReturn(Optional.of(metadata));
         when(fileStoragePort.download("approval/10.txt")).thenReturn("real attachment text".getBytes(UTF_8));
 
@@ -43,7 +43,7 @@ class ApprovalAttachmentContentAdapterTest {
 
     @Test
     void throwsWhenContentTypeIsNotText() {
-        FileMetadataEntity metadata = FileMetadataEntity.restore(10L, "approval/10.pdf", "application/pdf");
+        FileMetadataEntity metadata = FileMetadataEntity.restore(10L, 1L, "approval/10.pdf", "application/pdf");
         when(fileMetadataJpaRepository.findById(10L)).thenReturn(Optional.of(metadata));
 
         assertThatThrownBy(() -> adapter.loadContent(10L))

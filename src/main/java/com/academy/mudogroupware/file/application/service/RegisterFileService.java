@@ -19,7 +19,8 @@ public class RegisterFileService implements RegisterFileUseCase {
 
     @Override
     public Long register(RegisterFileCommand command) {
-        FileMetadataEntity entity = FileMetadataEntity.create(command.objectKey(), command.contentType());
+        FileMetadataEntity entity = FileMetadataEntity.create(command.academyId(), command.objectKey(),
+                command.contentType());
         return fileMetadataJpaRepository.save(entity).getId();
     }
 }

@@ -5,7 +5,7 @@ S3 기반 파일 저장소 접근, 업로드/등록, 파일 메타데이터 조�
 ## 책임과 범위
 
 - `FileStoragePort`: objectKey 기준 presigned URL 생성(업로드/다운로드), 다운로드, 삭제.
-- `file_metadata`: `fileId -> objectKey/contentType` 저장 및 조회용 메타데이터.
+- `file_metadata`: `fileId -> academyId/objectKey/contentType` 저장 및 조회용 메타데이터. `academyId`는 등록 시 요청자 학원으로 저장되며, 다운로드 URL 조회는 이 값이 일치하는 파일만 허용한다(`V1.5.6`).
 - `POST /api/files/presigned-url`, `POST /api/files`, `GET /api/files/{fileId}/download-url`: 업로드 → 등록 → 다운로드 흐름을 제공하는 공용 API. 자세한 내용은 [API.md](API.md) 참고.
 - `ApprovalAttachmentContentAdapter`: approval의 `AttachmentContentPort`를 구현한다.
 
@@ -24,7 +24,7 @@ S3 기반 파일 저장소 접근, 업로드/등록, 파일 메타데이터 조�
 
 - 3번 등록 시점에 실제 S3 객체 존재 여부를 검증하지 않는다. 잘못된 objectKey로 등록하면 이후 다운로드/요약 시점에 실패로 드러난다.
 - objectKey는 `uploads/{academyId}/{UUID}-{파일명}` 형태로 서버가 생성한다. 클라이언트가 임의 경로를 지정할 수 없다.
-- `file_metadata`에는 `academyId`가 없어 파일 단위 학원 소속 검증은 하지 않는다. 각 도메인(결재 문서, 공지 등) 접근 권한 검증에 의존한다.
+- 다운로드 URL 조회(단건/배치)는 `academyId`가 일치하는 파일만 대상으로 한다. 다른 학원 소속이거나 존재하지 않는 fileId는 동일하게 "찾을 수 없음"으로 처리한다(존재 여부 노출 방지).
 
 ## approval 연동
 

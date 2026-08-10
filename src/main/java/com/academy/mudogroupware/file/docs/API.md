@@ -1,6 +1,6 @@
 # file API
 
-기준일: 2026-08-09
+기준일: 2026-08-10
 
 > 이 문서는 Spring Boot Controller, Response DTO, ErrorCode 구현 기준으로 작성한다.
 > 모든 API는 `Authorization: Bearer {AccessToken}` 헤더가 필요하다(로그인만 하면 되고, 특정 권한 코드는 요구하지 않는다).
@@ -10,8 +10,8 @@
 1. `POST /api/files/presigned-url`로 업로드용 URL을 받는다.
 2. 받은 `uploadUrl`로 클라이언트가 S3에 파일을 직접 `PUT` 업로드한다 (요청 헤더 `Content-Type`을 1번에서 보낸 `contentType`과 동일하게 지정해야 한다).
 3. 업로드가 끝나면 `POST /api/files`로 메타데이터를 등록하고 `fileId`를 받는다.
-4. 이 `fileId`를 결재 신청(`fileIds`), 공지 첨부(`fileId`) 등 다른 기능에서 참조한다.
-5. 파일을 다시 열람/다운로드해야 하면 `GET /api/files/{fileId}/download-url`을 호출한다.
+4. 이 `fileId`를 결재 신청(`fileIds`), 공지 첨부(`fileId`), 메시지 첨부(`fileId`) 등 다른 기능에서 참조한다.
+5. 파일을 다시 열람/다운로드해야 하면 `GET /api/files/{fileId}/download-url`을 호출한다. **여러 개를 한 화면에 표시해야 하면(메시지 목록 등) fileId 개수만큼 반복 호출하지 말고 `POST /api/files/download-urls`로 한 번에 조회한다.**
 
 ---
 
@@ -174,12 +174,66 @@ Response Body
 | **HTTP 상태** | **code** | **message** | **설명** |
 | --- | --- | --- | --- |
 | `401 Unauthorized` | `COMMON_401_1` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않은 경우 |
-| `404 Not Found` | `FILE_404_1` | 파일을 찾을 수 없습니다. | `fileId`에 해당하는 파일이 없는 경우 |
+| `404 Not Found` | `FILE_404_1` | 파일을 찾을 수 없습니다. | `fileId`에 해당하는 파일이 없거나, 요청자와 다른 학원 소속인 경우(존재 여부를 노출하지 않기 위해 동일하게 404 처리) |
+
+---
+
+## **4. 다운로드용 URL 일괄 조회**
+
+`POST /api/files/download-urls`
+
+메시지 목록처럼 한 화면에 여러 첨부파일을 표시해야 할 때, fileId 개수만큼 반복 호출하지 않도록 한 번에 조회한다.
+
+# **[request]**
+
+Request Header
+
+| **name** | **description** |
+| --- | --- |
+| `Authorization` | `Bearer {AccessToken}` 형식의 사용자 인증 토큰입니다. |
+
+Request Body
+
+```json
+{
+  "fileIds": [1, 2, 3]
+}
+```
+
+| **name** | **type** | **required** | **설명** |
+| --- | --- | --- | --- |
+| `fileIds` | `List<Long>` | `true` | 다운로드 URL을 조회할 파일 ID 목록. 비어 있으면 안 되고 **최대 100개**. 각 원소는 null이 아닌 양수여야 함. |
+
+# **[response]**
+
+### **성공코드**
+
+| **HTTP 상태** | **설명** |
+| --- | --- |
+| `200 OK` | 다운로드용 URL 일괄 조회 성공 |
+
+Response Body
+
+```json
+{"status":200,"code":"FILE_200_3","message":"다운로드용 URL 일괄 조회에 성공했습니다.","data":{"downloadUrls":{"1":"https://...","2":"https://..."}}}
+```
+
+### **Response Field**
+
+| **name** | **설명** |
+| --- | --- |
+| `data.downloadUrls` | `fileId -> downloadUrl` 맵. **요청한 fileIds 중 존재하지 않거나 다른 학원 소속인 ID는 이 맵에서 조용히 빠진다** (전체 요청이 실패하지 않음. 예: `[1,2,999]` 요청했는데 999가 없으면 `{1:..., 2:...}`만 응답). |
+
+### **실패 코드**
+
+| **HTTP 상태** | **code** | **message** | **설명** |
+| --- | --- | --- | --- |
+| `400 Bad Request` | `COMMON_400_1` | 입력값이 올바르지 않습니다. | `fileIds`가 비어 있거나, 100개를 초과하거나, null/0 이하 원소가 포함된 경우 |
+| `401 Unauthorized` | `COMMON_401_1` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않은 경우 |
 
 ---
 
 ## 알려진 제약
 
-- 파일 단위 학원(academy) 소속 검증이 없다. `file_metadata`에 `academy_id`가 없어서, fileId만 알면 다른 학원 사용자도 다운로드 URL을 받을 수 있다. 각 기능(결재 문서, 공지 등)의 접근 권한 검증에 의존한다.
 - 2번(등록) API는 S3에 실제로 업로드됐는지 확인하지 않는다.
 - presigned PUT URL 자체에는 업로드 용량 제한이 없다.
