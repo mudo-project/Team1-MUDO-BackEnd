@@ -1,16 +1,16 @@
-package com.academy.mudogroupware.rollcall.infrastructure.external.aligo;
+package com.academy.mudogroupware.rollcall.infrastructure.external.solapi;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestClient;
 
 @Configuration
-public class AligoConfig {
+public class SolapiConfig {
 
     @Bean
-    RestClient aligoRestClient() {
+    RestClient solapiRestClient() {
         return RestClient.builder()
-                .baseUrl("https://apis.aligo.in")
+                .baseUrl("https://api.solapi.com")
                 .build();
     }
 }

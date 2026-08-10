@@ -1,6 +1,6 @@
 # rollcall 모듈
 
-> 강의별 출결부와 출결 상태별 문자 템플릿 관리 백엔드 구현 기준 문서다. 실제 SMS 발송은 알리고(Aligo) API로 구현되어 있다(2026-08-10).
+> 강의별 출결부와 출결 상태별 문자 템플릿 관리 백엔드 구현 기준 문서다. 실제 SMS 발송은 솔라피(SOLAPI) API로 구현되어 있다(2026-08-10).
 
 ## 책임과 범위
 
@@ -9,7 +9,7 @@
 - **MessageTemplate(문자 템플릿)**: 출결 상태별 학부모 안내 문자 템플릿이다. 학원 단위로 상태 1개당 1개만 만들 수 있다.
 - **출결부 조회**: lecture/student 연동 Port로 강의와 수강생을 가져와 출결 기록과 합쳐 보여준다.
 - **문자 발송 대상 후보 조회**: 출결 상태에 맞는 템플릿이 있는 학생을 `eligible=true`로 표시한다.
-- **문자 발송**: 선택한 학생들에게 알리고(Aligo) API로 실제 SMS를 발송하고, 학생별 성공/실패를 반환한다.
+- **문자 발송**: 선택한 학생들에게 솔라피(SOLAPI) API로 실제 SMS를 발송하고, 학생별 성공/실패를 반환한다.
 
 ## 담당자
 
@@ -40,9 +40,10 @@
 
 ### SMS 외부 공급자
 
-`SmsSenderPort`(application/port)로 추상화하고, `AligoSmsAdapter`(infrastructure/external/aligo)가 알리고(Aligo) REST API(`POST https://apis.aligo.in/send/`)로 구현한다. 학생 1명당 API 호출 1건이며(배치 발송 아님), 호출 실패는 예외 대신 `SmsSendResult.failed(reason)`으로 반환해 다른 학생 발송에 영향을 주지 않는다.
+`SmsSenderPort`(application/port)로 추상화하고, `SolapiSmsAdapter`(infrastructure/external/solapi)가 솔라피(SOLAPI) REST API(`POST https://api.solapi.com/messages/v4/send`, HMAC-SHA256 인증)로 구현한다. 학생 1명당 API 호출 1건이며(배치 발송 아님), 호출 실패는 예외 대신 `SmsSendResult.failed(reason)`으로 반환해 다른 학생 발송에 영향을 주지 않는다.
 
-- 발신번호(`ALIGO_SENDER_NUMBER`)는 알리고 사이트에 사전 등록이 필요하다.
+- 발신번호(`SOLAPI_SENDER_NUMBER`)는 솔라피 사이트에 사전 등록이 필요하다.
+- 개인 계정은 사업자 인증 없이 바로 API Key를 발급받을 수 있지만 일일 발송량이 50~500건으로 제한된다(사업자 계정은 1,000건 이상).
 - 발송 이력 저장, 실패 자동 재시도, 과금 정책은 아직 없다(향후 필요해지면 추가).
 
 ## 발행·소비하는 Event

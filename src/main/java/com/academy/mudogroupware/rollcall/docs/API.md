@@ -187,7 +187,7 @@ Content-Disposition: attachment; filename="attendance_1_2026-08-06.xlsx"
 
 - 요청한 `studentIds` 각각에 대해 발송을 시도하고, 학생별 성공/실패를 반환한다(일부 실패해도 전체 요청은 200으로 응답).
 - 발송 대상 조회(4번 API)에서 `eligible=false`였던 학생은 실제 발송 없이 실패로 처리된다.
-- 외부 SMS 공급자는 [알리고(Aligo)](https://smartsms.aligo.in/)를 사용한다. 학생 1명당 API 호출 1건(배치 발송 아님).
+- 외부 SMS 공급자는 [솔라피(SOLAPI)](https://solapi.com/)를 사용한다. 학생 1명당 API 호출 1건(배치 발송 아님).
 
 ---
 
@@ -303,6 +303,6 @@ Content-Disposition: attachment; filename="attendance_1_2026-08-06.xlsx"
 
 ## SMS 발송 상태
 
-알리고(Aligo) REST API로 실제 발송을 구현했다(2026-08-10). 발송 이력 저장, 실패 자동 재시도, 과금 정책은 아직 없다 — 요청/응답으로만 성공·실패를 즉시 확인한다.
+솔라피(SOLAPI) REST API로 실제 발송을 구현했다(2026-08-10). 발송 이력 저장, 실패 자동 재시도, 과금 정책은 아직 없다 — 요청/응답으로만 성공·실패를 즉시 확인한다.
 
-필요한 환경변수: `ALIGO_API_KEY`, `ALIGO_USER_ID`, `ALIGO_SENDER_NUMBER`(사전에 알리고에 등록된 발신번호), `ALIGO_TEST_MODE`(기본값 `false`; `true`면 실제 과금·발송 없이 API 연동만 확인).
+필요한 환경변수: `SOLAPI_API_KEY`, `SOLAPI_API_SECRET`, `SOLAPI_SENDER_NUMBER`(사전에 솔라피에 등록된 발신번호).
