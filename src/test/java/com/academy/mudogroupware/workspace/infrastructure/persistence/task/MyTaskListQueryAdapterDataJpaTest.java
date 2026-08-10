@@ -44,6 +44,19 @@ class MyTaskListQueryAdapterDataJpaTest {
   }
 
   @Test
+  void findMineExcludesTasksFromSoftDeletedWorkspacesEvenWhenStillAMember() {
+    insertWorkspace(WORKSPACE_1, "삭제될 워크스페이스");
+    insertMember(WORKSPACE_1, REQUESTER_ID);
+    insertTask(101L, WORKSPACE_1, "삭제된 워크스페이스 업무", TaskStatus.WAITING, LocalDate.of(2026, 8, 15));
+    markWorkspaceDeleted(WORKSPACE_1);
+
+    PageResult<MyTaskListItem> result =
+        myTaskListQueryAdapter.findMine(REQUESTER_ID, defaultStatuses(), null, 0, 20);
+
+    assertThat(result.content()).isEmpty();
+  }
+
+  @Test
   void findMineExcludesCompletedTasksEvenWhenStatusFilterIsNull() {
     insertWorkspace(WORKSPACE_1, "내 워크스페이스");
     insertMember(WORKSPACE_1, REQUESTER_ID);
@@ -137,6 +150,11 @@ class MyTaskListQueryAdapterDataJpaTest {
         REQUESTER_ID,
         at(2026, 8, 1),
         at(2026, 8, 1));
+  }
+
+  private void markWorkspaceDeleted(long workspaceId) {
+    jdbcTemplate.update(
+        "update workspace set deleted_at = ? where workspace_id = ?", at(2026, 8, 2), workspaceId);
   }
 
   private void insertMember(long workspaceId, long userId) {

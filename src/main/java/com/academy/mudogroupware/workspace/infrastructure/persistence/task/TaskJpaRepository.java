@@ -139,7 +139,8 @@ public interface TaskJpaRepository extends JpaRepository<TaskJpaEntity, Long> {
           coalesce(t.dueAt, cast(t.scheduledFor as date)) as dueAt,
           t.status as status
       from TaskJpaEntity t
-      where exists (
+      where t.workspace.deletedAt is null
+          and exists (
               select 1
               from WorkspaceMemberJpaEntity wm
               where wm.workspace = t.workspace and wm.id.userId = :userId)
