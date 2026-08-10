@@ -19,7 +19,7 @@ class GoogleOAuthStateSignerTest {
     @Test
     void verifyRestoresOriginalClaimsAfterSign() {
         GoogleOAuthStateSigner signer = new GoogleOAuthStateSigner(fixedClock(), "test-secret");
-        GoogleOAuthStateClaims claims = new GoogleOAuthStateClaims(1L, 7L, true);
+        GoogleOAuthStateClaims claims = new GoogleOAuthStateClaims(7L,true);
 
         String state = signer.sign(claims);
         GoogleOAuthStateClaims restored = signer.verify(state);
@@ -30,8 +30,8 @@ class GoogleOAuthStateSignerTest {
     @Test
     void verifyThrowsWhenStateIsTampered() {
         GoogleOAuthStateSigner signer = new GoogleOAuthStateSigner(fixedClock(), "test-secret");
-        String state = signer.sign(new GoogleOAuthStateClaims(1L, 7L, false));
-        String tampered = state.replaceFirst("^1", "2");
+        String state = signer.sign(new GoogleOAuthStateClaims(7L,false));
+        String tampered = state.replaceFirst("^7", "8");
 
         assertThatThrownBy(() -> signer.verify(tampered))
                 .isInstanceOf(GoogleOAuthStateInvalidException.class);
@@ -40,7 +40,7 @@ class GoogleOAuthStateSignerTest {
     @Test
     void verifyThrowsWhenStateIsExpired() {
         GoogleOAuthStateSigner signer = new GoogleOAuthStateSigner(fixedClock(), "test-secret");
-        String state = signer.sign(new GoogleOAuthStateClaims(1L, 7L, false));
+        String state = signer.sign(new GoogleOAuthStateClaims(7L,false));
 
         GoogleOAuthStateSigner futureSigner =
                 new GoogleOAuthStateSigner(Clock.fixed(NOW.plusSeconds(1000), ZoneOffset.UTC), "test-secret");

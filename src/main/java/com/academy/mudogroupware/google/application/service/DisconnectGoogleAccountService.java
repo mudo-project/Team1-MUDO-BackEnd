@@ -3,7 +3,6 @@ package com.academy.mudogroupware.google.application.service;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.academy.mudogroupware.google.application.command.DisconnectGoogleAccountCommand;
 import com.academy.mudogroupware.google.application.port.GoogleOAuthPort;
 import com.academy.mudogroupware.google.application.usecase.DisconnectGoogleAccountUseCase;
 import com.academy.mudogroupware.google.domain.exception.GoogleAccountNotConnectedException;
@@ -21,12 +20,12 @@ public class DisconnectGoogleAccountService implements DisconnectGoogleAccountUs
     private final GoogleOAuthPort googleOAuthPort;
 
     @Override
-    public void disconnect(DisconnectGoogleAccountCommand command) {
+    public void disconnect() {
         GoogleAccountConnection connection = googleAccountConnectionRepository
-                .findByAcademyId(command.academyId())
+                .find()
                 .orElseThrow(GoogleAccountNotConnectedException::new);
 
         googleOAuthPort.revoke(connection.getRefreshToken());
-        googleAccountConnectionRepository.deleteByAcademyId(command.academyId());
+        googleAccountConnectionRepository.deleteAll();
     }
 }

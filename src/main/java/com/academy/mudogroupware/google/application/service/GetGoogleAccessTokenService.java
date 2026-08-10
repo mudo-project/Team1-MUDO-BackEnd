@@ -31,8 +31,8 @@ public class GetGoogleAccessTokenService implements GetGoogleAccessTokenUseCase 
     private final RequiredGoogleScopePort requiredGoogleScopePort;
 
     @Override
-    public String getAccessToken(Long academyId) {
-        GoogleAccountConnection connection = googleAccountConnectionRepository.findByAcademyId(academyId)
+    public String getAccessToken() {
+        GoogleAccountConnection connection = googleAccountConnectionRepository.find()
                 .orElseThrow(GoogleAccountNotConnectedException::new);
 
         GoogleConnectionStatus status = connection.deriveStatus(

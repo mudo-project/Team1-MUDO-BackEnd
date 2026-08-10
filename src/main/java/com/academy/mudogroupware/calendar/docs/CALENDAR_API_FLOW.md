@@ -21,7 +21,7 @@ POST /api/calendars
 
 ## 1. 인증 정보 추출
 
-`Security Filter`가 Access Token을 검증하고 `AuthUser`를 만든다. `CalendarController`는 `AuthUser`에서 `academyId`와 `userId`를 받아 요청 본문에는 없는 학원·작성자 정보를 결정한다.
+`Security Filter`가 Access Token을 검증하고 `AuthUser`를 만든다. `CalendarController`는 `AuthUser`에서 `userId`를 받아 요청 본문에는 없는 작성자 정보를 결정한다.
 
 작성 API(생성/수정/삭제)는 인증 확인에 더해 `@PreAuthorize("hasAuthority('CALENDAR:MANAGE')")`로 권한도 검사한다(자세한 내용은 [CALENDAR_PERMISSIONS.md](CALENDAR_PERMISSIONS.md) 참고). 조회 API는 인증만 확인하고 권한은 무관하다.
 
@@ -36,7 +36,7 @@ POST /api/calendars
 - `allDay`: 제약 없음 (기본값 `false`)
 - `color`: `@Size(max = 20)` (nullable)
 
-검증을 통과하면 `request.toCommand(authUser)`가 `AuthUser.academyId()`와 `AuthUser.userId()`를 포함한 `CreateCalendarEventCommand`를 만든다.
+검증을 통과하면 `request.toCommand(authUser)`가 `AuthUser.userId()`를 포함한 `CreateCalendarEventCommand`를 만든다.
 
 ## 3. 도메인 팩토리 호출
 
@@ -44,7 +44,7 @@ POST /api/calendars
 
 - `title`이 공백이면 `CalendarTitleRequiredException`을 던져 `CALENDAR_400_1`로 응답한다.
 - `eventEndAt`이 `eventStartAt`보다 이전이면 `InvalidCalendarPeriodException`을 던져 `CALENDAR_400_2`로 응답한다.
-- 그 외 필수값(`academyId`, `eventStartAt`, `createdBy`) 누락은 `IllegalArgumentException`으로 방어한다(정상 흐름에서는 Bean Validation과 인증 정보로 이미 채워지므로 도달하지 않음).
+- 그 외 필수값(`eventStartAt`, `createdBy`) 누락은 `IllegalArgumentException`으로 방어한다(정상 흐름에서는 Bean Validation과 인증 정보로 이미 채워지므로 도달하지 않음).
 
 이 시점의 `CalendarEvent`는 `id`, `createdAt`, `updatedAt`이 모두 `null`인 신규 도메인 인스턴스이다.
 
@@ -88,13 +88,13 @@ GET /api/calendars?date= 또는 ?yearMonth=
 
 ### 2. 조회
 
-`GetCalendarEventsService`는 별도 Command 없이 `academyId`, 계산된 `from`, `to`를 그대로 받아 처리한다(`memo` 도메인의 조회 패턴과 동일하게 Domain Model을 그대로 반환). `CalendarEventRepository.findAllByAcademyIdAndPeriod(academyId, from, to)`를 호출한다. `academyId`는 요청 본문/쿼리가 아니라 `AuthUser.academyId()`에서 가져와, 다른 학원의 일정은 조회되지 않는다.
+`GetCalendarEventsService`는 별도 Command 없이 계산된 `from`, `to`를 받아 처리한다(`memo` 도메인의 조회 패턴과 동일하게 Domain Model을 그대로 반환). `CalendarEventRepository.findAllByPeriod(from, to)`를 호출하며 현재 테넌트 DB의 일정만 조회한다.
 
 이 Service는 여전히 `to.isBefore(from)`이면 `InvalidCalendarPeriodException`(`CALENDAR_400_2`)을 던지는 방어 로직을 유지한다. Controller가 항상 유효한 구간을 계산해 넘기므로 이 API 경로에서는 사실상 도달하지 않지만, Service 자체의 불변식으로 남겨둔다.
 
 ### 3. 조회 및 변환
 
-`CalendarEventPersistenceAdapter`가 `CalendarEventJpaRepository.findAllByAcademyIdAndEventStartAtBetween(...)`을 호출해 `event_start_at`이 구간에 포함되는 일정만 가져오고, 각 Entity를 Domain Model로 변환한다.
+`CalendarEventPersistenceAdapter`가 `CalendarEventJpaRepository.findAllByEventStartAtBetween(...)`을 호출해 `event_start_at`이 구간에 포함되는 일정만 가져오고, 각 Entity를 Domain Model로 변환한다.
 
 ### 4. 응답
 
@@ -125,7 +125,7 @@ PATCH /api/calendars/{eventId}
 `UpdateCalendarEventService`는 `CalendarEventRepository.findById(eventId)`로 대상을 조회한다.
 
 - 일정이 존재하지 않으면 `CalendarEventNotFoundException`을 던져 `CALENDAR_404_1`로 응답한다.
-- 일정은 존재하지만 `academyId`가 요청자와 다르면, 다른 학원에 존재 여부를 노출하지 않기 위해 동일하게 `CalendarEventNotFoundException`(`CALENDAR_404_1`)을 던진다.
+- 일정이 현재 테넌트 DB에 없으면 `CalendarEventNotFoundException`(`CALENDAR_404_1`)을 던진다.
 
 ### 2. 도메인 검증과 반영
 
@@ -163,7 +163,7 @@ DELETE /api/calendars/{eventId}
 `DeleteCalendarEventService`는 `CalendarEventRepository.findById(eventId)`로 대상을 조회한다.
 
 - 일정이 존재하지 않으면 `CalendarEventNotFoundException`을 던져 `CALENDAR_404_1`로 응답한다.
-- 일정은 존재하지만 `academyId`가 요청자의 `AuthUser.academyId()`와 다르면, 다른 학원에 존재 여부를 노출하지 않기 위해 동일하게 `CalendarEventNotFoundException`(`CALENDAR_404_1`)을 던진다. 상세조회·수정과 동일한 결정이다.
+- 일정이 현재 테넌트 DB에 없으면 `CalendarEventNotFoundException`(`CALENDAR_404_1`)을 던진다. 상세조회·수정과 동일한 결정이다.
 
 ### 2. 삭제
 

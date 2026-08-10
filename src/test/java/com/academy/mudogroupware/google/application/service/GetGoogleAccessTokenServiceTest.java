@@ -51,9 +51,9 @@ class GetGoogleAccessTokenServiceTest {
 
     @Test
     void getAccessTokenThrowsWhenNotConnected() {
-        when(googleAccountConnectionRepository.findByAcademyId(1L)).thenReturn(Optional.empty());
+        when(googleAccountConnectionRepository.find()).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.getAccessToken(1L))
+        assertThatThrownBy(() -> service.getAccessToken())
                 .isInstanceOf(GoogleAccountNotConnectedException.class);
         verifyNoInteractions(googleOAuthPort);
     }
@@ -61,11 +61,11 @@ class GetGoogleAccessTokenServiceTest {
     @Test
     void getAccessTokenThrowsWithoutCallingGoogleWhenScopeInsufficient() {
         GoogleAccountConnection connection = GoogleAccountConnection.restore(
-                10L, 1L, "academy@mudo.co.kr", 7L, "openid email", "refresh-token", CONNECTED_AT,
+                10L, "academy@mudo.co.kr", 7L, "openid email", "refresh-token", CONNECTED_AT,
                 CONNECTED_AT.plusDays(60), CONNECTED_AT, false);
-        when(googleAccountConnectionRepository.findByAcademyId(1L)).thenReturn(Optional.of(connection));
+        when(googleAccountConnectionRepository.find()).thenReturn(Optional.of(connection));
 
-        assertThatThrownBy(() -> service.getAccessToken(1L))
+        assertThatThrownBy(() -> service.getAccessToken())
                 .isInstanceOf(GoogleAccountConnectionInvalidException.class);
         verifyNoInteractions(googleOAuthPort);
     }
@@ -73,11 +73,11 @@ class GetGoogleAccessTokenServiceTest {
     @Test
     void getAccessTokenThrowsWithoutCallingGoogleWhenExpired() {
         GoogleAccountConnection connection = GoogleAccountConnection.restore(
-                10L, 1L, "academy@mudo.co.kr", 7L, "openid email drive.file", "refresh-token",
+                10L, "academy@mudo.co.kr", 7L, "openid email drive.file", "refresh-token",
                 CONNECTED_AT, CONNECTED_AT.minusDays(1), CONNECTED_AT, false);
-        when(googleAccountConnectionRepository.findByAcademyId(1L)).thenReturn(Optional.of(connection));
+        when(googleAccountConnectionRepository.find()).thenReturn(Optional.of(connection));
 
-        assertThatThrownBy(() -> service.getAccessToken(1L))
+        assertThatThrownBy(() -> service.getAccessToken())
                 .isInstanceOf(GoogleAccountConnectionInvalidException.class);
         verify(googleOAuthPort, never()).refreshAccessToken(org.mockito.ArgumentMatchers.anyString());
     }
@@ -85,13 +85,13 @@ class GetGoogleAccessTokenServiceTest {
     @Test
     void getAccessTokenReturnsFreshTokenWhenConnectionValid() {
         GoogleAccountConnection connection = GoogleAccountConnection.restore(
-                10L, 1L, "academy@mudo.co.kr", 7L, "openid email drive.file", "refresh-token",
+                10L, "academy@mudo.co.kr", 7L, "openid email drive.file", "refresh-token",
                 CONNECTED_AT, CONNECTED_AT.plusDays(60), CONNECTED_AT, false);
-        when(googleAccountConnectionRepository.findByAcademyId(1L)).thenReturn(Optional.of(connection));
+        when(googleAccountConnectionRepository.find()).thenReturn(Optional.of(connection));
         when(googleOAuthPort.refreshAccessToken("refresh-token"))
                 .thenReturn(new GoogleTokenExchangeResult("new-access-token", "refresh-token", "openid email drive.file"));
 
-        String accessToken = service.getAccessToken(1L);
+        String accessToken = service.getAccessToken();
 
         assertThat(accessToken).isEqualTo("new-access-token");
     }
@@ -99,13 +99,13 @@ class GetGoogleAccessTokenServiceTest {
     @Test
     void getAccessTokenWrapsGoogleOAuthCallExceptionWhenRefreshFails() {
         GoogleAccountConnection connection = GoogleAccountConnection.restore(
-                10L, 1L, "academy@mudo.co.kr", 7L, "openid email drive.file", "refresh-token",
+                10L, "academy@mudo.co.kr", 7L, "openid email drive.file", "refresh-token",
                 CONNECTED_AT, CONNECTED_AT.plusDays(60), CONNECTED_AT, false);
-        when(googleAccountConnectionRepository.findByAcademyId(1L)).thenReturn(Optional.of(connection));
+        when(googleAccountConnectionRepository.find()).thenReturn(Optional.of(connection));
         when(googleOAuthPort.refreshAccessToken("refresh-token"))
                 .thenThrow(new GoogleOAuthCallException("구글 토큰 발급에 실패했습니다."));
 
-        assertThatThrownBy(() -> service.getAccessToken(1L))
+        assertThatThrownBy(() -> service.getAccessToken())
                 .isInstanceOf(GoogleOAuthFailedException.class);
     }
 }

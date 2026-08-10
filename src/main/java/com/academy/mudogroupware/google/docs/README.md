@@ -11,7 +11,7 @@
 
 ## 주요 데이터와 상태
 
-- `GoogleAccountConnection`: 학원(`academyId`)당 1건. 구글 이메일, 연결한 관리자, 부여받은 scope, 암호화된 리프레시 토큰, 연결 일시, 토큰 만료 예정 일시(연결일 + 60일), 마지막 확인 일시, 실패 여부를 가진다.
+- `GoogleAccountConnection`: 테넌트 DB당 1건. 구글 이메일, 연결한 관리자, 부여받은 scope, 암호화된 리프레시 토큰, 연결 일시, 토큰 만료 예정 일시(연결일 + 60일), 마지막 확인 일시, 실패 여부를 가진다.
 - 상태(`GoogleConnectionStatus`)는 저장하지 않고 조회 시점에 계산한다: `CONNECTED` / `EXPIRING`(만료 3일 전부터) / `EXPIRED` / `FAILED`. 행이 없으면 "연동 안 됨"이다.
 - 리프레시 토큰은 평문으로 저장하지 않는다. `GoogleTokenCipher`(AES-GCM, 전용 시크릿 `GOOGLE_TOKEN_ENCRYPTION_KEY`)로 암호화해 저장하고, 조회 시 복호화한다. JWT 서명 키와 분리해, 하나가 노출돼도 다른 하나는 영향받지 않는다.
 
@@ -67,7 +67,7 @@
 - **미리보기·수정은 별도 API 호출이 아니다.** `https://docs.google.com/document/d/{fileId}/edit?embedded=true` (스프레드시트는 `spreadsheets/d/...`) URL을 프론트가 `<iframe>`으로 띄우면, 편집 내용은 구글 서버로 직접 저장된다. 우리 백엔드는 이 URL만 내려주면 된다.
 - `GOOGLE_OAUTH_SCOPE`는 `openid email` + `drive.file`/`documents`/`spreadsheets`까지 이미 요청한다. 기존에 `openid email`만으로 연동된 계정은 저장된 `scope`가 이 요구사항을 충족하지 못해 `GET /api/google/connections` 조회 시 `status=FAILED`로 나타나며, 프론트의 "재연결" 버튼(`authorize-url` 재호출)으로 재동의받으면 해소된다.
 - **주의:** 구글은 `email` scope를 요청해도 토큰 응답의 `scope` 필드에는 항상 정식 URL(`https://www.googleapis.com/auth/userinfo.email`)로 돌려준다. `deriveStatus`의 scope 비교는 문자열 비교라서, `GOOGLE_OAUTH_SCOPE`도 짧은 이름(`email`)이 아니라 이 정식 URL로 요청해야 비교가 항상 실패하는 문제를 피할 수 있다(`GoogleOAuthProperties.DEFAULT_SCOPE` 참고).
-- `GetGoogleAccessTokenUseCase.getAccessToken(academyId)`가 이 액세스 토큰(1시간 유효)을 반환한다. 템플릿 기능을 만들 도메인은 이 UseCase를 직접 호출해 Drive/Docs/Sheets API 호출에 재사용하면 된다(매 호출마다 새로 발급받는 흐름). 연동이 없거나(`GoogleAccountNotConnectedException`) scope가 부족하거나 만료됐으면(`GoogleAccountConnectionInvalidException`) 예외를 던지므로, 호출하는 도메인은 이 두 예외를 사용자에게 "구글 연동이 필요합니다/재연결이 필요합니다"로 안내하면 된다.
+- `GetGoogleAccessTokenUseCase.getAccessToken()`이 이 액세스 토큰(1시간 유효)을 반환한다. 템플릿 기능을 만들 도메인은 이 UseCase를 직접 호출해 Drive/Docs/Sheets API 호출에 재사용하면 된다(매 호출마다 새로 발급받는 흐름). 연동이 없거나(`GoogleAccountNotConnectedException`) scope가 부족하거나 만료됐으면(`GoogleAccountConnectionInvalidException`) 예외를 던지므로, 호출하는 도메인은 이 두 예외를 사용자에게 "구글 연동이 필요합니다/재연결이 필요합니다"로 안내하면 된다.
 - `template`(가칭) 도메인은 `google` 도메인의 리프레시 토큰이나 Entity를 직접 참조하지 않고, 위 `GetGoogleAccessTokenUseCase` 하나만 호출한다. `MODULES.md`의 "도메인 간 조회 Port" 정책(요청 모듈이 Port를 정의하고 대상 모듈이 Adapter로 구현)은 요청 모듈이 이미 존재할 때를 전제한다 — 지금은 `template` 도메인 자체가 아직 없어 그 방향의 Port를 정의할 주체가 없으므로, `google` 도메인이 기존 5개 UseCase와 동일한 방식으로 먼저 공개해 둔 것이다. `template` 도메인이 실제로 만들어지면, 그 담당자가 이 UseCase를 그대로 쓸지 자체 Port로 감쌀지 결정한다.
 
 ## 세부 문서

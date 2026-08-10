@@ -32,13 +32,13 @@ public class ExportTimetableService implements ExportTimetableUseCase {
     @Override
     public byte[] export(ExportTimetableCommand command) {
         TimetableSetDetailView set = getTimetableSetUseCase
-                .getTimetableSet(command.academyId(), command.timetableSetId());
+                .getTimetableSet(command.timetableSetId());
 
         Map<String, TimetableExportColor> colors = parseColors(command.colorHexByGroupValue());
         TimetableExportOptions options = new TimetableExportOptions(command.colorCriterion(), colors, command.density());
 
         List<TimetableSlotView> allSortedSlots = getTimetableSlotsUseCase
-                .getSlots(command.academyId(), command.timetableSetId()).stream()
+                .getSlots(command.timetableSetId()).stream()
                 .sorted(Comparator.comparing(TimetableSlotView::dayOfWeek)
                         .thenComparing(TimetableSlotView::startTime))
                 .toList();

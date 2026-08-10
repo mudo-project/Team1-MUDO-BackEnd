@@ -12,7 +12,7 @@ public interface CalendarEventRepository {
 
     Optional<CalendarEvent> findById(Long id);
 
-    List<CalendarEvent> findAllByAcademyIdAndPeriod(Long academyId, LocalDateTime from, LocalDateTime to);
+    List<CalendarEvent> findAllByPeriod(LocalDateTime from, LocalDateTime to);
 
     void deleteById(Long id);
 }

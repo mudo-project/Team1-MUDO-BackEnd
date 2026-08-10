@@ -6,5 +6,5 @@ import com.academy.mudogroupware.google.application.query.GoogleAccountConnectio
 
 public interface GetGoogleAccountConnectionUseCase {
 
-    Optional<GoogleAccountConnectionView> getConnection(Long academyId);
+    Optional<GoogleAccountConnectionView> getConnection();
 }

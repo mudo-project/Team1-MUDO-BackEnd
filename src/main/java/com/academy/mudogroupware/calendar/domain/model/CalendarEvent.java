@@ -8,7 +8,6 @@ import com.academy.mudogroupware.calendar.domain.exception.InvalidCalendarPeriod
 public final class CalendarEvent {
 
     private final Long id;
-    private final Long academyId;
     private String title;
     private String content;
     private LocalDateTime eventStartAt;
@@ -19,12 +18,9 @@ public final class CalendarEvent {
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
 
-    private CalendarEvent(Long id, Long academyId, String title, String content,
+    private CalendarEvent(Long id, String title, String content,
                            LocalDateTime eventStartAt, LocalDateTime eventEndAt, boolean allDay,
                            String color, Long createdBy, LocalDateTime createdAt, LocalDateTime updatedAt) {
-        if (academyId == null) {
-            throw new IllegalArgumentException("academyId must not be null");
-        }
         if (title == null || title.isBlank()) {
             throw new CalendarTitleRequiredException();
         }
@@ -38,7 +34,6 @@ public final class CalendarEvent {
             throw new InvalidCalendarPeriodException();
         }
         this.id = id;
-        this.academyId = academyId;
         this.title = title;
         this.content = content;
         this.eventStartAt = eventStartAt;
@@ -50,18 +45,18 @@ public final class CalendarEvent {
         this.updatedAt = updatedAt;
     }
 
-    public static CalendarEvent create(Long academyId, String title, String content,
+    public static CalendarEvent create(String title, String content,
                                         LocalDateTime eventStartAt, LocalDateTime eventEndAt,
                                         boolean allDay, String color, Long createdBy) {
-        return new CalendarEvent(null, academyId, title, content, eventStartAt, eventEndAt,
+        return new CalendarEvent(null, title, content, eventStartAt, eventEndAt,
                 allDay, color, createdBy, null, null);
     }
 
-    public static CalendarEvent restore(Long id, Long academyId, String title, String content,
+    public static CalendarEvent restore(Long id, String title, String content,
                                          LocalDateTime eventStartAt, LocalDateTime eventEndAt, boolean allDay,
                                          String color, Long createdBy, LocalDateTime createdAt,
                                          LocalDateTime updatedAt) {
-        return new CalendarEvent(id, academyId, title, content, eventStartAt, eventEndAt,
+        return new CalendarEvent(id, title, content, eventStartAt, eventEndAt,
                 allDay, color, createdBy, createdAt, updatedAt);
     }
 
@@ -86,10 +81,6 @@ public final class CalendarEvent {
 
     public Long getId() {
         return id;
-    }
-
-    public Long getAcademyId() {
-        return academyId;
     }
 
     public String getTitle() {

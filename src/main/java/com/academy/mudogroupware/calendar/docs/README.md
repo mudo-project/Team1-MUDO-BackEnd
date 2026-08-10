@@ -10,7 +10,7 @@
 
 ## 소유하는 주요 데이터와 상태
 
-- `CalendarEvent` — DB 테이블 `calendar_events` (academy_id, title(필수, 200자), content(nullable), event_start_at, event_end_at(nullable — 종료 시각 없으면 순간 일정), is_all_day, color(nullable), created_by, created_at, updated_at)
+- `CalendarEvent` — DB 테이블 `calendar_events` (title(필수, 200자), content(nullable), event_start_at, event_end_at(nullable — 종료 시각 없으면 순간 일정), is_all_day, color(nullable), created_by, created_at, updated_at)
 - `created_at`/`updated_at`은 `memo`/`approval`과 달리 `global.infrastructure.persistence.BaseTimeEntity`(JPA Auditing)를 상속해 자동 관리한다 — 재생성 후 merge하는 특이 케이스가 없는 단순 CRUD라 Auditing을 그대로 써도 문제없다고 판단했다(팀 확인 필요, 다른 판단이면 변경).
 
 ## 외부에 공개하는 Application API

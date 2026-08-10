@@ -3,7 +3,6 @@ package com.academy.mudogroupware.calendar.presentation.api.request;
 import java.time.LocalDateTime;
 
 import com.academy.mudogroupware.calendar.application.command.UpdateCalendarEventCommand;
-import com.academy.mudogroupware.global.presentation.security.AuthUser;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
@@ -34,8 +33,8 @@ public record UpdateCalendarEventRequest(
         String color
 ) {
 
-    public UpdateCalendarEventCommand toCommand(Long eventId, AuthUser authUser) {
+    public UpdateCalendarEventCommand toCommand(Long eventId) {
         return new UpdateCalendarEventCommand(
-                eventId, authUser.academyId(), title, content, eventStartAt, eventEndAt, allDay, color);
+                eventId, title, content, eventStartAt, eventEndAt, allDay, color);
     }
 }

@@ -6,7 +6,6 @@ import java.time.LocalDateTime;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.academy.mudogroupware.google.application.command.CheckGoogleConnectionCommand;
 import com.academy.mudogroupware.google.application.port.GoogleOAuthCallException;
 import com.academy.mudogroupware.google.application.port.GoogleOAuthPort;
 import com.academy.mudogroupware.google.application.usecase.CheckGoogleAccountConnectionUseCase;
@@ -26,9 +25,9 @@ public class CheckGoogleAccountConnectionService implements CheckGoogleAccountCo
     private final Clock clock;
 
     @Override
-    public void check(CheckGoogleConnectionCommand command) {
+    public void check() {
         GoogleAccountConnection connection = googleAccountConnectionRepository
-                .findByAcademyId(command.academyId())
+                .find()
                 .orElseThrow(GoogleAccountNotConnectedException::new);
 
         boolean valid = true;

@@ -4,7 +4,6 @@ import java.time.LocalDateTime;
 
 public record UpdateCalendarEventCommand(
         Long eventId,
-        Long academyId,
         String title,
         String content,
         LocalDateTime eventStartAt,

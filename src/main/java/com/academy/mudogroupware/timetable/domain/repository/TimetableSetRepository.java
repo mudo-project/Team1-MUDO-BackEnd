@@ -11,7 +11,7 @@ public interface TimetableSetRepository {
 
     Optional<TimetableSet> findById(Long id);
 
-    List<TimetableSet> findAllByAcademyId(Long academyId);
+    List<TimetableSet> findAll();
 
     void deleteById(Long id);
 }
