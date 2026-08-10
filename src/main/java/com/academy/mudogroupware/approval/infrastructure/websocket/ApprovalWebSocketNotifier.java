@@ -1,11 +1,11 @@
 package com.academy.mudogroupware.approval.infrastructure.websocket;
 
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 import com.academy.mudogroupware.approval.domain.event.ApprovalLineActivatedEvent;
+import com.academy.mudogroupware.global.infrastructure.websocket.WebSocketEventPublisher;
 
 import lombok.RequiredArgsConstructor;
 
@@ -13,11 +13,11 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class ApprovalWebSocketNotifier {
 
-    private final SimpMessagingTemplate messagingTemplate;
+    private final WebSocketEventPublisher eventPublisher;
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handle(ApprovalLineActivatedEvent event) {
-        messagingTemplate.convertAndSend(
+        eventPublisher.publish(
                 "/topic/approvals/users/" + event.approverId(),
                 ApprovalLineActivatedSocketResponse.from(event));
     }

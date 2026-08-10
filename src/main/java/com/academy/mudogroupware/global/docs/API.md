@@ -1,6 +1,6 @@
 # 🧩 global 공통 컴포넌트
 
-> 업데이트: 2026-08-04 · `SoftDeleteTimeEntity.markDeleted()`의 null/중복 삭제 방어 로직과 소프트 삭제 조회 필터 정책을 추가했습니다.
+> 업데이트: 2026-08-10 · `WebSocketEventPublisher`를 추가해 도메인 알림 전송이 공통 STOMP 발행기를 거치도록 정리했습니다.
 
 `global`은 도메인 모듈이 아니므로 REST 엔드포인트를 공개하지 않습니다. 대신 도메인 모듈이 의존해서 쓰는 공통 Bean/추상 클래스를 "공개 계약"으로 취급합니다. 아래 표는 API.md 표준 형식(엔드포인트/Method/권한)을 이 모듈 성격에 맞게 컴포넌트/종류/사용 방법으로 대체한 것입니다.
 
@@ -39,6 +39,17 @@
 
 ---
 
+## WebSocket 공통 발행기
+
+| 컴포넌트 | 종류 | 사용 방법 | 기능 요약 |
+| --- | --- | --- | --- |
+| `WebSocketConfig` | Spring WebSocket 설정 | 내부 설정. 프론트는 `/ws` STOMP endpoint에 연결 | STOMP endpoint, broker prefix(`/topic`, `/queue`), application prefix(`/app`), user prefix(`/user`)를 설정 |
+| `WebSocketEventPublisher` | Spring Bean | 도메인 Notifier에서 주입 후 `publish(destination, payload)` 호출 | `SimpMessagingTemplate` 직접 사용을 `global`로 모은 공통 발행기. `/topic/`, `/queue/` 목적지만 허용하고 payload null을 차단 |
+
+세부 명세: [WebSocketConfig.java](../infrastructure/config/WebSocketConfig.java) · [WebSocketEventPublisher.java](../infrastructure/websocket/WebSocketEventPublisher.java)
+
+---
+
 ## 💡 사용 시 주의 사항
 
 - 세 클래스 모두 `@Getter`만 열어두고 필드에 직접 값을 대입하는 setter는 두지 않았습니다. `createdAt`/`updatedAt`은 Auditing이 채우고, `deletedAt`만 `markDeleted()`로 명시적으로 채웁니다.
@@ -47,11 +58,14 @@
 - `markDeleted(null)`을 호출하면 예외(`NullPointerException`)가 발생합니다. 이미 삭제된 엔티티에 다시 `markDeleted()`를 호출하면 `IllegalStateException`이 발생하며, 기존 `deletedAt`은 덮어써지지 않습니다. 삭제를 되돌려야 하면 `markDeleted()`를 재사용하지 말고 별도의 `restore()` 메서드를 도메인 엔티티에 명시적으로 추가해주세요.
 - **소프트 삭제 조회 필터 정책**: `SoftDeleteTimeEntity`는 조회 쿼리를 자동으로 걸러주지 않습니다(`@Where`, `@SQLRestriction` 등을 적용하지 않음). `SoftDeleteTimeEntity`를 상속하는 도메인 엔티티의 Repository/QueryDSL 조회 조건에는 `deleted_at IS NULL`(또는 이에 대응하는 조건)을 **직접 추가**해야 합니다. 누락하면 삭제된 데이터가 목록/상세 조회에 그대로 노출됩니다.
 - **페이지네이션**: 목록 API는 전체 개수(`totalElements`/`totalPages`)가 필요 없다면 `Page` 대신 `Slice`를 우선 고려하세요(추가 COUNT 쿼리를 생략). 도메인 Repository 인터페이스는 Spring Data의 `Pageable`/`Slice`를 직접 노출하지 말고, Infrastructure 계층에서 `PageResult`로 변환해 반환하세요.
+- **WebSocket 알림**: 도메인 Notifier는 목적지 문자열과 payload만 정하고 실제 전송은 `WebSocketEventPublisher.publish(...)`에 위임합니다. 도메인 코드에서 `SimpMessagingTemplate`을 직접 주입하지 않습니다.
+- **WebSocket 목적지**: 브로드캐스트는 `/topic/...`, 큐성 알림은 `/queue/...`로만 발행합니다. 클라이언트가 서버로 보내는 `/app/...` 목적지는 서버 발행 목적지로 사용하지 않습니다.
 
 ## 📝 문서 정보
 
-- 업데이트일: `2026-08-04`
+- 업데이트일: `2026-08-10`
 - 변경 사항(요약):
+  - `WebSocketEventPublisher`를 추가해 결재/메신저 실시간 알림 전송 경로를 공통화했습니다.
   - `Clock` 빈과 JPA Auditing `DateTimeProvider`를 추가했습니다. ⏰
   - `CreatedAtEntity` / `BaseTimeEntity` / `SoftDeleteTimeEntity` 3종 Base Entity를 추가했습니다. 🧱
   - `markDeleted()`의 null 방어 및 중복 삭제 방지 로직을 추가했습니다. 🛡️
