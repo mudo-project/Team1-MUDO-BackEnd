@@ -1,5 +1,14 @@
 # 📚 Workspace Changelog
 
+## 2026-08-10 (반복 업무 생성 스케줄러)
+
+- 반복 업무 템플릿 생성 스케줄러(`RecurringTaskScheduler`)를 추가했습니다. 매일 KST 00:05에 그날 발생해야 하는 템플릿의 업무를 자동으로 생성합니다. 지연 처리 스케줄러(00:00)와 실행 시각을 5분 분리했습니다.
+- 이미 생성된 회차는 다시 만들지 않고, 삭제됐던 회차도 재생성하지 않습니다(`recurring_task_skip` 기록 재사용).
+- 장애로 스케줄러가 하루 이상 멈췄다가 복구돼도 지난 회차를 소급 생성하지 않습니다 — 실행 시점의 "오늘"만 판단합니다.
+- `Task` 도메인에 반복 업무 발생 생성 팩토리 `createRecurring(...)`을 추가했습니다. 항상 `WAITING` 상태로 시작하고 `due_at`은 사용하지 않습니다.
+- `TaskRepository`에 `existsByRecurringTemplateIdAndScheduledFor(...)`를 추가했습니다.
+- `RecurringTaskTemplateRepository.findAll()`이 소프트 삭제된 워크스페이스의 템플릿을 제외하도록 바뀌었습니다 — 워크스페이스를 삭제하면 그 안의 템플릿도 더 이상 업무를 생성하지 않습니다.
+
 ## 2026-08-10
 
 - 업무 상세 조회 API(`GET /api/workspaces/{workspaceId}/tasks/{taskId}`)를 추가했습니다. 제목·등록자·등록일·상태·기한·최종 상태 변경일시를 반환합니다. **최종 상태 변경자(누가 바꿨는지)는 응답에 포함하지 않습니다** — 이력 자체는 계속 저장되지만 노출은 하지 않기로 프론트와 합의했습니다. 한 번도 상태가 바뀌지 않은 업무는 `lastStatusChangedAt` 필드가 응답에서 생략됩니다.

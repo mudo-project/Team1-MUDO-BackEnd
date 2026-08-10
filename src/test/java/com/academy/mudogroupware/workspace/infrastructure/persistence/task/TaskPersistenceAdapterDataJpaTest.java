@@ -237,6 +237,50 @@ class TaskPersistenceAdapterDataJpaTest {
         .containsExactly(1L);
   }
 
+  @Test
+  void existsByRecurringTemplateIdAndScheduledForReturnsTrueWhenTaskAlreadyGenerated() {
+    insertWorkspace(WORKSPACE_ID);
+    insertRecurringTemplate(100L, WORKSPACE_ID);
+    LocalDateTime scheduledFor = TODAY.atStartOfDay();
+    insertRecurringTask(1L, WORKSPACE_ID, 100L, TaskStatus.WAITING, scheduledFor);
+
+    assertThat(taskRepository.existsByRecurringTemplateIdAndScheduledFor(100L, scheduledFor))
+        .isTrue();
+  }
+
+  @Test
+  void existsByRecurringTemplateIdAndScheduledForReturnsFalseWhenNotGenerated() {
+    insertWorkspace(WORKSPACE_ID);
+    insertRecurringTemplate(100L, WORKSPACE_ID);
+
+    assertThat(
+            taskRepository.existsByRecurringTemplateIdAndScheduledFor(100L, TODAY.atStartOfDay()))
+        .isFalse();
+  }
+
+  @Test
+  void existsByRecurringTemplateIdAndScheduledForReturnsFalseForDifferentScheduledFor() {
+    insertWorkspace(WORKSPACE_ID);
+    insertRecurringTemplate(100L, WORKSPACE_ID);
+    insertRecurringTask(1L, WORKSPACE_ID, 100L, TaskStatus.WAITING, TODAY.atTime(9, 0));
+
+    assertThat(
+            taskRepository.existsByRecurringTemplateIdAndScheduledFor(100L, TODAY.atStartOfDay()))
+        .isFalse();
+  }
+
+  @Test
+  void existsByRecurringTemplateIdAndScheduledForReturnsFalseForDifferentTemplate() {
+    insertWorkspace(WORKSPACE_ID);
+    insertRecurringTemplate(100L, WORKSPACE_ID);
+    insertRecurringTemplate(200L, WORKSPACE_ID);
+    LocalDateTime scheduledFor = TODAY.atStartOfDay();
+    insertRecurringTask(1L, WORKSPACE_ID, 100L, TaskStatus.WAITING, scheduledFor);
+
+    assertThat(taskRepository.existsByRecurringTemplateIdAndScheduledFor(200L, scheduledFor))
+        .isFalse();
+  }
+
   private long count(String table, String where) {
     return jdbcTemplate.queryForObject("select count(*) from " + table + " where " + where, Long.class);
   }
