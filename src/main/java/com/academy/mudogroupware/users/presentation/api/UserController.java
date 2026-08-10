@@ -20,6 +20,7 @@ import com.academy.mudogroupware.global.presentation.security.AuthUser;
 import com.academy.mudogroupware.users.application.result.CreateAccountResult;
 import com.academy.mudogroupware.users.application.usecase.ChangeUserRoleUseCase;
 import com.academy.mudogroupware.users.application.usecase.CreateAccountUseCase;
+import com.academy.mudogroupware.users.application.usecase.ListMembersUseCase;
 import com.academy.mudogroupware.users.application.usecase.PasswordSetupUseCase;
 import com.academy.mudogroupware.users.application.usecase.SearchUsersUseCase;
 import com.academy.mudogroupware.users.presentation.api.common.UserResponseCode;
@@ -27,6 +28,7 @@ import com.academy.mudogroupware.users.presentation.api.request.ChangeUserRoleRe
 import com.academy.mudogroupware.users.presentation.api.request.CreateAccountRequest;
 import com.academy.mudogroupware.users.presentation.api.request.PasswordSetupRequest;
 import com.academy.mudogroupware.users.presentation.api.response.AccountCreateResponse;
+import com.academy.mudogroupware.users.presentation.api.response.MemberListResponse;
 import com.academy.mudogroupware.users.presentation.api.response.UserSearchResponse;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -45,6 +47,7 @@ public class UserController {
     private final SearchUsersUseCase searchUsersUseCase;
     private final CreateAccountUseCase createAccountUseCase;
     private final PasswordSetupUseCase passwordSetupUseCase;
+    private final ListMembersUseCase listMembersUseCase;
 
     @PreAuthorize("hasAuthority('ACCOUNT:MANAGE')")
     @PostMapping
@@ -82,6 +85,23 @@ public class UserController {
                 .map(UserSearchResponse::from)
                 .toList();
         return ResponseEntity.ok(GlobalApiResponse.ok(UserResponseCode.USER_SEARCHED, data));
+    }
+
+    @PreAuthorize("hasAuthority('ACCOUNT:MANAGE')")
+    @Operation(
+            summary = "구성원 목록 조회(관리자)",
+            description = "같은 학원 소속 구성원 전체(퇴사자 포함)를 이름/이메일/전화번호/역할명/입사일/계정상태와 함께 조회합니다. "
+                    + "keyword는 이름 또는 역할명에 부분 일치합니다. 근태 상태(출근/연가/미출근)는 포함하지 않습니다 — "
+                    + "필요하면 GET /api/attendance/team/... 을 별도 호출해 userId로 합치세요.")
+    @GetMapping("/members")
+    public ResponseEntity<GlobalApiResponse<List<MemberListResponse>>> listMembers(
+            @AuthenticationPrincipal AuthUser authUser,
+            @Parameter(description = "이름 또는 역할명 부분 일치 검색어. 없으면 전체 목록 반환")
+            @RequestParam(required = false) String keyword) {
+        List<MemberListResponse> data = listMembersUseCase.list(authUser.academyId(), keyword).stream()
+                .map(MemberListResponse::from)
+                .toList();
+        return ResponseEntity.ok(GlobalApiResponse.ok(UserResponseCode.MEMBERS_LISTED, data));
     }
 
     @Operation(
