@@ -8,6 +8,8 @@ import com.academy.mudogroupware.users.domain.model.AcademyApplication;
 
 public interface AcademyApplicationRepository {
 
+    AcademyApplication save(AcademyApplication application);
+
     List<AcademyApplication> findAll();
 
     Optional<AcademyApplication> findById(Long id);

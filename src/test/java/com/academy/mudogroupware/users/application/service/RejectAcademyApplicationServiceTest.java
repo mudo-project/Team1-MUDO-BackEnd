@@ -19,6 +19,7 @@ import com.academy.mudogroupware.users.domain.exception.AcademyApplicationAlread
 import com.academy.mudogroupware.users.domain.exception.AcademyApplicationNotFoundException;
 import com.academy.mudogroupware.users.domain.model.AcademyApplication;
 import com.academy.mudogroupware.users.domain.model.AcademyApplicationStatus;
+import com.academy.mudogroupware.users.domain.model.Plan;
 import com.academy.mudogroupware.users.domain.repository.AcademyApplicationRepository;
 
 class RejectAcademyApplicationServiceTest {
@@ -30,8 +31,8 @@ class RejectAcademyApplicationServiceTest {
 
     private AcademyApplication pendingApplication() {
         return AcademyApplication.restore(1L, "newacademy01", "새학원", "111-11-11111", "홍길동",
-                "hong@example.com", "010-1111-2222", null, AcademyApplicationStatus.PENDING, null, null, null,
-                LocalDateTime.now(), LocalDateTime.now());
+                "hong@example.com", "010-1111-2222", Plan.FREE, null, AcademyApplicationStatus.PENDING, null, null,
+                null, LocalDateTime.now(), LocalDateTime.now());
     }
 
     @Test
@@ -45,8 +46,8 @@ class RejectAcademyApplicationServiceTest {
     @Test
     void throwsWhenAlreadyReviewed() {
         AcademyApplication reviewed = AcademyApplication.restore(1L, "newacademy01", "새학원", "111-11-11111",
-                "홍길동", "hong@example.com", "010-1111-2222", null, AcademyApplicationStatus.REJECTED, "기존사유",
-                5L, LocalDateTime.now(), LocalDateTime.now(), LocalDateTime.now());
+                "홍길동", "hong@example.com", "010-1111-2222", Plan.FREE, null, AcademyApplicationStatus.REJECTED,
+                "기존사유", 5L, LocalDateTime.now(), LocalDateTime.now(), LocalDateTime.now());
         when(academyApplicationRepository.findById(1L)).thenReturn(Optional.of(reviewed));
 
         assertThatThrownBy(() -> service.reject(new RejectAcademyApplicationCommand(1L, 99L, "사유")))

@@ -31,7 +31,7 @@ public class AcademyEntity {
     @Column(nullable = false, length = 100)
     private String name;
 
-    @Column(name = "business_no", nullable = false, length = 20)
+    @Column(name = "business_no", length = 20)
     private String businessNo;
 
     @Column(name = "user_id")

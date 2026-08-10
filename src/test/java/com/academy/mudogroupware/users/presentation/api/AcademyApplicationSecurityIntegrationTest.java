@@ -2,6 +2,7 @@ package com.academy.mudogroupware.users.presentation.api;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -31,9 +32,11 @@ import com.academy.mudogroupware.users.application.usecase.ApproveAcademyApplica
 import com.academy.mudogroupware.users.application.usecase.GetAcademyApplicationUseCase;
 import com.academy.mudogroupware.users.application.usecase.ListAcademyApplicationsUseCase;
 import com.academy.mudogroupware.users.application.usecase.RejectAcademyApplicationUseCase;
+import com.academy.mudogroupware.users.application.usecase.SubmitAcademyApplicationUseCase;
 import com.academy.mudogroupware.users.domain.exception.AcademyApplicationNotFoundException;
 import com.academy.mudogroupware.users.domain.model.AcademyApplication;
 import com.academy.mudogroupware.users.domain.model.AcademyApplicationStatus;
+import com.academy.mudogroupware.users.domain.model.Plan;
 
 /**
  * @WebMvcTest 슬라이스는 실제 SecurityConfig를 로드하지 않아 PLATFORM:SUPER_ADMIN 기반
@@ -54,6 +57,9 @@ class AcademyApplicationSecurityIntegrationTest {
     private MockMvc mockMvc;
 
     @MockitoBean
+    private SubmitAcademyApplicationUseCase submitAcademyApplicationUseCase;
+
+    @MockitoBean
     private ListAcademyApplicationsUseCase listAcademyApplicationsUseCase;
 
     @MockitoBean
@@ -64,6 +70,66 @@ class AcademyApplicationSecurityIntegrationTest {
 
     @MockitoBean
     private RejectAcademyApplicationUseCase rejectAcademyApplicationUseCase;
+
+    @Test
+    void submitIsAllowedWithoutAuthentication() throws Exception {
+        when(submitAcademyApplicationUseCase.submit(any())).thenReturn(1L);
+
+        mockMvc.perform(post("/api/academy-applications")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "requestedLoginId": "academy01",
+                                  "academyName": "테스트학원",
+                                  "representativeName": "홍길동",
+                                  "representativeEmail": "hong@example.com",
+                                  "representativePhone": "010-0000-0000",
+                                  "plan": "FREE"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.code").value("ACADEMY_APPLICATION_201_1"));
+    }
+
+    @Test
+    void submitReturnsBadRequestWhenRequestedLoginIdIsBlank() throws Exception {
+        mockMvc.perform(post("/api/academy-applications")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "requestedLoginId": "",
+                                  "academyName": "테스트학원",
+                                  "representativeName": "홍길동",
+                                  "representativeEmail": "hong@example.com",
+                                  "representativePhone": "010-0000-0000",
+                                  "plan": "FREE"
+                                }
+                                """))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(submitAcademyApplicationUseCase);
+    }
+
+    @Test
+    void submitReturnsBadRequestWhenPlanIsMissing() throws Exception {
+        mockMvc.perform(post("/api/academy-applications")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "requestedLoginId": "academy01",
+                                  "academyName": "테스트학원",
+                                  "representativeName": "홍길동",
+                                  "representativeEmail": "hong@example.com",
+                                  "representativePhone": "010-0000-0000"
+                                }
+                                """))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(submitAcademyApplicationUseCase);
+    }
 
     @Test
     void listIsUnauthorizedWithoutAuthentication() throws Exception {
@@ -109,7 +175,7 @@ class AcademyApplicationSecurityIntegrationTest {
     void detailIsOkForPlatformSuperAdmin() throws Exception {
         AcademyApplication application = AcademyApplication.restore(
                 1L, "academy01", "테스트학원", "123-45-67890", "홍길동", "a@a.com", "010-0000-0000",
-                null, AcademyApplicationStatus.PENDING, null, null, null,
+                Plan.FREE, null, AcademyApplicationStatus.PENDING, null, null, null,
                 LocalDateTime.now(), LocalDateTime.now());
         when(getAcademyApplicationUseCase.getApplication(1L)).thenReturn(application);
         TestingAuthenticationToken superAdmin =
