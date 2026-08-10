@@ -85,7 +85,7 @@ class UpdateMessageServiceTest {
     @Test
     void rejectsEditOfNonTextMessage() {
         ChatMessage message = ChatMessage.restore(10L, 1L, 2L, MessageType.IMAGE,
-                null, "https://example.com/a.png", "a.png", CREATED_AT, null, null);
+                null, 100L, "a.png", CREATED_AT, null, null);
         when(chatMessageRepository.findById(10L)).thenReturn(Optional.of(message));
 
         assertThatThrownBy(() -> service.update(new UpdateMessageCommand(1L, 10L, 2L, "after")))

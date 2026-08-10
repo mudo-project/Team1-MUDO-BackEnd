@@ -90,7 +90,7 @@ public class ChatMessageQueryService implements ChatMessageQueryUseCase {
         ChatMemberInfo sender = senders.get(message.getSenderUserId());
         return new ChatMessageView(message.getId(), message.getSenderUserId(),
                 sender != null ? sender.name() : null, message.getMessageType(), message.getContent(),
-                message.getFileUrl(), message.getFileName(), message.getCreatedAt(), message.getEditedAt(),
+                message.getFileId(), message.getFileName(), message.getCreatedAt(), message.getEditedAt(),
                 message.getDeletedAt(), unreadCounts.getOrDefault(message.getId(), 0L));
     }
 }

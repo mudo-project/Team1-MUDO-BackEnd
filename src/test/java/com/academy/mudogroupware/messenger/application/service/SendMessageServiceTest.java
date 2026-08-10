@@ -47,7 +47,7 @@ class SendMessageServiceTest {
         when(chatMessageRepository.save(any(ChatMessage.class))).thenAnswer(invocation -> {
             ChatMessage message = invocation.getArgument(0);
             return ChatMessage.restore(5L, message.getChatRoomId(), message.getSenderUserId(),
-                    message.getMessageType(), message.getContent(), message.getFileUrl(), message.getFileName(),
+                    message.getMessageType(), message.getContent(), message.getFileId(), message.getFileName(),
                     message.getCreatedAt(), message.getEditedAt(), message.getDeletedAt());
         });
 

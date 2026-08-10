@@ -10,7 +10,7 @@ public record ChatMessageSentEvent(
         Long senderUserId,
         MessageType messageType,
         String content,
-        String fileUrl,
+        Long fileId,
         String fileName,
         LocalDateTime createdAt,
         long unreadCount

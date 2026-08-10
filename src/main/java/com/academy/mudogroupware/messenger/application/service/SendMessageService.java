@@ -42,12 +42,12 @@ public class SendMessageService implements SendMessageUseCase {
 
         LocalDateTime createdAt = LocalDateTime.now(clock);
         ChatMessage chatMessage = ChatMessage.create(command.chatRoomId(), command.senderId(),
-                command.messageType(), command.content(), command.fileUrl(), command.fileName(), createdAt);
+                command.messageType(), command.content(), command.fileId(), command.fileName(), createdAt);
         ChatMessage saved = chatMessageRepository.save(chatMessage);
         chatRoom.markRead(command.senderId(), saved.getCreatedAt());
         chatRoomRepository.markRead(command.chatRoomId(), command.senderId(), saved.getCreatedAt());
         eventPublisher.publishEvent(new ChatMessageSentEvent(saved.getChatRoomId(), saved.getId(),
-                saved.getSenderUserId(), saved.getMessageType(), saved.getContent(), saved.getFileUrl(),
+                saved.getSenderUserId(), saved.getMessageType(), saved.getContent(), saved.getFileId(),
                 saved.getFileName(), saved.getCreatedAt(), chatRoom.getMembers().size() - 1L));
         log.info("event=message_send_완료 chatRoomId={}, senderId={}, messageId={}", command.chatRoomId(),
                 command.senderId(), saved.getId());

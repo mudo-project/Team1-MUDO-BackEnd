@@ -8,7 +8,7 @@ public record SendMessageCommand(
         Long senderId,
         MessageType messageType,
         String content,
-        String fileUrl,
+        Long fileId,
         String fileName
 ) {
 }
