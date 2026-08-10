@@ -174,7 +174,7 @@ Response Body
 | **HTTP 상태** | **code** | **message** | **설명** |
 | --- | --- | --- | --- |
 | `401 Unauthorized` | `COMMON_401_1` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않은 경우 |
-| `404 Not Found` | `FILE_404_1` | 파일을 찾을 수 없습니다. | `fileId`에 해당하는 파일이 없는 경우 |
+| `404 Not Found` | `FILE_404_1` | 파일을 찾을 수 없습니다. | `fileId`에 해당하는 파일이 없거나, 요청자와 다른 학원 소속인 경우(존재 여부를 노출하지 않기 위해 동일하게 404 처리) |
 
 ---
 
@@ -202,7 +202,7 @@ Request Body
 
 | **name** | **type** | **required** | **설명** |
 | --- | --- | --- | --- |
-| `fileIds` | `List<Long>` | `true` | 다운로드 URL을 조회할 파일 ID 목록. 비어 있으면 안 됨. |
+| `fileIds` | `List<Long>` | `true` | 다운로드 URL을 조회할 파일 ID 목록. 비어 있으면 안 되고 **최대 100개**. 각 원소는 null이 아닌 양수여야 함. |
 
 # **[response]**
 
@@ -222,19 +222,18 @@ Response Body
 
 | **name** | **설명** |
 | --- | --- |
-| `data.downloadUrls` | `fileId -> downloadUrl` 맵. **요청한 fileIds 중 존재하지 않는 ID는 이 맵에서 조용히 빠진다** (전체 요청이 실패하지 않음. 예: `[1,2,999]` 요청했는데 999가 없으면 `{1:..., 2:...}`만 응답). |
+| `data.downloadUrls` | `fileId -> downloadUrl` 맵. **요청한 fileIds 중 존재하지 않거나 다른 학원 소속인 ID는 이 맵에서 조용히 빠진다** (전체 요청이 실패하지 않음. 예: `[1,2,999]` 요청했는데 999가 없으면 `{1:..., 2:...}`만 응답). |
 
 ### **실패 코드**
 
 | **HTTP 상태** | **code** | **message** | **설명** |
 | --- | --- | --- | --- |
-| `400 Bad Request` | `COMMON_400_1` | 입력값이 올바르지 않습니다. | `fileIds`가 비어 있는 경우 |
+| `400 Bad Request` | `COMMON_400_1` | 입력값이 올바르지 않습니다. | `fileIds`가 비어 있거나, 100개를 초과하거나, null/0 이하 원소가 포함된 경우 |
 | `401 Unauthorized` | `COMMON_401_1` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않은 경우 |
 
 ---
 
 ## 알려진 제약
 
-- 파일 단위 학원(academy) 소속 검증이 없다. `file_metadata`에 `academy_id`가 없어서, fileId만 알면 다른 학원 사용자도 다운로드 URL을 받을 수 있다. 각 기능(결재 문서, 공지 등)의 접근 권한 검증에 의존한다.
 - 2번(등록) API는 S3에 실제로 업로드됐는지 확인하지 않는다.
 - presigned PUT URL 자체에는 업로드 용량 제한이 없다.

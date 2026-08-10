@@ -56,27 +56,31 @@ public class FileController {
                     + "공지 첨부 등)에서 첨부파일 참조용으로 사용한다.")
     @PostMapping
     public ResponseEntity<GlobalApiResponse<RegisterFileResponse>> registerFile(
+            @AuthenticationPrincipal AuthUser authUser,
             @Valid @RequestBody RegisterFileRequest request) {
-        Long fileId = registerFileUseCase.register(request.toCommand());
+        Long fileId = registerFileUseCase.register(request.toCommand(authUser.academyId()));
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(GlobalApiResponse.created(FileResponseCode.FILE_REGISTERED, RegisterFileResponse.from(fileId)));
     }
 
-    @Operation(summary = "다운로드용 URL 조회", description = "fileId로 등록된 파일의 임시 다운로드 URL을 조회한다.")
+    @Operation(summary = "다운로드용 URL 조회",
+            description = "fileId로 등록된 파일의 임시 다운로드 URL을 조회한다. 다른 학원 소속 파일이면 찾을 수 없는 것으로 처리한다.")
     @GetMapping("/{fileId}/download-url")
-    public ResponseEntity<GlobalApiResponse<FileDownloadUrlResponse>> getDownloadUrl(@PathVariable Long fileId) {
-        String downloadUrl = getFileDownloadUrlUseCase.getDownloadUrl(fileId);
+    public ResponseEntity<GlobalApiResponse<FileDownloadUrlResponse>> getDownloadUrl(
+            @AuthenticationPrincipal AuthUser authUser, @PathVariable Long fileId) {
+        String downloadUrl = getFileDownloadUrlUseCase.getDownloadUrl(fileId, authUser.academyId());
         return ResponseEntity.ok(GlobalApiResponse.ok(FileResponseCode.DOWNLOAD_URL_RETRIEVED,
                 FileDownloadUrlResponse.from(downloadUrl)));
     }
 
     @Operation(summary = "다운로드용 URL 일괄 조회",
             description = "메시지 목록처럼 여러 첨부파일을 한 화면에 표시해야 할 때, fileId 개수만큼 반복 호출하지 않도록 "
-                    + "한 번에 조회한다. 존재하지 않는 fileId는 결과에서 조용히 빠진다(전체 요청이 실패하지 않음).")
+                    + "한 번에 조회한다. 존재하지 않거나 다른 학원 소속인 fileId는 결과에서 조용히 빠진다(전체 요청이 실패하지 않음).")
     @PostMapping("/download-urls")
     public ResponseEntity<GlobalApiResponse<BatchFileDownloadUrlResponse>> getDownloadUrls(
+            @AuthenticationPrincipal AuthUser authUser,
             @Valid @RequestBody BatchFileDownloadUrlRequest request) {
-        var downloadUrls = getFileDownloadUrlUseCase.getDownloadUrls(request.fileIds());
+        var downloadUrls = getFileDownloadUrlUseCase.getDownloadUrls(request.fileIds(), authUser.academyId());
         return ResponseEntity.ok(GlobalApiResponse.ok(FileResponseCode.DOWNLOAD_URLS_RETRIEVED,
                 BatchFileDownloadUrlResponse.from(downloadUrls)));
     }

@@ -13,7 +13,7 @@ public record RegisterFileRequest(
         @NotBlank String contentType
 ) {
 
-    public RegisterFileCommand toCommand() {
-        return new RegisterFileCommand(objectKey, contentType);
+    public RegisterFileCommand toCommand(Long academyId) {
+        return new RegisterFileCommand(academyId, objectKey, contentType);
     }
 }

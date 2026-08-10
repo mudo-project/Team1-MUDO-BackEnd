@@ -25,18 +25,18 @@ public class GetFileDownloadUrlService implements GetFileDownloadUrlUseCase {
     private final FileStoragePort fileStoragePort;
 
     @Override
-    public String getDownloadUrl(Long fileId) {
-        FileMetadataEntity metadata = fileMetadataJpaRepository.findById(fileId)
+    public String getDownloadUrl(Long fileId, Long academyId) {
+        FileMetadataEntity metadata = fileMetadataJpaRepository.findByIdAndAcademyId(fileId, academyId)
                 .orElseThrow(() -> new FileException(FileErrorCode.FILE_NOT_FOUND));
         return fileStoragePort.generatePresignedDownloadUrl(metadata.getObjectKey());
     }
 
     @Override
-    public Map<Long, String> getDownloadUrls(List<Long> fileIds) {
+    public Map<Long, String> getDownloadUrls(List<Long> fileIds, Long academyId) {
         if (fileIds == null || fileIds.isEmpty()) {
             return Map.of();
         }
-        return fileMetadataJpaRepository.findAllById(fileIds).stream()
+        return fileMetadataJpaRepository.findAllByIdInAndAcademyId(fileIds, academyId).stream()
                 .collect(Collectors.toMap(FileMetadataEntity::getId,
                         metadata -> fileStoragePort.generatePresignedDownloadUrl(metadata.getObjectKey())));
     }
