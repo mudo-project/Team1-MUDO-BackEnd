@@ -61,6 +61,9 @@ public class ExcelTimetableExportRenderer implements TimetableExportRenderer {
 
     private Font buildFont(XSSFWorkbook workbook, TimetableExportOptions options) {
         Font font = workbook.createFont();
+        // 엑셀은 클라이언트가 자기 PC에 설치된 폰트로 렌더링하므로, Inter가 없는 문자(한글 등)는
+        // 엑셀이 자동으로 다른 설치된 폰트로 대체해서 그린다 - 별도 폴백 로직이 필요 없다.
+        font.setFontName("Inter");
         font.setFontHeightInPoints((short) Math.round(options.density().fontSize()));
         return font;
     }
