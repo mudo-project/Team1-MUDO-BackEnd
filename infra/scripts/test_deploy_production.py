@@ -61,6 +61,11 @@ class DeploymentManifestTest(unittest.TestCase):
         self.assertEqual(550, container["memory"])
         self.assertEqual("academy-a", container["dockerLabels"]["mudo.tenant"])
         self.assertIn("DB_PASSWORD", secret_names)
+        self.assertIn("GOOGLE_TOKEN_ENCRYPTION_KEY", secret_names)
+        self.assertIn("GOOGLE_CLIENT_ID", secret_names)
+        self.assertIn("GOOGLE_CLIENT_SECRET", secret_names)
+        self.assertIn("GOOGLE_REDIRECT_URI", secret_names)
+        self.assertIn("GOOGLE_OAUTH_FRONTEND_REDIRECT_URI", secret_names)
         self.assertNotIn("DB_PASSWORD", environment)
 
     def test_billing_plan_does_not_change_runtime_resources(self):
