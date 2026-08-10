@@ -1,6 +1,6 @@
 # 🌐 global 모듈
 
-> 업데이트: 2026-08-10 · WebSocket 알림 전송 공통 발행기(`WebSocketEventPublisher`)를 추가했습니다.
+> 업데이트: 2026-08-10 · WebSocket 알림 전송 공통 발행기(`WebSocketEventPublisher`)와 삭제·정리 배치 공통 스케줄러(`GlobalRetentionScheduler`)를 추가했습니다.
 
 ## 📦 책임과 범위
 
@@ -21,6 +21,7 @@
 - 🧱 **공통 타임스탬프 Base Entity**: `CreatedAtEntity`, `BaseTimeEntity`, `SoftDeleteTimeEntity`
 - 📄 **공용 페이지네이션**: `PageResult<T>`(domain 계층), `SliceResponse<T>`(presentation 계층) — `docs/API_CONTRACT.md`의 `page`/`size`/`content`/`hasNext` 규칙을 구현한 프레임워크-비의존 래퍼
 - 🔌 **WebSocket 인프라**: `WebSocketConfig`, `WebSocketEventPublisher` — 도메인 Notifier가 정한 STOMP destination/payload를 실제로 발행
+- 🧹 **삭제·정리 배치 공통 스케줄러**: `RetentionJob`, `RetentionJobResult`, `GlobalRetentionScheduler` — 도메인별 `RetentionJob` 구현체를 자동 수집해 매일 실행. 첫 적용 사례는 `student`(소프트 삭제 30일 후 하드 삭제). 자세한 내용은 [BOILER_PLATE.md](BOILER_PLATE.md) 참고
 - 🔐 그 외 보안(JWT/CORS), 공통 예외 응답, AOP 성능 로깅, TraceId 필터
 
 세부 목록과 사용 방법은 [API.md](API.md)를 참고해주세요.
@@ -48,4 +49,4 @@
 ## 📚 세부 문서
 
 - [API.md](API.md) — `global`이 제공하는 공통 컴포넌트 목록과 사용 방법
-- [BOILER_PLATE.md](BOILER_PLATE.md) — Global Retention Scheduler 설계 가이드(미구현). 여러 도메인의 삭제·정리 배치가 필요해질 때 이 문서를 그대로 따라 구현합니다.
+- [BOILER_PLATE.md](BOILER_PLATE.md) — Global Retention Scheduler 설계 가이드. `student` 도메인에 실제로 구현됨. 새 도메인의 삭제·정리 배치가 필요해질 때 이 문서의 "새 도메인 추가 절차"를 따르면 됩니다.
