@@ -6,5 +6,5 @@ import com.academy.mudogroupware.rollcall.application.query.RosterView;
 
 public interface GetLectureRosterUseCase {
 
-    RosterView getRoster(Long lectureId, Long academyId, LocalDate date);
+    RosterView getRoster(Long lectureId, LocalDate date);
 }

@@ -35,7 +35,7 @@ public record CreateStudentRequest(
         String note
 ) {
 
-    public CreateStudentCommand toCommand(Long academyId) {
-        return new CreateStudentCommand(academyId, name, grade, school, phone, parentPhone, note);
+    public CreateStudentCommand toCommand() {
+        return new CreateStudentCommand(name, grade, school, phone, parentPhone, note);
     }
 }

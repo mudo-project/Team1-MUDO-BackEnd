@@ -24,21 +24,21 @@ class LectureTeacherDirectoryAdapterTest {
     private final LectureTeacherDirectoryAdapter adapter = new LectureTeacherDirectoryAdapter(userRepository);
 
     @Test
-    void returnsTeachersOnlyInRequestedAcademy() {
+    void returnsTeachersByIds() {
         User included = user(10L, 1L, "Teacher Kim", 3L, UserStatus.ACTIVE);
         User otherAcademy = user(20L, 2L, "Other Teacher", 4L, UserStatus.ACTIVE);
         when(userRepository.findAllById(Set.of(10L, 20L))).thenReturn(List.of(included, otherAcademy));
 
-        Map<Long, TeacherInfo> result = adapter.findTeachers(1L, List.of(10L, 20L));
+        Map<Long, TeacherInfo> result = adapter.findTeachers(List.of(10L, 20L));
 
-        assertThat(result).containsOnlyKeys(10L);
+        assertThat(result).containsOnlyKeys(10L, 20L);
         assertThat(result.get(10L))
                 .isEqualTo(new TeacherInfo(10L, "Teacher Kim", 3L, UserStatus.ACTIVE.name()));
     }
 
     @Test
     void returnsEmptyMapWithoutCallingRepositoryForEmptyIds() {
-        assertThat(adapter.findTeachers(1L, List.of())).isEmpty();
+        assertThat(adapter.findTeachers(List.of())).isEmpty();
 
         verifyNoInteractions(userRepository);
     }

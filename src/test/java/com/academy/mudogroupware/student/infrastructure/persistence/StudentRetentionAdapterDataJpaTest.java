@@ -83,16 +83,16 @@ class StudentRetentionAdapterDataJpaTest {
     private void insertStudent(long id, String name, LocalDateTime deletedAt) {
         jdbcTemplate.update("""
                 insert into student (
-                    student_id, academy_id, name, grade, created_at, updated_at, deleted_at
-                ) values (?, 1, ?, 'HIGH_1', ?, ?, ?)
+                    student_id, name, grade, created_at, updated_at, deleted_at
+                ) values (?, ?, 'HIGH_1', ?, ?, ?)
                 """, id, name, NOW, NOW, deletedAt);
     }
 
     private void insertEnrollment(long enrollmentId, long studentId) {
         jdbcTemplate.update("""
                 insert into student_enrollment (
-                    enrollment_id, academy_id, student_id, lecture_id, status, enrolled_at, created_at, updated_at
-                ) values (?, 1, ?, 999, 'ACTIVE', ?, ?, ?)
+                    enrollment_id, student_id, lecture_id, status, enrolled_at, created_at, updated_at
+                ) values (?, ?, 999, 'ACTIVE', ?, ?, ?)
                 """, enrollmentId, studentId, NOW, NOW, NOW);
     }
 }

@@ -17,8 +17,8 @@ public class SubjectRepositoryImpl implements SubjectRepository {
     private final SubjectJpaRepository subjectJpaRepository;
 
     @Override
-    public Optional<Subject> findByAcademyIdAndName(Long academyId, String name) {
-        return subjectJpaRepository.findByAcademyIdAndName(academyId, name).map(this::toDomain);
+    public Optional<Subject> findByName(String name) {
+        return subjectJpaRepository.findByName(name).map(this::toDomain);
     }
 
     @Override
@@ -29,13 +29,12 @@ public class SubjectRepositoryImpl implements SubjectRepository {
     @Override
     public Subject save(Subject subject) {
         SubjectEntity entity = SubjectEntity.builder()
-                .academyId(subject.getAcademyId())
                 .name(subject.getName())
                 .build();
         return toDomain(subjectJpaRepository.save(entity));
     }
 
     private Subject toDomain(SubjectEntity entity) {
-        return Subject.restore(entity.getId(), entity.getAcademyId(), entity.getName(), entity.getCreatedAt());
+        return Subject.restore(entity.getId(), entity.getName(), entity.getCreatedAt());
     }
 }

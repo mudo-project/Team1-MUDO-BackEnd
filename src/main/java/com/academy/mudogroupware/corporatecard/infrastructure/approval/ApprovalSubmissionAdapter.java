@@ -30,7 +30,7 @@ public class ApprovalSubmissionAdapter implements ApprovalSubmissionPort {
     public Long submit(Long templateId, Long creatorId, String title, String content, List<Long> approverIds) {
         return createApprovalDocumentUseCase.createDocument(new CreateApprovalDocumentCommand(
                 templateId, title, ApprovalContentType.TEXT, content, null, creatorId, approverIds, null, null,
-                ApprovalDocumentSourceType.CORPORATE_CARD_EXPENSE));
+                ApprovalDocumentSourceType.CORPORATE_CARD_EXPENSE, null));
     }
 
     @Override

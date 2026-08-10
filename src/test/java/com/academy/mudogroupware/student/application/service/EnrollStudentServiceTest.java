@@ -36,13 +36,12 @@ class EnrollStudentServiceTest {
 
     @Test
     void enrollsStudentInLecture() {
-        studentRepository.add(Student.restore(1L, 10L, "김민수", StudentGrade.HIGH_1, "무도고",
+        studentRepository.add(Student.restore(1L, "김민수", StudentGrade.HIGH_1, "무도고",
                 "010-0000-0001", "010-0000-0002", null, NOW, NOW));
 
-        Long enrollmentId = service.enroll(new EnrollStudentCommand(10L, 1L, 100L));
+        Long enrollmentId = service.enroll(new EnrollStudentCommand(1L, 100L));
 
-        Enrollment saved = enrollmentRepository.findById(10L, 1L, enrollmentId).orElseThrow();
-        assertThat(saved.getAcademyId()).isEqualTo(10L);
+        Enrollment saved = enrollmentRepository.findById(1L, enrollmentId).orElseThrow();
         assertThat(saved.getStudentId()).isEqualTo(1L);
         assertThat(saved.getLectureId()).isEqualTo(100L);
         assertThat(saved.getStatus()).isEqualTo(EnrollmentStatus.ACTIVE);
@@ -51,21 +50,18 @@ class EnrollStudentServiceTest {
 
     @Test
     void rejectsDuplicateActiveEnrollment() {
-        studentRepository.add(Student.restore(1L, 10L, "김민수", StudentGrade.HIGH_1, "무도고",
+        studentRepository.add(Student.restore(1L, "김민수", StudentGrade.HIGH_1, "무도고",
                 "010-0000-0001", "010-0000-0002", null, NOW, NOW));
 
-        service.enroll(new EnrollStudentCommand(10L, 1L, 100L));
+        service.enroll(new EnrollStudentCommand(1L, 100L));
 
-        assertThatThrownBy(() -> service.enroll(new EnrollStudentCommand(10L, 1L, 100L)))
+        assertThatThrownBy(() -> service.enroll(new EnrollStudentCommand(1L, 100L)))
                 .isInstanceOf(StudentException.class);
     }
 
     @Test
-    void rejectsEnrollmentForStudentOutsideAcademy() {
-        studentRepository.add(Student.restore(1L, 20L, "김민수", StudentGrade.HIGH_1, "무도고",
-                "010-0000-0001", "010-0000-0002", null, NOW, NOW));
-
-        assertThatThrownBy(() -> service.enroll(new EnrollStudentCommand(10L, 1L, 100L)))
+    void rejectsEnrollmentForMissingStudent() {
+        assertThatThrownBy(() -> service.enroll(new EnrollStudentCommand(999L, 100L)))
                 .isInstanceOf(StudentException.class);
     }
 
@@ -94,7 +90,7 @@ class EnrollStudentServiceTest {
 
         @Override
         public com.academy.mudogroupware.global.domain.common.page.PageResult<Student> findAll(
-                Long academyId, String keyword, int page, int size) {
+                String keyword, int page, int size) {
             return com.academy.mudogroupware.global.domain.common.page.PageResult.of(List.of(), page, size, false);
         }
 
@@ -110,7 +106,7 @@ class EnrollStudentServiceTest {
 
         @Override
         public Enrollment save(Enrollment enrollment) {
-            Enrollment saved = Enrollment.restore(sequence++, enrollment.getAcademyId(), enrollment.getStudentId(),
+            Enrollment saved = Enrollment.restore(sequence++, enrollment.getStudentId(),
                     enrollment.getLectureId(), enrollment.getStatus(), enrollment.getEnrolledAt(),
                     enrollment.getEndedAt());
             enrollments.add(saved);
@@ -118,54 +114,48 @@ class EnrollStudentServiceTest {
         }
 
         @Override
-        public Optional<Enrollment> findByStudentIdAndLectureId(Long academyId, Long studentId, Long lectureId) {
+        public Optional<Enrollment> findByStudentIdAndLectureId(Long studentId, Long lectureId) {
             return enrollments.stream()
-                    .filter(enrollment -> enrollment.getAcademyId().equals(academyId))
                     .filter(enrollment -> enrollment.getStudentId().equals(studentId))
                     .filter(enrollment -> enrollment.getLectureId().equals(lectureId))
                     .findFirst();
         }
 
         @Override
-        public Optional<Enrollment> findById(Long academyId, Long studentId, Long enrollmentId) {
+        public Optional<Enrollment> findById(Long studentId, Long enrollmentId) {
             return enrollments.stream()
-                    .filter(enrollment -> enrollment.getAcademyId().equals(academyId))
                     .filter(enrollment -> enrollment.getStudentId().equals(studentId))
                     .filter(enrollment -> enrollment.getId().equals(enrollmentId))
                     .findFirst();
         }
 
         @Override
-        public List<Enrollment> findActiveByStudentId(Long academyId, Long studentId) {
+        public List<Enrollment> findActiveByStudentId(Long studentId) {
             return enrollments.stream()
-                    .filter(enrollment -> enrollment.getAcademyId().equals(academyId))
                     .filter(enrollment -> enrollment.getStudentId().equals(studentId))
                     .filter(Enrollment::isActive)
                     .toList();
         }
 
         @Override
-        public Map<Long, Long> countActiveByStudentIds(Long academyId, List<Long> studentIds) {
+        public Map<Long, Long> countActiveByStudentIds(List<Long> studentIds) {
             return enrollments.stream()
-                    .filter(enrollment -> enrollment.getAcademyId().equals(academyId))
                     .filter(enrollment -> studentIds.contains(enrollment.getStudentId()))
                     .filter(Enrollment::isActive)
                     .collect(Collectors.groupingBy(Enrollment::getStudentId, Collectors.counting()));
         }
 
         @Override
-        public List<Enrollment> findActiveByLectureId(Long academyId, Long lectureId) {
+        public List<Enrollment> findActiveByLectureId(Long lectureId) {
             return enrollments.stream()
-                    .filter(enrollment -> enrollment.getAcademyId().equals(academyId))
                     .filter(enrollment -> enrollment.getLectureId().equals(lectureId))
                     .filter(Enrollment::isActive)
                     .toList();
         }
 
         @Override
-        public Map<Long, Long> countActiveByLectureIds(Long academyId, List<Long> lectureIds) {
+        public Map<Long, Long> countActiveByLectureIds(List<Long> lectureIds) {
             return enrollments.stream()
-                    .filter(enrollment -> enrollment.getAcademyId().equals(academyId))
                     .filter(enrollment -> lectureIds.contains(enrollment.getLectureId()))
                     .filter(Enrollment::isActive)
                     .collect(Collectors.groupingBy(Enrollment::getLectureId, Collectors.counting()));

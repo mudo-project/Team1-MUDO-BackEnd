@@ -23,7 +23,7 @@ class LectureTest {
 
     @Test
     void createsLectureWithValidData() {
-        Lecture lecture = Lecture.create(1L, "수학 기초반", Grade.MIDDLE_3, 10L, 20L, 30L, 40L, FeeType.PER_SESSION,
+        Lecture lecture = Lecture.create("수학 기초반", Grade.MIDDLE_3, 10L, 20L, 30L, 40L, FeeType.PER_SESSION,
                 50000, List.of(schedule(DayOfWeek.MONDAY, 15, 17)), NOW);
 
         assertThat(lecture.getName()).isEqualTo("수학 기초반");
@@ -33,21 +33,21 @@ class LectureTest {
 
     @Test
     void throwsWhenNameIsBlank() {
-        assertThatThrownBy(() -> Lecture.create(1L, "  ", Grade.MIDDLE_3, 10L, 20L, 30L, 40L, null, null,
+        assertThatThrownBy(() -> Lecture.create("  ", Grade.MIDDLE_3, 10L, 20L, 30L, 40L, null, null,
                 List.of(schedule(DayOfWeek.MONDAY, 15, 17)), NOW))
                 .isInstanceOf(LectureNameRequiredException.class);
     }
 
     @Test
     void throwsWhenSchedulesAreEmpty() {
-        assertThatThrownBy(() -> Lecture.create(1L, "수학 기초반", Grade.MIDDLE_3, 10L, 20L, 30L, 40L, null, null,
+        assertThatThrownBy(() -> Lecture.create("수학 기초반", Grade.MIDDLE_3, 10L, 20L, 30L, 40L, null, null,
                 List.of(), NOW))
                 .isInstanceOf(LectureScheduleRequiredException.class);
     }
 
     @Test
     void conflictsWithReturnsTrueWhenScheduleOverlaps() {
-        Lecture lecture = Lecture.create(1L, "수학 기초반", Grade.MIDDLE_3, 10L, 20L, 30L, 40L, null, null,
+        Lecture lecture = Lecture.create("수학 기초반", Grade.MIDDLE_3, 10L, 20L, 30L, 40L, null, null,
                 List.of(schedule(DayOfWeek.MONDAY, 15, 17)), NOW);
 
         assertThat(lecture.conflictsWith(schedule(DayOfWeek.MONDAY, 16, 18))).isTrue();

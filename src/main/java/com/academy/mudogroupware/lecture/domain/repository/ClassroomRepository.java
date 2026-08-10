@@ -7,7 +7,7 @@ import com.academy.mudogroupware.lecture.domain.model.Classroom;
 
 public interface ClassroomRepository {
 
-    Optional<Classroom> findByAcademyIdAndName(Long academyId, String name);
+    Optional<Classroom> findByName(String name);
 
     List<Classroom> findAllById(List<Long> ids);
 

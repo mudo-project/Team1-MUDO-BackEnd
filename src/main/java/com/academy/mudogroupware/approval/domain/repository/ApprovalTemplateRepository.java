@@ -14,7 +14,7 @@ public interface ApprovalTemplateRepository {
 
     List<ApprovalTemplate> findAllById(List<Long> ids);
 
-    PageResult<ApprovalTemplate> findAll(Long academyId, int page, int size);
+    PageResult<ApprovalTemplate> findAll(int page, int size);
 
     void deleteById(Long id);
 }

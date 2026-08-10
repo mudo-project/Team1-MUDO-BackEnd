@@ -7,7 +7,7 @@ import com.academy.mudogroupware.lecture.domain.repository.LectureFilter;
 
 public interface LectureQueryUseCase {
 
-    PageResult<LectureSummaryView> getLectures(Long academyId, LectureFilter filter, int page, int size);
+    PageResult<LectureSummaryView> getLectures(LectureFilter filter, int page, int size);
 
-    LectureDetailView getLectureDetail(Long lectureId, Long academyId);
+    LectureDetailView getLectureDetail(Long lectureId);
 }

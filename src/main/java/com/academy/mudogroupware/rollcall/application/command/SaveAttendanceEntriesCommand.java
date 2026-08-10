@@ -5,7 +5,6 @@ import java.util.List;
 
 public record SaveAttendanceEntriesCommand(
         Long lectureId,
-        Long academyId,
         LocalDate date,
         List<AttendanceEntryInput> entries
 ) {

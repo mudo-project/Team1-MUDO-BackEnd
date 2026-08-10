@@ -17,8 +17,8 @@ public class ClassroomRepositoryImpl implements ClassroomRepository {
     private final ClassroomJpaRepository classroomJpaRepository;
 
     @Override
-    public Optional<Classroom> findByAcademyIdAndName(Long academyId, String name) {
-        return classroomJpaRepository.findByAcademyIdAndName(academyId, name).map(this::toDomain);
+    public Optional<Classroom> findByName(String name) {
+        return classroomJpaRepository.findByName(name).map(this::toDomain);
     }
 
     @Override
@@ -29,13 +29,12 @@ public class ClassroomRepositoryImpl implements ClassroomRepository {
     @Override
     public Classroom save(Classroom classroom) {
         ClassroomEntity entity = ClassroomEntity.builder()
-                .academyId(classroom.getAcademyId())
                 .name(classroom.getName())
                 .build();
         return toDomain(classroomJpaRepository.save(entity));
     }
 
     private Classroom toDomain(ClassroomEntity entity) {
-        return Classroom.restore(entity.getId(), entity.getAcademyId(), entity.getName(), entity.getCreatedAt());
+        return Classroom.restore(entity.getId(), entity.getName(), entity.getCreatedAt());
     }
 }

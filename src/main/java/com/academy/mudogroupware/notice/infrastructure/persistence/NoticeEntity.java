@@ -32,9 +32,6 @@ public class NoticeEntity {
     @Column(name = "notice_id")
     private Long id;
 
-    @Column(name = "academy_id", nullable = false)
-    private Long academyId;
-
     @Column(name = "author_user_id", nullable = false)
     private Long authorUserId;
 
@@ -67,10 +64,9 @@ public class NoticeEntity {
     private List<NoticeAttachmentEntity> attachments = new ArrayList<>();
 
     @Builder
-    private NoticeEntity(Long id, Long academyId, Long authorUserId, String title, String content, boolean pinned,
+    private NoticeEntity(Long id, Long authorUserId, String title, String content, boolean pinned,
                           long viewCount, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
-        this.academyId = academyId;
         this.authorUserId = authorUserId;
         this.title = title;
         this.content = content;

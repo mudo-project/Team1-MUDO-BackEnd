@@ -25,15 +25,15 @@ class PinNoticeServiceTest {
     private final NoticeAuthorDirectoryPort noticeAuthorDirectoryPort = mock(NoticeAuthorDirectoryPort.class);
     private final PinNoticeService service = new PinNoticeService(noticeRepository, noticeAuthorDirectoryPort);
 
-    private Notice noticeOfAcademy(Long academyId) {
-        return Notice.create(academyId, 7L, "제목", "내용", false, List.of(), NOW);
+    private Notice notice() {
+        return Notice.create(7L, "제목", "내용", false, List.of(), NOW);
     }
 
     @Test
-    void pinSucceedsWhenRequesterIsSameAcademyEvenIfNotAuthor() {
-        Notice notice = noticeOfAcademy(1L);
+    void pinSucceedsEvenIfRequesterIsNotAuthor() {
+        Notice notice = notice();
         when(noticeRepository.findById(1L)).thenReturn(Optional.of(notice));
-        when(noticeAuthorDirectoryPort.getAuthor(99L)).thenReturn(new AuthorInfo(99L, "공지관리자", "STAFF", 1L));
+        when(noticeAuthorDirectoryPort.getAuthor(99L)).thenReturn(new AuthorInfo(99L, "공지관리자", "STAFF"));
 
         service.pin(1L, 99L);
 
@@ -42,29 +42,15 @@ class PinNoticeServiceTest {
     }
 
     @Test
-    void unpinSucceedsWhenRequesterIsSameAcademy() {
-        Notice notice = noticeOfAcademy(1L);
+    void unpinSucceeds() {
+        Notice notice = notice();
         when(noticeRepository.findById(1L)).thenReturn(Optional.of(notice));
-        when(noticeAuthorDirectoryPort.getAuthor(99L)).thenReturn(new AuthorInfo(99L, "다른직원", "STAFF", 1L));
+        when(noticeAuthorDirectoryPort.getAuthor(99L)).thenReturn(new AuthorInfo(99L, "다른직원", "STAFF"));
 
         service.unpin(1L, 99L);
 
         assertThat(notice.isPinned()).isFalse();
         verify(noticeRepository).save(notice);
-    }
-
-    @Test
-    void unpinRejectsCrossAcademyRequester() {
-        Notice notice = noticeOfAcademy(1L);
-        when(noticeRepository.findById(1L)).thenReturn(Optional.of(notice));
-        when(noticeAuthorDirectoryPort.getAuthor(99L)).thenReturn(new AuthorInfo(99L, "다른학원직원", "STAFF", 2L));
-
-        assertThatThrownBy(() -> service.unpin(1L, 99L))
-                .isInstanceOf(NoticeException.class)
-                .extracting(e -> ((NoticeException) e).getErrorCode())
-                .isEqualTo(NoticeErrorCode.CROSS_ACADEMY_NOTICE);
-
-        verify(noticeRepository, never()).save(any());
     }
 
     @Test

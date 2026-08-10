@@ -7,7 +7,7 @@ import com.academy.mudogroupware.lecture.domain.model.Term;
 
 public interface TermRepository {
 
-    Optional<Term> findByAcademyIdAndName(Long academyId, String name);
+    Optional<Term> findByName(String name);
 
     List<Term> findAllById(List<Long> ids);
 

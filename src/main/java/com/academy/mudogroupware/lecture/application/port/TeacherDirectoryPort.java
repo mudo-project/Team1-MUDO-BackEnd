@@ -5,5 +5,5 @@ import java.util.Map;
 
 public interface TeacherDirectoryPort {
 
-    Map<Long, TeacherInfo> findTeachers(Long academyId, List<Long> teacherIds);
+    Map<Long, TeacherInfo> findTeachers(List<Long> teacherIds);
 }

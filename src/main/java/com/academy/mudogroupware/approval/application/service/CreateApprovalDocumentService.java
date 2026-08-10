@@ -9,8 +9,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.academy.mudogroupware.approval.application.command.CreateApprovalDocumentCommand;
-import com.academy.mudogroupware.approval.application.port.ApproverDirectoryPort;
-import com.academy.mudogroupware.approval.application.port.ApproverInfo;
 import com.academy.mudogroupware.approval.application.usecase.CreateApprovalDocumentUseCase;
 import com.academy.mudogroupware.approval.application.port.LeaveRequestSubmissionPort;
 import com.academy.mudogroupware.approval.domain.model.ApprovalContent;
@@ -30,7 +28,6 @@ public class CreateApprovalDocumentService implements CreateApprovalDocumentUseC
 
     private final ApprovalTemplateRepository approvalTemplateRepository;
     private final ApprovalDocumentRepository approvalDocumentRepository;
-    private final ApproverDirectoryPort approverDirectoryPort;
     private final ApproverValidator approverValidator;
     private final LeaveRequestSubmissionPort leaveRequestSubmissionPort;
     private final Clock clock;
@@ -40,28 +37,23 @@ public class CreateApprovalDocumentService implements CreateApprovalDocumentUseC
         ApprovalTemplate approvalTemplate = approvalTemplateRepository.findById(command.templateId())
                 .orElseThrow(() -> new ApprovalException(ApprovalErrorCode.TEMPLATE_NOT_FOUND));
 
-        ApproverInfo creator = approverDirectoryPort.getApprover(command.creatorId());
-        if (!approvalTemplate.getAcademyId().equals(creator.academyId())) {
-            throw new ApprovalException(ApprovalErrorCode.CROSS_ACADEMY_TEMPLATE);
-        }
-
         List<Long> approverIds = (command.approverIds() != null && !command.approverIds().isEmpty())
                 ? command.approverIds()
                 : approvalTemplate.approverIdsInOrder();
-        approverValidator.validate(approverIds, approvalTemplate.getAcademyId());
+        approverValidator.validate(approverIds);
 
         validateLeavePeriod(command.leaveStartDate(), command.leaveEndDate());
 
         ApprovalContent content = ApprovalContent.create(command.contentType(), command.text());
         LocalDateTime now = LocalDateTime.now(clock);
         ApprovalDocument approvalDocument = ApprovalDocument.create(
-                approvalTemplate.getAcademyId(), approvalTemplate.getId(), command.sourceType(), command.title(), content,
+                approvalTemplate.getId(), command.sourceType(), command.title(), content,
                 command.creatorId(), approverIds, command.fileIds(), now);
 
         Long documentId = approvalDocumentRepository.save(approvalDocument).getId();
 
         if (command.leaveStartDate() != null) {
-            leaveRequestSubmissionPort.submit(documentId, approvalTemplate.getAcademyId(), command.creatorId(),
+            leaveRequestSubmissionPort.submit(documentId, command.academyId(), command.creatorId(),
                     command.leaveStartDate(), command.leaveEndDate(), now);
         }
 

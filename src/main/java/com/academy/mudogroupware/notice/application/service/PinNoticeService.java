@@ -3,7 +3,6 @@ package com.academy.mudogroupware.notice.application.service;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.academy.mudogroupware.notice.application.port.AuthorInfo;
 import com.academy.mudogroupware.notice.application.port.NoticeAuthorDirectoryPort;
 import com.academy.mudogroupware.notice.application.usecase.PinNoticeUseCase;
 import com.academy.mudogroupware.notice.domain.exception.NoticeErrorCode;
@@ -29,10 +28,7 @@ public class PinNoticeService implements PinNoticeUseCase {
         Notice notice = noticeRepository.findById(noticeId)
                 .orElseThrow(() -> new NoticeException(NoticeErrorCode.NOTICE_NOT_FOUND));
 
-        AuthorInfo requester = noticeAuthorDirectoryPort.getAuthor(requesterId);
-        if (!notice.getAcademyId().equals(requester.academyId())) {
-            throw new NoticeException(NoticeErrorCode.CROSS_ACADEMY_NOTICE);
-        }
+        noticeAuthorDirectoryPort.getAuthor(requesterId);
 
         notice.pin();
         noticeRepository.save(notice);
@@ -45,10 +41,7 @@ public class PinNoticeService implements PinNoticeUseCase {
         Notice notice = noticeRepository.findById(noticeId)
                 .orElseThrow(() -> new NoticeException(NoticeErrorCode.NOTICE_NOT_FOUND));
 
-        AuthorInfo requester = noticeAuthorDirectoryPort.getAuthor(requesterId);
-        if (!notice.getAcademyId().equals(requester.academyId())) {
-            throw new NoticeException(NoticeErrorCode.CROSS_ACADEMY_NOTICE);
-        }
+        noticeAuthorDirectoryPort.getAuthor(requesterId);
 
         notice.unpin();
         noticeRepository.save(notice);

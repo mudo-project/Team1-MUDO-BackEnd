@@ -9,9 +9,7 @@ import org.springframework.data.repository.query.Param;
 public interface NoticeJpaRepository extends JpaRepository<NoticeEntity, Long> {
 
     @Query("select n from NoticeEntity n "
-            + "where n.academyId = :academyId "
-            + "and (:keyword is null or n.title like concat('%', :keyword, '%')) "
+            + "where (:keyword is null or n.title like concat('%', :keyword, '%')) "
             + "order by n.pinned desc, n.createdAt desc")
-    Slice<NoticeEntity> findAllByAcademyIdAndTitleKeyword(@Param("academyId") Long academyId,
-                                                           @Param("keyword") String keyword, Pageable pageable);
+    Slice<NoticeEntity> findAllByTitleKeyword(@Param("keyword") String keyword, Pageable pageable);
 }

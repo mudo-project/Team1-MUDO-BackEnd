@@ -2,7 +2,6 @@ package com.academy.mudogroupware.lecture.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -24,7 +23,6 @@ import com.academy.mudogroupware.lecture.application.port.TeacherDirectoryPort;
 import com.academy.mudogroupware.lecture.application.port.TeacherInfo;
 import com.academy.mudogroupware.lecture.application.query.LectureDetailView;
 import com.academy.mudogroupware.lecture.application.query.LectureSummaryView;
-import com.academy.mudogroupware.lecture.domain.exception.LectureAccessDeniedException;
 import com.academy.mudogroupware.lecture.domain.exception.LectureNotFoundException;
 import com.academy.mudogroupware.lecture.domain.model.Classroom;
 import com.academy.mudogroupware.lecture.domain.model.FeeType;
@@ -57,13 +55,13 @@ class LectureQueryServiceTest {
                 enrolledStudentsPort, teacherDirectoryPort);
     }
 
-    private Lecture lecture(Long academyId) {
-        return lecture(1L, academyId, 30L);
+    private Lecture lecture(Long lectureId) {
+        return lecture(lectureId, 30L);
     }
 
-    private Lecture lecture(Long lectureId, Long academyId, Long teacherId) {
+    private Lecture lecture(Long lectureId, Long teacherId) {
         LectureSchedule schedule = LectureSchedule.create(DayOfWeek.MONDAY, LocalTime.of(15, 0), LocalTime.of(17, 0));
-        return Lecture.restore(lectureId, academyId, "Math Basics", Grade.MIDDLE_3, 10L, 20L, teacherId, 40L,
+        return Lecture.restore(lectureId, "Math Basics", Grade.MIDDLE_3, 10L, 20L, teacherId, 40L,
                 FeeType.PER_SESSION, 50000, List.of(schedule), NOW);
     }
 
@@ -71,29 +69,21 @@ class LectureQueryServiceTest {
     void throwsWhenLectureNotFound() {
         when(lectureRepository.findById(1L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.getLectureDetail(1L, 1L)).isInstanceOf(LectureNotFoundException.class);
-    }
-
-    @Test
-    void throwsWhenLectureBelongsToDifferentAcademy() {
-        when(lectureRepository.findById(1L)).thenReturn(Optional.of(lecture(1L)));
-
-        assertThatThrownBy(() -> service.getLectureDetail(1L, 2L))
-                .isInstanceOf(LectureAccessDeniedException.class);
+        assertThatThrownBy(() -> service.getLectureDetail(1L)).isInstanceOf(LectureNotFoundException.class);
     }
 
     @Test
     void returnsDetailWithResolvedNamesWhenAccessible() {
         when(lectureRepository.findById(1L)).thenReturn(Optional.of(lecture(1L)));
-        when(termRepository.findAllById(List.of(10L))).thenReturn(List.of(Term.restore(10L, 1L, "Winter", NOW)));
-        when(subjectRepository.findAllById(List.of(20L))).thenReturn(List.of(Subject.restore(20L, 1L, "Math", NOW)));
+        when(termRepository.findAllById(List.of(10L))).thenReturn(List.of(Term.restore(10L, "Winter", NOW)));
+        when(subjectRepository.findAllById(List.of(20L))).thenReturn(List.of(Subject.restore(20L, "Math", NOW)));
         when(classroomRepository.findAllById(List.of(40L)))
-                .thenReturn(List.of(Classroom.restore(40L, 1L, "Room 101", NOW)));
-        when(teacherDirectoryPort.findTeachers(1L, List.of(30L)))
+                .thenReturn(List.of(Classroom.restore(40L, "Room 101", NOW)));
+        when(teacherDirectoryPort.findTeachers(List.of(30L)))
                 .thenReturn(Map.of(30L, new TeacherInfo(30L, "Teacher Kim", 1L, "ACTIVE")));
-        when(enrolledStudentsPort.findByLectureId(anyLong(), anyLong())).thenReturn(List.of());
+        when(enrolledStudentsPort.findByLectureId(1L)).thenReturn(List.of());
 
-        LectureDetailView view = service.getLectureDetail(1L, 1L);
+        LectureDetailView view = service.getLectureDetail(1L);
 
         assertThat(view.termName()).isEqualTo("Winter");
         assertThat(view.subjectName()).isEqualTo("Math");
@@ -104,44 +94,44 @@ class LectureQueryServiceTest {
     @Test
     void returnsSummariesWithResolvedTeacherNames() {
         Lecture lecture = lecture(1L);
-        when(lectureRepository.findAll(1L, null, 0, 20))
+        when(lectureRepository.findAll(null, 0, 20))
                 .thenReturn(PageResult.of(List.of(lecture), 0, 20, false));
-        when(termRepository.findAllById(List.of(10L))).thenReturn(List.of(Term.restore(10L, 1L, "Winter", NOW)));
-        when(subjectRepository.findAllById(List.of(20L))).thenReturn(List.of(Subject.restore(20L, 1L, "Math", NOW)));
+        when(termRepository.findAllById(List.of(10L))).thenReturn(List.of(Term.restore(10L, "Winter", NOW)));
+        when(subjectRepository.findAllById(List.of(20L))).thenReturn(List.of(Subject.restore(20L, "Math", NOW)));
         when(classroomRepository.findAllById(List.of(40L)))
-                .thenReturn(List.of(Classroom.restore(40L, 1L, "Room 101", NOW)));
-        when(teacherDirectoryPort.findTeachers(1L, List.of(30L)))
+                .thenReturn(List.of(Classroom.restore(40L, "Room 101", NOW)));
+        when(teacherDirectoryPort.findTeachers(List.of(30L)))
                 .thenReturn(Map.of(30L, new TeacherInfo(30L, "Teacher Kim", 1L, "ACTIVE")));
-        when(enrolledStudentsPort.countByLectureIds(1L, List.of(lecture.getId())))
+        when(enrolledStudentsPort.countByLectureIds(List.of(lecture.getId())))
                 .thenReturn(Map.of(lecture.getId(), 0L));
 
-        PageResult<LectureSummaryView> result = service.getLectures(1L, null, 0, 20);
+        PageResult<LectureSummaryView> result = service.getLectures(null, 0, 20);
 
         assertThat(result.content()).extracting(LectureSummaryView::teacherName).containsExactly("Teacher Kim");
     }
 
     @Test
     void returnsSummariesWithStudentCountsInOneBatch() {
-        Lecture first = lecture(1L, 1L, 30L);
-        Lecture second = lecture(2L, 1L, 31L);
-        when(lectureRepository.findAll(1L, null, 0, 20))
+        Lecture first = lecture(1L, 30L);
+        Lecture second = lecture(2L, 31L);
+        when(lectureRepository.findAll(null, 0, 20))
                 .thenReturn(PageResult.of(List.of(first, second), 0, 20, false));
-        when(termRepository.findAllById(List.of(10L))).thenReturn(List.of(Term.restore(10L, 1L, "Winter", NOW)));
-        when(subjectRepository.findAllById(List.of(20L))).thenReturn(List.of(Subject.restore(20L, 1L, "Math", NOW)));
+        when(termRepository.findAllById(List.of(10L))).thenReturn(List.of(Term.restore(10L, "Winter", NOW)));
+        when(subjectRepository.findAllById(List.of(20L))).thenReturn(List.of(Subject.restore(20L, "Math", NOW)));
         when(classroomRepository.findAllById(List.of(40L)))
-                .thenReturn(List.of(Classroom.restore(40L, 1L, "Room 101", NOW)));
-        when(teacherDirectoryPort.findTeachers(1L, List.of(30L, 31L)))
+                .thenReturn(List.of(Classroom.restore(40L, "Room 101", NOW)));
+        when(teacherDirectoryPort.findTeachers(List.of(30L, 31L)))
                 .thenReturn(Map.of(
                         30L, new TeacherInfo(30L, "Teacher Kim", 1L, "ACTIVE"),
                         31L, new TeacherInfo(31L, "Teacher Lee", 1L, "ACTIVE")));
-        when(enrolledStudentsPort.countByLectureIds(1L, List.of(1L, 2L)))
+        when(enrolledStudentsPort.countByLectureIds(List.of(1L, 2L)))
                 .thenReturn(Map.of(1L, 3L, 2L, 1L));
 
-        PageResult<LectureSummaryView> result = service.getLectures(1L, null, 0, 20);
+        PageResult<LectureSummaryView> result = service.getLectures(null, 0, 20);
 
         assertThat(result.content()).extracting(LectureSummaryView::studentCount)
                 .containsExactly(3, 1);
-        verify(enrolledStudentsPort).countByLectureIds(1L, List.of(1L, 2L));
-        verify(enrolledStudentsPort, never()).findByLectureId(anyLong(), anyLong());
+        verify(enrolledStudentsPort).countByLectureIds(List.of(1L, 2L));
+        verify(enrolledStudentsPort, never()).findByLectureId(1L);
     }
 }

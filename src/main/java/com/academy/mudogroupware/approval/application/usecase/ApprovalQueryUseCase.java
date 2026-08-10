@@ -9,7 +9,7 @@ public interface ApprovalQueryUseCase {
 
     PageResult<ApprovalSummaryView> getMyApprovals(Long userId, int page, int size);
 
-    PageResult<ApprovalSubmittedSummaryView> getAllApprovals(Long academyId, int page, int size);
+    PageResult<ApprovalSubmittedSummaryView> getAllApprovals(int page, int size);
 
     PageResult<ApprovalSummaryView> getMyApprovalHistory(Long userId, int page, int size);
 
@@ -17,6 +17,5 @@ public interface ApprovalQueryUseCase {
 
     long getMyPendingCount(Long userId);
 
-    ApprovalDetailView getApprovalDetail(Long documentId, Long requesterId, Long requesterAcademyId,
-                                         boolean canReadAll);
+    ApprovalDetailView getApprovalDetail(Long documentId, Long requesterId, boolean canReadAll);
 }

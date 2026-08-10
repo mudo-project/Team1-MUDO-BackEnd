@@ -23,13 +23,13 @@ public class MessageTemplateRepositoryImpl implements MessageTemplateRepository 
     }
 
     @Override
-    public List<MessageTemplate> findByAcademyId(Long academyId) {
-        return messageTemplateJpaRepository.findAllByAcademyId(academyId).stream().map(this::toDomain).toList();
+    public List<MessageTemplate> findAll() {
+        return messageTemplateJpaRepository.findAllByOrderByIdAsc().stream().map(this::toDomain).toList();
     }
 
     @Override
-    public Optional<MessageTemplate> findByAcademyIdAndStatus(Long academyId, AttendanceStatus status) {
-        return messageTemplateJpaRepository.findByAcademyIdAndStatus(academyId, status).map(this::toDomain);
+    public Optional<MessageTemplate> findByStatus(AttendanceStatus status) {
+        return messageTemplateJpaRepository.findByStatus(status).map(this::toDomain);
     }
 
     @Override
@@ -45,7 +45,6 @@ public class MessageTemplateRepositoryImpl implements MessageTemplateRepository 
 
     private MessageTemplateEntity toNewEntity(MessageTemplate template) {
         return MessageTemplateEntity.builder()
-                .academyId(template.getAcademyId())
                 .name(template.getName())
                 .status(template.getStatus())
                 .content(template.getContent())
@@ -60,7 +59,7 @@ public class MessageTemplateRepositoryImpl implements MessageTemplateRepository 
     }
 
     private MessageTemplate toDomain(MessageTemplateEntity entity) {
-        return MessageTemplate.restore(entity.getId(), entity.getAcademyId(), entity.getName(), entity.getStatus(),
-                entity.getContent(), entity.getCreatedBy(), entity.getCreatedAt(), entity.getUpdatedAt());
+        return MessageTemplate.restore(entity.getId(), entity.getName(), entity.getStatus(), entity.getContent(),
+                entity.getCreatedBy(), entity.getCreatedAt(), entity.getUpdatedAt());
     }
 }

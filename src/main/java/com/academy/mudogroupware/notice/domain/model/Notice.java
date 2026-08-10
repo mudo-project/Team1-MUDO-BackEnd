@@ -11,7 +11,6 @@ import com.academy.mudogroupware.notice.domain.exception.NoticeException;
 public final class Notice {
 
     private final Long id;
-    private final Long academyId;
     private final Long authorUserId;
     private String title;
     private String content;
@@ -21,12 +20,9 @@ public final class Notice {
     private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    private Notice(Long id, Long academyId, Long authorUserId, String title, String content, boolean pinned,
+    private Notice(Long id, Long authorUserId, String title, String content, boolean pinned,
                     long viewCount, List<NoticeAttachment> attachments, LocalDateTime createdAt,
                     LocalDateTime updatedAt) {
-        if (academyId == null) {
-            throw new IllegalArgumentException("academyId must not be null");
-        }
         if (authorUserId == null) {
             throw new IllegalArgumentException("authorUserId must not be null");
         }
@@ -43,7 +39,6 @@ public final class Notice {
             throw new IllegalArgumentException("updatedAt must not be null");
         }
         this.id = id;
-        this.academyId = academyId;
         this.authorUserId = authorUserId;
         this.title = title;
         this.content = content;
@@ -54,15 +49,15 @@ public final class Notice {
         this.updatedAt = updatedAt;
     }
 
-    public static Notice create(Long academyId, Long authorUserId, String title, String content,
+    public static Notice create(Long authorUserId, String title, String content,
                                  boolean pinned, List<NoticeAttachment> attachments, LocalDateTime now) {
-        return new Notice(null, academyId, authorUserId, title, content, pinned, 0L, attachments, now, now);
+        return new Notice(null, authorUserId, title, content, pinned, 0L, attachments, now, now);
     }
 
-    public static Notice restore(Long id, Long academyId, Long authorUserId, String title, String content,
+    public static Notice restore(Long id, Long authorUserId, String title, String content,
                                   boolean pinned, long viewCount, List<NoticeAttachment> attachments,
                                   LocalDateTime createdAt, LocalDateTime updatedAt) {
-        return new Notice(id, academyId, authorUserId, title, content, pinned, viewCount, attachments, createdAt,
+        return new Notice(id, authorUserId, title, content, pinned, viewCount, attachments, createdAt,
                 updatedAt);
     }
 
@@ -99,10 +94,6 @@ public final class Notice {
 
     public Long getId() {
         return id;
-    }
-
-    public Long getAcademyId() {
-        return academyId;
     }
 
     public Long getAuthorUserId() {

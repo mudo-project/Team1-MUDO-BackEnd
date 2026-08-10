@@ -29,29 +29,19 @@ class DeleteStudentServiceTest {
     private final DeleteStudentService service = new DeleteStudentService(studentRepository, clock);
 
     @Test
-    void softDeletesStudentInSameAcademy() {
-        studentRepository.add(Student.restore(1L, 10L, "김민수", StudentGrade.HIGH_1, "무도고",
+    void softDeletesStudent() {
+        studentRepository.add(Student.restore(1L, "김민수", StudentGrade.HIGH_1, "무도고",
                 "010-0000-0001", "010-0000-0002", null, NOW, NOW));
 
-        service.deleteStudent(new DeleteStudentCommand(10L, 1L));
+        service.deleteStudent(new DeleteStudentCommand(1L));
 
         assertThat(studentRepository.findById(1L)).isEmpty();
         assertThat(studentRepository.deletedIds).containsExactly(1L);
     }
 
     @Test
-    void rejectsDeleteForStudentOutsideAcademy() {
-        studentRepository.add(Student.restore(1L, 20L, "김민수", StudentGrade.HIGH_1, "무도고",
-                "010-0000-0001", "010-0000-0002", null, NOW, NOW));
-
-        assertThatThrownBy(() -> service.deleteStudent(new DeleteStudentCommand(10L, 1L)))
-                .isInstanceOf(StudentException.class);
-        assertThat(studentRepository.deletedIds).isEmpty();
-    }
-
-    @Test
     void rejectsDeleteForMissingStudent() {
-        assertThatThrownBy(() -> service.deleteStudent(new DeleteStudentCommand(10L, 999L)))
+        assertThatThrownBy(() -> service.deleteStudent(new DeleteStudentCommand(999L)))
                 .isInstanceOf(StudentException.class);
     }
 
@@ -80,7 +70,7 @@ class DeleteStudentServiceTest {
         }
 
         @Override
-        public PageResult<Student> findAll(Long academyId, String keyword, int page, int size) {
+        public PageResult<Student> findAll(String keyword, int page, int size) {
             return PageResult.of(List.of(), page, size, false);
         }
 

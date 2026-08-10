@@ -51,7 +51,7 @@ class SummarizeApprovalAttachmentServiceTest {
     }
 
     private ApprovalDocument newDocument() {
-        return ApprovalDocument.create(1L, 1L, "제목", ApprovalContent.create(ApprovalContentType.TEXT, "내용"),
+        return ApprovalDocument.create(1L, "제목", ApprovalContent.create(ApprovalContentType.TEXT, "내용"),
                 CREATOR_ID, List.of(APPROVER_ID), List.of(FILE_ID), CREATED_AT);
     }
 
