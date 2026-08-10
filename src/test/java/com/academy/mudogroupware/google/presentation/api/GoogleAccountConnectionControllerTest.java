@@ -135,13 +135,14 @@ class GoogleAccountConnectionControllerTest {
     void getConnectionReturns200WithConnectionDataWhenConnected() throws Exception {
         LocalDateTime connectedAt = LocalDateTime.of(2026, 7, 1, 14, 22);
         GoogleAccountConnectionView view = new GoogleAccountConnectionView(
-                "academy@mudo.co.kr", 7L, "drive.file", connectedAt, connectedAt.plusDays(60), connectedAt,
+                "academy@mudo.co.kr", 7L, "drive.file", connectedAt, null, connectedAt,
                 GoogleConnectionStatus.CONNECTED);
         when(getGoogleAccountConnectionUseCase.getConnection()).thenReturn(Optional.of(view));
 
         mockMvc.perform(get("/api/google/connections").with(authentication(authenticatedUser("ACADEMY:OWNER"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.googleEmail").value("academy@mudo.co.kr"))
+                .andExpect(jsonPath("$.data.refreshTokenExpiresAt").value(org.hamcrest.Matchers.nullValue()))
                 .andExpect(jsonPath("$.data.status").value("CONNECTED"));
     }
 

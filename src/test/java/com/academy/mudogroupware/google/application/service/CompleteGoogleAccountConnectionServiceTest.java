@@ -53,7 +53,7 @@ class CompleteGoogleAccountConnectionServiceTest {
         GoogleOAuthStateClaims claims = new GoogleOAuthStateClaims(7L,false);
         when(googleOAuthStatePort.verify("state")).thenReturn(claims);
         when(googleOAuthPort.exchangeAuthorizationCode("auth-code"))
-                .thenReturn(new GoogleTokenExchangeResult("access-token", "refresh-token", "scope"));
+                .thenReturn(new GoogleTokenExchangeResult("access-token", "refresh-token", "scope", 3600L));
         when(googleOAuthPort.fetchAccountEmail("access-token")).thenReturn("academy@mudo.co.kr");
         when(googleAccountConnectionRepository.find()).thenReturn(Optional.empty());
 
@@ -66,6 +66,8 @@ class CompleteGoogleAccountConnectionServiceTest {
         assertThat(saved.getGoogleEmail()).isEqualTo("academy@mudo.co.kr");
         assertThat(saved.getConnectedByUserId()).isEqualTo(7L);
         assertThat(saved.getRefreshToken()).isEqualTo("refresh-token");
+        assertThat(saved.getRefreshTokenExpiresAt())
+                .isEqualTo(NOW.atZone(ZoneOffset.UTC).toLocalDateTime().plusHours(1));
     }
 
     @Test

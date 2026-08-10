@@ -47,7 +47,7 @@ public class GoogleAccountConnectionPersistenceAdapter implements GoogleAccountC
                 .scope(domain.getScope())
                 .encryptedRefreshToken(googleTokenCipher.encrypt(domain.getRefreshToken()))
                 .connectedAt(domain.getConnectedAt())
-                .tokenExpiresAt(domain.getTokenExpiresAt())
+                .refreshTokenExpiresAt(domain.getRefreshTokenExpiresAt())
                 .lastCheckedAt(domain.getLastCheckedAt())
                 .failed(domain.isFailed())
                 .build();
@@ -57,6 +57,6 @@ public class GoogleAccountConnectionPersistenceAdapter implements GoogleAccountC
         return GoogleAccountConnection.restore(
                 entity.getId(), entity.getGoogleEmail(), entity.getConnectedByUserId(),
                 entity.getScope(), googleTokenCipher.decrypt(entity.getEncryptedRefreshToken()),
-                entity.getConnectedAt(), entity.getTokenExpiresAt(), entity.getLastCheckedAt(), entity.isFailed());
+                entity.getConnectedAt(), entity.getRefreshTokenExpiresAt(), entity.getLastCheckedAt(), entity.isFailed());
     }
 }
