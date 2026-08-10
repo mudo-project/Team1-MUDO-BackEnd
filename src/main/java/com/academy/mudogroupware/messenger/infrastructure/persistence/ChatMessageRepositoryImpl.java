@@ -77,7 +77,7 @@ public class ChatMessageRepositoryImpl implements ChatMessageRepository {
                 .senderUserId(chatMessage.getSenderUserId())
                 .messageType(chatMessage.getMessageType())
                 .content(chatMessage.getContent())
-                .fileUrl(chatMessage.getFileUrl())
+                .fileId(chatMessage.getFileId())
                 .fileName(chatMessage.getFileName())
                 .createdAt(chatMessage.getCreatedAt())
                 .editedAt(chatMessage.getEditedAt())
@@ -87,7 +87,7 @@ public class ChatMessageRepositoryImpl implements ChatMessageRepository {
 
     private ChatMessage toDomain(ChatMessageEntity entity) {
         return ChatMessage.restore(entity.getId(), entity.getChatRoomId(), entity.getSenderUserId(),
-                entity.getMessageType(), entity.getContent(), entity.getFileUrl(), entity.getFileName(),
+                entity.getMessageType(), entity.getContent(), entity.getFileId(), entity.getFileName(),
                 entity.getCreatedAt(), entity.getEditedAt(), entity.getDeletedAt());
     }
 }

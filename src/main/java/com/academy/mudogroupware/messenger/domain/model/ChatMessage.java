@@ -12,14 +12,14 @@ public final class ChatMessage {
     private final Long senderUserId;
     private final MessageType messageType;
     private String content;
-    private final String fileUrl;
+    private final Long fileId;
     private final String fileName;
     private final LocalDateTime createdAt;
     private LocalDateTime editedAt;
     private LocalDateTime deletedAt;
 
     private ChatMessage(Long id, Long chatRoomId, Long senderUserId, MessageType messageType, String content,
-                         String fileUrl, String fileName, LocalDateTime createdAt, LocalDateTime editedAt,
+                         Long fileId, String fileName, LocalDateTime createdAt, LocalDateTime editedAt,
                          LocalDateTime deletedAt) {
         if (chatRoomId == null) {
             throw new IllegalArgumentException("chatRoomId must not be null");
@@ -34,15 +34,15 @@ public final class ChatMessage {
             if (content == null || content.isBlank()) {
                 throw new MessengerException(MessengerErrorCode.MESSAGE_CONTENT_REQUIRED);
             }
-        } else if (deletedAt == null && (fileUrl == null || fileUrl.isBlank())) {
-            throw new MessengerException(MessengerErrorCode.FILE_URL_REQUIRED);
+        } else if (deletedAt == null && fileId == null) {
+            throw new MessengerException(MessengerErrorCode.FILE_ID_REQUIRED);
         }
         this.id = id;
         this.chatRoomId = chatRoomId;
         this.senderUserId = senderUserId;
         this.messageType = messageType;
         this.content = content;
-        this.fileUrl = fileUrl;
+        this.fileId = fileId;
         this.fileName = fileName;
         this.createdAt = createdAt;
         this.editedAt = editedAt;
@@ -50,20 +50,20 @@ public final class ChatMessage {
     }
 
     public static ChatMessage create(Long chatRoomId, Long senderUserId, MessageType messageType, String content,
-                                      String fileUrl, String fileName, LocalDateTime createdAt) {
-        return new ChatMessage(null, chatRoomId, senderUserId, messageType, content, fileUrl, fileName,
+                                      Long fileId, String fileName, LocalDateTime createdAt) {
+        return new ChatMessage(null, chatRoomId, senderUserId, messageType, content, fileId, fileName,
                 createdAt, null, null);
     }
 
     public static ChatMessage restore(Long id, Long chatRoomId, Long senderUserId, MessageType messageType,
-                                       String content, String fileUrl, String fileName, LocalDateTime createdAt) {
-        return restore(id, chatRoomId, senderUserId, messageType, content, fileUrl, fileName, createdAt, null, null);
+                                       String content, Long fileId, String fileName, LocalDateTime createdAt) {
+        return restore(id, chatRoomId, senderUserId, messageType, content, fileId, fileName, createdAt, null, null);
     }
 
     public static ChatMessage restore(Long id, Long chatRoomId, Long senderUserId, MessageType messageType,
-                                       String content, String fileUrl, String fileName, LocalDateTime createdAt,
+                                       String content, Long fileId, String fileName, LocalDateTime createdAt,
                                        LocalDateTime editedAt, LocalDateTime deletedAt) {
-        return new ChatMessage(id, chatRoomId, senderUserId, messageType, content, fileUrl, fileName, createdAt,
+        return new ChatMessage(id, chatRoomId, senderUserId, messageType, content, fileId, fileName, createdAt,
                 editedAt, deletedAt);
     }
 
@@ -119,8 +119,8 @@ public final class ChatMessage {
         return content;
     }
 
-    public String getFileUrl() {
-        return fileUrl;
+    public Long getFileId() {
+        return fileId;
     }
 
     public String getFileName() {
