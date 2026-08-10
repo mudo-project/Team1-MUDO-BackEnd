@@ -37,42 +37,42 @@ public class CheckInService implements CheckInUseCase {
 
     @Override
     public CheckInResult checkIn(CheckInCommand command) {
-        log.info("event=attendance_check_in_시작 userId={}, academyId={}", command.userId(), command.academyId());
+        log.info("event=attendance_check_in_시작 userId={}={}", command.userId());
         try {
-            if (command.userId() == null || command.academyId() == null) {
+            if (command.userId() == null) {
                 throw new AttendanceException(AttendanceErrorCode.CHECK_IN_FORBIDDEN);
             }
 
         AcademyWifiIp detectedWifiIp = AcademyWifiIp.create(
-                command.academyId(), command.detectedIpAddress(), null);
-        if (!academyWifiIpRepository.existsByAcademyIdAndIpAddress(
-                command.academyId(), detectedWifiIp.getIpAddress())) {
+                command.detectedIpAddress(), null);
+        if (!academyWifiIpRepository.existsByIpAddress(
+                detectedWifiIp.getIpAddress())) {
             throw new AttendanceException(AttendanceErrorCode.UNREGISTERED_CHECK_IN_IP);
         }
 
         AttendancePolicy policy = attendancePolicyRepository
-                .findByAcademyId(command.academyId())
+                .findCurrent()
                 .orElseThrow(() -> new AttendanceException(
                         AttendanceErrorCode.ATTENDANCE_POLICY_NOT_FOUND));
         LocalDateTime now = LocalDateTime.now(clock);
         LocalTime workStartTime = resolveWorkStartTime(policy, now);
 
-        if (attendanceRecordRepository.existsByAcademyIdAndUserIdAndWorkDate(
-                command.academyId(), command.userId(), now.toLocalDate())) {
+        if (attendanceRecordRepository.existsByUserIdAndWorkDate(
+                command.userId(), now.toLocalDate())) {
             throw new AttendanceException(
                     AttendanceErrorCode.ATTENDANCE_ALREADY_CHECKED_IN);
         }
 
         AttendanceRecord record = AttendanceRecord.checkIn(
-                command.academyId(), command.userId(), now, workStartTime,
+                command.userId(), now, workStartTime,
                 policy.getLateGraceMinutes(), command.clockInNote());
             CheckInResult result = CheckInResult.from(attendanceRecordRepository.save(record));
-            log.info("event=attendance_check_in_완료 userId={}, academyId={}, status={}",
-                    command.userId(), command.academyId(), result.status());
+            log.info("event=attendance_check_in_완료 userId={}={}, status={}",
+                    command.userId(), result.status());
             return result;
         } catch (RuntimeException e) {
-            log.warn("event=attendance_check_in_실패 userId={}, academyId={}, reason={}",
-                    command.userId(), command.academyId(), e.getMessage());
+            log.warn("event=attendance_check_in_실패 userId={}={}, reason={}",
+                    command.userId(), e.getMessage());
             throw e;
         }
     }

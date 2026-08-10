@@ -6,5 +6,5 @@ import com.academy.mudogroupware.attendance.application.query.WeeklyEmployeeDeta
 
 public interface GetWeeklyEmployeeDetailUseCase {
     WeeklyEmployeeDetailView getWeeklyDetail(
-            Long requesterId, Long academyId, Long userId, LocalDate date);
+            Long requesterId, Long userId, LocalDate date);
 }

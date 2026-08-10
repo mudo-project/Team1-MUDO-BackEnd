@@ -25,16 +25,16 @@ public class MyLeaveSummaryQueryService implements GetMyLeaveSummaryUseCase {
     private final Clock clock;
 
     @Override
-    public MyLeaveSummaryView getSummary(Long userId, Long academyId) {
-        log.info("event=attendance_leave_summary_read_시작 userId={}, academyId={}", userId, academyId);
+    public MyLeaveSummaryView getSummary(Long userId) {
+        log.info("event=attendance_leave_summary_read_시작 userId={}={}", userId);
         LocalDate today = LocalDate.now(clock);
-        MyLeaveSummaryView result = leaveGrantRepository.findActive(academyId, userId, today)
+        MyLeaveSummaryView result = leaveGrantRepository.findActive(userId, today)
                 .map(grant -> {
                     int usedDays = leaveRequestRepository.sumUsedDaysByStatus(
-                            academyId, userId, grant.getGrantDate(), grant.getExpirationDate(),
+                            userId, grant.getGrantDate(), grant.getExpirationDate(),
                             LeaveRequestStatus.APPROVED);
                     int pendingDays = leaveRequestRepository.sumUsedDaysByStatus(
-                            academyId, userId, grant.getGrantDate(), grant.getExpirationDate(),
+                            userId, grant.getGrantDate(), grant.getExpirationDate(),
                             LeaveRequestStatus.PENDING);
                     int remainingDays = Math.max(
                             0, grant.getGrantedDays() - usedDays - pendingDays);
@@ -43,7 +43,7 @@ public class MyLeaveSummaryQueryService implements GetMyLeaveSummaryUseCase {
                             grant.getExpirationDate().plusDays(1));
                 })
                 .orElseGet(() -> new MyLeaveSummaryView(0, 0, 0, 0, null));
-        log.info("event=attendance_leave_summary_read_완료 userId={}, academyId={}", userId, academyId);
+        log.info("event=attendance_leave_summary_read_완료 userId={}={}", userId);
         return result;
     }
 }

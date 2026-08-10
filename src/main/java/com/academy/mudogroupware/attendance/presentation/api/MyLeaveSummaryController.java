@@ -33,6 +33,6 @@ public class MyLeaveSummaryController {
         return GlobalApiResponse.ok(
                 AttendanceResponseCode.MY_LEAVE_SUMMARY_RETRIEVED,
                 MyLeaveSummaryResponse.from(leaveSummaryUseCase.getSummary(
-                        authUser.userId(), authUser.academyId())));
+                        authUser.userId())));
     }
 }

@@ -21,11 +21,9 @@ public class WeeklyAttendanceQueryAdapter implements WeeklyAttendanceQueryPort {
             SELECT u.id, u.name, ar.work_date, ar.clock_in_at, ar.status
             FROM users u
             LEFT JOIN attendance_record ar
-              ON ar.academy_id = u.academy_id
-             AND ar.user_id = u.id
+              ON ar.user_id = u.id
              AND ar.work_date BETWEEN ? AND ?
-            WHERE u.academy_id = ?
-              AND u.status = 'ACTIVE'
+            WHERE u.status = 'ACTIVE'
               AND u.id <> ?
             ORDER BY u.name ASC, u.id ASC, ar.work_date ASC
             """;
@@ -34,7 +32,7 @@ public class WeeklyAttendanceQueryAdapter implements WeeklyAttendanceQueryPort {
 
     @Override
     public List<WeeklyAttendanceEmployee> findEmployees(
-            Long academyId, Long ownerUserId, LocalDate startDate, LocalDate endDate) {
+            Long ownerUserId, LocalDate startDate, LocalDate endDate) {
         return jdbcTemplate.query(FIND_EMPLOYEES, (rs, rowNum) -> {
             Timestamp clockIn = rs.getTimestamp("clock_in_at");
             String status = rs.getString("status");
@@ -43,6 +41,6 @@ public class WeeklyAttendanceQueryAdapter implements WeeklyAttendanceQueryPort {
                     rs.getDate("work_date") == null ? null : rs.getDate("work_date").toLocalDate(),
                     clockIn == null ? null : clockIn.toLocalDateTime(),
                     status == null ? null : AttendanceStatus.valueOf(status));
-        }, startDate, endDate, academyId, ownerUserId);
+        }, startDate, endDate, ownerUserId);
     }
 }

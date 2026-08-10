@@ -19,7 +19,7 @@ class AttendancePolicyTest {
         AttendanceException exception = assertThrows(
                 AttendanceException.class,
                 () -> AttendancePolicy.create(
-                        1L, LocalTime.of(9, 0), LocalTime.of(18, 0), 10, true,
+                        LocalTime.of(9, 0), LocalTime.of(18, 0), 10, true,
                         List.of(
                                 new AttendancePolicyWeekday(1, true, null, null),
                                 new AttendancePolicyWeekday(1, false, null, null))));
@@ -55,18 +55,18 @@ class AttendancePolicyTest {
     @Test
     void allowsOvernightWorkTime() {
         assertDoesNotThrow(() -> AttendancePolicy.create(
-                1L, LocalTime.of(22, 0), LocalTime.of(6, 0), 10, false, List.of()));
+                LocalTime.of(22, 0), LocalTime.of(6, 0), 10, false, List.of()));
     }
 
     @Test
     void allowsZeroLateGraceMinutes() {
         assertDoesNotThrow(() -> AttendancePolicy.create(
-                1L, LocalTime.of(9, 0), LocalTime.of(18, 0), 0, false, List.of()));
+                LocalTime.of(9, 0), LocalTime.of(18, 0), 0, false, List.of()));
     }
 
     @Test
     void allowsMaximumLateGraceMinutes() {
         assertDoesNotThrow(() -> AttendancePolicy.create(
-                1L, LocalTime.of(9, 0), LocalTime.of(18, 0), 180, false, List.of()));
+                LocalTime.of(9, 0), LocalTime.of(18, 0), 180, false, List.of()));
     }
 }

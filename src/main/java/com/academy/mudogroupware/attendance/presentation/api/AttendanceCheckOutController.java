@@ -44,7 +44,7 @@ public class AttendanceCheckOutController {
         String clientIp = clientIpResolver.resolve(servletRequest);
         CheckOutResult result = checkOutUseCase.checkOut(
                 request.toCommand(
-                        authUser.userId(), authUser.academyId(), clientIp));
+                        authUser.userId(), clientIp));
 
         return ResponseEntity.ok(GlobalApiResponse.ok(
                 AttendanceResponseCode.ATTENDANCE_CHECKED_OUT,

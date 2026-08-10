@@ -16,20 +16,20 @@ public class CorporateCardTransactionPersistenceAdapter implements CorporateCard
     private final CorporateCardTransactionJpaRepository repository;
 
     @Override
-    public TransactionPage findPage(Long academyId, int page, int size) {
-        var slice = repository.findAllByCard_AcademyId(academyId,
+    public TransactionPage findPage(int page, int size) {
+        var slice = repository.findAllBy(
                 PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "approvedAt").and(Sort.by(Sort.Direction.DESC, "id"))));
         return new TransactionPage(slice.getContent().stream().map(this::toView).toList(), page, size, slice.hasNext());
     }
 
     @Override
-    public Optional<TransactionView> find(Long academyId, Long transactionId) {
-        return repository.findByIdAndCard_AcademyId(transactionId, academyId).map(this::toView);
+    public Optional<TransactionView> find(Long transactionId) {
+        return repository.findById(transactionId).map(this::toView);
     }
 
     @Override
-    public Optional<TransactionView> findForUpdate(Long academyId, Long transactionId) {
-        return repository.findForUpdate(transactionId, academyId).map(this::toView);
+    public Optional<TransactionView> findForUpdate(Long transactionId) {
+        return repository.findForUpdate(transactionId).map(this::toView);
     }
 
     private TransactionView toView(CorporateCardTransactionJpaEntity entity) {

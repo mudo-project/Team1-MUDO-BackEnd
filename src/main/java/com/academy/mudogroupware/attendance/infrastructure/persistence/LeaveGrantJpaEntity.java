@@ -25,9 +25,6 @@ public class LeaveGrantJpaEntity {
     @Column(name = "leave_grant_id")
     private Long id;
 
-    @Column(name = "academy_id", nullable = false)
-    private Long academyId;
-
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
@@ -44,10 +41,9 @@ public class LeaveGrantJpaEntity {
     private LocalDateTime createdAt;
 
     @Builder
-    private LeaveGrantJpaEntity(Long id, Long academyId, Long userId, LocalDate grantDate,
+    private LeaveGrantJpaEntity(Long id, Long userId, LocalDate grantDate,
                                 LocalDate expirationDate, int grantedDays, LocalDateTime createdAt) {
         this.id = id;
-        this.academyId = academyId;
         this.userId = userId;
         this.grantDate = grantDate;
         this.expirationDate = expirationDate;

@@ -14,7 +14,6 @@ import lombok.*;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class AttendanceCorrectionRequestJpaEntity {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) @Column(name = "request_id") private Long id;
-    @Column(name = "academy_id", nullable = false) private Long academyId;
     @Column(name = "user_id", nullable = false) private Long userId;
     @Column(name = "attendance_id") private Long attendanceId;
     @Column(name = "work_date", nullable = false) private LocalDate workDate;

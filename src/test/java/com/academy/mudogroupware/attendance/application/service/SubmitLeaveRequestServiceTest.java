@@ -59,13 +59,13 @@ class SubmitLeaveRequestServiceTest {
     void savesPendingRequestWithWorkdaysOnly() {
         SubmitLeaveRequestCommand command = command(
                 LocalDate.of(2026, 8, 7), LocalDate.of(2026, 8, 10));
-        when(attendancePolicyRepository.findByAcademyId(ACADEMY_ID)).thenReturn(Optional.of(policy()));
+        when(attendancePolicyRepository.findCurrent()).thenReturn(Optional.of(policy()));
         when(leaveRequestRepository.existsOverlapping(
-                ACADEMY_ID, USER_ID, command.startDate(), command.endDate())).thenReturn(false);
-        when(leaveGrantRepository.findActiveForUpdate(ACADEMY_ID, USER_ID, SUBMITTED_AT.toLocalDate()))
+                USER_ID, command.startDate(), command.endDate())).thenReturn(false);
+        when(leaveGrantRepository.findActiveForUpdate(USER_ID, SUBMITTED_AT.toLocalDate()))
                 .thenReturn(Optional.of(grant()));
         when(leaveRequestRepository.sumReservedDays(
-                ACADEMY_ID, USER_ID, LocalDate.of(2026, 8, 1), LocalDate.of(2027, 7, 31)))
+                USER_ID, LocalDate.of(2026, 8, 1), LocalDate.of(2027, 7, 31)))
                 .thenReturn(3);
 
         service.submit(command);
@@ -80,11 +80,11 @@ class SubmitLeaveRequestServiceTest {
     void rejectsOverlappingRequest() {
         SubmitLeaveRequestCommand command = command(
                 LocalDate.of(2026, 8, 7), LocalDate.of(2026, 8, 10));
-        when(attendancePolicyRepository.findByAcademyId(ACADEMY_ID)).thenReturn(Optional.of(policy()));
-        when(leaveGrantRepository.findActiveForUpdate(ACADEMY_ID, USER_ID, SUBMITTED_AT.toLocalDate()))
+        when(attendancePolicyRepository.findCurrent()).thenReturn(Optional.of(policy()));
+        when(leaveGrantRepository.findActiveForUpdate(USER_ID, SUBMITTED_AT.toLocalDate()))
                 .thenReturn(Optional.of(grant()));
         when(leaveRequestRepository.existsOverlapping(
-                ACADEMY_ID, USER_ID, command.startDate(), command.endDate())).thenReturn(true);
+                USER_ID, command.startDate(), command.endDate())).thenReturn(true);
 
         AttendanceException exception = assertThrows(AttendanceException.class, () -> service.submit(command));
 
@@ -96,13 +96,13 @@ class SubmitLeaveRequestServiceTest {
     void rejectsRequestWhenAvailableDaysAreInsufficient() {
         SubmitLeaveRequestCommand command = command(
                 LocalDate.of(2026, 8, 7), LocalDate.of(2026, 8, 10));
-        when(attendancePolicyRepository.findByAcademyId(ACADEMY_ID)).thenReturn(Optional.of(policy()));
+        when(attendancePolicyRepository.findCurrent()).thenReturn(Optional.of(policy()));
         when(leaveRequestRepository.existsOverlapping(
-                ACADEMY_ID, USER_ID, command.startDate(), command.endDate())).thenReturn(false);
-        when(leaveGrantRepository.findActiveForUpdate(ACADEMY_ID, USER_ID, SUBMITTED_AT.toLocalDate()))
+                USER_ID, command.startDate(), command.endDate())).thenReturn(false);
+        when(leaveGrantRepository.findActiveForUpdate(USER_ID, SUBMITTED_AT.toLocalDate()))
                 .thenReturn(Optional.of(grant()));
         when(leaveRequestRepository.sumReservedDays(
-                ACADEMY_ID, USER_ID, LocalDate.of(2026, 8, 1), LocalDate.of(2027, 7, 31)))
+                USER_ID, LocalDate.of(2026, 8, 1), LocalDate.of(2027, 7, 31)))
                 .thenReturn(14);
 
         AttendanceException exception = assertThrows(AttendanceException.class, () -> service.submit(command));
@@ -112,11 +112,11 @@ class SubmitLeaveRequestServiceTest {
     }
 
     private SubmitLeaveRequestCommand command(LocalDate startDate, LocalDate endDate) {
-        return new SubmitLeaveRequestCommand(10L, ACADEMY_ID, USER_ID, startDate, endDate, SUBMITTED_AT);
+        return new SubmitLeaveRequestCommand(10L, USER_ID, startDate, endDate, SUBMITTED_AT);
     }
 
     private AttendancePolicy policy() {
-        return AttendancePolicy.restore(1L, ACADEMY_ID, LocalTime.of(9, 0), LocalTime.of(18, 0), 0, true,
+        return AttendancePolicy.restore(1L, LocalTime.of(9, 0), LocalTime.of(18, 0), 0, true,
                 List.of(
                         new AttendancePolicyWeekday(6, false, null, null),
                         new AttendancePolicyWeekday(7, false, null, null)),
@@ -124,7 +124,7 @@ class SubmitLeaveRequestServiceTest {
     }
 
     private LeaveGrant grant() {
-        return LeaveGrant.restore(1L, ACADEMY_ID, USER_ID, LocalDate.of(2026, 8, 1),
+        return LeaveGrant.restore(1L, USER_ID, LocalDate.of(2026, 8, 1),
                 LocalDate.of(2027, 7, 31), 15, SUBMITTED_AT.minusDays(5));
     }
 }
