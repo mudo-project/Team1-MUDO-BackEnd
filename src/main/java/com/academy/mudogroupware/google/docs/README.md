@@ -41,7 +41,7 @@
 | `GOOGLE_OAUTH_SCOPE` | 요청할 OAuth scope(공백 구분) | `openid https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/documents https://www.googleapis.com/auth/spreadsheets`(계정 식별 + 드라이브/독스/시트 접근) |
 | `GOOGLE_TOKEN_ENCRYPTION_KEY` | 리프레시 토큰 암호화 전용 키. `JWT_SECRET`과 별도 값이어야 한다 | 없음(필수 설정, 없으면 앱 시작 실패) |
 
-시크릿 값은 `.env.local`(팀 공용 로컬 파일)에 커밋하지 않는다. 각자 실제 구글 Cloud 프로젝트에서 발급받아 로컬 환경 변수 또는 별도 시크릿 관리 방식으로 주입한다.
+`.env.local`은 로컬 전용 파일이며 git 추적에서 제외되어 있다(`git rm --cached`로 제외됨, `.gitignore`의 `.env.*` 규칙 적용). 실제 구글 Cloud 프로젝트에서 발급받은 시크릿 값을 각자 이 파일에 채워 넣어 쓰며, git에는 절대 커밋되지 않는다.
 
 ## 주의 사항
 
