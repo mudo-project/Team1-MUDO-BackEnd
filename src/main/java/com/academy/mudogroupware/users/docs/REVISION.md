@@ -1,5 +1,5 @@
 > 작성일: 2026-08-04
-> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청/승인 워크플로우(PR 1·2·3/3, "계정 발급 체계" 2단계) 완료, 역할 관리 API 7개(생성/목록/상세/수정/삭제/권한 조립/권한 카탈로그 조회) 완료, 사용자 역할 변경 API 완료, 학원 구성원 검색 API 완료, 역할 색상/인원수 완료, CodeRabbit 피드백 반영 + 로깅 컨벤션 전체 도메인(Service 17개) 적용 완료 · 학원 관리자의 직원 계정 발급(계정 발급 체계 3단계) 미착수
+> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청/승인 워크플로우(PR 1·2·3/3, "계정 발급 체계" 2단계) 완료, 역할 관리 API 7개(생성/목록/상세/수정/삭제/권한 조립/권한 카탈로그 조회) 완료, 사용자 역할 변경 API 완료, 학원 구성원 검색 API 완료, 역할 색상/인원수 완료, CodeRabbit 피드백 반영 + 로깅 컨벤션 전체 도메인(Service 17개) 적용 완료, 직원 계정 발급 API 완료("계정 발급 체계" 3단계 완료) · 후속 작업: 이메일 발송, mustChangePw 로그인 흐름 연동, 원장 신청 시 username 중복 확인
 
 ## 🎯 변경 목적
 
@@ -721,6 +721,44 @@ PR 1(목록)·PR 2(상세)에 이어지는 세 번째이자 마지막 PR. 승인
 
 ---
 
+## ✅ 2026-08-09 · 직원 계정 발급 API 구현 (`POST /api/users`, 이슈 #267, "계정 발급 체계" 3단계)
+
+### 배경
+
+계정 발급 체계는 3단계로 나뉜다: 학원 자체 신청(1단계) → SUPER ADMIN 승인 시 원장 계정 자동 발급(2단계) → **원장이 자기 학원 소속 직원 계정을 직접 발급(3단계, 이번 작업)**. 역할 관리 API 7개가 이미 갖춰져있어 계정 생성 시 역할 배정이 가능한 기반은 마련된 상태였다. 설계: `docs/superpowers/specs/2026-08-09-employee-account-creation-design.md`.
+
+### 확정된 정책
+
+- **권한 코드는 `ACCOUNT:MANAGE`를 재사용한다.** 베이스라인부터 시드돼있던 `ACCOUNT:CREATE`는 8/8일 정한 "관련 행위는 하나의 코드로 묶는다" 원칙에 따라 같은 리소스로 판단해 이번에 새로 쓰지 않았다(카탈로그에는 남아있으나 미사용).
+- **`roleId`는 생성 요청에서 필수다.** 직원 계정은 만들 때부터 역할이 있어야 실제 업무(권한 체크)가 가능하다. 원장 계정(role_id=null)과는 다른 정책이다.
+- **원장 계정 발급과 직원 계정 발급이 임시 비밀번호 생성 로직을 공유하도록 `AccountIssuer`(`application/service/support/AccountIssuer.java`)로 뽑았다.** 기존 `ApproveAcademyApplicationService`가 직접 갖고 있던 `generateTemporaryPassword()`+`User.create()`+저장 로직을 이 협력 객체로 옮기고, 두 서비스가 함께 호출한다. `User.create()`도 이참에 `roleId` 파라미터를 받도록 확장했다(호출부가 이 리팩터링 하나뿐이라 오버로드 없이 시그니처를 직접 바꿈).
+- **username 중복은 사전 체크 + DB 유니크 제약 백스톱 이중 방어다.** `UserRepository.existsByUsername()`으로 먼저 확인하고, `UserRepositoryImpl.save()`가 `saveAndFlush()` + `uk_users_username` 위반 캐치로 `UsernameDuplicateException`(`USER_409_6`) 변환까지 방어한다 — 역할 이름 중복 방어(`RoleRepositoryImpl.save()`)와 동일한 패턴.
+- **이메일 발송은 이번 스코프에서 제외했다.** 코드베이스에 메일 발송 인프라가 전혀 없다(`spring-boot-starter-mail` 의존성은 주석 처리된 채 미사용). 이번엔 원장 계정 발급과 동일하게 API 응답으로 임시 비밀번호를 그대로 반환하고, 학원 관리자가 직접 전달한다.
+- **`mustChangePw` 로그인 강제 로직도 이번 스코프에서 제외했다.** 이 필드는 도메인 모델/DB에 저장은 되지만, `LoginService`를 포함해 어디서도 읽거나 강제하지 않는 상태다. 로그인 흐름 연동은 별도 작업으로 미룬다.
+- **원장 계정 신청(`SubmitAcademyApplicationService`)의 `requestedLoginId` 중복 확인도 이번 스코프에서 제외했다.** 이번에 만든 `existsByUsername`/`UsernameDuplicateException` 패턴을 그대로 재사용할 수 있을 것으로 보이나 별도 작업으로 남겨둔다.
+
+### 완료 기준
+
+- [x] `User.create()`에 `roleId` 파라미터 추가
+- [x] `AccountIssuer`/`IssuedAccount` 신규, `ApproveAcademyApplicationService`를 `AccountIssuer` 사용으로 리팩터링(테스트 갱신 포함)
+- [x] `UserRepository.existsByUsername` 추가, `UserErrorCode.USERNAME_DUPLICATE`(`USER_409_6`) + `UsernameDuplicateException` 신규, `UserRepositoryImpl.save()` DB 백스톱(TDD)
+- [x] `CreateAccountCommand`/`CreateAccountUseCase`/`CreateAccountService`(TDD, 4케이스: username 중복/roleId 없음/roleId 다른 학원/정상 생성)
+- [x] `UserController`에 `POST /api/users` 핸들러 추가, `CreateAccountRequest`/`AccountCreateResponse`, `UserResponseCode.ACCOUNT_CREATED`(`USER_201_1`)
+- [x] 로컬 curl end-to-end 검증(정상 생성 201, username 중복 409, roleId 없음 404, 인증 없음 401, 권한 없음 403)
+- [x] `./gradlew build` 통과
+
+### 🧩 영향 범위
+
+| 계층 | 변경 내용 |
+| --- | --- |
+| Domain(users) | `User.create()`에 `roleId` 파라미터 추가. `UserRepository`에 `existsByUsername` 추가. `UserErrorCode.USERNAME_DUPLICATE`(`USER_409_6`), `UsernameDuplicateException` 신규 |
+| Application(users) | `application/service/support/AccountIssuer`(신규 협력 객체)·`IssuedAccount`(신규 record). `CreateAccountCommand`/`CreateAccountUseCase`/`CreateAccountService` 신규. `ApproveAcademyApplicationService`를 `AccountIssuer` 사용으로 리팩터링(생성자 시그니처 변경: `PasswordEncoder` 제거, `AccountIssuer` 추가) |
+| Persistence(users) | `UserJpaRepository.existsByUsername` 추가. `UserRepositoryImpl.save()`가 `saveAndFlush()` + `uk_users_username` 위반 캐치로 `UsernameDuplicateException` 변환 |
+| Presentation(users) | `UserController`에 `POST /api/users` 핸들러 추가(`ACCOUNT:MANAGE` 필요). `CreateAccountRequest`, `AccountCreateResponse`, `UserResponseCode.ACCOUNT_CREATED`(`USER_201_1`) 신규 |
+| Migration | 없음(기존 `roleId`/`role` FK, `uk_users_username` 제약 재사용) |
+
+---
+
 ## 🧩 영향 범위
 
 | 계층 | 변경 내용 |
@@ -751,7 +789,7 @@ PR 1(목록)·PR 2(상세)에 이어지는 세 번째이자 마지막 PR. 승인
 - [x] `./gradlew test` 통과
 - [x] CodeRabbit 리뷰 4건 반영
 - [x] role/permission 테이블 신설, `users.role_id` 전환, 매 요청 권한 조회(`hasAuthority`) 기반 구축
-- [ ] 계정 발급(회원가입, 원장이 하위 직원 계정 생성) API — 미착수
+- [x] 계정 발급(회원가입, 원장이 하위 직원 계정 생성) API — `POST /api/users` 추가로 완료(이메일 발송/`mustChangePw` 로그인 연동은 후속 작업)
 - [x] 로그아웃 API — `POST /api/auth/logout` 추가, `TokenRevokerUseCase`로 refreshToken 삭제
 - [x] 역할 생성 API — `POST /api/roles` 추가, DB 유니크 제약 백스톱 포함
 - [x] 권한 카탈로그 조회 API — `GET /api/permissions` 추가

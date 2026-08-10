@@ -11,6 +11,7 @@ import org.slf4j.MDC;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 
 class GlobalExceptionHandlerTest {
 
@@ -33,6 +34,21 @@ class GlobalExceptionHandlerTest {
     assertThat(response.getBody()).isNotNull();
     assertThat(response.getBody().code()).isEqualTo(CommonErrorCode.INVALID_INPUT.getCode());
     assertThat(response.getBody().traceId()).isEqualTo("trace123");
+    assertThat(response.getBody().details()).containsKey("errors");
+  }
+
+  @Test
+  void missingParameterReturns400WithFieldName() {
+    MDC.put("traceId", "trace456");
+    MissingServletRequestParameterException exception =
+        new MissingServletRequestParameterException("format", "String");
+
+    ResponseEntity<GlobalApiErrorResponse> response = handler.missingParameter(exception);
+
+    assertThat(response.getStatusCode().value()).isEqualTo(400);
+    assertThat(response.getBody()).isNotNull();
+    assertThat(response.getBody().code()).isEqualTo(CommonErrorCode.INVALID_INPUT.getCode());
+    assertThat(response.getBody().traceId()).isEqualTo("trace456");
     assertThat(response.getBody().details()).containsKey("errors");
   }
 }

@@ -28,5 +28,7 @@ public interface ChatTaskCardRepository {
     // addedUserIds만 삽입, removedUserIds만 삭제 — 유지되는 담당자 row는 건드리지 않는다.
     void replaceAssignees(Long cardId, List<Long> addedUserIds, List<Long> removedUserIds);
 
-    void markDeleted(Long cardId, LocalDateTime deletedAt);
+    // 삭제된 카드는 다시 갱신하지 않는다(deleted_at is null 조건). 반환값이 false면 이미 삭제된 카드라는
+    // 뜻이다(동시 삭제 요청 중 하나가 먼저 커밋한 경우 포함).
+    boolean markDeleted(Long cardId, LocalDateTime deletedAt);
 }

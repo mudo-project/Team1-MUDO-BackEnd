@@ -24,7 +24,9 @@ import com.academy.mudogroupware.notice.domain.repository.NoticeRepository;
 import com.academy.mudogroupware.global.domain.common.page.PageResult;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -36,6 +38,8 @@ public class NoticeQueryService implements NoticeQueryUseCase {
 
     @Override
     public PageResult<NoticeSummaryView> getNotices(Long requesterId, String keyword, int page, int size) {
+        log.info("event=notice_list_시작 requesterId={}, keyword={}, page={}, size={}", requesterId, keyword, page,
+                size);
         AuthorInfo requester = noticeAuthorDirectoryPort.getAuthor(requesterId);
 
         PageResult<Notice> result = noticeRepository.findAll(requester.academyId(), keyword, page, size);
@@ -45,12 +49,16 @@ public class NoticeQueryService implements NoticeQueryUseCase {
         Map<Long, AuthorInfo> authors = noticeAuthorDirectoryPort.getAuthors(authorIds);
         Set<Long> readNoticeIds = noticeReadRepository.findReadNoticeIds(noticeIds, requesterId);
 
-        return result.map(notice -> toSummaryView(notice, authors, readNoticeIds));
+        PageResult<NoticeSummaryView> views = result.map(notice -> toSummaryView(notice, authors, readNoticeIds));
+        log.info("event=notice_list_완료 requesterId={}, count={}, hasNext={}", requesterId,
+                views.content().size(), views.hasNext());
+        return views;
     }
 
     @Override
     @Transactional
     public NoticeDetailView getNoticeDetail(Long noticeId, Long requesterId) {
+        log.info("event=notice_detail_시작 noticeId={}, requesterId={}", noticeId, requesterId);
         Notice notice = noticeRepository.findById(noticeId)
                 .orElseThrow(() -> new NoticeException(NoticeErrorCode.NOTICE_NOT_FOUND));
 
@@ -70,6 +78,8 @@ public class NoticeQueryService implements NoticeQueryUseCase {
         long readerCount = noticeReadRepository.countReaders(noticeId);
         long totalRecipientCount = noticeAuthorDirectoryPort.countActiveUsers(notice.getAcademyId());
 
+        log.info("event=notice_detail_완료 noticeId={}, requesterId={}, viewCount={}", noticeId, requesterId,
+                notice.getViewCount());
         return new NoticeDetailView(
                 notice.getId(),
                 notice.getTitle(),
@@ -89,6 +99,7 @@ public class NoticeQueryService implements NoticeQueryUseCase {
 
     @Override
     public List<NoticeReaderView> getReaders(Long noticeId, Long requesterId) {
+        log.info("event=notice_reader_list_시작 noticeId={}, requesterId={}", noticeId, requesterId);
         Notice notice = noticeRepository.findById(noticeId)
                 .orElseThrow(() -> new NoticeException(NoticeErrorCode.NOTICE_NOT_FOUND));
 
@@ -98,12 +109,16 @@ public class NoticeQueryService implements NoticeQueryUseCase {
         }
 
         Map<Long, LocalDateTime> readTimestamps = noticeReadRepository.findReadTimestamps(noticeId);
-        Map<Long, AuthorInfo> readers = noticeAuthorDirectoryPort.getAuthors(List.copyOf(readTimestamps.keySet()));
+        Map<Long, AuthorInfo> readers = noticeAuthorDirectoryPort.getAuthors(
+                List.copyOf(readTimestamps.keySet()));
 
-        return readTimestamps.entrySet().stream()
+        List<NoticeReaderView> views = readTimestamps.entrySet().stream()
                 .map(entry -> toReaderView(entry.getKey(), entry.getValue(), readers))
                 .sorted((a, b) -> b.readAt().compareTo(a.readAt()))
                 .toList();
+        log.info("event=notice_reader_list_완료 noticeId={}, requesterId={}, count={}", noticeId, requesterId,
+                views.size());
+        return views;
     }
 
     private NoticeReaderView toReaderView(Long userId, LocalDateTime readAt, Map<Long, AuthorInfo> readers) {

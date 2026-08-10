@@ -23,6 +23,8 @@ public interface UserRepository {
 
     Optional<User> findByUsername(String username);
 
+    boolean existsByUsername(String username);
+
     Optional<User> findById(Long id);
 
     Set<Long> findActiveUserIds(Long academyId, Set<Long> userIds);

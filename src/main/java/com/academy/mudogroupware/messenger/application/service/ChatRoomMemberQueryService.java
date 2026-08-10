@@ -17,7 +17,9 @@ import com.academy.mudogroupware.messenger.domain.model.ChatRoomMember;
 import com.academy.mudogroupware.messenger.domain.repository.ChatRoomRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -28,6 +30,7 @@ public class ChatRoomMemberQueryService implements ChatRoomMemberQueryUseCase {
 
     @Override
     public List<ChatRoomMemberView> getMembers(Long chatRoomId, Long requesterId) {
+        log.info("event=chat_room_member_list_시작 chatRoomId={}, requesterId={}", chatRoomId, requesterId);
         ChatRoom chatRoom = chatRoomRepository.findById(chatRoomId)
                 .orElseThrow(() -> new MessengerException(MessengerErrorCode.CHAT_ROOM_NOT_FOUND));
         if (!chatRoom.isMember(requesterId)) {
@@ -39,9 +42,12 @@ public class ChatRoomMemberQueryService implements ChatRoomMemberQueryUseCase {
                 .toList();
         Map<Long, ChatMemberInfo> members = chatMemberDirectoryPort.getMembers(memberIds);
 
-        return chatRoom.getMembers().stream()
+        List<ChatRoomMemberView> views = chatRoom.getMembers().stream()
                 .map(member -> toMemberView(member, members))
                 .toList();
+        log.info("event=chat_room_member_list_완료 chatRoomId={}, requesterId={}, count={}", chatRoomId,
+                requesterId, views.size());
+        return views;
     }
 
     private ChatRoomMemberView toMemberView(ChatRoomMember member, Map<Long, ChatMemberInfo> members) {

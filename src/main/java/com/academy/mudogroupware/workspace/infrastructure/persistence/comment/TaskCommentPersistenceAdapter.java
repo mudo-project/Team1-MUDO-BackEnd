@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.workspace.infrastructure.persistence.comment;
 
+import com.academy.mudogroupware.global.domain.common.page.PageResult;
 import com.academy.mudogroupware.workspace.domain.exception.comment.TaskCommentNotFoundException;
 import com.academy.mudogroupware.workspace.domain.model.comment.TaskComment;
 import com.academy.mudogroupware.workspace.domain.repository.comment.TaskCommentRepository;
@@ -8,6 +9,8 @@ import com.academy.mudogroupware.workspace.infrastructure.persistence.task.TaskJ
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -61,6 +64,17 @@ public class TaskCommentPersistenceAdapter implements TaskCommentRepository {
   public void deleteById(Long commentId) {
     taskCommentMentionJpaRepository.deleteAllByCommentId(commentId);
     taskCommentJpaRepository.deleteById(commentId);
+  }
+
+  @Override
+  public PageResult<TaskComment> findAllByTaskId(Long taskId, int page, int size) {
+    Slice<TaskCommentJpaEntity> slice =
+        taskCommentJpaRepository.findAllByTaskId(taskId, PageRequest.of(page, size));
+    List<TaskComment> content =
+        slice.getContent().stream()
+            .map(entity -> taskCommentPersistenceMapper.toDomain(entity, List.of()))
+            .toList();
+    return PageResult.of(content, slice.getNumber(), slice.getSize(), slice.hasNext());
   }
 
   // 완료 상태가 바뀌었을 때만 엔티티의 도메인 행위를 호출한다(멱등 가드는 엔티티가 이미 갖고 있음).

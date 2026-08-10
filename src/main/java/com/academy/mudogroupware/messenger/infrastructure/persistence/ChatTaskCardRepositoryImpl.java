@@ -59,8 +59,8 @@ public class ChatTaskCardRepositoryImpl implements ChatTaskCardRepository {
     }
 
     @Override
-    public void markDeleted(Long cardId, LocalDateTime deletedAt) {
-        chatTaskCardJpaRepository.markDeleted(cardId, deletedAt);
+    public boolean markDeleted(Long cardId, LocalDateTime deletedAt) {
+        return chatTaskCardJpaRepository.markDeleted(cardId, deletedAt) > 0;
     }
 
     private ChatTaskCardEntity toEntity(ChatTaskCard chatTaskCard) {

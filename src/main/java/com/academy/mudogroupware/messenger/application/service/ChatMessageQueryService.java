@@ -22,7 +22,9 @@ import com.academy.mudogroupware.messenger.domain.repository.ChatMessageReposito
 import com.academy.mudogroupware.messenger.domain.repository.ChatRoomRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -36,6 +38,7 @@ public class ChatMessageQueryService implements ChatMessageQueryUseCase {
     @Override
     public ChatMessagePageView getMessages(Long chatRoomId, Long requesterId, LocalDateTime cursorCreatedAt,
                                             Long cursorMessageId, int size) {
+        log.info("event=chat_message_list_시작 chatRoomId={}, requesterId={}", chatRoomId, requesterId);
         if (size < 1 || size > 100) {
             throw new MessengerException(MessengerErrorCode.INVALID_PAGE_SIZE);
         }
@@ -77,6 +80,8 @@ public class ChatMessageQueryService implements ChatMessageQueryUseCase {
         LocalDateTime nextCursorCreatedAt = hasNext ? lastInPage.getCreatedAt() : null;
         Long nextCursorMessageId = hasNext ? lastInPage.getId() : null;
 
+        log.info("event=chat_message_list_완료 chatRoomId={}, requesterId={}, count={}, hasNext={}", chatRoomId,
+                requesterId, messageViews.size(), hasNext);
         return new ChatMessagePageView(messageViews, hasNext, nextCursorCreatedAt, nextCursorMessageId);
     }
 

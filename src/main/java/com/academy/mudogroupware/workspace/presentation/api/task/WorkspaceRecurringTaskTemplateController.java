@@ -3,7 +3,9 @@ package com.academy.mudogroupware.workspace.presentation.api.task;
 import com.academy.mudogroupware.global.presentation.api.common.GlobalApiResponse;
 import com.academy.mudogroupware.global.presentation.api.common.SliceResponse;
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
+import com.academy.mudogroupware.workspace.application.command.task.DeleteRecurringTaskTemplateCommand;
 import com.academy.mudogroupware.workspace.application.usecase.task.CreateRecurringTaskTemplateUseCase;
+import com.academy.mudogroupware.workspace.application.usecase.task.DeleteRecurringTaskTemplateUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.task.GetRecurringTaskTemplatesUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.task.UpdateRecurringTaskTemplateUseCase;
 import com.academy.mudogroupware.workspace.domain.model.task.RecurringTaskTemplate;
@@ -25,6 +27,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -45,6 +48,7 @@ public class WorkspaceRecurringTaskTemplateController {
   private final CreateRecurringTaskTemplateUseCase createRecurringTaskTemplateUseCase;
   private final GetRecurringTaskTemplatesUseCase getRecurringTaskTemplatesUseCase;
   private final UpdateRecurringTaskTemplateUseCase updateRecurringTaskTemplateUseCase;
+  private final DeleteRecurringTaskTemplateUseCase deleteRecurringTaskTemplateUseCase;
 
   @Operation(
       summary = "반복 업무 템플릿 목록 조회",
@@ -115,5 +119,25 @@ public class WorkspaceRecurringTaskTemplateController {
         GlobalApiResponse.ok(
             WorkspaceResponseCode.RECURRING_TEMPLATE_UPDATED,
             UpdateRecurringTaskTemplateResponse.from(updated)));
+  }
+
+  @Operation(
+      summary = "반복 업무 템플릿 삭제",
+      description =
+          "현재 참여자만 삭제할 수 있습니다. 하드 삭제이며 복구할 수 없습니다. "
+              + "이미 생성된 업무는 삭제되지 않고 recurring_template_id만 비워진 일반 업무로 남습니다.")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "템플릿 삭제 성공"),
+    @ApiResponse(responseCode = "403", description = "참여자가 아님"),
+    @ApiResponse(responseCode = "404", description = "워크스페이스 또는 템플릿이 존재하지 않음")
+  })
+  @DeleteMapping("/{templateId}")
+  public ResponseEntity<GlobalApiResponse<Void>> deleteTemplate(
+      @AuthenticationPrincipal AuthUser authUser,
+      @PathVariable Long workspaceId,
+      @PathVariable Long templateId) {
+    deleteRecurringTaskTemplateUseCase.delete(
+        new DeleteRecurringTaskTemplateCommand(workspaceId, templateId, authUser.userId()));
+    return ResponseEntity.ok(GlobalApiResponse.ok(WorkspaceResponseCode.RECURRING_TEMPLATE_DELETED));
   }
 }

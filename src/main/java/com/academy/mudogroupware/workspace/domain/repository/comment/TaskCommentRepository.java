@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.workspace.domain.repository.comment;
 
+import com.academy.mudogroupware.global.domain.common.page.PageResult;
 import com.academy.mudogroupware.workspace.domain.model.comment.TaskComment;
 import java.util.Optional;
 
@@ -13,4 +14,7 @@ public interface TaskCommentRepository {
 
   // 하드 삭제. 댓글에 속한 멘션도 함께 제거된다.
   void deleteById(Long commentId);
+
+  // 오래된 댓글부터(등록순) 페이지네이션 조회. 멘션 목록은 채우지 않는다(목록 조회 응답에는 불필요).
+  PageResult<TaskComment> findAllByTaskId(Long taskId, int page, int size);
 }

@@ -16,6 +16,9 @@ public interface TaskRepository {
   // 락 경합을 일으킬 수 없도록 조회 자체를 워크스페이스 범위로 제한한다.
   Optional<Task> findByIdForUpdate(Long workspaceId, Long taskId);
 
+  // 조회 전용(락 없음). workspaceId가 일치하지 않으면 결과가 없다 — findByIdForUpdate와 동일한 스코프 규칙.
+  Optional<Task> findById(Long workspaceId, Long taskId);
+
   // 하드 삭제. 댓글·멘션·상태 이력을 함께 제거한다.
   void delete(Long taskId);
 
@@ -25,4 +28,7 @@ public interface TaskRepository {
 
   // 자동 지연 대상 반복 업무: scheduled_for < 오늘 00:00
   List<Task> findOverdueRecurringTasks(LocalDateTime startOfToday);
+
+  // 반복 업무 생성 스케줄러의 멱등성 체크: 이 회차가 이미 생성됐는지 확인한다.
+  boolean existsByRecurringTemplateIdAndScheduledFor(Long recurringTemplateId, LocalDateTime scheduledFor);
 }

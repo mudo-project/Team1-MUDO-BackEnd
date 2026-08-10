@@ -14,7 +14,9 @@ import com.academy.mudogroupware.memo.domain.model.Memo;
 import com.academy.mudogroupware.memo.domain.repository.MemoRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -25,6 +27,7 @@ public class UpdateMemoContentService implements UpdateMemoContentUseCase {
 
     @Override
     public void updateContent(UpdateMemoContentCommand command) {
+        log.info("event=memo_content_update_시작 memoId={}, userId={}", command.memoId(), command.userId());
         Memo memo = memoRepository.findById(command.memoId())
                 .orElseThrow(() -> new MemoException(MemoErrorCode.MEMO_NOT_FOUND));
         if (!memo.isOwnedBy(command.userId())) {
@@ -33,5 +36,6 @@ public class UpdateMemoContentService implements UpdateMemoContentUseCase {
         LocalDateTime now = LocalDateTime.now(clock);
         memo.updateContent(command.title(), command.content(), now);
         memoRepository.updateContent(memo.getId(), memo.getTitle(), memo.getContent(), now);
+        log.info("event=memo_content_update_완료 memoId={}, userId={}", command.memoId(), command.userId());
     }
 }

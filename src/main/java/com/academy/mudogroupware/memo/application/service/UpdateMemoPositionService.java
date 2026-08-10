@@ -14,7 +14,9 @@ import com.academy.mudogroupware.memo.domain.model.Memo;
 import com.academy.mudogroupware.memo.domain.repository.MemoRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -25,6 +27,7 @@ public class UpdateMemoPositionService implements UpdateMemoPositionUseCase {
 
     @Override
     public void updatePosition(UpdateMemoPositionCommand command) {
+        log.info("event=memo_position_update_시작 memoId={}, userId={}", command.memoId(), command.userId());
         Memo memo = memoRepository.findById(command.memoId())
                 .orElseThrow(() -> new MemoException(MemoErrorCode.MEMO_NOT_FOUND));
         if (!memo.isOwnedBy(command.userId())) {
@@ -34,5 +37,6 @@ public class UpdateMemoPositionService implements UpdateMemoPositionUseCase {
         memo.updatePosition(command.positionX(), command.positionY(), command.width(), command.height(), now);
         memoRepository.updatePosition(memo.getId(), memo.getPositionX(), memo.getPositionY(), memo.getWidth(),
                 memo.getHeight(), now);
+        log.info("event=memo_position_update_완료 memoId={}, userId={}", command.memoId(), command.userId());
     }
 }

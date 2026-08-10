@@ -20,7 +20,9 @@ import com.academy.mudogroupware.messenger.domain.repository.ChatMessageReposito
 import com.academy.mudogroupware.messenger.domain.repository.ChatRoomRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -32,6 +34,7 @@ public class ChatRoomQueryService implements ChatRoomQueryUseCase {
 
     @Override
     public List<ChatRoomSummaryView> getRooms(Long requesterId) {
+        log.info("event=chat_room_list_시작 requesterId={}", requesterId);
         ChatMemberInfo requester = chatMemberDirectoryPort.getMember(requesterId);
         List<ChatRoom> chatRooms = chatRoomRepository.findAllByMember(requester.academyId(), requesterId);
 
@@ -45,12 +48,14 @@ public class ChatRoomQueryService implements ChatRoomQueryUseCase {
         Map<Long, ChatMessage> latestMessages = chatMessageRepository.findLatestByChatRoomIds(chatRoomIds);
         Map<Long, Long> unreadCounts = chatMessageRepository.countUnreadByRequester(requesterId, chatRoomIds);
 
-        return chatRooms.stream()
+        List<ChatRoomSummaryView> views = chatRooms.stream()
                 .map(chatRoom -> toSummaryView(chatRoom, requesterId, otherMembers, latestMessages, unreadCounts))
                 .sorted(Comparator.comparing(ChatRoomQueryService::sortKey)
                         .thenComparing(ChatRoomSummaryView::id)
                         .reversed())
                 .toList();
+        log.info("event=chat_room_list_완료 requesterId={}, count={}", requesterId, views.size());
+        return views;
     }
 
     private ChatRoomSummaryView toSummaryView(ChatRoom chatRoom, Long requesterId,

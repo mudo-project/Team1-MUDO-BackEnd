@@ -23,7 +23,9 @@ import com.academy.mudogroupware.messenger.domain.repository.ChatRoomRepository;
 import com.academy.mudogroupware.messenger.domain.repository.ChatTaskCardRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -36,6 +38,7 @@ public class TaskCardQueryService implements TaskCardQueryUseCase {
     @Override
     public TaskCardPageView getTaskCards(Long chatRoomId, Long requesterId, LocalDateTime cursorCreatedAt,
                                           Long cursorCardId, int size) {
+        log.info("event=task_card_list_시작 chatRoomId={}, requesterId={}", chatRoomId, requesterId);
         if (size < 1 || size > 100) {
             throw new MessengerException(MessengerErrorCode.INVALID_TASK_CARD_PAGE_SIZE);
         }
@@ -52,7 +55,8 @@ public class TaskCardQueryService implements TaskCardQueryUseCase {
             throw new MessengerException(MessengerErrorCode.NOT_ROOM_MEMBER);
         }
 
-        List<ChatTaskCard> fetched = chatTaskCardRepository.findPage(chatRoomId, cursorCreatedAt, cursorCardId, size);
+        List<ChatTaskCard> fetched = chatTaskCardRepository.findPage(chatRoomId, cursorCreatedAt, cursorCardId,
+                size);
         boolean hasNext = fetched.size() > size;
         List<ChatTaskCard> pageCards = hasNext ? fetched.subList(0, size) : fetched;
 
@@ -69,6 +73,8 @@ public class TaskCardQueryService implements TaskCardQueryUseCase {
         LocalDateTime nextCursorCreatedAt = hasNext ? lastInPage.getCreatedAt() : null;
         Long nextCursorCardId = hasNext ? lastInPage.getId() : null;
 
+        log.info("event=task_card_list_완료 chatRoomId={}, requesterId={}, count={}, hasNext={}", chatRoomId,
+                requesterId, taskCardViews.size(), hasNext);
         return new TaskCardPageView(taskCardViews, hasNext, nextCursorCreatedAt, nextCursorCardId);
     }
 

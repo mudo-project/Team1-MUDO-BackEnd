@@ -54,9 +54,9 @@ public final class User {
     }
 
     public static User create(Long academyId, String username, String password, String name, String phone,
-                               String email, AccountType accountType, AdminScope adminScope,
+                               String email, Long roleId, AccountType accountType, AdminScope adminScope,
                                LocalDateTime joinedAt) {
-        return new User(null, academyId, username, password, name, phone, email, null, UserStatus.ACTIVE, true,
+        return new User(null, academyId, username, password, name, phone, email, roleId, UserStatus.ACTIVE, true,
                 accountType, adminScope, joinedAt, joinedAt, joinedAt);
     }
 

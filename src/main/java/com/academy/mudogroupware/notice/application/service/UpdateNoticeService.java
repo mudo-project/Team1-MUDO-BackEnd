@@ -14,7 +14,9 @@ import com.academy.mudogroupware.notice.domain.model.Notice;
 import com.academy.mudogroupware.notice.domain.repository.NoticeRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -25,6 +27,7 @@ public class UpdateNoticeService implements UpdateNoticeUseCase {
 
     @Override
     public void updateNotice(UpdateNoticeCommand command) {
+        log.info("event=notice_update_시작 noticeId={}, requesterId={}", command.noticeId(), command.requesterId());
         Notice notice = noticeRepository.findById(command.noticeId())
                 .orElseThrow(() -> new NoticeException(NoticeErrorCode.NOTICE_NOT_FOUND));
 
@@ -34,5 +37,7 @@ public class UpdateNoticeService implements UpdateNoticeUseCase {
 
         notice.update(command.title(), command.content(), LocalDateTime.now(clock));
         noticeRepository.save(notice);
+        log.info("event=notice_update_완료 noticeId={}, requesterId={}", command.noticeId(),
+                command.requesterId());
     }
 }

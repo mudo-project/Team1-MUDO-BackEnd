@@ -20,7 +20,9 @@ import com.academy.mudogroupware.messenger.domain.repository.ChatRoomRepository;
 import com.academy.mudogroupware.messenger.domain.repository.ChatTaskCardRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -32,6 +34,8 @@ public class UpdateTaskCardService implements UpdateTaskCardUseCase {
 
     @Override
     public void update(UpdateTaskCardCommand command) {
+        log.info("event=task_card_update_시작 chatRoomId={}, cardId={}, requesterId={}", command.chatRoomId(),
+                command.cardId(), command.requesterId());
         ChatRoom chatRoom = chatRoomRepository.findById(command.chatRoomId())
                 .orElseThrow(() -> new MessengerException(MessengerErrorCode.CHAT_ROOM_NOT_FOUND));
         ChatTaskCard chatTaskCard = chatTaskCardRepository.findById(command.cardId())
@@ -39,7 +43,8 @@ public class UpdateTaskCardService implements UpdateTaskCardUseCase {
         if (!chatTaskCard.getChatRoomId().equals(command.chatRoomId())) {
             throw new MessengerException(MessengerErrorCode.TASK_CARD_NOT_FOUND);
         }
-        boolean allAssigneesAreMembers = command.assigneeIds().stream().allMatch(chatRoom::isMember);
+        List<Long> requestedAssigneeIds = command.assigneeIds() == null ? List.of() : command.assigneeIds();
+        boolean allAssigneesAreMembers = requestedAssigneeIds.stream().allMatch(chatRoom::isMember);
         if (!allAssigneesAreMembers) {
             throw new MessengerException(MessengerErrorCode.NOT_ROOM_MEMBER);
         }
@@ -47,7 +52,7 @@ public class UpdateTaskCardService implements UpdateTaskCardUseCase {
         List<Long> beforeAssigneeIds = chatTaskCard.getAssignees().stream()
                 .map(ChatTaskAssignee::getUserId).toList();
 
-        chatTaskCard.update(command.requesterId(), command.content(), command.dueDate(), command.assigneeIds());
+        chatTaskCard.update(command.requesterId(), command.content(), command.dueDate(), requestedAssigneeIds);
 
         List<Long> afterAssigneeIds = chatTaskCard.getAssignees().stream()
                 .map(ChatTaskAssignee::getUserId).toList();
@@ -67,5 +72,10 @@ public class UpdateTaskCardService implements UpdateTaskCardUseCase {
 
         eventPublisher.publishEvent(new TaskCardUpdatedEvent(chatTaskCard.getChatRoomId(), chatTaskCard.getId(),
                 chatTaskCard.getContent(), chatTaskCard.getDueDate(), afterAssigneeIds));
+        log.info(
+                "event=task_card_update_완료 chatRoomId={}, cardId={}, requesterId={}, addedCount={}, "
+                        + "removedCount={}",
+                command.chatRoomId(), command.cardId(), command.requesterId(), addedUserIds.size(),
+                removedUserIds.size());
     }
 }
