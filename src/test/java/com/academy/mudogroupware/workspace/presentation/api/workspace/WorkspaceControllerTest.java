@@ -23,6 +23,7 @@ import com.academy.mudogroupware.workspace.application.query.workspace.Workspace
 import com.academy.mudogroupware.workspace.application.query.workspace.WorkspaceListItem;
 import com.academy.mudogroupware.workspace.application.query.workspace.WorkspaceListScope;
 import com.academy.mudogroupware.workspace.application.command.workspace.AddWorkspaceMembersCommand;
+import com.academy.mudogroupware.workspace.application.command.workspace.CreateWorkspaceCommand;
 import com.academy.mudogroupware.workspace.application.command.workspace.DeleteWorkspaceCommand;
 import com.academy.mudogroupware.workspace.application.command.workspace.RecoverWorkspaceCommand;
 import com.academy.mudogroupware.workspace.application.command.workspace.RemoveWorkspaceMemberCommand;
@@ -80,6 +81,36 @@ class WorkspaceControllerTest {
   @MockitoBean private RemoveWorkspaceMemberUseCase removeWorkspaceMemberUseCase;
   @MockitoBean private RecoverWorkspaceUseCase recoverWorkspaceUseCase;
   @MockitoBean private Clock clock;
+
+  @Test
+  void createsWorkspaceAndReturns201() throws Exception {
+    when(createWorkspaceUseCase.createWorkspace(any(CreateWorkspaceCommand.class)))
+        .thenReturn(100L);
+
+    mockMvc
+        .perform(
+            post("/api/workspaces")
+                .with(authentication(authenticatedUser("WORKSPACE:CREATE")))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"8월 학사 운영\",\"memberIds\":[]}"))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.data.workspaceId").value(100));
+  }
+
+  @Test
+  void createWorkspaceReturns403WithoutCreateAuthority() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/workspaces")
+                .with(authentication(authenticatedUser()))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"8월 학사 운영\",\"memberIds\":[]}"))
+        .andExpect(status().isForbidden());
+
+    verifyNoInteractions(createWorkspaceUseCase);
+  }
 
   @Test
   void defaultsToMineAndMapsAuthenticatedUsersWorkspaceList() throws Exception {

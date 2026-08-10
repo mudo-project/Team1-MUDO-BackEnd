@@ -51,7 +51,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-// TODO: 권한 모듈의 WORKSPACE:CREATE 권한이 준비되면 @PreAuthorize를 추가한다.
 @Tag(name = "워크스페이스", description = "워크스페이스 생성 및 관리 API")
 @RestController
 @RequestMapping("/api/workspaces")
@@ -105,6 +104,7 @@ public class WorkspaceController {
     @ApiResponse(responseCode = "400", description = "요청값 또는 참여자가 유효하지 않음"),
     @ApiResponse(responseCode = "409", description = "같은 학원에 동일한 활성 워크스페이스 이름이 존재함")
   })
+  @PreAuthorize("hasAuthority('WORKSPACE:CREATE')")
   @PostMapping
   public ResponseEntity<GlobalApiResponse<CreateWorkspaceResponse>> createWorkspace(
       @AuthenticationPrincipal AuthUser authUser,
