@@ -35,9 +35,9 @@ public class GetGoogleAccessTokenService implements GetGoogleAccessTokenUseCase 
         GoogleAccountConnection connection = googleAccountConnectionRepository.find()
                 .orElseThrow(GoogleAccountNotConnectedException::new);
 
-        GoogleConnectionStatus status = connection.deriveStatus(
-                LocalDateTime.now(clock), requiredGoogleScopePort.requiredScopes());
-        if (status == GoogleConnectionStatus.FAILED || status == GoogleConnectionStatus.EXPIRED) {
+        GoogleConnectionStatus status = connection.deriveStatus(LocalDateTime.now(clock));
+        if (status == GoogleConnectionStatus.FAILED || status == GoogleConnectionStatus.EXPIRED
+                || !connection.hasAllScopes(requiredGoogleScopePort.requiredScopes())) {
             throw new GoogleAccountConnectionInvalidException();
         }
 
