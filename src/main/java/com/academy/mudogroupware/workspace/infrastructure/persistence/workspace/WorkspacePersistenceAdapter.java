@@ -42,8 +42,8 @@ public class WorkspacePersistenceAdapter implements WorkspaceRepository {
 
   // 활성화된 workspace 검색
   @Override
-  public boolean existsByAcademyIdAndName(Long academyId, String name) {
-    return workspaceJpaRepository.existsByAcademyIdAndNameAndDeletedAtIsNull(academyId, name);
+  public boolean existsByName(String name) {
+    return workspaceJpaRepository.existsByNameAndDeletedAtIsNull(name);
   }
 
   @Override

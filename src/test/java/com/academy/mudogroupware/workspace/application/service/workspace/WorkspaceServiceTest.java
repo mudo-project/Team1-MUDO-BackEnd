@@ -93,7 +93,7 @@ class WorkspaceServiceTest {
   void rejectsCreationWhenActiveWorkspaceNameAlreadyExists() {
     when(workspaceMemberDirectoryPort.findActiveUserIds(1L, Set.of(10L)))
         .thenReturn(Set.of(10L));
-    when(workspaceRepository.existsByAcademyIdAndName(1L, "개발팀")).thenReturn(true);
+    when(workspaceRepository.existsByName("개발팀")).thenReturn(true);
 
     assertThatThrownBy(
             () ->

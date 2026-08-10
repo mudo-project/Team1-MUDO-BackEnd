@@ -43,7 +43,7 @@ class RecoverWorkspaceServiceTest {
   void recoversWithOriginalNameWhenNoConflict() {
     when(workspaceRepository.findDeletedByIdForUpdate(100L))
         .thenReturn(Optional.of(Workspace.restore(100L, 1L, "개발팀", 10L, Set.of(10L))));
-    when(workspaceRepository.existsByAcademyIdAndName(1L, "개발팀")).thenReturn(false);
+    when(workspaceRepository.existsByName("개발팀")).thenReturn(false);
 
     String name = recoverWorkspaceService.recover(new RecoverWorkspaceCommand(10L, 100L));
 
@@ -55,7 +55,7 @@ class RecoverWorkspaceServiceTest {
   void recoversWithTimestampSuffixWhenNameConflicts() {
     when(workspaceRepository.findDeletedByIdForUpdate(100L))
         .thenReturn(Optional.of(Workspace.restore(100L, 1L, "개발팀", 10L, Set.of(10L))));
-    when(workspaceRepository.existsByAcademyIdAndName(1L, "개발팀")).thenReturn(true);
+    when(workspaceRepository.existsByName("개발팀")).thenReturn(true);
 
     String name = recoverWorkspaceService.recover(new RecoverWorkspaceCommand(10L, 100L));
 
@@ -68,7 +68,7 @@ class RecoverWorkspaceServiceTest {
     String longName = "가".repeat(100);
     when(workspaceRepository.findDeletedByIdForUpdate(100L))
         .thenReturn(Optional.of(Workspace.restore(100L, 1L, longName, 10L, Set.of(10L))));
-    when(workspaceRepository.existsByAcademyIdAndName(1L, longName)).thenReturn(true);
+    when(workspaceRepository.existsByName(longName)).thenReturn(true);
 
     String name = recoverWorkspaceService.recover(new RecoverWorkspaceCommand(10L, 100L));
 
@@ -86,8 +86,7 @@ class RecoverWorkspaceServiceTest {
         .isInstanceOf(WorkspaceAccessDeniedException.class);
 
     verify(workspaceRepository, never())
-        .existsByAcademyIdAndName(
-            org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString());
+        .existsByName(org.mockito.ArgumentMatchers.anyString());
     verify(workspaceRepository, never())
         .recover(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString());
   }
@@ -115,7 +114,7 @@ class RecoverWorkspaceServiceTest {
   void propagatesNameConflictExceptionWhenRecoverWriteRacesWithAnotherRequest() {
     when(workspaceRepository.findDeletedByIdForUpdate(100L))
         .thenReturn(Optional.of(Workspace.restore(100L, 1L, "개발팀", 10L, Set.of(10L))));
-    when(workspaceRepository.existsByAcademyIdAndName(1L, "개발팀")).thenReturn(false);
+    when(workspaceRepository.existsByName("개발팀")).thenReturn(false);
     org.mockito.Mockito.doThrow(new WorkspaceNameConflictException())
         .when(workspaceRepository)
         .recover(100L, "개발팀");

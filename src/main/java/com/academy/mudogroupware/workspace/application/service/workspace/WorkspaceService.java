@@ -51,7 +51,7 @@ public class WorkspaceService implements CreateWorkspaceUseCase {
       throw new InvalidWorkspaceMemberException();
     }
     // 중복 이름 예외 처리
-    if (workspaceRepository.existsByAcademyIdAndName(command.academyId(), name)) {
+    if (workspaceRepository.existsByName(name)) {
       throw new WorkspaceNameConflictException();
     }
 

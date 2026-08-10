@@ -10,7 +10,7 @@ import org.springframework.data.repository.query.Param;
 
 public interface WorkspaceJpaRepository extends JpaRepository<WorkspaceJpaEntity, Long> {
 
-  boolean existsByAcademyIdAndNameAndDeletedAtIsNull(Long academyId, String name);
+  boolean existsByNameAndDeletedAtIsNull(String name);
 
   @Query(
       """

@@ -35,15 +35,14 @@ class WorkspacePersistenceAdapterDataJpaTest {
   }
 
   @Test
-  void findsOnlyExistingActiveWorkspaceNameInAcademy() {
-    assertThat(workspaceRepository.existsByAcademyIdAndName(1L, "\uac1c\ubc1c\ud300")).isFalse();
+  void findsOnlyExistingActiveWorkspaceName() {
+    assertThat(workspaceRepository.existsByName("\uac1c\ubc1c\ud300")).isFalse();
 
     workspaceRepository.save(
         Workspace.create(1L, "\uac1c\ubc1c\ud300", 10L, Set.of()));
 
-    assertThat(workspaceRepository.existsByAcademyIdAndName(1L, "\uac1c\ubc1c\ud300")).isTrue();
-    assertThat(workspaceRepository.existsByAcademyIdAndName(2L, "\uac1c\ubc1c\ud300")).isFalse();
-    assertThat(workspaceRepository.existsByAcademyIdAndName(1L, "\uc6b4\uc601\ud300")).isFalse();
+    assertThat(workspaceRepository.existsByName("\uac1c\ubc1c\ud300")).isTrue();
+    assertThat(workspaceRepository.existsByName("\uc6b4\uc601\ud300")).isFalse();
   }
 
   @Test
