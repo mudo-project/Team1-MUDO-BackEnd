@@ -34,29 +34,23 @@ public class SendMessageService implements SendMessageUseCase {
     @Override
     public Long sendMessage(SendMessageCommand command) {
         log.info("event=message_send_시작 chatRoomId={}, senderId={}", command.chatRoomId(), command.senderId());
-        try {
-            ChatRoom chatRoom = chatRoomRepository.findById(command.chatRoomId())
-                    .orElseThrow(() -> new MessengerException(MessengerErrorCode.CHAT_ROOM_NOT_FOUND));
-            if (!chatRoom.isMember(command.senderId())) {
-                throw new MessengerException(MessengerErrorCode.NOT_ROOM_MEMBER);
-            }
-
-            LocalDateTime createdAt = LocalDateTime.now(clock);
-            ChatMessage chatMessage = ChatMessage.create(command.chatRoomId(), command.senderId(),
-                    command.messageType(), command.content(), command.fileUrl(), command.fileName(), createdAt);
-            ChatMessage saved = chatMessageRepository.save(chatMessage);
-            chatRoom.markRead(command.senderId(), saved.getCreatedAt());
-            chatRoomRepository.markRead(command.chatRoomId(), command.senderId(), saved.getCreatedAt());
-            eventPublisher.publishEvent(new ChatMessageSentEvent(saved.getChatRoomId(), saved.getId(),
-                    saved.getSenderUserId(), saved.getMessageType(), saved.getContent(), saved.getFileUrl(),
-                    saved.getFileName(), saved.getCreatedAt(), chatRoom.getMembers().size() - 1L));
-            log.info("event=message_send_완료 chatRoomId={}, senderId={}, messageId={}", command.chatRoomId(),
-                    command.senderId(), saved.getId());
-            return saved.getId();
-        } catch (RuntimeException e) {
-            log.warn("event=message_send_실패 chatRoomId={}, senderId={}, reason={}", command.chatRoomId(),
-                    command.senderId(), e.getMessage(), e);
-            throw e;
+        ChatRoom chatRoom = chatRoomRepository.findById(command.chatRoomId())
+                .orElseThrow(() -> new MessengerException(MessengerErrorCode.CHAT_ROOM_NOT_FOUND));
+        if (!chatRoom.isMember(command.senderId())) {
+            throw new MessengerException(MessengerErrorCode.NOT_ROOM_MEMBER);
         }
+
+        LocalDateTime createdAt = LocalDateTime.now(clock);
+        ChatMessage chatMessage = ChatMessage.create(command.chatRoomId(), command.senderId(),
+                command.messageType(), command.content(), command.fileUrl(), command.fileName(), createdAt);
+        ChatMessage saved = chatMessageRepository.save(chatMessage);
+        chatRoom.markRead(command.senderId(), saved.getCreatedAt());
+        chatRoomRepository.markRead(command.chatRoomId(), command.senderId(), saved.getCreatedAt());
+        eventPublisher.publishEvent(new ChatMessageSentEvent(saved.getChatRoomId(), saved.getId(),
+                saved.getSenderUserId(), saved.getMessageType(), saved.getContent(), saved.getFileUrl(),
+                saved.getFileName(), saved.getCreatedAt(), chatRoom.getMembers().size() - 1L));
+        log.info("event=message_send_완료 chatRoomId={}, senderId={}, messageId={}", command.chatRoomId(),
+                command.senderId(), saved.getId());
+        return saved.getId();
     }
 }

@@ -32,23 +32,17 @@ public class UpdateMessageService implements UpdateMessageUseCase {
     public void update(UpdateMessageCommand command) {
         log.info("event=message_update_시작 chatRoomId={}, messageId={}, requesterId={}", command.chatRoomId(),
                 command.messageId(), command.requesterId());
-        try {
-            ChatMessage message = chatMessageRepository.findById(command.messageId())
-                    .orElseThrow(() -> new MessengerException(MessengerErrorCode.CHAT_ROOM_NOT_FOUND));
-            if (!message.getChatRoomId().equals(command.chatRoomId())) {
-                throw new MessengerException(MessengerErrorCode.CHAT_ROOM_NOT_FOUND);
-            }
-
-            message.editText(command.requesterId(), command.content(), LocalDateTime.now(clock));
-            chatMessageRepository.save(message);
-            eventPublisher.publishEvent(new MessageEditedEvent(message.getChatRoomId(), message.getId(),
-                    message.getSenderUserId(), message.getContent(), message.getEditedAt()));
-            log.info("event=message_update_완료 chatRoomId={}, messageId={}, requesterId={}", command.chatRoomId(),
-                    command.messageId(), command.requesterId());
-        } catch (RuntimeException e) {
-            log.warn("event=message_update_실패 chatRoomId={}, messageId={}, requesterId={}, reason={}",
-                    command.chatRoomId(), command.messageId(), command.requesterId(), e.getMessage(), e);
-            throw e;
+        ChatMessage message = chatMessageRepository.findById(command.messageId())
+                .orElseThrow(() -> new MessengerException(MessengerErrorCode.CHAT_ROOM_NOT_FOUND));
+        if (!message.getChatRoomId().equals(command.chatRoomId())) {
+            throw new MessengerException(MessengerErrorCode.CHAT_ROOM_NOT_FOUND);
         }
+
+        message.editText(command.requesterId(), command.content(), LocalDateTime.now(clock));
+        chatMessageRepository.save(message);
+        eventPublisher.publishEvent(new MessageEditedEvent(message.getChatRoomId(), message.getId(),
+                message.getSenderUserId(), message.getContent(), message.getEditedAt()));
+        log.info("event=message_update_완료 chatRoomId={}, messageId={}, requesterId={}", command.chatRoomId(),
+                command.messageId(), command.requesterId());
     }
 }

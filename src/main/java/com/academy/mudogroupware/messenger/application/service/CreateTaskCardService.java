@@ -37,34 +37,28 @@ public class CreateTaskCardService implements CreateTaskCardUseCase {
     public Long createTaskCard(CreateTaskCardCommand command) {
         log.info("event=task_card_create_시작 chatRoomId={}, assignerId={}", command.chatRoomId(),
                 command.assignerId());
-        try {
-            List<Long> requestedAssigneeIds = command.assigneeIds() == null ? List.of() : command.assigneeIds();
+        List<Long> requestedAssigneeIds = command.assigneeIds() == null ? List.of() : command.assigneeIds();
 
-            ChatRoom chatRoom = chatRoomRepository.findById(command.chatRoomId())
-                    .orElseThrow(() -> new MessengerException(MessengerErrorCode.CHAT_ROOM_NOT_FOUND));
-            if (!chatRoom.isMember(command.assignerId())) {
-                throw new MessengerException(MessengerErrorCode.NOT_ROOM_MEMBER);
-            }
-            boolean allAssigneesAreMembers = requestedAssigneeIds.stream().allMatch(chatRoom::isMember);
-            if (!allAssigneesAreMembers) {
-                throw new MessengerException(MessengerErrorCode.NOT_ROOM_MEMBER);
-            }
-
-            LocalDateTime createdAt = LocalDateTime.now(clock);
-            ChatTaskCard chatTaskCard = ChatTaskCard.create(command.chatRoomId(), command.assignerId(),
-                    command.content(), command.dueDate(), requestedAssigneeIds, createdAt);
-            ChatTaskCard saved = chatTaskCardRepository.save(chatTaskCard);
-            List<Long> assigneeIds = saved.getAssignees().stream().map(ChatTaskAssignee::getUserId).toList();
-            eventPublisher.publishEvent(new TaskCardCreatedEvent(saved.getChatRoomId(), saved.getId(),
-                    saved.getAssignerUserId(), saved.getContent(), saved.getDueDate(), assigneeIds,
-                    saved.getCreatedAt()));
-            log.info("event=task_card_create_완료 chatRoomId={}, assignerId={}, cardId={}", command.chatRoomId(),
-                    command.assignerId(), saved.getId());
-            return saved.getId();
-        } catch (RuntimeException e) {
-            log.warn("event=task_card_create_실패 chatRoomId={}, assignerId={}, reason={}", command.chatRoomId(),
-                    command.assignerId(), e.getMessage(), e);
-            throw e;
+        ChatRoom chatRoom = chatRoomRepository.findById(command.chatRoomId())
+                .orElseThrow(() -> new MessengerException(MessengerErrorCode.CHAT_ROOM_NOT_FOUND));
+        if (!chatRoom.isMember(command.assignerId())) {
+            throw new MessengerException(MessengerErrorCode.NOT_ROOM_MEMBER);
         }
+        boolean allAssigneesAreMembers = requestedAssigneeIds.stream().allMatch(chatRoom::isMember);
+        if (!allAssigneesAreMembers) {
+            throw new MessengerException(MessengerErrorCode.NOT_ROOM_MEMBER);
+        }
+
+        LocalDateTime createdAt = LocalDateTime.now(clock);
+        ChatTaskCard chatTaskCard = ChatTaskCard.create(command.chatRoomId(), command.assignerId(),
+                command.content(), command.dueDate(), requestedAssigneeIds, createdAt);
+        ChatTaskCard saved = chatTaskCardRepository.save(chatTaskCard);
+        List<Long> assigneeIds = saved.getAssignees().stream().map(ChatTaskAssignee::getUserId).toList();
+        eventPublisher.publishEvent(new TaskCardCreatedEvent(saved.getChatRoomId(), saved.getId(),
+                saved.getAssignerUserId(), saved.getContent(), saved.getDueDate(), assigneeIds,
+                saved.getCreatedAt()));
+        log.info("event=task_card_create_완료 chatRoomId={}, assignerId={}, cardId={}", command.chatRoomId(),
+                command.assignerId(), saved.getId());
+        return saved.getId();
     }
 }
