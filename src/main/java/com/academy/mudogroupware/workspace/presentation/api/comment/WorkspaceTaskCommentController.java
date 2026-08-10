@@ -98,7 +98,7 @@ public class WorkspaceTaskCommentController {
             .anyMatch(authority -> "WORKSPACE:READ_ALL".equals(authority.getAuthority()));
     PageResult<TaskCommentListItem> comments =
         taskCommentListQueryUseCase.getComments(
-            workspaceId, taskId, authUser.userId(), page, size, authUser.academyId(), canReadAll);
+            workspaceId, taskId, authUser.userId(), page, size, canReadAll);
     SliceResponse<TaskCommentListItemResponse> response =
         SliceResponse.from(comments, TaskCommentListItemResponse::from);
     return ResponseEntity.ok(
