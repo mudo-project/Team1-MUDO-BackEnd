@@ -1,17 +1,25 @@
 package com.academy.mudogroupware.corporatecard.presentation.api;
 
-import java.util.List;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import com.academy.mudogroupware.corporatecard.application.service.CorporateCardExpenseService;
+import com.academy.mudogroupware.corporatecard.application.usecase.SubmitBatchCardExpensesUseCase;
+import com.academy.mudogroupware.corporatecard.presentation.api.request.BatchSubmitCardExpensesRequest;
 import com.academy.mudogroupware.corporatecard.presentation.api.request.SubmitCardExpenseRequest;
+import com.academy.mudogroupware.corporatecard.presentation.api.request.SaveCardExpenseRequest;
+import com.academy.mudogroupware.corporatecard.presentation.api.response.BatchSubmitCardExpensesResponse;
 import com.academy.mudogroupware.corporatecard.presentation.api.response.CardExpenseResponse;
-import com.academy.mudogroupware.corporatecard.presentation.api.response.CorporateCardTransactionResponse;
 import com.academy.mudogroupware.corporatecard.presentation.api.response.CorporateCardTransactionPageResponse;
 import com.academy.mudogroupware.global.presentation.api.common.GlobalApiResponse;
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
@@ -26,7 +34,9 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/api/corporate-card/transactions")
 @RequiredArgsConstructor
 public class CorporateCardController {
+
     private final CorporateCardExpenseService service;
+    private final SubmitBatchCardExpensesUseCase batchSubmitUseCase;
 
     @Operation(summary = "법인카드 사용내역 조회")
     @PreAuthorize("hasAuthority('CORPORATE_CARD:EXPENSE')")
@@ -45,21 +55,48 @@ public class CorporateCardController {
     @Operation(summary = "법인카드 사용내역 상세 조회")
     @PreAuthorize("hasAuthority('CORPORATE_CARD:EXPENSE')")
     @GetMapping("/{transactionId}")
-    public GlobalApiResponse<CardExpenseResponse> getTransaction(@AuthenticationPrincipal AuthUser authUser,
-                                                                  @PathVariable Long transactionId) {
+    public GlobalApiResponse<CardExpenseResponse> getTransaction(
+            @AuthenticationPrincipal AuthUser authUser, @PathVariable Long transactionId) {
         return GlobalApiResponse.ok("CORPORATE_CARD_TRANSACTION_RETRIEVED", "법인카드 사용내역 조회가 완료되었습니다.",
                 CardExpenseResponse.from(service.getTransaction(authUser.academyId(), transactionId)));
+    }
+
+    @Operation(summary = "법인카드 사용내역 일괄 정산 상신")
+    @PreAuthorize("hasAuthority('CORPORATE_CARD:EXPENSE')")
+    @PostMapping("/batch-submit")
+    public GlobalApiResponse<BatchSubmitCardExpensesResponse> submitBatch(
+            @AuthenticationPrincipal AuthUser authUser,
+            @Valid @RequestBody BatchSubmitCardExpensesRequest request) {
+        BatchSubmitCardExpensesResponse response = BatchSubmitCardExpensesResponse.from(
+                batchSubmitUseCase.submit(request.toCommand(), authUser.academyId(), authUser.userId()));
+        return GlobalApiResponse.ok("CORPORATE_CARD_EXPENSES_SUBMITTED",
+                "법인카드 사용내역 일괄 상신 처리가 완료되었습니다.", response);
     }
 
     @Operation(summary = "법인카드 사용내역 정산 상신")
     @PreAuthorize("hasAuthority('CORPORATE_CARD:EXPENSE')")
     @PostMapping("/{transactionId}/submit")
     public ResponseEntity<GlobalApiResponse<CardExpenseResponse>> submit(
-            @AuthenticationPrincipal AuthUser authUser, @PathVariable Long transactionId,
+            @AuthenticationPrincipal AuthUser authUser,
+            @PathVariable Long transactionId,
             @Valid @RequestBody SubmitCardExpenseRequest request) {
         CardExpenseResponse response = CardExpenseResponse.from(
                 service.submit(request.toCommand(transactionId, authUser.userId()), authUser.academyId()));
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(GlobalApiResponse.created("CORPORATE_CARD_EXPENSE_SUBMITTED", "법인카드 정산이 상신되었습니다.", response));
+                .body(GlobalApiResponse.created("CORPORATE_CARD_EXPENSE_SUBMITTED",
+                        "법인카드 정산이 상신되었습니다.", response));
+    }
+
+    @Operation(summary = "법인카드 정산 정보 저장")
+    @PreAuthorize("hasAuthority('CORPORATE_CARD:EXPENSE')")
+    @PutMapping("/{transactionId}/expense")
+    public GlobalApiResponse<CardExpenseResponse> saveExpense(
+            @AuthenticationPrincipal AuthUser authUser,
+            @PathVariable Long transactionId,
+            @Valid @RequestBody SaveCardExpenseRequest request) {
+        CardExpenseResponse response = CardExpenseResponse.from(service.saveExpense(
+                transactionId, authUser.userId(), request.category(), request.purpose(), authUser.academyId()));
+        return GlobalApiResponse.ok("CORPORATE_CARD_EXPENSE_SAVED",
+                "법인카드 정산 정보가 저장되었습니다.", response);
     }
 }

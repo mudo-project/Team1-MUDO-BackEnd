@@ -6,9 +6,11 @@ import java.util.List;
 import com.academy.mudogroupware.approval.application.query.ApprovalDetailView;
 import com.academy.mudogroupware.approval.domain.model.ApprovalContentType;
 import com.academy.mudogroupware.approval.domain.model.ApprovalStatus;
+import com.academy.mudogroupware.approval.domain.model.ApprovalDocumentSourceType;
 
 public record ApprovalDetailResponse(
         Long id,
+        ApprovalDocumentSourceType sourceType,
         Long templateId,
         String templateName,
         String title,
@@ -31,7 +33,7 @@ public record ApprovalDetailResponse(
                 .toList();
 
         return new ApprovalDetailResponse(
-                view.id(), view.templateId(), view.templateName(), view.title(), view.contentType(),
+                view.id(), view.sourceType(), view.templateId(), view.templateName(), view.title(), view.contentType(),
                 view.text(), attachments, view.creatorId(), view.creatorName(),
                 view.status(), view.createdAt(), lines);
     }

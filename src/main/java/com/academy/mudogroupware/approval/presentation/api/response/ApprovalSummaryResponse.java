@@ -5,9 +5,11 @@ import java.time.LocalDateTime;
 import com.academy.mudogroupware.approval.application.query.ApprovalSummaryView;
 import com.academy.mudogroupware.approval.domain.model.ApprovalLineStatus;
 import com.academy.mudogroupware.approval.domain.model.ApprovalStatus;
+import com.academy.mudogroupware.approval.domain.model.ApprovalDocumentSourceType;
 
 public record ApprovalSummaryResponse(
         Long id,
+        ApprovalDocumentSourceType sourceType,
         String title,
         String templateName,
         String creatorName,
@@ -21,7 +23,7 @@ public record ApprovalSummaryResponse(
 
     public static ApprovalSummaryResponse from(ApprovalSummaryView view) {
         return new ApprovalSummaryResponse(
-                view.id(), view.title(), view.templateName(), view.creatorName(), view.status(),
+                view.id(), view.sourceType(), view.title(), view.templateName(), view.creatorName(), view.status(),
                 view.myStepOrder(), view.myLineStatus(),
                 view.currentApproverStepOrder(), view.currentApproverName(), view.createdAt());
     }
