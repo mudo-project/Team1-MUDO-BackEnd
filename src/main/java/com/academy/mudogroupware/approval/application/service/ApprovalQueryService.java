@@ -101,6 +101,7 @@ public class ApprovalQueryService implements ApprovalQueryUseCase {
 
         return new ApprovalDetailView(
                 approvalDocument.getId(),
+                approvalDocument.getSourceType(),
                 approvalDocument.getTemplateId(),
                 findTemplateName(approvalDocument.getTemplateId()),
                 approvalDocument.getTitle(),
@@ -129,6 +130,7 @@ public class ApprovalQueryService implements ApprovalQueryUseCase {
 
         return new ApprovalSummaryView(
                 approvalDocument.getId(),
+                approvalDocument.getSourceType(),
                 approvalDocument.getTitle(),
                 templateName(lookup, approvalDocument.getTemplateId()),
                 approverName(lookup, approvalDocument.getCreatorId()),
@@ -149,6 +151,7 @@ public class ApprovalQueryService implements ApprovalQueryUseCase {
 
         return new ApprovalSubmittedSummaryView(
                 approvalDocument.getId(),
+                approvalDocument.getSourceType(),
                 approvalDocument.getTitle(),
                 templateName(lookup, approvalDocument.getTemplateId()),
                 approverName(lookup, approvalDocument.getCreatorId()),

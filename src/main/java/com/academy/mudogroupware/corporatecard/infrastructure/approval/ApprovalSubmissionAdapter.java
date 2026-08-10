@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 import com.academy.mudogroupware.approval.application.command.CreateApprovalDocumentCommand;
 import com.academy.mudogroupware.approval.application.usecase.CreateApprovalDocumentUseCase;
 import com.academy.mudogroupware.approval.domain.model.ApprovalContentType;
+import com.academy.mudogroupware.approval.domain.model.ApprovalDocumentSourceType;
 import com.academy.mudogroupware.approval.domain.repository.ApprovalDocumentRepository;
 import com.academy.mudogroupware.approval.infrastructure.persistence.ApprovalDocumentJpaRepository;
 import com.academy.mudogroupware.corporatecard.application.port.ApprovalSubmissionPort;
@@ -26,7 +27,8 @@ public class ApprovalSubmissionAdapter implements ApprovalSubmissionPort {
     @Override
     public Long submit(Long templateId, Long creatorId, String title, String content, List<Long> approverIds) {
         return createApprovalDocumentUseCase.createDocument(new CreateApprovalDocumentCommand(
-                templateId, title, ApprovalContentType.TEXT, content, null, creatorId, approverIds, null, null));
+                templateId, title, ApprovalContentType.TEXT, content, null, creatorId, approverIds, null, null,
+                ApprovalDocumentSourceType.CORPORATE_CARD_EXPENSE));
     }
 
     @Override

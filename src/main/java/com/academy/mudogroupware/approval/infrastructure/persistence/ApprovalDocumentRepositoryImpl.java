@@ -93,6 +93,7 @@ public class ApprovalDocumentRepositoryImpl implements ApprovalDocumentRepositor
                 .id(domain.getId())
                 .academyId(domain.getAcademyId())
                 .templateId(domain.getTemplateId())
+                .sourceType(domain.getSourceType())
                 .title(domain.getTitle())
                 .contentType(domain.getContent().getType())
                 .text(domain.getContent().getText())
@@ -138,7 +139,7 @@ public class ApprovalDocumentRepositoryImpl implements ApprovalDocumentRepositor
         ApprovalContent content = ApprovalContent.restore(entity.getContentType(), entity.getText());
 
         return ApprovalDocument.restore(
-                entity.getId(), entity.getAcademyId(), entity.getTemplateId(), entity.getTitle(), content,
+                entity.getId(), entity.getAcademyId(), entity.getTemplateId(), entity.getSourceType(), entity.getTitle(), content,
                 entity.getCreatorId(), lines, attachments, entity.getStatus(), entity.getCreatedAt(),
                 entity.getResubmittedAt());
     }

@@ -55,7 +55,7 @@ public class CreateApprovalDocumentService implements CreateApprovalDocumentUseC
         ApprovalContent content = ApprovalContent.create(command.contentType(), command.text());
         LocalDateTime now = LocalDateTime.now(clock);
         ApprovalDocument approvalDocument = ApprovalDocument.create(
-                approvalTemplate.getAcademyId(), approvalTemplate.getId(), command.title(), content,
+                approvalTemplate.getAcademyId(), approvalTemplate.getId(), command.sourceType(), command.title(), content,
                 command.creatorId(), approverIds, command.fileIds(), now);
 
         Long documentId = approvalDocumentRepository.save(approvalDocument).getId();

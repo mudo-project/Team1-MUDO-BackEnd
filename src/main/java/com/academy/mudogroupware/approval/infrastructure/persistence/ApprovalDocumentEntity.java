@@ -8,6 +8,7 @@ import org.hibernate.annotations.BatchSize;
 
 import com.academy.mudogroupware.approval.domain.model.ApprovalContentType;
 import com.academy.mudogroupware.approval.domain.model.ApprovalStatus;
+import com.academy.mudogroupware.approval.domain.model.ApprovalDocumentSourceType;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -43,6 +44,10 @@ public class ApprovalDocumentEntity {
     @Column(name = "template_id", nullable = false)
     private Long templateId;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "source_type", nullable = false, length = 30)
+    private ApprovalDocumentSourceType sourceType;
+
     @Column(nullable = false, length = 200)
     private String title;
 
@@ -76,12 +81,13 @@ public class ApprovalDocumentEntity {
     private List<ApprovalAttachmentEntity> attachments = new ArrayList<>();
 
     @Builder
-    private ApprovalDocumentEntity(Long id, Long academyId, Long templateId, String title,
+    private ApprovalDocumentEntity(Long id, Long academyId, Long templateId, ApprovalDocumentSourceType sourceType, String title,
                                     ApprovalContentType contentType, String text, Long creatorId,
                                     ApprovalStatus status, LocalDateTime createdAt, LocalDateTime resubmittedAt) {
         this.id = id;
         this.academyId = academyId;
         this.templateId = templateId;
+        this.sourceType = sourceType;
         this.title = title;
         this.contentType = contentType;
         this.text = text;
