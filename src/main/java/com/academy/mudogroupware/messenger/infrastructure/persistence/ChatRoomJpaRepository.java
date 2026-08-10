@@ -21,18 +21,16 @@ public interface ChatRoomJpaRepository extends JpaRepository<ChatRoomEntity, Lon
             + "join r.members requester "
             + "join r.members participant "
             + "join fetch r.members "
-            + "where r.academyId = :academyId "
-            + "and r.type = :type "
+            + "where r.type = :type "
             + "and requester.userId = :userId "
             + "and participant.userId = :otherUserId")
-    List<ChatRoomEntity> findDirectMessages(@Param("academyId") Long academyId,
-                                            @Param("type") ChatRoomType type,
+    List<ChatRoomEntity> findDirectMessages(@Param("type") ChatRoomType type,
                                             @Param("userId") Long userId,
                                             @Param("otherUserId") Long otherUserId);
 
     @Query("select distinct r from ChatRoomEntity r join r.members requester join fetch r.members "
-            + "where r.academyId = :academyId and requester.userId = :userId")
-    List<ChatRoomEntity> findAllByMember(@Param("academyId") Long academyId, @Param("userId") Long userId);
+            + "where requester.userId = :userId")
+    List<ChatRoomEntity> findAllByMember(@Param("userId") Long userId);
 
     @Modifying
     @Query(value = "update chat_room_member set last_read_at = :readAt "

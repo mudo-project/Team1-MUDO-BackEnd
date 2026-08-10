@@ -6,5 +6,5 @@ import java.util.List;
 
 public interface WorkspaceQueryUseCase {
 
-  List<WorkspaceListItem> getWorkspaces(Long academyId, Long userId, WorkspaceListScope scope);
+  List<WorkspaceListItem> getWorkspaces(Long userId, WorkspaceListScope scope);
 }

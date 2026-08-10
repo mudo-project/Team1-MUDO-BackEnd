@@ -39,7 +39,7 @@ class AddWorkspaceMembersServiceTest {
   @Test
   void addsOnlyNewActiveMembersAndReturnsThem() {
     when(workspaceRepository.findByIdForUpdate(100L))
-        .thenReturn(Optional.of(Workspace.restore(100L, 1L, "개발팀", 10L, Set.of(10L, 20L))));
+        .thenReturn(Optional.of(Workspace.restore(100L, "개발팀", 10L, Set.of(10L, 20L))));
     when(workspaceMemberDirectoryPort.findActiveUserIds(1L, Set.of(30L)))
         .thenReturn(Set.of(30L));
 
@@ -54,7 +54,7 @@ class AddWorkspaceMembersServiceTest {
   @Test
   void skipsRepositoryAndDirectoryLookupWhenAllRequestedMembersAlreadyJoined() {
     when(workspaceRepository.findByIdForUpdate(100L))
-        .thenReturn(Optional.of(Workspace.restore(100L, 1L, "개발팀", 10L, Set.of(10L, 20L))));
+        .thenReturn(Optional.of(Workspace.restore(100L, "개발팀", 10L, Set.of(10L, 20L))));
 
     Set<Long> added =
         addWorkspaceMembersService.addMembers(
@@ -69,7 +69,7 @@ class AddWorkspaceMembersServiceTest {
   @Test
   void rejectsAddingMemberWhoIsNotActiveInSameAcademy() {
     when(workspaceRepository.findByIdForUpdate(100L))
-        .thenReturn(Optional.of(Workspace.restore(100L, 1L, "개발팀", 10L, Set.of(10L))));
+        .thenReturn(Optional.of(Workspace.restore(100L, "개발팀", 10L, Set.of(10L))));
     when(workspaceMemberDirectoryPort.findActiveUserIds(1L, Set.of(30L))).thenReturn(Set.of());
 
     assertThatThrownBy(
@@ -85,7 +85,7 @@ class AddWorkspaceMembersServiceTest {
   @Test
   void rejectsAddingMembersWhenRequesterIsNotCurrentMember() {
     when(workspaceRepository.findByIdForUpdate(100L))
-        .thenReturn(Optional.of(Workspace.restore(100L, 1L, "개발팀", 10L, Set.of(10L))));
+        .thenReturn(Optional.of(Workspace.restore(100L, "개발팀", 10L, Set.of(10L))));
 
     assertThatThrownBy(
             () ->

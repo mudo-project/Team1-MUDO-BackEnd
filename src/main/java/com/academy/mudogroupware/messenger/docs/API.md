@@ -22,7 +22,7 @@
 - Method: `POST`
 - Endpoint: `/api/messenger/rooms`
 - Body: `participantIds`, `name`
-- 규칙: 본인 외 최소 1명을 초대해야 한다. 그룹 채팅은 `name`이 필수다. 초대 대상은 같은 학원의 `ACTIVE` 사용자여야 한다.
+- 규칙: 본인 외 최소 1명을 초대해야 한다. 그룹 채팅은 `name`이 필수다. 초대 대상은 `ACTIVE` 사용자여야 한다(학원 제한 없음, 2026-08-10 제거).
 
 ## 채팅방 목록 조회
 

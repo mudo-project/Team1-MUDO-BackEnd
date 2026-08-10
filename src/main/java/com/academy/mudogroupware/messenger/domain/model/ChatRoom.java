@@ -14,18 +14,14 @@ import com.academy.mudogroupware.messenger.domain.exception.MessengerException;
 public final class ChatRoom {
 
     private final Long id;
-    private final Long academyId;
     private String name;
     private final ChatRoomType type;
     private final Long createdBy;
     private final List<ChatRoomMember> members;
     private final LocalDateTime createdAt;
 
-    private ChatRoom(Long id, Long academyId, String name, ChatRoomType type, Long createdBy,
+    private ChatRoom(Long id, String name, ChatRoomType type, Long createdBy,
                       List<ChatRoomMember> members, LocalDateTime createdAt) {
-        if (academyId == null) {
-            throw new IllegalArgumentException("academyId must not be null");
-        }
         if (createdBy == null) {
             throw new IllegalArgumentException("createdBy must not be null");
         }
@@ -33,7 +29,6 @@ public final class ChatRoom {
             throw new MessengerException(MessengerErrorCode.PARTICIPANT_REQUIRED);
         }
         this.id = id;
-        this.academyId = academyId;
         this.name = name;
         this.type = type;
         this.createdBy = createdBy;
@@ -41,7 +36,7 @@ public final class ChatRoom {
         this.createdAt = createdAt;
     }
 
-    public static ChatRoom create(Long academyId, Long createdBy, List<Long> participantIds, String name,
+    public static ChatRoom create(Long createdBy, List<Long> participantIds, String name,
                                   LocalDateTime createdAt) {
         if (participantIds == null || participantIds.isEmpty()) {
             throw new MessengerException(MessengerErrorCode.INVITEE_REQUIRED);
@@ -67,12 +62,12 @@ public final class ChatRoom {
         members.add(ChatRoomMember.create(createdBy));
         inviteeIds.forEach(userId -> members.add(ChatRoomMember.create(userId)));
 
-        return new ChatRoom(null, academyId, roomName, type, createdBy, members, createdAt);
+        return new ChatRoom(null, roomName, type, createdBy, members, createdAt);
     }
 
-    public static ChatRoom restore(Long id, Long academyId, String name, ChatRoomType type, Long createdBy,
+    public static ChatRoom restore(Long id, String name, ChatRoomType type, Long createdBy,
                                     List<ChatRoomMember> members, LocalDateTime createdAt) {
-        return new ChatRoom(id, academyId, name, type, createdBy, members, createdAt);
+        return new ChatRoom(id, name, type, createdBy, members, createdAt);
     }
 
     public boolean isMember(Long userId) {
@@ -91,10 +86,6 @@ public final class ChatRoom {
 
     public Long getId() {
         return id;
-    }
-
-    public Long getAcademyId() {
-        return academyId;
     }
 
     public String getName() {

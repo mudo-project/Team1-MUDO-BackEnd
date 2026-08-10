@@ -13,7 +13,7 @@ class WorkspaceRecentAccessJpaEntityTest {
 
   @BeforeEach
   void setUp() {
-    workspace = WorkspaceJpaEntity.create(1L, "개발팀", 10L);
+    workspace = WorkspaceJpaEntity.create("개발팀", 10L);
     ReflectionTestUtils.setField(workspace, "id", 1L);
   }
 

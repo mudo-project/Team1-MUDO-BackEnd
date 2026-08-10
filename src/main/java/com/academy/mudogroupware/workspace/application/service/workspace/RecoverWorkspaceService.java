@@ -46,9 +46,7 @@ public class RecoverWorkspaceService implements RecoverWorkspaceUseCase {
 
     String originalName = workspace.getName();
     String finalName =
-        workspaceRepository.existsByAcademyIdAndName(workspace.getAcademyId(), originalName)
-            ? suffixedName(originalName)
-            : originalName;
+        workspaceRepository.existsByName(originalName) ? suffixedName(originalName) : originalName;
 
     Workspace recovered = workspace.recover(finalName);
     workspaceRepository.recover(command.workspaceId(), recovered.getName());

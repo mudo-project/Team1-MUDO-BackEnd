@@ -52,11 +52,11 @@ public class WorkspaceRecurringTaskTemplateController {
 
   @Operation(
       summary = "반복 업무 템플릿 목록 조회",
-      description = "현재 참여자이거나 WORKSPACE:READ_ALL 권한 보유자만 조회할 수 있습니다(같은 학원 소속에 한함). 최신 생성순으로 페이지 단위(기본 20개)로 반환합니다.")
+      description = "현재 참여자이거나 WORKSPACE:READ_ALL 권한 보유자만 조회할 수 있습니다. 최신 생성순으로 페이지 단위(기본 20개)로 반환합니다.")
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "목록 조회 성공"),
     @ApiResponse(responseCode = "400", description = "page 또는 size 값이 유효하지 않음"),
-    @ApiResponse(responseCode = "403", description = "참여자가 아니고 WORKSPACE:READ_ALL 권한도 없음, 또는 다른 학원 소속"),
+    @ApiResponse(responseCode = "403", description = "참여자가 아니고 WORKSPACE:READ_ALL 권한도 없음"),
     @ApiResponse(responseCode = "404", description = "워크스페이스가 존재하지 않거나 삭제됨")
   })
   @GetMapping
@@ -72,7 +72,7 @@ public class WorkspaceRecurringTaskTemplateController {
     SliceResponse<RecurringTaskTemplateListResponse> response =
         SliceResponse.from(
             getRecurringTaskTemplatesUseCase.getTemplates(
-                workspaceId, authUser.userId(), page, size, authUser.academyId(), canReadAll),
+                workspaceId, authUser.userId(), page, size, canReadAll),
             RecurringTaskTemplateListResponse::from);
     return ResponseEntity.ok(
         GlobalApiResponse.ok(WorkspaceResponseCode.RECURRING_TEMPLATE_LIST_RETRIEVED, response));

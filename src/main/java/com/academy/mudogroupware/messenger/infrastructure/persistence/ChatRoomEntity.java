@@ -33,9 +33,6 @@ public class ChatRoomEntity {
     @Column(name = "chat_room_id")
     private Long id;
 
-    @Column(name = "academy_id", nullable = false)
-    private Long academyId;
-
     @Column(length = 100)
     private String name;
 
@@ -54,10 +51,9 @@ public class ChatRoomEntity {
     private List<ChatRoomMemberEmbeddable> members = new ArrayList<>();
 
     @Builder
-    private ChatRoomEntity(Long id, Long academyId, String name, ChatRoomType type, Long createdBy,
+    private ChatRoomEntity(Long id, String name, ChatRoomType type, Long createdBy,
                             LocalDateTime createdAt, List<ChatRoomMemberEmbeddable> members) {
         this.id = id;
-        this.academyId = academyId;
         this.name = name;
         this.type = type;
         this.createdBy = createdBy;

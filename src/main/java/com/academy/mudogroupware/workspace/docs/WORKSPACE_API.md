@@ -62,7 +62,7 @@ HTTP `201 Created`
 | `400 Bad Request` | `WORKSPACE_400_1` | 생성자 또는 추가 참여자 중 같은 학원의 `ACTIVE` 사용자가 아닌 대상이 포함된 경우 |
 | `401 Unauthorized` | `COMMON_401_1` | Access Token이 없거나 유효하지 않은 경우 |
 | `403 Forbidden` | `COMMON_403_1` | `WORKSPACE:CREATE` Authority가 없는 경우 |
-| `409 Conflict` | `WORKSPACE_409_1` | 같은 학원에 동일한 활성 워크스페이스 이름이 이미 존재하는 경우 |
+| `409 Conflict` | `WORKSPACE_409_1` | 동일한 활성 워크스페이스 이름이 이미 존재하는 경우 |
 | `500 Internal Server Error` | `COMMON_500_1` | 처리되지 않은 서버 오류 |
 
 ### Business Rules
@@ -71,7 +71,7 @@ HTTP `201 Created`
 - 생성자는 `memberIds`에 포함하지 않아도 자동 참여한다.
 - `memberIds`의 중복 값은 한 번만 처리한다.
 - 생성자와 추가 참여자는 모두 같은 학원의 `ACTIVE` 사용자여야 한다.
-- 이름의 앞뒤 공백을 제거한 뒤 같은 학원의 활성 워크스페이스 이름이 이미 있으면 `WORKSPACE_409_1`을 반환한다.
+- 이름의 앞뒤 공백을 제거한 뒤 활성 워크스페이스 이름이 이미 있으면 `WORKSPACE_409_1`을 반환한다.
 - 동시 생성으로 사전 중복 확인 뒤 DB unique 제약이 충돌한 경우에도 `WORKSPACE_409_1`을 반환한다.
 
 ## 워크스페이스 목록 조회
@@ -90,7 +90,7 @@ HTTP `201 Created`
 
 | name | type | required | default | description |
 | --- | --- | --- | --- | --- |
-| `scope` | String | false | `MINE` | `MINE`: 사용자가 참여한 워크스페이스, `ALL`: `WORKSPACE:READ_ALL` 권한자에게 같은 학원의 전체 활성 워크스페이스 |
+| `scope` | String | false | `MINE` | `MINE`: 사용자가 참여한 워크스페이스, `ALL`: `WORKSPACE:READ_ALL` 권한자에게 전체 활성 워크스페이스 |
 
 ### Success Response
 
@@ -142,7 +142,7 @@ HTTP `200 OK`
 - 목록은 사용자별 최근 접속 시각 내림차순이며, 최근 접속 기록이 없는 항목은 워크스페이스 생성 시각 내림차순으로 뒤에 배치한다.
 - 최근 접속 시각과 생성 시각이 모두 같으면 워크스페이스 번호 내림차순으로 정렬한다.
 - 삭제된 워크스페이스는 반환하지 않는다.
-- `academyId`, `userId`는 요청 파라미터가 아니라 Access Token의 인증 정보에서 가져온다.
+- `userId`는 요청 파라미터가 아니라 Access Token의 인증 정보에서 가져온다.
 
 ## 워크스페이스 최근 접속 기록
 
@@ -153,8 +153,8 @@ HTTP `200 OK`
 ### 인증 및 권한
 
 - `Authorization: Bearer {accessToken}` 헤더가 필요하다.
-- 일반 사용자는 자신이 참여한 같은 학원의 활성 워크스페이스만 기록할 수 있다.
-- `WORKSPACE:READ_ALL` Authority가 있으면 자신이 참여하지 않았더라도 같은 학원의 활성 워크스페이스를 기록할 수 있다.
+- 일반 사용자는 자신이 참여한 활성 워크스페이스만 기록할 수 있다.
+- `WORKSPACE:READ_ALL` Authority가 있으면 자신이 참여하지 않았더라도 활성 워크스페이스를 기록할 수 있다.
 
 ### Path Variable
 
@@ -173,11 +173,11 @@ HTTP `204 No Content`
 | HTTP 상태 | code | 발생 조건 |
 | --- | --- | --- |
 | `401 Unauthorized` | `COMMON_401_1` | Access Token이 없거나 유효하지 않은 경우 |
-| `403 Forbidden` | `COMMON_403_1` | 같은 학원의 접근 가능한 활성 워크스페이스가 아닌 경우 |
+| `403 Forbidden` | `COMMON_403_1` | 접근 가능한 활성 워크스페이스가 아닌 경우 |
 
 ### Business Rules
 
-- `academyId`, `userId`, `WORKSPACE:READ_ALL` 보유 여부는 인증 정보에서 가져온다.
+- `userId`, `WORKSPACE:READ_ALL` 보유 여부는 인증 정보에서 가져온다.
 - 최초 접속이면 최근 접속 기록을 생성하고, 기존 기록이 있으면 현재 서버 시각으로 갱신한다. MySQL 단일 upsert를 사용하므로 동일한 최초 접속 요청이 동시에 들어와도 중복 키 오류가 발생하지 않으며, 늦게 도착한 과거 시각은 더 최신 기록을 덮어쓰지 않는다.
 
 ## 워크스페이스 상세 조회
@@ -189,8 +189,8 @@ HTTP `204 No Content`
 ### 인증 및 권한
 
 - `Authorization: Bearer {accessToken}` 헤더가 필요하다.
-- 일반 사용자는 자신이 참여한 같은 학원의 활성 워크스페이스만 조회할 수 있다.
-- `WORKSPACE:READ_ALL` Authority가 있으면 참여 여부와 관계없이 같은 학원의 활성 워크스페이스를 조회할 수 있다.
+- 일반 사용자는 자신이 참여한 활성 워크스페이스만 조회할 수 있다.
+- `WORKSPACE:READ_ALL` Authority가 있으면 참여 여부와 관계없이 활성 워크스페이스를 조회할 수 있다.
 
 ### Path Variable
 
@@ -262,7 +262,7 @@ HTTP `200 OK`
 
 ### Business Rules
 
-- `academyId`, `userId`, `WORKSPACE:READ_ALL` 보유 여부는 인증 정보에서 가져온다.
+- `userId`, `WORKSPACE:READ_ALL` 보유 여부는 인증 정보에서 가져온다.
 - `date`를 생략하면 서버 `Clock` 기준 오늘 날짜를 기준일로 사용한다.
 - 존재 여부를 접근 권한보다 먼저 확인한다 — 삭제되었거나 없는 워크스페이스는 참여 여부와 무관하게 `WORKSPACE_404_1`을 반환한다.
 - 표시 대상 업무 카드:
@@ -279,7 +279,7 @@ HTTP `200 OK`
 
 - 요청 본문: `{ "name": "새 이름" }` — trim 후 최대 100자, 필수값.
 - 현재 참여자만 호출할 수 있다.
-- 같은 학원에 활성 상태로 이름이 중복되면 자동 변경 없이 `409`를 반환한다.
+- 활성 상태로 이름이 중복되면 자동 변경 없이 `409`를 반환한다.
 
 | 응답 | 코드 | 설명 |
 | --- | --- | --- |
@@ -287,7 +287,7 @@ HTTP `200 OK`
 | `400 Bad Request` | `COMMON_400_*` | 이름이 비어있거나 100자 초과 |
 | `403 Forbidden` | `WORKSPACE_403_1` | 참여자가 아님 |
 | `404 Not Found` | `WORKSPACE_404_1` | 워크스페이스가 존재하지 않거나 삭제됨 |
-| `409 Conflict` | `WORKSPACE_409_1` | 같은 학원에 활성 상태로 이름이 중복됨 |
+| `409 Conflict` | `WORKSPACE_409_1` | 활성 상태로 이름이 중복됨 |
 
 ## 워크스페이스 삭제
 
