@@ -14,7 +14,9 @@ import com.academy.mudogroupware.memo.domain.model.Memo;
 import com.academy.mudogroupware.memo.domain.repository.MemoRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -25,6 +27,8 @@ public class UpdateMemoColorService implements UpdateMemoColorUseCase {
 
     @Override
     public void updateColor(UpdateMemoColorCommand command) {
+        log.info("event=memo_color_update_시작 memoId={}, userId={}, color={}", command.memoId(), command.userId(),
+                command.color());
         Memo memo = memoRepository.findById(command.memoId())
                 .orElseThrow(() -> new MemoException(MemoErrorCode.MEMO_NOT_FOUND));
         if (!memo.isOwnedBy(command.userId())) {
@@ -33,5 +37,7 @@ public class UpdateMemoColorService implements UpdateMemoColorUseCase {
         LocalDateTime now = LocalDateTime.now(clock);
         memo.updateColor(command.color(), now);
         memoRepository.updateColor(memo.getId(), memo.getColor(), now);
+        log.info("event=memo_color_update_완료 memoId={}, userId={}, color={}", command.memoId(),
+                command.userId(), memo.getColor());
     }
 }

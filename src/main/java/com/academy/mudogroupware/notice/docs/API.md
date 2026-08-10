@@ -16,10 +16,12 @@
   "content": "8월 급여 지급일을 아래와 같이 안내드립니다...",
   "pinned": true,
   "attachments": [
-    { "fileUrl": "https://cdn.example.com/notice/1.xlsx", "fileName": "2026년 8월 급여명세서 양식.xlsx", "fileType": "XLS" }
+    { "fileId": 10, "fileName": "2026년 8월 급여명세서 양식.xlsx" }
   ]
 }
 ```
+
+`fileId`는 미리 `POST /api/files/presigned-url` → S3 업로드 → `POST /api/files`로 발급받은 값이다. 자세한 흐름은 [file 모듈 API.md](../../file/docs/API.md) 참고.
 
 #### Response · `201 Created`
 
@@ -36,7 +38,7 @@
 
 - `title`, `content`는 비어 있을 수 없습니다.
 - 작성자(`AuthUser`)의 소속 학원이 공지의 학원으로 자동 지정됩니다.
-- 첨부파일은 여러 개 등록할 수 있으며, 사진뿐 아니라 PDF 등 일반 파일도 가능합니다 (`fileType`으로 구분, 서버는 타입을 검증하지 않음).
+- 첨부파일은 여러 개 등록할 수 있으며, 사진뿐 아니라 PDF 등 일반 파일도 가능합니다. `fileId`로 참조하며(`file` 모듈에서 발급), 서버는 실제 파일 존재 여부를 검증하지 않습니다.
 - 카테고리(인사/시설/업무) 기능은 화면 시안에 없어 이번 범위에서 제외했습니다.
 
 ---
@@ -110,13 +112,14 @@
     "createdAt": "2026-08-01T09:10:00",
     "updatedAt": "2026-08-01T09:10:00",
     "attachments": [
-      { "id": 1, "fileUrl": "https://cdn.example.com/notice/1.xlsx", "fileName": "2026년 8월 급여명세서 양식.xlsx", "fileType": "XLS" }
+      { "id": 1, "fileId": 10, "fileName": "2026년 8월 급여명세서 양식.xlsx" }
     ]
   }
 }
 ```
 
 - `viewCount`(조회수)와 `readerCount`/`totalRecipientCount`(읽음 인원)는 서로 다른 값입니다. 조회수는 볼 때마다 누적되고, 읽음 인원은 학원 소속 인원 중 몇 명이 읽었는지(중복 제거)를 뜻합니다.
+- 첨부파일 다운로드가 필요하면 `attachments[].fileId`로 `GET /api/files/{fileId}/download-url`을 호출해 임시 다운로드 URL을 받습니다.
 
 ---
 

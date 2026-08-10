@@ -294,12 +294,21 @@ HTTP `200 OK`
 
 `DELETE /api/workspaces/{workspaceId}`
 
-- 소프트 삭제로 처리하며, 응답 본문 없이 `204`를 반환한다.
+- 소프트 삭제로 처리하며, `200 OK`와 함께 `GlobalApiResponse` 바디를 반환한다.
 - 현재 참여자만 호출할 수 있다.
+
+```json
+{
+  "status": 200,
+  "code": "WORKSPACE_200_11",
+  "message": "워크스페이스 삭제에 성공했습니다.",
+  "data": null
+}
+```
 
 | 응답 | 코드 | 설명 |
 | --- | --- | --- |
-| `204 No Content` | - | 삭제 성공 |
+| `200 OK` | `WORKSPACE_200_11` | 삭제 성공 |
 | `403 Forbidden` | `WORKSPACE_403_1` | 참여자가 아님 |
 | `404 Not Found` | `WORKSPACE_404_1` | 워크스페이스가 존재하지 않거나 이미 삭제됨 |
 
@@ -324,10 +333,20 @@ HTTP `200 OK`
 
 - 대상 `userId`가 요청자 자신이면 자진 탈퇴이며 항상 허용된다. 타인 제거는 현재 참여자만 할 수 있다.
 - 본인이 유일하게 남은 참여자면 자진 탈퇴·제거 모두 거부된다 — 이 경우 워크스페이스 삭제를 이용해야 한다.
+- `200 OK`와 함께 `GlobalApiResponse` 바디를 반환한다.
+
+```json
+{
+  "status": 200,
+  "code": "WORKSPACE_200_12",
+  "message": "참여자 제거에 성공했습니다.",
+  "data": null
+}
+```
 
 | 응답 | 코드 | 설명 |
 | --- | --- | --- |
-| `204 No Content` | - | 제거 성공 |
+| `200 OK` | `WORKSPACE_200_12` | 제거 성공 |
 | `400 Bad Request` | `WORKSPACE_400_2` | 마지막 남은 참여자의 탈퇴/제거 시도 |
 | `403 Forbidden` | `WORKSPACE_403_1` | 요청자가 참여자가 아님 |
 | `404 Not Found` | `WORKSPACE_404_1` / `WORKSPACE_404_2` | 워크스페이스가 없음 / 대상이 참여자가 아님 |
@@ -486,9 +505,16 @@ HTTP `200 OK`
 
 ### Success Response
 
-HTTP `204 No Content`
+HTTP `200 OK`
 
-응답 본문은 없다.
+```json
+{
+  "status": 200,
+  "code": "WORKSPACE_200_13",
+  "message": "업무 삭제에 성공했습니다.",
+  "data": null
+}
+```
 
 ### Error Response
 

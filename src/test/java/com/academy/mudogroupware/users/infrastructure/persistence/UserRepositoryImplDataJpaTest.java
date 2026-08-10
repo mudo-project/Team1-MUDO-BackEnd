@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
@@ -61,13 +62,41 @@ class UserRepositoryImplDataJpaTest {
         assertThat(userRepository.findAllById(Set.of())).isEmpty();
     }
 
+    @Test
+    void countActiveByRoleIdsCountsOnlyActiveUsersGroupedByRole() {
+        insertUserWithRole(1L, 1L, "role5-active-1", UserStatus.ACTIVE, 5L);
+        insertUserWithRole(2L, 1L, "role5-active-2", UserStatus.ACTIVE, 5L);
+        insertUserWithRole(3L, 1L, "role5-resigned", UserStatus.RESIGNED, 5L);
+        insertUserWithRole(6L, 1L, "role5-inactive", UserStatus.INACTIVE, 5L);
+        insertUserWithRole(4L, 1L, "role7-active", UserStatus.ACTIVE, 7L);
+        insertUserWithRole(5L, 1L, "role9-active-not-requested", UserStatus.ACTIVE, 9L);
+
+        Map<Long, Long> result = userRepository.countActiveByRoleIds(Set.of(5L, 7L));
+
+        assertThat(result).containsExactlyInAnyOrderEntriesOf(Map.of(5L, 2L, 7L, 1L));
+    }
+
+    @Test
+    void countActiveByRoleIdsReturnsEmptyMapWhenNoActiveUsersForRequestedRoles() {
+        insertUserWithRole(1L, 1L, "role5-resigned", UserStatus.RESIGNED, 5L);
+        insertUserWithRole(2L, 1L, "role5-inactive", UserStatus.INACTIVE, 5L);
+
+        Map<Long, Long> result = userRepository.countActiveByRoleIds(Set.of(5L));
+
+        assertThat(result).isEmpty();
+    }
+
     private void insertUser(long id, long academyId, String suffix, UserStatus status) {
+        insertUserWithRole(id, academyId, suffix, status, null);
+    }
+
+    private void insertUserWithRole(long id, long academyId, String suffix, UserStatus status, Long roleId) {
         jdbcTemplate.update("""
                 insert into users (
-                    id, academy_id, username, password, name, phone_number, email, status,
+                    id, academy_id, role_id, username, password, name, phone_number, email, status,
                     must_change_pw, account_type, admin_scope, created_at, updated_at
-                ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, current_timestamp, current_timestamp)
-                """, id, academyId, "user-" + suffix, "password", "사용자-" + suffix,
+                ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, current_timestamp, current_timestamp)
+                """, id, academyId, roleId, "user-" + suffix, "password", "사용자-" + suffix,
                 "010-0000-0000", suffix + "@example.com", status.name(), false, "MEMBER", null);
     }
 }

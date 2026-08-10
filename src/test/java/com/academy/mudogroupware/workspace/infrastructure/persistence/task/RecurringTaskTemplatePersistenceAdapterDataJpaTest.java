@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
@@ -31,6 +32,7 @@ class RecurringTaskTemplatePersistenceAdapterDataJpaTest {
   private static final long CREATOR_ID = 10L;
 
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private EntityManager entityManager;
   @Autowired private RecurringTaskTemplateRepository recurringTaskTemplateRepository;
   @Autowired private RecurringTaskSkipRepository recurringTaskSkipRepository;
 
@@ -68,6 +70,26 @@ class RecurringTaskTemplatePersistenceAdapterDataJpaTest {
   }
 
   @Test
+  void findByWorkspaceIdAndIdForUpdateReturnsEmptyForOtherWorkspace() {
+    insertWorkspace(WORKSPACE_ID);
+    insertWorkspace(2L);
+    RecurringTaskTemplate saved =
+        recurringTaskTemplateRepository.save(
+            RecurringTaskTemplate.create(
+                WORKSPACE_ID, "락 대상", RecurrenceType.MONTHLY,
+                Map.of("dayOfMonth", 1), CREATOR_ID));
+
+    Optional<RecurringTaskTemplate> foundWithWrongWorkspace =
+        recurringTaskTemplateRepository.findByWorkspaceIdAndIdForUpdate(2L, saved.getId());
+    Optional<RecurringTaskTemplate> foundWithCorrectWorkspace =
+        recurringTaskTemplateRepository.findByWorkspaceIdAndIdForUpdate(WORKSPACE_ID, saved.getId());
+
+    assertThat(foundWithWrongWorkspace).isEmpty();
+    assertThat(foundWithCorrectWorkspace).isPresent();
+    assertThat(foundWithCorrectWorkspace.get().getId()).isEqualTo(saved.getId());
+  }
+
+  @Test
   void updateReplacesTitleAndRecurrence() {
     insertWorkspace(WORKSPACE_ID);
     RecurringTaskTemplate saved =
@@ -102,6 +124,34 @@ class RecurringTaskTemplatePersistenceAdapterDataJpaTest {
   }
 
   @Test
+  void deleteKeepsGeneratedTaskButNullsRecurringTemplateReference() {
+    insertWorkspace(WORKSPACE_ID);
+    RecurringTaskTemplate saved =
+        recurringTaskTemplateRepository.save(
+            RecurringTaskTemplate.create(
+                WORKSPACE_ID, "삭제 대상", RecurrenceType.WEEKLY, Map.of("daysOfWeek", List.of(1)), CREATOR_ID));
+    Long generatedTaskId = insertTaskReferencingTemplate(WORKSPACE_ID, saved.getId());
+
+    recurringTaskTemplateRepository.delete(saved.getId());
+    entityManager.flush();
+
+    Long remainingTemplateRef =
+        jdbcTemplate.queryForObject(
+            "select recurring_template_id from task where task_id = ?", Long.class, generatedTaskId);
+    assertThat(remainingTemplateRef).isNull();
+  }
+
+  private Long insertTaskReferencingTemplate(long workspaceId, long templateId) {
+    LocalDateTime now = LocalDateTime.now();
+    jdbcTemplate.update(
+        "insert into task (workspace_id, recurring_template_id, title, status, scheduled_for,"
+            + " created_by, created_at, updated_at) values (?, ?, ?, 'WAITING', ?, ?, ?, ?)",
+        workspaceId, templateId, "생성된 반복 업무", now, CREATOR_ID, now, now);
+    return jdbcTemplate.queryForObject(
+        "select task_id from task where recurring_template_id = ?", Long.class, templateId);
+  }
+
+  @Test
   void findAllReturnsTemplatesAcrossWorkspaces() {
     insertWorkspace(WORKSPACE_ID);
     insertWorkspace(2L);
@@ -112,6 +162,27 @@ class RecurringTaskTemplatePersistenceAdapterDataJpaTest {
         RecurringTaskTemplate.create(2L, "B", RecurrenceType.WEEKLY, Map.of("daysOfWeek", List.of(1)), CREATOR_ID));
 
     assertThat(recurringTaskTemplateRepository.findAll()).hasSize(2);
+  }
+
+  @Test
+  void findAllExcludesTemplatesInSoftDeletedWorkspace() {
+    insertWorkspace(WORKSPACE_ID);
+    insertWorkspace(2L);
+    recurringTaskTemplateRepository.save(
+        RecurringTaskTemplate.create(
+            WORKSPACE_ID, "삭제된 워크스페이스 템플릿", RecurrenceType.WEEKLY,
+            Map.of("daysOfWeek", List.of(1)), CREATOR_ID));
+    recurringTaskTemplateRepository.save(
+        RecurringTaskTemplate.create(
+            2L, "정상 워크스페이스 템플릿", RecurrenceType.WEEKLY,
+            Map.of("daysOfWeek", List.of(1)), CREATOR_ID));
+    jdbcTemplate.update(
+        "update workspace set deleted_at = ? where workspace_id = ?",
+        LocalDateTime.now(), WORKSPACE_ID);
+
+    assertThat(recurringTaskTemplateRepository.findAll())
+        .extracting(RecurringTaskTemplate::getTitle)
+        .containsExactly("정상 워크스페이스 템플릿");
   }
 
   @Test

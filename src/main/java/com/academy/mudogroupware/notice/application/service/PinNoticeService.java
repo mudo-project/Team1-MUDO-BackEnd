@@ -12,7 +12,9 @@ import com.academy.mudogroupware.notice.domain.model.Notice;
 import com.academy.mudogroupware.notice.domain.repository.NoticeRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -23,6 +25,7 @@ public class PinNoticeService implements PinNoticeUseCase {
 
     @Override
     public void pin(Long noticeId, Long requesterId) {
+        log.info("event=notice_pin_시작 noticeId={}, requesterId={}", noticeId, requesterId);
         Notice notice = noticeRepository.findById(noticeId)
                 .orElseThrow(() -> new NoticeException(NoticeErrorCode.NOTICE_NOT_FOUND));
 
@@ -33,10 +36,12 @@ public class PinNoticeService implements PinNoticeUseCase {
 
         notice.pin();
         noticeRepository.save(notice);
+        log.info("event=notice_pin_완료 noticeId={}, requesterId={}", noticeId, requesterId);
     }
 
     @Override
     public void unpin(Long noticeId, Long requesterId) {
+        log.info("event=notice_unpin_시작 noticeId={}, requesterId={}", noticeId, requesterId);
         Notice notice = noticeRepository.findById(noticeId)
                 .orElseThrow(() -> new NoticeException(NoticeErrorCode.NOTICE_NOT_FOUND));
 
@@ -47,5 +52,6 @@ public class PinNoticeService implements PinNoticeUseCase {
 
         notice.unpin();
         noticeRepository.save(notice);
+        log.info("event=notice_unpin_완료 noticeId={}, requesterId={}", noticeId, requesterId);
     }
 }

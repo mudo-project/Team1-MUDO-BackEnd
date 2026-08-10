@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.workspace.application.service.task;
 
+import com.academy.mudogroupware.global.infrastructure.logging.AfterCommitLogger;
 import com.academy.mudogroupware.workspace.application.command.task.CreateRecurringTaskTemplateCommand;
 import com.academy.mudogroupware.workspace.application.usecase.task.CreateRecurringTaskTemplateUseCase;
 import com.academy.mudogroupware.workspace.domain.exception.workspace.WorkspaceAccessDeniedException;
@@ -47,10 +48,12 @@ public class CreateRecurringTaskTemplateService implements CreateRecurringTaskTe
                 command.recurrenceRule(),
                 command.requesterId()));
 
-    log.info(
-        "event=recurring_template_create_완료 workspaceId={}, templateId={}",
-        command.workspaceId(),
-        saved.getId());
+    AfterCommitLogger.run(
+        () ->
+            log.info(
+                "event=recurring_template_create_완료 workspaceId={}, templateId={}",
+                command.workspaceId(),
+                saved.getId()));
     return saved.getId();
   }
 }

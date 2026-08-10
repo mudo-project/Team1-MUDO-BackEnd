@@ -33,7 +33,7 @@ log.info(
 try {
   // ... 메서드 로직 ...
 } catch (RuntimeException e) {
-  log.warn("event=<도메인>_<행위>_실패 key1={}, key2={}, reason={}", value1, value2, e.getMessage());
+  log.warn("event=<도메인>_<행위>_실패 key1={}, key2={}, reason={}", value1, value2, e.getMessage(), e);
   throw e;
 }
 ```

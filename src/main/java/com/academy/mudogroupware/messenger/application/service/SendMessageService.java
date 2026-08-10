@@ -18,7 +18,9 @@ import com.academy.mudogroupware.messenger.domain.repository.ChatMessageReposito
 import com.academy.mudogroupware.messenger.domain.repository.ChatRoomRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -31,6 +33,7 @@ public class SendMessageService implements SendMessageUseCase {
 
     @Override
     public Long sendMessage(SendMessageCommand command) {
+        log.info("event=message_send_시작 chatRoomId={}, senderId={}", command.chatRoomId(), command.senderId());
         ChatRoom chatRoom = chatRoomRepository.findById(command.chatRoomId())
                 .orElseThrow(() -> new MessengerException(MessengerErrorCode.CHAT_ROOM_NOT_FOUND));
         if (!chatRoom.isMember(command.senderId())) {
@@ -46,6 +49,8 @@ public class SendMessageService implements SendMessageUseCase {
         eventPublisher.publishEvent(new ChatMessageSentEvent(saved.getChatRoomId(), saved.getId(),
                 saved.getSenderUserId(), saved.getMessageType(), saved.getContent(), saved.getFileUrl(),
                 saved.getFileName(), saved.getCreatedAt(), chatRoom.getMembers().size() - 1L));
+        log.info("event=message_send_완료 chatRoomId={}, senderId={}, messageId={}", command.chatRoomId(),
+                command.senderId(), saved.getId());
         return saved.getId();
     }
 }

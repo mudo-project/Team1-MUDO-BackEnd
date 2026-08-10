@@ -15,7 +15,9 @@ import com.academy.mudogroupware.messenger.domain.model.ChatMessage;
 import com.academy.mudogroupware.messenger.domain.repository.ChatMessageRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -27,6 +29,8 @@ public class DeleteMessageService implements DeleteMessageUseCase {
 
     @Override
     public void delete(Long chatRoomId, Long messageId, Long requesterId) {
+        log.info("event=message_delete_시작 chatRoomId={}, messageId={}, requesterId={}", chatRoomId, messageId,
+                requesterId);
         ChatMessage message = chatMessageRepository.findById(messageId)
                 .orElseThrow(() -> new MessengerException(MessengerErrorCode.CHAT_ROOM_NOT_FOUND));
         if (!message.getChatRoomId().equals(chatRoomId)) {
@@ -37,5 +41,7 @@ public class DeleteMessageService implements DeleteMessageUseCase {
         chatMessageRepository.save(message);
         eventPublisher.publishEvent(new MessageDeletedEvent(message.getChatRoomId(), message.getId(),
                 requesterId, message.getDeletedAt()));
+        log.info("event=message_delete_완료 chatRoomId={}, messageId={}, requesterId={}", chatRoomId, messageId,
+                requesterId);
     }
 }

@@ -1,4 +1,4 @@
-package com.academy.mudogroupware.file.infrastructure.approval;
+package com.academy.mudogroupware.file.infrastructure.persistence;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -30,6 +30,10 @@ public class FileMetadataEntity {
         this.id = id;
         this.objectKey = objectKey;
         this.contentType = contentType;
+    }
+
+    public static FileMetadataEntity create(String objectKey, String contentType) {
+        return new FileMetadataEntity(null, objectKey, contentType);
     }
 
     public static FileMetadataEntity restore(Long id, String objectKey, String contentType) {

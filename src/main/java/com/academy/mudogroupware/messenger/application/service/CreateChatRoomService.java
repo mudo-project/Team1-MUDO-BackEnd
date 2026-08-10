@@ -20,7 +20,9 @@ import com.academy.mudogroupware.messenger.domain.model.ChatRoom;
 import com.academy.mudogroupware.messenger.domain.repository.ChatRoomRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -32,6 +34,7 @@ public class CreateChatRoomService implements CreateChatRoomUseCase {
 
     @Override
     public Long createRoom(CreateChatRoomCommand command) {
+        log.info("event=chat_room_create_시작 requesterId={}", command.requesterId());
         ChatMemberInfo requester = chatMemberDirectoryPort.getMember(command.requesterId());
 
         List<Long> participantIds = command.participantIds();
@@ -47,14 +50,18 @@ public class CreateChatRoomService implements CreateChatRoomUseCase {
 
         Set<Long> inviteeIds = new LinkedHashSet<>(participantIds);
         inviteeIds.remove(requester.userId());
+        Long chatRoomId;
         if (inviteeIds.size() == 1) {
             Long otherUserId = inviteeIds.iterator().next();
-            return chatRoomRepository.findDirectMessage(requester.academyId(), requester.userId(), otherUserId)
+            chatRoomId = chatRoomRepository.findDirectMessage(requester.academyId(), requester.userId(),
+                            otherUserId)
                     .map(ChatRoom::getId)
                     .orElseGet(() -> createRoom(requester, participantIds, command.name()));
+        } else {
+            chatRoomId = createRoom(requester, participantIds, command.name());
         }
-
-        return createRoom(requester, participantIds, command.name());
+        log.info("event=chat_room_create_완료 requesterId={}, chatRoomId={}", command.requesterId(), chatRoomId);
+        return chatRoomId;
     }
 
     private Long createRoom(ChatMemberInfo requester, List<Long> participantIds, String name) {

@@ -13,7 +13,9 @@ import com.academy.mudogroupware.users.domain.model.Role;
 import com.academy.mudogroupware.users.domain.repository.RoleRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -24,12 +26,21 @@ public class CreateRoleService implements CreateRoleUseCase {
 
     @Override
     public Long createRole(CreateRoleCommand command) {
-        if (roleRepository.existsByAcademyIdAndName(command.academyId(), command.name())) {
-            throw new RoleNameDuplicateException();
-        }
+        log.info("event=role_create_시작 academyId={}, name={}", command.academyId(), command.name());
+        try {
+            if (roleRepository.existsByAcademyIdAndName(command.academyId(), command.name())) {
+                throw new RoleNameDuplicateException();
+            }
 
-        Role role = Role.create(command.academyId(), command.name(), command.description(), command.color(),
-                LocalDateTime.now(clock));
-        return roleRepository.save(role).getId();
+            Role role = Role.create(command.academyId(), command.name(), command.description(), command.color(),
+                    LocalDateTime.now(clock));
+            Long roleId = roleRepository.save(role).getId();
+            log.info("event=role_create_완료 academyId={}, roleId={}", command.academyId(), roleId);
+            return roleId;
+        } catch (RuntimeException e) {
+            log.warn("event=role_create_실패 academyId={}, name={}, reason={}", command.academyId(), command.name(),
+                    e.getMessage(), e);
+            throw e;
+        }
     }
 }

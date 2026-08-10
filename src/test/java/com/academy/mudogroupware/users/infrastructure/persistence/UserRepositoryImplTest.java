@@ -2,8 +2,10 @@ package com.academy.mudogroupware.users.infrastructure.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
@@ -17,6 +19,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 
 import com.academy.mudogroupware.global.domain.auth.AccountType;
 import com.academy.mudogroupware.users.domain.exception.RoleNotFoundException;
+import com.academy.mudogroupware.users.domain.exception.UsernameDuplicateException;
+import com.academy.mudogroupware.users.domain.model.User;
 import com.academy.mudogroupware.users.domain.model.UserStatus;
 
 class UserRepositoryImplTest {
@@ -71,6 +75,34 @@ class UserRepositoryImplTest {
         Map<Long, Long> result = adapter.countActiveByRoleIds(Set.of());
 
         assertThat(result).isEmpty();
+        verifyNoInteractions(jpaRepository);
+    }
+
+    @Test
+    void convertsUsernameUniqueConstraintViolationOnSaveToUsernameDuplicateException() {
+        UserJpaRepository jpaRepository = mock(UserJpaRepository.class);
+        UserRepositoryImpl adapter = new UserRepositoryImpl(jpaRepository);
+        DataIntegrityViolationException violation = new DataIntegrityViolationException(
+                "Duplicate entry 'teacher01' for key 'users.uk_users_username'");
+        when(jpaRepository.saveAndFlush(any(UserEntity.class))).thenThrow(violation);
+        User newUser = User.create(1L, "teacher01", "hashed", "김강사", "010-1111-2222", "teacher01@example.com",
+                5L, AccountType.MEMBER, null, LocalDateTime.now());
+
+        assertThatThrownBy(() -> adapter.save(newUser))
+                .isInstanceOf(UsernameDuplicateException.class)
+                .hasCause(violation);
+    }
+
+    @Test
+    void preservesUnrelatedDataIntegrityViolationOnSave() {
+        UserJpaRepository jpaRepository = mock(UserJpaRepository.class);
+        UserRepositoryImpl adapter = new UserRepositoryImpl(jpaRepository);
+        DataIntegrityViolationException violation = new DataIntegrityViolationException("some unrelated constraint");
+        when(jpaRepository.saveAndFlush(any(UserEntity.class))).thenThrow(violation);
+        User newUser = User.create(1L, "teacher01", "hashed", "김강사", "010-1111-2222", "teacher01@example.com",
+                5L, AccountType.MEMBER, null, LocalDateTime.now());
+
+        assertThatThrownBy(() -> adapter.save(newUser)).isSameAs(violation);
     }
 
     private UserEntity userEntity() {

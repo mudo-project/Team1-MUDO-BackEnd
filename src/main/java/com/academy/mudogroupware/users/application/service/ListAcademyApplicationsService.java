@@ -10,7 +10,9 @@ import com.academy.mudogroupware.users.domain.model.AcademyApplication;
 import com.academy.mudogroupware.users.domain.repository.AcademyApplicationRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -20,6 +22,9 @@ public class ListAcademyApplicationsService implements ListAcademyApplicationsUs
 
     @Override
     public List<AcademyApplication> listApplications() {
-        return academyApplicationRepository.findAll();
+        log.info("event=academy_application_list_시작");
+        List<AcademyApplication> applications = academyApplicationRepository.findAll();
+        log.info("event=academy_application_list_완료 count={}", applications.size());
+        return applications;
     }
 }

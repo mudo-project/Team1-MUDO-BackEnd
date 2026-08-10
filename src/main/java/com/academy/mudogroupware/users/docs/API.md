@@ -119,7 +119,7 @@
 | --- | --- | --- | --- |
 | `name` | String | true | 역할 이름 (같은 학원 내에서 중복 불가, 최대 50자) |
 | `description` | String | false | 역할 설명 (최대 255자) |
-| `color` | String | false | 역할 뱃지 색상. 형식 검증 없이 그대로 저장/반환합니다(프론트 책임). 안 보내면 `null` |
+| `color` | String | false | 역할 뱃지 색상. 형식 검증 없이 그대로 저장/반환합니다(프론트 책임), 최대 20자. 안 보내면 `null` |
 
 #### Response · `201 Created`
 
@@ -530,6 +530,56 @@
 
 ---
 
+## 17. 직원 계정 발급
+
+`POST /api/users`
+권한: `ACCOUNT:MANAGE` 필요
+
+### Request
+
+```json
+{
+  "username": "teacher01",
+  "name": "김강사",
+  "phone": "010-1111-2222",
+  "email": "teacher01@example.com",
+  "roleId": 8
+}
+```
+
+| name | type | required | 설명 |
+| --- | --- | --- | --- |
+| `username` | String | true | 로그인 아이디, 최대 50자, 전역 유니크 |
+| `name` | String | true | 이름, 최대 50자 |
+| `phone` | String | true | 전화번호, 최대 20자 |
+| `email` | String | true | 이메일, 최대 100자 |
+| `roleId` | Long | true | 배정할 역할 ID (같은 학원 소속 역할만 가능) |
+
+### Response · `201 Created`
+
+```json
+{
+  "status": 201,
+  "code": "USER_201_1",
+  "message": "직원 계정이 발급되었습니다.",
+  "data": {
+    "userId": 8,
+    "username": "teacher01",
+    "temporaryPassword": "USb8MGQYrq!p"
+  }
+}
+```
+
+### 검증 및 정책
+
+- `academyId`는 요청으로 받지 않고 인증된 관리자 기준으로 서버가 결정합니다 — 다른 학원에 계정을 만들 수 없습니다.
+- `username`이 이미 존재하면 `409 USER_409_6`으로 거절합니다(사전 체크 + DB 유니크 제약 이중 방어).
+- `roleId`가 존재하지 않거나 다른 학원 소속이면 `404 USER_404_2`로 응답합니다.
+- 계정은 `accountType=MEMBER`, 임시 비밀번호로 발급되며 `mustChangePw`가 `true`로 저장됩니다. 단, 로그인 흐름에서 이 값을 읽어 비밀번호 변경을 강제하는 로직은 아직 없습니다(후속 작업).
+- 응답의 `temporaryPassword`는 이 호출 한 번에만 평문으로 내려가며 서버에 별도로 저장되지 않습니다. 학원 관리자가 직원에게 직접 전달해야 합니다 — 이메일 등 자동 발송은 아직 없습니다(후속 작업).
+
+---
+
 ## ⚠️ 주요 오류
 
 | HTTP | 코드 | 상황 |
@@ -544,6 +594,7 @@
 | `404` | `USER_404_2` | 역할이 존재하지 않거나 다른 학원 소속 |
 | `404` | `USER_404_3` | 학원 신청서가 존재하지 않음 |
 | `409` | `USER_409_5` | 이미 검토된(승인/반려) 신청서를 다시 승인/반려 시도 |
+| `409` | `USER_409_6` | 이미 사용 중인 아이디로 직원 계정 발급 시도 |
 | `401` | `AUTH_401_1` | 리프레시 토큰 자체가 위조되었거나 형식이 올바르지 않음 |
 | `401` | `AUTH_401_2` | 리프레시 토큰이 만료됨 |
 | `401` | `AUTH_401_6` | 서버에 저장된 리프레시 토큰이 없음 |
