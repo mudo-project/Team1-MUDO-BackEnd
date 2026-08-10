@@ -4,7 +4,7 @@
 
 - 메시지 전송 API가 받던 `fileUrl`(프론트가 직접 채우는 문자열)을 `fileId`로 바꿨습니다. 파일을 업로드해서 URL을 발급받는 API가 없어 실제로는 채울 수 없는 값이었던 걸 approval/notice와 동일하게 공용 file 모듈에서 발급하는 `fileId` 참조 방식으로 통일했습니다.
 - 메시지 목록 조회/실시간 알림 응답의 `fileUrl` 필드도 `fileId`로 이름이 바뀌었습니다(breaking change) — 프론트 반영 필요.
-- 실제 파일을 열람하려면 `GET /api/files/{fileId}/download-url`을 별도로 호출해야 합니다.
+- 응답에 다운로드용 `fileDownloadUrl`(1시간짜리 presigned URL)도 함께 포함되므로, 대부분의 경우 파일 열람에 별도 호출이 필요 없습니다. `fileDownloadUrl`이 만료된 뒤 다시 봐야 할 때만 `GET /api/files/{fileId}/download-url`을 별도로 호출하면 됩니다.
 
 자세한 내용은 [REVISION.md](REVISION.md)를 참고해주세요.
 

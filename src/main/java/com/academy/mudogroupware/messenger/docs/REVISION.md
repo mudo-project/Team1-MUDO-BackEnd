@@ -13,14 +13,18 @@
 - `ChatMessage`의 "IMAGE/FILE은 파일 필수" 검증을 `fileId == null` 체크로 변경. 에러코드는 `FILE_URL_REQUIRED` → `FILE_ID_REQUIRED`로 이름만 바꿨고 코드 값(`MESSENGER_400_6`)은 유지.
 - 읽기 경로(`ChatMessageView`/`ChatMessageResponse`/`ChatMessageSocketResponse`/`ChatMessageSentEvent`)의 `fileUrl` 필드도 이름만 `fileId`로 바꿔 컴파일을 맞췄다. 이 시점엔 `fileId`만 응답에 내려가고, 다운로드 URL은 클라이언트가 `GET /api/files/{fileId}/download-url`을 직접 호출해서 받는다(notice와 동일).
 
-### 2단계 검토 중 — 다운로드 URL을 응답에 포함할지
+### 변경 내용 (2단계 — 읽기 경로: 다운로드 URL 포함)
 
-notice/approval은 첨부파일을 한 번에 하나씩 보는 용도라 `fileId`만 반환하고 다운로드 URL 조회를 클라이언트에 맡겼다. 메신저는 메시지 목록을 한 번에 최대 100개씩 조회하고 그 안에 이미지/파일 메시지가 여러 개 섞일 수 있어, 목록 조회 시점에 다운로드 URL을 미리 조회해서 응답에 포함시키는 쪽으로 검토 중이다.
+notice/approval은 첨부파일을 한 번에 하나씩 보는 용도라 `fileId`만 반환하고 다운로드 URL 조회를 클라이언트에 맡겼다. 메신저는 메시지 목록을 한 번에 최대 100개씩 조회하고 그 안에 이미지/파일 메시지가 여러 개 섞일 수 있어, 목록 조회 시점에 다운로드 URL을 미리 조회해서 응답에 포함시키기로 했다.
 
-- `GetFileDownloadUrlUseCase.getDownloadUrl(Long fileId)`가 단건 조회만 지원해서, 페이지 안의 여러 `fileId`를 조회하려면 file 모듈에 배치 메서드(`getDownloadUrls(List<Long>)`) 추가가 필요해 보인다. file 모듈 담당자(minseo0327)에게 문의 후 진행 예정.
+- `GetFileDownloadUrlUseCase.getDownloadUrl(Long fileId)`가 단건 조회만 지원해서, file 모듈 담당자(minseo0327)에게 요청해 배치 메서드 `getDownloadUrls(List<Long> fileIds, Long academyId)`를 추가받았다(academyId 스코프 검증 포함, IDOR 방지).
+- `ChatMessageQueryService`가 페이지 안의 이미지/파일 메시지 `fileId`를 모아 배치 조회 1번으로 해석(N+1 방지). 삭제된 메시지는 응답에서 항상 마스킹되므로 조회 대상에서 제외하고 `distinct()`를 적용했다.
+- `SendMessageService`가 전송 직후 `fileId`가 있으면 단건 조회로 다운로드 URL을 해석해 실시간 이벤트에 포함시킨다.
+- `ChatMessageView`/`Response`, `ChatMessageSentEvent`, `ChatMessageSocketResponse`에 `fileDownloadUrl` 필드 추가(삭제된 메시지는 기존처럼 마스킹).
+- 코드래빗 리뷰 반영: `V6.1.5`에 기존 `file_url` 데이터가 남아있으면 배포를 중단시키는 가드 추가, IMAGE/FILE + fileId 경로 테스트 보강.
 
 > 작성일: 2026-08-10
-> 상태: 1단계(쓰기 경로) 구현 완료, 테스트 통과. 2단계(다운로드 URL 포함 여부)는 file 모듈 담당자 확인 대기 중.
+> 상태: 1·2단계 구현 완료, 테스트 통과.
 
 ## 2026-08-07 · 업무지시 카드 목록조회 페이지네이션 추가
 
