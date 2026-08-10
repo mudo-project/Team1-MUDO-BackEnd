@@ -35,11 +35,8 @@ public class WorkspaceService implements CreateWorkspaceUseCase {
     // ws 이름 저장
     String name = command.name().trim();
     // Domain 모델 생성
-    Workspace workspace = Workspace.create(
-        command.academyId(),
-        name,
-        command.creatorId(),
-        requestedAdditionalMemberIds(command));
+    Workspace workspace =
+        Workspace.create(name, command.creatorId(), requestedAdditionalMemberIds(command));
 
     // 참여자 검증
     Set<Long> activeUserIds =
@@ -51,7 +48,7 @@ public class WorkspaceService implements CreateWorkspaceUseCase {
       throw new InvalidWorkspaceMemberException();
     }
     // 중복 이름 예외 처리
-    if (workspaceRepository.existsByAcademyIdAndName(command.academyId(), name)) {
+    if (workspaceRepository.existsByName(name)) {
       throw new WorkspaceNameConflictException();
     }
 

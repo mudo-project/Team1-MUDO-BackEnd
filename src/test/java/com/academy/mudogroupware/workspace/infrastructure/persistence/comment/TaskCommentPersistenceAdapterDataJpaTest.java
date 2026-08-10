@@ -42,7 +42,7 @@ class TaskCommentPersistenceAdapterDataJpaTest {
 
   private Long givenTaskId() {
     WorkspaceJpaEntity workspace =
-        workspaceJpaRepository.save(WorkspaceJpaEntity.create(1L, "워크스페이스", 10L));
+        workspaceJpaRepository.save(WorkspaceJpaEntity.create("워크스페이스", 10L));
     return givenTaskId(workspace);
   }
 
@@ -131,7 +131,7 @@ class TaskCommentPersistenceAdapterDataJpaTest {
   @Test
   void findAllByTaskIdExcludesOtherTaskComments() {
     WorkspaceJpaEntity workspace =
-        workspaceJpaRepository.save(WorkspaceJpaEntity.create(1L, "워크스페이스", 10L));
+        workspaceJpaRepository.save(WorkspaceJpaEntity.create("워크스페이스", 10L));
     Long taskId = givenTaskId(workspace);
     Long otherTaskId = givenTaskId(workspace);
     adapter().save(TaskComment.create(taskId, 10L, "이 업무 댓글", List.of(), LocalDateTime.of(2026, 8, 1, 9, 0)));

@@ -20,21 +20,21 @@ class WorkspaceJpaRepositoryDetailQueryDataJpaTest {
   @Autowired private WorkspaceJpaRepository workspaceJpaRepository;
 
   @Test
-  void findActiveWorkspaceNameIgnoresAcademyAndReturnsEmptyWhenDeleted() {
-    insertWorkspace(1L, 1L, "active", at());
-    insertWorkspace(2L, 2L, "other-academy", at());
-    insertWorkspace(3L, 1L, "deleted", at());
+  void findActiveWorkspaceNameReturnsEmptyWhenDeleted() {
+    insertWorkspace(1L, "active", at());
+    insertWorkspace(2L, "another", at());
+    insertWorkspace(3L, "deleted", at());
     jdbcTemplate.update("update workspace set deleted_at = ? where workspace_id = 3", at());
 
     assertThat(workspaceJpaRepository.findActiveWorkspaceName(1L)).contains("active");
-    assertThat(workspaceJpaRepository.findActiveWorkspaceName(2L)).contains("other-academy");
+    assertThat(workspaceJpaRepository.findActiveWorkspaceName(2L)).contains("another");
     assertThat(workspaceJpaRepository.findActiveWorkspaceName(3L)).isEmpty();
     assertThat(workspaceJpaRepository.findActiveWorkspaceName(999L)).isEmpty();
   }
 
   @Test
   void findMemberUserIdsReturnsAllMembersOfTheWorkspaceOrderedByUserId() {
-    insertWorkspace(1L, 1L, "ws", at());
+    insertWorkspace(1L, "ws", at());
     insertMember(1L, 20L);
     insertMember(1L, 10L);
 
@@ -43,12 +43,11 @@ class WorkspaceJpaRepositoryDetailQueryDataJpaTest {
     assertThat(result).containsExactly(10L, 20L);
   }
 
-  private void insertWorkspace(long workspaceId, long academyId, String name, LocalDateTime at) {
+  private void insertWorkspace(long workspaceId, String name, LocalDateTime at) {
     jdbcTemplate.update(
-        "insert into workspace (workspace_id, academy_id, name, created_by, created_at, updated_at) "
-            + "values (?, ?, ?, 10, ?, ?)",
+        "insert into workspace (workspace_id, name, created_by, created_at, updated_at) "
+            + "values (?, ?, 10, ?, ?)",
         workspaceId,
-        academyId,
         name,
         at,
         at);
