@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 
 import com.academy.mudogroupware.corporatecard.application.command.SubmitCardExpenseCommand;
 import com.academy.mudogroupware.corporatecard.application.port.ApprovalSubmissionPort;
@@ -14,6 +15,7 @@ import com.academy.mudogroupware.corporatecard.application.port.CardExpensePort;
 import com.academy.mudogroupware.corporatecard.application.port.CorporateCardTransactionPort;
 import com.academy.mudogroupware.corporatecard.application.query.CardExpenseView;
 import com.academy.mudogroupware.corporatecard.application.query.CardExpensePage;
+import com.academy.mudogroupware.corporatecard.domain.model.ExpenseCategory;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -69,6 +71,7 @@ public class CorporateCardExpenseService {
         }
     }
 
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public CardExpenseView submit(SubmitCardExpenseCommand command, Long academyId) {
         log.info("event=corporate_card_expense_submit_시작 academyId={}, userId={}, transactionId={}",
                 academyId, command.userId(), command.transactionId());
@@ -105,12 +108,46 @@ public class CorporateCardExpenseService {
         }
     }
 
+    @Transactional
+    public CardExpenseView saveExpense(Long transactionId, Long userId, ExpenseCategory category,
+                                       String purpose, Long academyId) {
+        log.info("event=corporate_card_expense_save_start academyId={}, userId={}, transactionId={}",
+                academyId, userId, transactionId);
+        try {
+            var transaction = transactionPort.findForUpdate(academyId, transactionId)
+                    .orElseThrow(() -> new IllegalArgumentException("카드 사용내역을 찾을 수 없습니다."));
+            var expense = expensePort.findForUpdate(transactionId, academyId).orElse(null);
+            if (expense != null && expense.approvalDocumentId() != null) {
+                var status = approvalSubmissionPort.findStatus(expense.approvalDocumentId());
+                if (status != null && !"REJECTED".equals(status.code())) {
+                    throw new IllegalStateException("진행 중이거나 승인된 정산 정보는 수정할 수 없습니다.");
+                }
+            }
+
+            LocalDateTime now = LocalDateTime.now();
+            CardExpensePort.ExpenseView saved = expense == null
+                    ? expensePort.create(transactionId, userId, category, purpose, null, now)
+                    : expensePort.update(transactionId, category, purpose, expense.approvalDocumentId(), now);
+            var statuses = saved.approvalDocumentId() == null
+                    ? Map.<Long, ApprovalSubmissionPort.ApprovalStatusView>of()
+                    : approvalSubmissionPort.findStatuses(java.util.Set.of(saved.approvalDocumentId()));
+            CardExpenseView result = toView(transaction, saved, statuses);
+            log.info("event=corporate_card_expense_save_success academyId={}, userId={}, transactionId={}, expenseId={}",
+                    academyId, userId, transactionId, result.expenseId());
+            return result;
+        } catch (RuntimeException e) {
+            log.warn("event=corporate_card_expense_save_failure academyId={}, userId={}, transactionId={}, reason={}",
+                    academyId, userId, transactionId, e.getMessage());
+            throw e;
+        }
+    }
+
     private CardExpenseView toView(CorporateCardTransactionPort.TransactionView transaction,
                                    CardExpensePort.ExpenseView expense,
                                    Map<Long, ApprovalSubmissionPort.ApprovalStatusView> statuses) {
         String status = "UNWRITTEN";
         if (expense != null) {
-            status = "IN_PROGRESS";
+            status = expense.approvalDocumentId() == null ? "UNWRITTEN" : "IN_PROGRESS";
             var approval = expense.approvalDocumentId() == null ? null : statuses.get(expense.approvalDocumentId());
             if (approval != null) {
                 status = switch (approval.code()) {
