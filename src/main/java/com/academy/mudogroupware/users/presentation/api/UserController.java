@@ -20,10 +20,12 @@ import com.academy.mudogroupware.global.presentation.security.AuthUser;
 import com.academy.mudogroupware.users.application.result.CreateAccountResult;
 import com.academy.mudogroupware.users.application.usecase.ChangeUserRoleUseCase;
 import com.academy.mudogroupware.users.application.usecase.CreateAccountUseCase;
+import com.academy.mudogroupware.users.application.usecase.PasswordSetupUseCase;
 import com.academy.mudogroupware.users.application.usecase.SearchUsersUseCase;
 import com.academy.mudogroupware.users.presentation.api.common.UserResponseCode;
 import com.academy.mudogroupware.users.presentation.api.request.ChangeUserRoleRequest;
 import com.academy.mudogroupware.users.presentation.api.request.CreateAccountRequest;
+import com.academy.mudogroupware.users.presentation.api.request.PasswordSetupRequest;
 import com.academy.mudogroupware.users.presentation.api.response.AccountCreateResponse;
 import com.academy.mudogroupware.users.presentation.api.response.UserSearchResponse;
 
@@ -42,6 +44,7 @@ public class UserController {
     private final ChangeUserRoleUseCase changeUserRoleUseCase;
     private final SearchUsersUseCase searchUsersUseCase;
     private final CreateAccountUseCase createAccountUseCase;
+    private final PasswordSetupUseCase passwordSetupUseCase;
 
     @PreAuthorize("hasAuthority('ACCOUNT:MANAGE')")
     @PostMapping
@@ -79,5 +82,15 @@ public class UserController {
                 .map(UserSearchResponse::from)
                 .toList();
         return ResponseEntity.ok(GlobalApiResponse.ok(UserResponseCode.USER_SEARCHED, data));
+    }
+
+    @Operation(
+            summary = "최초 비밀번호 설정",
+            description = "계정 발급 시 받은 링크의 username/임시비밀번호로 자기 비밀번호를 최초 설정합니다. "
+                    + "이미 설정을 마친 계정이거나 임시비밀번호가 틀리면 동일한 오류로 응답합니다.")
+    @PostMapping("/password-setup")
+    public ResponseEntity<Void> setupPassword(@Valid @RequestBody PasswordSetupRequest request) {
+        passwordSetupUseCase.setup(request.toCommand());
+        return ResponseEntity.noContent().build();
     }
 }

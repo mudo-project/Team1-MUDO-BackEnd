@@ -21,6 +21,8 @@ public interface UserRepository {
 
     User save(User user);
 
+    boolean completePasswordSetup(Long userId, String newPasswordHash);
+
     Optional<User> findByUsername(String username);
 
     boolean existsByUsername(String username);

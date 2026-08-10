@@ -50,7 +50,7 @@ public class CreateAccountService implements CreateAccountUseCase {
             log.info("event=account_create_완료 academyId={}, userId={}", command.academyId(),
                     issuedAccount.user().getId());
             return new CreateAccountResult(issuedAccount.user().getId(), issuedAccount.user().getUsername(),
-                    issuedAccount.temporaryPassword());
+                    issuedAccount.passwordSetupLink());
         } catch (RuntimeException e) {
             log.warn("event=account_create_실패 academyId={}, roleId={}, reason={}", command.academyId(),
                     command.roleId(), e.getMessage(), e);

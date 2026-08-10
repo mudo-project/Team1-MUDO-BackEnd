@@ -91,7 +91,7 @@ class CreateAccountServiceTest {
                 LocalDateTime.now(clock), LocalDateTime.now(clock), LocalDateTime.now(clock));
         when(accountIssuer.issue(1L, "teacher01", "김강사", "010-1111-2222", "teacher01@example.com", 5L,
                 AccountType.MEMBER, null, LocalDateTime.now(clock)))
-                .thenReturn(new IssuedAccount(savedUser, "TempPass123!"));
+                .thenReturn(new IssuedAccount(savedUser, "http://localhost:3000/password-setup?username=teacher01&tempPassword=abc"));
         CreateAccountService service = new CreateAccountService(userRepository, roleRepository, accountIssuer, clock);
 
         CreateAccountResult result = service.createAccount(
@@ -99,6 +99,7 @@ class CreateAccountServiceTest {
 
         assertThat(result.userId()).isEqualTo(200L);
         assertThat(result.username()).isEqualTo("teacher01");
-        assertThat(result.temporaryPassword()).isEqualTo("TempPass123!");
+        assertThat(result.passwordSetupLink())
+                .isEqualTo("http://localhost:3000/password-setup?username=teacher01&tempPassword=abc");
     }
 }
