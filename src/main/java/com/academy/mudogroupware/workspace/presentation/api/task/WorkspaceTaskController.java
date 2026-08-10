@@ -23,6 +23,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -77,9 +78,14 @@ public class WorkspaceTaskController {
   @GetMapping("/{taskId}")
   public ResponseEntity<GlobalApiResponse<TaskDetailResponse>> getTaskDetail(
       @AuthenticationPrincipal AuthUser authUser,
+      Authentication authentication,
       @PathVariable Long workspaceId,
       @PathVariable Long taskId) {
-    TaskDetail detail = taskDetailQueryUseCase.getTaskDetail(workspaceId, taskId, authUser.userId());
+    boolean canReadAll =
+        authentication.getAuthorities().stream()
+            .anyMatch(authority -> "WORKSPACE:READ_ALL".equals(authority.getAuthority()));
+    TaskDetail detail =
+        taskDetailQueryUseCase.getTaskDetail(workspaceId, taskId, authUser.userId(), canReadAll);
     return ResponseEntity.ok(
         GlobalApiResponse.ok(WorkspaceResponseCode.TASK_DETAIL_RETRIEVED, TaskDetailResponse.from(detail)));
   }

@@ -31,11 +31,12 @@ public class TaskDetailQueryService implements TaskDetailQueryUseCase {
   private final WorkspaceUserInfoPort workspaceUserInfoPort;
 
   @Override
-  public TaskDetail getTaskDetail(Long workspaceId, Long taskId, Long requesterId) {
+  public TaskDetail getTaskDetail(
+      Long workspaceId, Long taskId, Long requesterId, boolean canReadAll) {
     Workspace workspace =
         workspaceRepository.findById(workspaceId).orElseThrow(WorkspaceNotFoundException::new);
 
-    if (!workspace.getMemberIds().contains(requesterId)) {
+    if (!workspace.getMemberIds().contains(requesterId) && !canReadAll) {
       throw new WorkspaceAccessDeniedException();
     }
 

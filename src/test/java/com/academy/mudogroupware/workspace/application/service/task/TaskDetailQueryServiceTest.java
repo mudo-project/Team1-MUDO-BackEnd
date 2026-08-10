@@ -54,7 +54,7 @@ class TaskDetailQueryServiceTest {
     when(taskStatusHistoryRepository.findLatestChangedAt(TASK_ID))
         .thenReturn(Optional.of(LocalDateTime.of(2026, 8, 2, 9, 0)));
 
-    TaskDetail detail = service().getTaskDetail(WORKSPACE_ID, TASK_ID, MEMBER_ID);
+    TaskDetail detail = service().getTaskDetail(WORKSPACE_ID, TASK_ID, MEMBER_ID, false);
 
     assertThat(detail.taskId()).isEqualTo(TASK_ID);
     assertThat(detail.creator()).isEqualTo(new WorkspaceMemberInfo(MEMBER_ID, "윤예진"));
@@ -70,7 +70,7 @@ class TaskDetailQueryServiceTest {
         .thenReturn(List.of(new WorkspaceMemberInfo(MEMBER_ID, "윤예진")));
     when(taskStatusHistoryRepository.findLatestChangedAt(TASK_ID)).thenReturn(Optional.empty());
 
-    TaskDetail detail = service().getTaskDetail(WORKSPACE_ID, TASK_ID, MEMBER_ID);
+    TaskDetail detail = service().getTaskDetail(WORKSPACE_ID, TASK_ID, MEMBER_ID, false);
 
     assertThat(detail.lastStatusChangedAt()).isNull();
   }
@@ -82,7 +82,7 @@ class TaskDetailQueryServiceTest {
     when(workspaceUserInfoPort.findUserInfo(Set.of(MEMBER_ID))).thenReturn(List.of());
     when(taskStatusHistoryRepository.findLatestChangedAt(TASK_ID)).thenReturn(Optional.empty());
 
-    TaskDetail detail = service().getTaskDetail(WORKSPACE_ID, TASK_ID, MEMBER_ID);
+    TaskDetail detail = service().getTaskDetail(WORKSPACE_ID, TASK_ID, MEMBER_ID, false);
 
     assertThat(detail.creator()).isEqualTo(new WorkspaceMemberInfo(MEMBER_ID, "알 수 없음"));
   }
@@ -91,7 +91,7 @@ class TaskDetailQueryServiceTest {
   void rejectsMissingWorkspace() {
     when(workspaceRepository.findById(WORKSPACE_ID)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> service().getTaskDetail(WORKSPACE_ID, TASK_ID, MEMBER_ID))
+    assertThatThrownBy(() -> service().getTaskDetail(WORKSPACE_ID, TASK_ID, MEMBER_ID, false))
         .isInstanceOf(WorkspaceNotFoundException.class);
   }
 
@@ -99,8 +99,21 @@ class TaskDetailQueryServiceTest {
   void rejectsNonMember() {
     givenWorkspaceWithMember();
 
-    assertThatThrownBy(() -> service().getTaskDetail(WORKSPACE_ID, TASK_ID, OUTSIDER_ID))
+    assertThatThrownBy(() -> service().getTaskDetail(WORKSPACE_ID, TASK_ID, OUTSIDER_ID, false))
         .isInstanceOf(WorkspaceAccessDeniedException.class);
+  }
+
+  @Test
+  void allowsNonMemberWhenCanReadAllIsTrue() {
+    givenWorkspaceWithMember();
+    givenTask();
+    when(workspaceUserInfoPort.findUserInfo(Set.of(MEMBER_ID)))
+        .thenReturn(List.of(new WorkspaceMemberInfo(MEMBER_ID, "윤예진")));
+    when(taskStatusHistoryRepository.findLatestChangedAt(TASK_ID)).thenReturn(Optional.empty());
+
+    TaskDetail detail = service().getTaskDetail(WORKSPACE_ID, TASK_ID, OUTSIDER_ID, true);
+
+    assertThat(detail.taskId()).isEqualTo(TASK_ID);
   }
 
   @Test
@@ -108,7 +121,7 @@ class TaskDetailQueryServiceTest {
     givenWorkspaceWithMember();
     when(taskRepository.findById(WORKSPACE_ID, TASK_ID)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> service().getTaskDetail(WORKSPACE_ID, TASK_ID, MEMBER_ID))
+    assertThatThrownBy(() -> service().getTaskDetail(WORKSPACE_ID, TASK_ID, MEMBER_ID, false))
         .isInstanceOf(TaskNotFoundException.class);
   }
 
