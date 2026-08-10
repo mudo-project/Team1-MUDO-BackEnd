@@ -59,78 +59,66 @@ public class NoticeQueryService implements NoticeQueryUseCase {
     @Transactional
     public NoticeDetailView getNoticeDetail(Long noticeId, Long requesterId) {
         log.info("event=notice_detail_시작 noticeId={}, requesterId={}", noticeId, requesterId);
-        try {
-            Notice notice = noticeRepository.findById(noticeId)
-                    .orElseThrow(() -> new NoticeException(NoticeErrorCode.NOTICE_NOT_FOUND));
+        Notice notice = noticeRepository.findById(noticeId)
+                .orElseThrow(() -> new NoticeException(NoticeErrorCode.NOTICE_NOT_FOUND));
 
-            AuthorInfo requester = noticeAuthorDirectoryPort.getAuthor(requesterId);
-            if (!notice.getAcademyId().equals(requester.academyId())) {
-                throw new NoticeException(NoticeErrorCode.NOTICE_ACCESS_DENIED);
-            }
-
-            notice.recordView();
-            noticeReadRepository.markRead(noticeId, requesterId);
-            noticeRepository.save(notice);
-
-            AuthorInfo author = noticeAuthorDirectoryPort.getAuthor(notice.getAuthorUserId());
-            List<NoticeAttachmentView> attachments = notice.getAttachments().stream()
-                    .map(this::toAttachmentView)
-                    .toList();
-            long readerCount = noticeReadRepository.countReaders(noticeId);
-            long totalRecipientCount = noticeAuthorDirectoryPort.countActiveUsers(notice.getAcademyId());
-
-            log.info("event=notice_detail_완료 noticeId={}, requesterId={}, viewCount={}", noticeId, requesterId,
-                    notice.getViewCount());
-            return new NoticeDetailView(
-                    notice.getId(),
-                    notice.getTitle(),
-                    notice.getContent(),
-                    notice.getAuthorUserId(),
-                    author.name(),
-                    author.role(),
-                    notice.isPinned(),
-                    notice.getViewCount(),
-                    readerCount,
-                    totalRecipientCount,
-                    notice.getCreatedAt(),
-                    notice.getUpdatedAt(),
-                    attachments
-            );
-        } catch (RuntimeException e) {
-            log.warn("event=notice_detail_실패 noticeId={}, requesterId={}, reason={}", noticeId, requesterId,
-                    e.getMessage(), e);
-            throw e;
+        AuthorInfo requester = noticeAuthorDirectoryPort.getAuthor(requesterId);
+        if (!notice.getAcademyId().equals(requester.academyId())) {
+            throw new NoticeException(NoticeErrorCode.NOTICE_ACCESS_DENIED);
         }
+
+        notice.recordView();
+        noticeReadRepository.markRead(noticeId, requesterId);
+        noticeRepository.save(notice);
+
+        AuthorInfo author = noticeAuthorDirectoryPort.getAuthor(notice.getAuthorUserId());
+        List<NoticeAttachmentView> attachments = notice.getAttachments().stream()
+                .map(this::toAttachmentView)
+                .toList();
+        long readerCount = noticeReadRepository.countReaders(noticeId);
+        long totalRecipientCount = noticeAuthorDirectoryPort.countActiveUsers(notice.getAcademyId());
+
+        log.info("event=notice_detail_완료 noticeId={}, requesterId={}, viewCount={}", noticeId, requesterId,
+                notice.getViewCount());
+        return new NoticeDetailView(
+                notice.getId(),
+                notice.getTitle(),
+                notice.getContent(),
+                notice.getAuthorUserId(),
+                author.name(),
+                author.role(),
+                notice.isPinned(),
+                notice.getViewCount(),
+                readerCount,
+                totalRecipientCount,
+                notice.getCreatedAt(),
+                notice.getUpdatedAt(),
+                attachments
+        );
     }
 
     @Override
     public List<NoticeReaderView> getReaders(Long noticeId, Long requesterId) {
         log.info("event=notice_reader_list_시작 noticeId={}, requesterId={}", noticeId, requesterId);
-        try {
-            Notice notice = noticeRepository.findById(noticeId)
-                    .orElseThrow(() -> new NoticeException(NoticeErrorCode.NOTICE_NOT_FOUND));
+        Notice notice = noticeRepository.findById(noticeId)
+                .orElseThrow(() -> new NoticeException(NoticeErrorCode.NOTICE_NOT_FOUND));
 
-            AuthorInfo requester = noticeAuthorDirectoryPort.getAuthor(requesterId);
-            if (!notice.getAcademyId().equals(requester.academyId())) {
-                throw new NoticeException(NoticeErrorCode.NOTICE_ACCESS_DENIED);
-            }
-
-            Map<Long, LocalDateTime> readTimestamps = noticeReadRepository.findReadTimestamps(noticeId);
-            Map<Long, AuthorInfo> readers = noticeAuthorDirectoryPort.getAuthors(
-                    List.copyOf(readTimestamps.keySet()));
-
-            List<NoticeReaderView> views = readTimestamps.entrySet().stream()
-                    .map(entry -> toReaderView(entry.getKey(), entry.getValue(), readers))
-                    .sorted((a, b) -> b.readAt().compareTo(a.readAt()))
-                    .toList();
-            log.info("event=notice_reader_list_완료 noticeId={}, requesterId={}, count={}", noticeId, requesterId,
-                    views.size());
-            return views;
-        } catch (RuntimeException e) {
-            log.warn("event=notice_reader_list_실패 noticeId={}, requesterId={}, reason={}", noticeId, requesterId,
-                    e.getMessage(), e);
-            throw e;
+        AuthorInfo requester = noticeAuthorDirectoryPort.getAuthor(requesterId);
+        if (!notice.getAcademyId().equals(requester.academyId())) {
+            throw new NoticeException(NoticeErrorCode.NOTICE_ACCESS_DENIED);
         }
+
+        Map<Long, LocalDateTime> readTimestamps = noticeReadRepository.findReadTimestamps(noticeId);
+        Map<Long, AuthorInfo> readers = noticeAuthorDirectoryPort.getAuthors(
+                List.copyOf(readTimestamps.keySet()));
+
+        List<NoticeReaderView> views = readTimestamps.entrySet().stream()
+                .map(entry -> toReaderView(entry.getKey(), entry.getValue(), readers))
+                .sorted((a, b) -> b.readAt().compareTo(a.readAt()))
+                .toList();
+        log.info("event=notice_reader_list_완료 noticeId={}, requesterId={}, count={}", noticeId, requesterId,
+                views.size());
+        return views;
     }
 
     private NoticeReaderView toReaderView(Long userId, LocalDateTime readAt, Map<Long, AuthorInfo> readers) {
