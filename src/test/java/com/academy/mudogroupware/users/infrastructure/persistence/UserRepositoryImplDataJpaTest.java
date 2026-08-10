@@ -110,6 +110,19 @@ class UserRepositoryImplDataJpaTest {
         assertThat(found.isMustChangePw()).isFalse();
     }
 
+    @Test
+    void findAllByAcademyIdReturnsAllStatusesIncludingResignedButExcludesOtherAcademies() {
+        insertUserWithRole(1L, 1L, "active", UserStatus.ACTIVE, 5L);
+        insertUserWithRole(2L, 1L, "resigned", UserStatus.RESIGNED, 5L);
+        insertUserWithRole(3L, 1L, "inactive", UserStatus.INACTIVE, 7L);
+        insertUserWithRole(4L, 2L, "other-academy", UserStatus.ACTIVE, 5L);
+
+        List<User> result = userRepository.findAllByAcademyId(1L);
+
+        assertThat(result).extracting(User::getId)
+                .containsExactlyInAnyOrder(1L, 2L, 3L);
+    }
+
     private void insertUserWithPasswordAndMustChangePw(long id, long academyId, String suffix, String password,
                                                          boolean mustChangePw) {
         jdbcTemplate.update("""
