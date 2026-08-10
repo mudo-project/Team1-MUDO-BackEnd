@@ -8,8 +8,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.academy.mudogroupware.users.application.command.SubmitAcademyApplicationCommand;
 import com.academy.mudogroupware.users.application.usecase.SubmitAcademyApplicationUseCase;
+import com.academy.mudogroupware.users.domain.exception.UsernameDuplicateException;
 import com.academy.mudogroupware.users.domain.model.AcademyApplication;
 import com.academy.mudogroupware.users.domain.repository.AcademyApplicationRepository;
+import com.academy.mudogroupware.users.domain.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 public class SubmitAcademyApplicationService implements SubmitAcademyApplicationUseCase {
 
     private final AcademyApplicationRepository academyApplicationRepository;
+    private final UserRepository userRepository;
     private final Clock clock;
 
     @Override
@@ -28,6 +31,11 @@ public class SubmitAcademyApplicationService implements SubmitAcademyApplication
         log.info("event=academy_application_submit_시작 academyName={}, plan={}", command.academyName(),
                 command.plan());
         try {
+            if (userRepository.existsByUsername(command.requestedLoginId())
+                    || academyApplicationRepository.existsActiveRequestedLoginId(command.requestedLoginId())) {
+                throw new UsernameDuplicateException();
+            }
+
             AcademyApplication application = AcademyApplication.submit(
                     command.requestedLoginId(), command.academyName(), command.representativeName(),
                     command.representativeEmail(), command.representativePhone(), command.plan(),
