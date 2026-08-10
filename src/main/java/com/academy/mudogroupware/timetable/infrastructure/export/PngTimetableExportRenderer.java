@@ -104,17 +104,23 @@ public class PngTimetableExportRenderer implements TimetableExportRenderer {
      * 나눔고딕으로 자동 대체해서 그린다.
      */
     private void drawMixedFontString(Graphics2D g, String text, int x, int y, float fontSize, boolean bold) {
-        Font interFont = TimetableExportFonts.AWT_INTER.deriveFont(fontSize);
+        Font interFont = TimetableExportFonts.AWT_INTER.deriveFont(bold ? Font.BOLD : Font.PLAIN, fontSize);
         Font koreanFont = (bold ? TimetableExportFonts.AWT_KOREAN_BOLD : TimetableExportFonts.AWT_KOREAN_REGULAR)
                 .deriveFont(fontSize);
 
         int cursorX = x;
         int i = 0;
         while (i < text.length()) {
-            boolean useInter = interFont.canDisplay(text.charAt(i));
+            int codePoint = text.codePointAt(i);
+            boolean useInter = interFont.canDisplay(codePoint);
             int runStart = i;
-            while (i < text.length() && interFont.canDisplay(text.charAt(i)) == useInter) {
-                i++;
+            i += Character.charCount(codePoint);
+            while (i < text.length()) {
+                int nextCodePoint = text.codePointAt(i);
+                if (interFont.canDisplay(nextCodePoint) != useInter) {
+                    break;
+                }
+                i += Character.charCount(nextCodePoint);
             }
             String run = text.substring(runStart, i);
             Font runFont = useInter ? interFont : koreanFont;

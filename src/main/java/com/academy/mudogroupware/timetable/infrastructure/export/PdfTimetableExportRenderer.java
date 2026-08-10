@@ -3,7 +3,9 @@ package com.academy.mudogroupware.timetable.infrastructure.export;
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.stereotype.Component;
 
@@ -45,11 +47,14 @@ public class PdfTimetableExportRenderer implements TimetableExportRenderer {
                           TimetableExportOptions options) {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         Document document = new Document(PageSize.A3.rotate());
+        // (size, style) 조합별로 FontSelector를 재사용해, 렌더링 1회당 셀 수만큼
+        // FontSelector가 새로 생성되며 폰트가 반복 등록되는 비용을 없앤다.
+        Map<String, FontSelector> selectorCache = new HashMap<>();
         try {
             PdfWriter.getInstance(document, out);
             document.open();
-            document.add(new Paragraph(mixedFontPhrase(timetableSetName, 16, Font.BOLD)));
-            document.add(buildTable(sortedSlots, options));
+            document.add(new Paragraph(mixedFontPhrase(selectorCache, timetableSetName, 16, Font.BOLD)));
+            document.add(buildTable(sortedSlots, options, selectorCache));
         } catch (DocumentException e) {
             throw new IllegalStateException("시간표 PDF 생성에 실패했습니다.", e);
         } finally {
@@ -58,7 +63,8 @@ public class PdfTimetableExportRenderer implements TimetableExportRenderer {
         return out.toByteArray();
     }
 
-    private PdfPTable buildTable(List<TimetableSlotView> sortedSlots, TimetableExportOptions options) {
+    private PdfPTable buildTable(List<TimetableSlotView> sortedSlots, TimetableExportOptions options,
+                                  Map<String, FontSelector> selectorCache) {
         float headerFontSize = options.density().fontSize() + 1;
         float bodyFontSize = options.density().fontSize();
         float rowHeightPoints = options.density().rowHeightPx() * PX_TO_POINT;
@@ -66,14 +72,14 @@ public class PdfTimetableExportRenderer implements TimetableExportRenderer {
         PdfPTable table = new PdfPTable(TimetableExportLabels.HEADERS.length);
         table.setWidthPercentage(100);
         for (String header : TimetableExportLabels.HEADERS) {
-            PdfPCell headerCell = new PdfPCell(mixedFontPhrase(header, headerFontSize, Font.BOLD));
+            PdfPCell headerCell = new PdfPCell(mixedFontPhrase(selectorCache, header, headerFontSize, Font.BOLD));
             headerCell.setMinimumHeight(rowHeightPoints);
             table.addCell(headerCell);
         }
         for (TimetableSlotView slot : sortedSlots) {
             TimetableExportColor color = options.colorFor(slot.classroomCode(), slot.teacherName());
             for (String value : TimetableExportLabels.toRow(slot)) {
-                PdfPCell cell = new PdfPCell(mixedFontPhrase(value, bodyFontSize, Font.NORMAL));
+                PdfPCell cell = new PdfPCell(mixedFontPhrase(selectorCache, value, bodyFontSize, Font.NORMAL));
                 cell.setMinimumHeight(rowHeightPoints);
                 cell.setBackgroundColor(new Color(color.red(), color.green(), color.blue()));
                 table.addCell(cell);
@@ -82,10 +88,13 @@ public class PdfTimetableExportRenderer implements TimetableExportRenderer {
         return table;
     }
 
-    private Phrase mixedFontPhrase(String text, float size, int style) {
-        FontSelector selector = new FontSelector();
-        selector.addFont(new Font(INTER_BASE_FONT, size, style));
-        selector.addFont(new Font(KOREAN_BASE_FONT, size, style));
+    private Phrase mixedFontPhrase(Map<String, FontSelector> selectorCache, String text, float size, int style) {
+        FontSelector selector = selectorCache.computeIfAbsent(size + ":" + style, key -> {
+            FontSelector newSelector = new FontSelector();
+            newSelector.addFont(new Font(INTER_BASE_FONT, size, style));
+            newSelector.addFont(new Font(KOREAN_BASE_FONT, size, style));
+            return newSelector;
+        });
         return selector.process(text);
     }
 
