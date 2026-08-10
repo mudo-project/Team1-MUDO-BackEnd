@@ -6,14 +6,19 @@ import java.util.List;
 import com.academy.mudogroupware.approval.application.query.ApprovalDetailView;
 import com.academy.mudogroupware.approval.domain.model.ApprovalContentType;
 import com.academy.mudogroupware.approval.domain.model.ApprovalStatus;
+import com.academy.mudogroupware.approval.domain.model.ApprovalDocumentSourceType;
 
 public record ApprovalDetailResponse(
         Long id,
+        ApprovalDocumentSourceType sourceType,
+        Long templateId,
+        String templateName,
         String title,
         ApprovalContentType contentType,
         String text,
-        String fileUrl,
+        List<ApprovalAttachmentResponse> attachments,
         Long creatorId,
+        String creatorName,
         ApprovalStatus status,
         LocalDateTime createdAt,
         List<ApprovalLineResponse> lines
@@ -23,9 +28,13 @@ public record ApprovalDetailResponse(
         List<ApprovalLineResponse> lines = view.lines().stream()
                 .map(ApprovalLineResponse::from)
                 .toList();
+        List<ApprovalAttachmentResponse> attachments = view.attachments().stream()
+                .map(ApprovalAttachmentResponse::from)
+                .toList();
 
         return new ApprovalDetailResponse(
-                view.id(), view.title(), view.contentType(), view.text(), view.fileUrl(),
-                view.creatorId(), view.status(), view.createdAt(), lines);
+                view.id(), view.sourceType(), view.templateId(), view.templateName(), view.title(), view.contentType(),
+                view.text(), attachments, view.creatorId(), view.creatorName(),
+                view.status(), view.createdAt(), lines);
     }
 }

@@ -1,0 +1,3 @@
+ALTER TABLE users DROP COLUMN is_platform_admin;
+ALTER TABLE users ADD COLUMN account_type VARCHAR(20) NOT NULL DEFAULT 'MEMBER';
+ALTER TABLE users ADD COLUMN admin_scope VARCHAR(20) NULL;

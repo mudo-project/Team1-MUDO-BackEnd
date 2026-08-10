@@ -2,8 +2,8 @@
 <configuration>
     <property name="LOG_PATH" value="${LOG_PATH:-./logs}"/>
     <property name="LOG_FILE_NAME" value="mudo-groupware"/>
-    <property name="CONSOLE_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %highlight(%-5level) [%X{traceId:-}] %logger{36} - %msg%n"/>
-    <property name="FILE_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{traceId:-}] [%X{method:-}] [%X{requestURI:-}] [%X{remoteAddr:-}] %logger{36} - %msg%n"/>
+    <property name="CONSOLE_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %highlight(%-5level) [tenant=%X{tenantId:-}] [plan=%X{plan:-}] [deployment=%X{deploymentSha:-}] [traceId=%X{traceId:-}] %logger{36} - %msg%n"/>
+    <property name="FILE_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [tenant=%X{tenantId:-}] [plan=%X{plan:-}] [deployment=%X{deploymentSha:-}] [traceId=%X{traceId:-}] [%X{method:-}] [%X{requestURI:-}] [%X{remoteAddr:-}] %logger{36} - %msg%n"/>
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender"><encoder><pattern>${CONSOLE_PATTERN}</pattern><charset>UTF-8</charset></encoder></appender>
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${LOG_PATH}/${LOG_FILE_NAME}.log</file><encoder><pattern>${FILE_PATTERN}</pattern><charset>UTF-8</charset></encoder>
@@ -19,12 +19,19 @@
     </appender>
     <springProfile name="local,default">
         <root level="INFO"><appender-ref ref="CONSOLE"/><appender-ref ref="FILE"/><appender-ref ref="ERROR_FILE"/></root>
-        <logger name="com.academy.mudogroupware" level="DEBUG" additivity="false"><appender-ref ref="CONSOLE"/><appender-ref ref="FILE"/><appender-ref ref="ERROR_FILE"/></logger>
+        <logger name="com.academy.mudogroupware" level="INFO" additivity="false"><appender-ref ref="CONSOLE"/><appender-ref ref="FILE"/><appender-ref ref="ERROR_FILE"/></logger>
         <logger name="com.academy.mudogroupware.global.infrastructure.aop.PerformanceLogAspect" level="INFO" additivity="false"><appender-ref ref="CONSOLE"/><appender-ref ref="PERFORMANCE_FILE"/></logger>
     </springProfile>
     <springProfile name="prod">
-        <root level="WARN"><appender-ref ref="FILE"/><appender-ref ref="ERROR_FILE"/></root>
-        <logger name="com.academy.mudogroupware" level="INFO" additivity="false"><appender-ref ref="FILE"/><appender-ref ref="ERROR_FILE"/></logger>
-        <logger name="com.academy.mudogroupware.global.infrastructure.aop.PerformanceLogAspect" level="INFO" additivity="false"><appender-ref ref="PERFORMANCE_FILE"/></logger>
+        <!-- 운영 컨테이너 로그는 stdout으로 출력하고 Alloy가 Docker 로그를 Loki로 전송한다. -->
+        <appender name="PROD_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="org.springframework.boot.logging.logback.StructuredLogEncoder">
+                <format>logstash</format>
+                <charset>UTF-8</charset>
+            </encoder>
+        </appender>
+        <root level="WARN"><appender-ref ref="PROD_CONSOLE"/></root>
+        <logger name="com.academy.mudogroupware" level="INFO" additivity="false"><appender-ref ref="PROD_CONSOLE"/></logger>
+        <logger name="com.academy.mudogroupware.global.infrastructure.aop.PerformanceLogAspect" level="INFO" additivity="false"><appender-ref ref="PROD_CONSOLE"/></logger>
     </springProfile>
 </configuration>

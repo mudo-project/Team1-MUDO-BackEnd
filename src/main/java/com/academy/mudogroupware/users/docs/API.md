@@ -1,0 +1,689 @@
+# 📌 계정·권한(users) API
+
+> 기준일: 2026-08-10
+> 공통 응답 형식: `status`, `code`, `message`, `data` (204 No Content는 본문 없음)
+
+## 1. 로그인
+
+`POST /api/auth/login`
+권한: 없음 (공개 엔드포인트)
+
+#### Request
+
+```json
+{
+  "username": "kim_teacher01",
+  "password": "P@ssw0rd!"
+}
+```
+
+#### Response · `200 OK`
+
+```json
+{
+  "status": 200,
+  "code": "USER_200_1",
+  "message": "로그인에 성공했습니다.",
+  "data": {
+    "accessToken": "eyJhbGciOiJIUzI1NiJ9..."
+  }
+}
+```
+
+응답 헤더에 `Set-Cookie: refreshToken=...; Path=/; HttpOnly; Secure; SameSite=Lax`가 함께 내려갑니다. `Path=/`가 없으면 브라우저가 쿠키 경로를 요청 경로(`/api/auth`) 기준으로 좁혀서, 이후 `/api/token/reissue` 요청엔 쿠키가 실리지 않습니다. refreshToken은 응답 바디에 포함되지 않습니다.
+
+#### 검증 및 정책
+
+- `username`, `password`는 비어 있을 수 없고, 각각 50자·100자를 넘을 수 없습니다(DB 컬럼 길이 및 해싱 자원 낭비 방지).
+- 아이디가 없거나 비밀번호가 틀려도 **동일한 오류 코드·메시지**로 응답합니다 — 아이디 존재 여부가 노출되지 않도록 하기 위함입니다.
+- 계정 상태(`status`)가 `ACTIVE`가 아니면(`RESIGNED`/`INACTIVE`) 로그인할 수 없습니다.
+- refreshToken 쿠키의 만료 시간은 `jwt.refresh-token-expiration` 설정값과 동일합니다(기본 14일).
+
+---
+
+## 2. 액세스 토큰 재발급
+
+`POST /api/token/reissue`
+권한: 없음 (단, `refreshToken` HttpOnly 쿠키 필요)
+
+#### Request
+
+별도 요청 바디 없음. 브라우저가 로그인 시 저장된 `refreshToken` 쿠키를 자동으로 함께 보냅니다.
+
+#### Response · `200 OK`
+
+```json
+{
+  "status": 200,
+  "code": "TOKEN_200_1",
+  "message": "액세스 토큰이 재발급되었습니다.",
+  "data": {
+    "accessToken": "eyJhbGciOiJIUzI1NiJ9..."
+  }
+}
+```
+
+#### 검증 및 정책
+
+- **refreshToken은 로테이션하지 않습니다.** 재발급 응답에는 새 refreshToken 쿠키가 포함되지 않고, 기존 쿠키가 만료 전까지 그대로 유지됩니다.
+- refreshToken은 JWT 자체 서명·만료뿐 아니라, 서버에 저장된 값과 일치하는지도 함께 검증합니다(다른 기기에서 재로그인하면 이전 refreshToken은 자동으로 무효화됩니다 — 계정당 세션 1개).
+- 검증된 사용자 정보로 액세스 토큰만 새로 발급합니다. 이때 `role`은 요청 시점의 토큰이 아니라 DB에서 다시 조회한 최신 값을 사용합니다.
+
+---
+
+## 3. 로그아웃
+
+`POST /api/auth/logout`
+권한: 로그인 필요 (액세스 토큰)
+
+#### Request
+
+별도 요청 바디 없음. `Authorization: Bearer {accessToken}` 헤더 필요.
+
+#### Response · `200 OK`
+
+```json
+{
+  "status": 200,
+  "code": "USER_200_2",
+  "message": "로그아웃되었습니다.",
+  "data": null
+}
+```
+
+응답 헤더로 `Set-Cookie: refreshToken=; Path=/; Max-Age=0; ...`가 내려가 브라우저의 refreshToken 쿠키를 즉시 만료시킵니다.
+
+#### 검증 및 정책
+
+- 서버에 저장된 refreshToken을 삭제합니다. 이후 해당 refreshToken으로는 `/api/token/reissue`를 호출할 수 없습니다(`AUTH_401_6`).
+- 이미 발급된 accessToken은 로그아웃 이후에도 자체 만료 시간까지는 유효합니다(별도 블랙리스트 없음) — accessToken은 단명이므로 허용된 범위로 판단했습니다.
+
+---
+
+## 4. 역할 생성
+
+`POST /api/roles`
+권한: `ROLE:MANAGE` 필요 (원장 등 역할 관리 권한을 가진 계정만)
+
+#### Request
+
+```json
+{
+  "name": "강사",
+  "description": "수업 담당",
+  "color": "#FF5733"
+}
+```
+
+| name | type | required | 설명 |
+| --- | --- | --- | --- |
+| `name` | String | true | 역할 이름 (같은 학원 내에서 중복 불가, 최대 50자) |
+| `description` | String | false | 역할 설명 (최대 255자) |
+| `color` | String | false | 역할 뱃지 색상. 형식 검증 없이 그대로 저장/반환합니다(프론트 책임), 최대 20자. 안 보내면 `null` |
+
+#### Response · `201 Created`
+
+```json
+{
+  "status": 201,
+  "code": "ROLE_201_1",
+  "message": "역할 생성에 성공했습니다.",
+  "data": {
+    "roleId": 3
+  }
+}
+```
+
+#### 검증 및 정책
+
+- `academyId`는 요청 바디로 받지 않고, 인증된 사용자(JWT)의 소속 학원으로 서버가 결정합니다 — 다른 학원에 역할을 만들 수 없습니다.
+- 역할 이름은 같은 학원 안에서만 중복 체크합니다(다른 학원엔 같은 이름의 역할이 있어도 무방).
+- 이름 중복은 애플리케이션 레벨 사전 체크(`USER_409_1`)와 DB `UNIQUE` 제약(`uk_role_academy_name`) 둘 다로 방어합니다 — 동시에 같은 이름으로 두 요청이 들어와도 항상 하나만 성공합니다.
+
+---
+
+## 5. 권한 카탈로그 조회
+
+`GET /api/permissions`
+권한: `ROLE:MANAGE` 필요
+
+### Request
+
+없음
+
+### Response · `200 OK`
+
+```json
+{
+  "status": 200,
+  "code": "PERMISSION_200_1",
+  "message": "권한 카탈로그 조회에 성공했습니다.",
+  "data": [
+    {
+      "permissionId": 1,
+      "code": "ROLE:MANAGE",
+      "resource": "ROLE",
+      "action": "MANAGE",
+      "description": "역할 생성/수정/삭제 및 권한 조립"
+    }
+  ]
+}
+```
+
+### 검증 및 정책
+
+- 시스템 전체 고정 권한 카탈로그를 그대로 반환합니다. 학원별로 다르지 않습니다.
+- `description`은 프론트에서 그대로 표시할 수 있는 한글 설명입니다.
+
+---
+
+## 6. 역할 권한 조립
+
+`PUT /api/roles/{roleId}/permissions`
+권한: `ROLE:MANAGE` 필요
+
+### Request
+
+```json
+{
+  "permissionCodes": ["ROLE:MANAGE", "ACCOUNT:CREATE"]
+}
+```
+
+| name | type | required | 설명 |
+| --- | --- | --- | --- |
+| `permissionCodes` | String[] | true (빈 배열 허용) | 역할에 부여할 권한 코드 전체 목록 |
+
+### Response · `204 No Content`
+
+본문 없음.
+
+### 검증 및 정책
+
+- 요청한 `permissionCodes`로 역할의 권한을 **전체 교체**합니다(기존 권한과의 합집합이 아님). 빈 배열을 보내면 역할의 모든 권한이 제거됩니다 — 의도된 동작입니다.
+- `roleId`가 존재하지 않거나 요청자와 다른 학원 소속이면 동일하게 `USER_404_2`로 응답합니다 — 다른 학원의 역할 존재 여부가 노출되지 않도록 하기 위함입니다.
+- `permissionCodes` 중 하나라도 존재하지 않는 코드가 있으면 `USER_400_1`로 거부하고, 어떤 코드가 없는지 `details.missingCodes`로 알려줍니다.
+
+---
+
+## 7. 학원 신청 접수
+
+`POST /api/academy-applications`
+권한: 없음 (공개 API — 계정 없는 학원이 직접 호출)
+
+### Request
+
+```json
+{
+  "requestedLoginId": "academy01",
+  "academyName": "우리학원",
+  "representativeName": "홍길동",
+  "representativeEmail": "hong@example.com",
+  "representativePhone": "010-0000-0000",
+  "plan": "FREE"
+}
+```
+
+| name | type | required | 설명 |
+| --- | --- | --- | --- |
+| `requestedLoginId` | String | true | 원장이 요청하는 로그인 아이디(최대 50자) |
+| `academyName` | String | true | 학원명(최대 100자) |
+| `representativeName` | String | true | 대표자(원장) 이름(최대 50자) |
+| `representativeEmail` | String | true | 대표자 이메일(최대 100자) |
+| `representativePhone` | String | true | 대표자 전화번호(최대 20자) |
+| `plan` | String | true | 신청 플랜, `FREE` 또는 `PAID` |
+
+### Response · `201 Created`
+
+```json
+{
+  "status": 201,
+  "code": "ACADEMY_APPLICATION_201_1",
+  "message": "학원 신청이 접수되었습니다.",
+  "data": {
+    "applicationId": 1
+  }
+}
+```
+
+### 검증 및 정책
+
+- 사업자등록번호·사업자등록증 파일은 이번 스코프에서 받지 않습니다(`businessNo`/`businessLicenseFileId`는 항상 `null`로 생성됨). 접수 시점에는 신청자가 실제 사업자 소유주인지 자동으로 확인할 자료가 없으므로, SUPER ADMIN이 승인 전에 별도 채널(서류 대조·전화 확인 등)로 소유권을 수동 검증하는 것을 전제로 합니다 — 이 수동 검증은 시스템이 강제하지 않고 운영 절차로만 존재합니다.
+- `requestedLoginId`가 이미 발급된 계정이거나(`users.username`), 현재 대기중(`PENDING`) 또는 승인된(`APPROVED`) 다른 신청서와 겹치면 `409 USER_409_6`으로 거절합니다. 반려된(`REJECTED`) 신청서의 아이디로는 재신청할 수 있습니다. 동시 접수 레이스는 DB의 상태별 조건부 유니크 제약으로 한 번 더 방어됩니다.
+- rate limit 등 악의적 공격 방어 로직은 이번 스코프에 포함되지 않습니다 — 인증 없이 대표자 이름·이메일·전화번호를 저장하므로, 운영 공개 전에는 게이트웨이 또는 애플리케이션 레벨 rate limit과 모니터링 도입이 필요합니다(현재는 팀이 위험을 수용하고 별도 후속 작업으로 미룬 상태).
+- `plan`은 `FREE`/`PAID` 중 하나를 선택해야 하며, 실제 기능 제한이나 결제 처리는 이번 스코프에 포함되지 않습니다(선택값만 저장).
+
+---
+
+## 8. 학원 신청 목록 조회
+
+`GET /api/academy-applications`
+권한: `PLATFORM:SUPER_ADMIN` 필요 (SUPER ADMIN 계정만 — `ROLE:MANAGE` 등 카탈로그 권한과는 별개)
+
+### Request
+
+없음
+
+### Response · `200 OK`
+
+```json
+{
+  "status": 200,
+  "code": "ACADEMY_APPLICATION_200_1",
+  "message": "학원 신청 목록 조회에 성공했습니다.",
+  "data": [
+    {
+      "applicationId": 1,
+      "requestedLoginId": "academy01",
+      "academyName": "우리학원",
+      "businessNo": null,
+      "representativeName": "홍길동",
+      "representativeEmail": "hong@example.com",
+      "representativePhone": "010-0000-0000",
+      "plan": "FREE",
+      "status": "PENDING",
+      "rejectReason": null,
+      "createdAt": "2026-08-07T10:00:00"
+    }
+  ]
+}
+```
+
+### 검증 및 정책
+
+- 페이지네이션이 없습니다(기존 역할/권한 목록 조회와 동일한 전례).
+- `PLATFORM:SUPER_ADMIN`은 `@PreAuthorize` 권한 코드가 아니라 `SecurityConfig` 필터체인 URL 매칭으로 확인합니다 — 학원 관리자는 이 authority를 절대 자기 역할에 배정할 수 없습니다.
+- `businessNo`는 접수 API가 사업자등록번호를 받지 않아 항상 `null`입니다(컬럼은 향후 검증 기능 추가를 대비해 유지).
+
+---
+
+## 9. 학원 신청 상세 조회
+
+`GET /api/academy-applications/{applicationId}`
+권한: `PLATFORM:SUPER_ADMIN` 필요
+
+### Request
+
+없음
+
+### Response · `200 OK`
+
+목록 조회와 동일한 필드 구성의 단건 객체를 반환합니다.
+
+```json
+{
+  "status": 200,
+  "code": "ACADEMY_APPLICATION_200_2",
+  "message": "학원 신청 상세 조회에 성공했습니다.",
+  "data": {
+    "applicationId": 1,
+    "requestedLoginId": "academy01",
+    "academyName": "우리학원",
+    "businessNo": null,
+    "representativeName": "홍길동",
+    "representativeEmail": "hong@example.com",
+    "representativePhone": "010-0000-0000",
+    "plan": "FREE",
+    "status": "PENDING",
+    "rejectReason": null,
+    "createdAt": "2026-08-07T10:00:00"
+  }
+}
+```
+
+### 검증 및 정책
+
+- `applicationId`가 존재하지 않으면 `USER_404_3`으로 응답합니다.
+- 목록 응답과 필드가 지금은 같지만, 프론트 상세 화면 디자인이 확정되면 상세 전용 필드가 늘어날 수 있어 처음부터 별도 엔드포인트로 분리해뒀습니다.
+
+---
+
+## 10. 학원 신청 승인
+
+`POST /api/academy-applications/{applicationId}/approve`
+권한: `PLATFORM:SUPER_ADMIN` 필요
+
+### Request
+
+별도 요청 바디 없음.
+
+### Response · `200 OK`
+
+승인 시 academy, "원장" 역할(그 시점 권한 카탈로그 전체 보유), 최초 관리자 계정을 같은 트랜잭션에서 함께 생성합니다. 이메일 발송 인프라가 아직 없어, 비밀번호 설정 링크를 응답에 담아 SUPER ADMIN이 신청자에게 수동으로 전달합니다.
+
+```json
+{
+  "status": 200,
+  "code": "ACADEMY_APPLICATION_200_3",
+  "message": "학원 신청을 승인했습니다.",
+  "data": {
+    "academyId": 10,
+    "userId": 20,
+    "passwordSetupLink": "http://localhost:3000/password-setup?username=academy01&tempPassword=Xk9%23mQ2pRt7"
+  }
+}
+```
+
+### 검증 및 정책
+
+- `applicationId`가 존재하지 않으면 `USER_404_3`, 이미 승인/반려된 신청서면 `USER_409_5`로 응답합니다.
+- `requestedLoginId`가 이미 사용 중인 아이디면(접수 이후 다른 경로로 계정이 생성된 경우 등) `409 USER_409_6`으로 거절하고 계정을 만들지 않습니다 — 접수 시점(7번 항목)에도 같은 검증을 하지만, 접수와 승인 사이의 시간차 동안 상황이 바뀔 수 있어 승인 시점에도 한 번 더 최종 확인합니다.
+- 새로 발급되는 계정은 `account_type=ADMIN`, `admin_scope=ACADEMY`, `role_id`는 자동 생성된 "원장" 역할, `must_change_pw=true`로 생성됩니다. 로그인 흐름에서 이 값으로 다른 API를 강제로 막지는 않고, `POST /api/users/password-setup`(19번 항목)으로 최초 설정을 완료하면 `false`로 바뀝니다.
+
+---
+
+## 11. 학원 신청 반려
+
+`POST /api/academy-applications/{applicationId}/reject`
+권한: `PLATFORM:SUPER_ADMIN` 필요
+
+### Request
+
+```json
+{
+  "rejectReason": "사업자번호 확인 불가"
+}
+```
+
+| name | type | required | 설명 |
+| --- | --- | --- | --- |
+| `rejectReason` | String | true | 반려 사유 (최대 255자) |
+
+### Response · `204 No Content`
+
+본문 없음.
+
+### 검증 및 정책
+
+- `applicationId`가 존재하지 않으면 `USER_404_3`, 이미 승인/반려된 신청서면 `USER_409_5`로 응답합니다.
+
+---
+
+## 12. 역할 목록 조회
+
+`GET /api/roles`
+권한: `ROLE:MANAGE` 필요
+
+### Request
+
+없음
+
+### Response · `200 OK`
+
+```json
+{
+  "status": 200,
+  "code": "ROLE_200_1",
+  "message": "역할 목록 조회에 성공했습니다.",
+  "data": [
+    {
+      "roleId": 3,
+      "name": "강사",
+      "description": "수업 담당",
+      "color": "#FF5733",
+      "memberCount": 4
+    }
+  ]
+}
+```
+
+### 검증 및 정책
+
+- 인증된 사용자(JWT)의 소속 학원(`academyId`) 역할만 반환합니다. 페이지네이션이 없습니다(기존 권한 카탈로그 조회와 동일한 전례).
+- 권한 정보(`permissionCodes`)는 내려주지 않습니다 — 프론트 사이드바가 목록에서는 권한을 쓰지 않기 때문입니다. 필요하면 역할 상세 조회(후속 API)를 씁니다.
+- `memberCount`는 저장된 값이 아니라 조회 시점에 `status = ACTIVE`인 구성원 수를 계산합니다(퇴사자는 세지 않음).
+
+---
+
+## 13. 역할 상세 조회
+
+`GET /api/roles/{roleId}`
+권한: `ROLE:MANAGE` 필요
+
+### Request
+
+없음 (path variable `roleId`)
+
+### Response · `200 OK`
+
+```json
+{
+  "status": 200,
+  "code": "ROLE_200_2",
+  "message": "역할 상세 조회에 성공했습니다.",
+  "data": {
+    "roleId": 3,
+    "name": "강사",
+    "description": "수업 담당",
+    "color": "#FF5733",
+    "memberCount": 4,
+    "permissionCodes": ["NOTICE:READ", "TASK:MANAGE"]
+  }
+}
+```
+
+### 검증 및 정책
+
+- 목록 조회와 달리 `permissionCodes`를 포함해 내려줍니다.
+- 역할이 존재하지 않거나, 존재하더라도 요청자의 소속 학원(`academyId`)이 아니면 동일하게 `404 USER_404_2`로 응답합니다 — 다른 학원 역할의 존재 여부가 노출되지 않도록 하기 위함입니다.
+- `memberCount`는 목록 조회와 동일하게 `status = ACTIVE`인 구성원만 계산합니다.
+
+---
+
+## 14. 역할 수정
+
+`PUT /api/roles/{roleId}`
+권한: `ROLE:MANAGE` 필요
+
+### Request
+
+```json
+{
+  "name": "수석강사",
+  "description": "수정된 설명",
+  "color": "#00FF00"
+}
+```
+
+### Response · `204 No Content`
+
+본문 없음.
+
+### 검증 및 정책
+
+- `name`은 비어 있을 수 없고 50자, `description`은 255자를 넘을 수 없습니다(역할 생성과 동일한 제약). `color`는 검증 없이 그대로 저장됩니다.
+- 역할이 존재하지 않거나 다른 학원 소속이면 `404 USER_404_2`.
+- 같은 학원 안에 **자기 자신을 제외하고** 같은 이름의 역할이 있으면 `409 USER_409_1` — 이름을 바꾸지 않는 수정 요청(설명만 변경)이 자기 자신과 충돌해 실패하지 않도록 자기 자신은 검사에서 제외합니다.
+- 권한 목록(`permissionCodes`)은 이 API로 바꿀 수 없습니다 — 역할 권한 조립(`PUT /api/roles/{roleId}/permissions`)을 씁니다.
+
+---
+
+## 15. 역할 삭제
+
+`DELETE /api/roles/{roleId}`
+권한: `ROLE:MANAGE` 필요
+
+### Request
+
+없음 (path variable `roleId`)
+
+### Response · `204 No Content`
+
+본문 없음.
+
+### 검증 및 정책
+
+- 역할이 존재하지 않거나 다른 학원 소속이면 `404 USER_404_2`.
+- **`ACTIVE` 상태인 구성원이 이 역할을 쓰고 있으면** `409 USER_409_2`로 거절합니다 — 삭제 전에 먼저 구성원의 역할을 다른 역할로 바꿔야 합니다.
+- `RESIGNED`/`INACTIVE` 상태인 구성원만 이 역할을 쓰고 있다면(퇴사자에게 배정된 채로 남아있는 경우 등) 삭제를 막지 않습니다 — 계정을 물리적으로 삭제하는 기능이 없어 영원히 지울 수 없는 역할이 생기는 걸 방지하기 위함입니다. 대신 삭제 시 그 구성원들의 역할 배정은 자동으로 해제됩니다(`role_id`가 `null`이 됨).
+
+---
+
+## 16. 사용자 역할 변경
+
+`PATCH /api/users/{userId}/role`
+권한: `ACCOUNT:MANAGE` 필요
+
+### Request
+
+```json
+{
+  "roleId": 5
+}
+```
+
+| name | type | required | 설명 |
+| --- | --- | --- | --- |
+| `roleId` | Long | true | 배정할 역할 ID (같은 학원 소속 역할만 가능) |
+
+### Response · `204 No Content`
+
+본문 없음.
+
+### 검증 및 정책
+
+- `userId`가 존재하지 않거나, 요청자와 다른 학원 소속이거나, `accountType != MEMBER`(학원 관리자 계정)이면 전부 동일하게 `404 USER_404_1`로 응답합니다 — 다른 학원 계정 존재 여부나 관리자 계정 여부가 노출되지 않도록 하기 위함입니다.
+- `roleId`가 존재하지 않거나 다른 학원 소속이면 `404 USER_404_2`로 응답합니다.
+- 이미 같은 역할이어도 그대로 통과합니다(멱등).
+- 역할 해제(역할 없음으로 되돌리는 것)는 이 API로 할 수 없습니다.
+
+---
+
+## 17. 학원 구성원 검색
+
+`GET /api/users?keyword=`
+권한: 없음 (로그인만 되면 호출 가능)
+
+### Request
+
+| name | type | required | 설명 |
+| --- | --- | --- | --- |
+| `keyword` | String | false | 이름 부분 일치 검색(대소문자 무관). 없으면 전체 목록 반환 |
+
+### Response · `200 OK`
+
+```json
+{
+  "status": 200,
+  "code": "USER_200_3",
+  "message": "구성원 검색에 성공했습니다.",
+  "data": [
+    { "userId": 12, "name": "김강사", "username": "kim_teacher01" }
+  ]
+}
+```
+
+### 검증 및 정책
+
+- `academyId`는 요청으로 받지 않고 인증된 사용자 기준으로 서버가 결정합니다 — 다른 학원 구성원은 결과에 나오지 않습니다.
+- `accountType` 무관하게 전체 포함합니다(일반 직원 + 학원 관리자).
+- `status = ACTIVE`인 계정만 검색 대상입니다.
+- 워크스페이스 생성/멤버 추가, 채팅방 생성 API가 받는 `memberIds`/`participantIds`에 채워 넣을 userId를 찾는 용도입니다.
+
+---
+
+## 18. 직원 계정 발급
+
+`POST /api/users`
+권한: `ACCOUNT:MANAGE` 필요
+
+### Request
+
+```json
+{
+  "username": "teacher01",
+  "name": "김강사",
+  "phone": "010-1111-2222",
+  "email": "teacher01@example.com",
+  "roleId": 8
+}
+```
+
+| name | type | required | 설명 |
+| --- | --- | --- | --- |
+| `username` | String | true | 로그인 아이디, 최대 50자, 전역 유니크 |
+| `name` | String | true | 이름, 최대 50자 |
+| `phone` | String | true | 전화번호, 최대 20자 |
+| `email` | String | true | 이메일, 최대 100자 |
+| `roleId` | Long | true | 배정할 역할 ID (같은 학원 소속 역할만 가능) |
+
+### Response · `201 Created`
+
+```json
+{
+  "status": 201,
+  "code": "USER_201_1",
+  "message": "직원 계정이 발급되었습니다.",
+  "data": {
+    "userId": 8,
+    "username": "teacher01",
+    "passwordSetupLink": "http://localhost:3000/password-setup?username=teacher01&tempPassword=USb8MGQYrq%21p"
+  }
+}
+```
+
+### 검증 및 정책
+
+- `academyId`는 요청으로 받지 않고 인증된 관리자 기준으로 서버가 결정합니다 — 다른 학원에 계정을 만들 수 없습니다.
+- `username`이 이미 존재하면 `409 USER_409_6`으로 거절합니다(사전 체크 + DB 유니크 제약 이중 방어).
+- `roleId`가 존재하지 않거나 다른 학원 소속이면 `404 USER_404_2`로 응답합니다.
+- 계정은 `accountType=MEMBER`, 임시 비밀번호로 발급되며 `mustChangePw`가 `true`로 저장됩니다.
+- 응답의 `passwordSetupLink`는 이 호출 한 번에만 내려가며, 링크 안의 임시 비밀번호는 서버에 별도로 저장되지 않습니다. 학원 관리자가 직원에게 직접 전달해야 합니다(카카오톡/문자 등) — 이메일 등 자동 발송은 아직 없습니다(후속 작업). 이 링크로 `POST /api/users/password-setup`(19번 항목)을 호출하면 최초 비밀번호 설정이 끝납니다.
+
+---
+
+## 19. 최초 비밀번호 설정
+
+`POST /api/users/password-setup`
+권한: 없음 (공개 엔드포인트)
+
+### Request
+
+```json
+{
+  "username": "teacher01",
+  "tempPassword": "USb8MGQYrq!p",
+  "newPassword": "MyOwnPassword1!"
+}
+```
+
+| name | type | required | 설명 |
+| --- | --- | --- | --- |
+| `username` | String | true | 계정 아이디 |
+| `tempPassword` | String | true | 비밀번호 설정 링크에 담겨온 임시 비밀번호 원문 |
+| `newPassword` | String | true | 새로 정할 비밀번호, 8~100자 |
+
+### Response · `204 No Content`
+
+본문 없음.
+
+### 검증 및 정책
+
+- 검증 순서: `username`으로 계정 조회 → `must_change_pw == true`인지 확인 → `tempPassword`가 저장된 해시와 일치하는지 확인. 셋 중 하나라도 실패하면 전부 동일하게 `400 USER_400_2`로 응답합니다(계정 존재·상태 비노출).
+- 성공하면 `password`가 새 값으로 교체되고 `must_change_pw`가 `false`로 바뀝니다. 그 순간부터 같은 링크(옛 임시 비밀번호)는 해시가 안 맞아 자동으로 무효화되고, `must_change_pw`가 이미 `false`라 이 계정에 대해 이 엔드포인트 자체가 다시는 통과하지 않습니다(1회성 보장에 별도 만료시간을 두지 않음).
+- 원장(학원 신청 승인, 10번 항목)과 직원(계정 발급, 18번 항목) 두 경로 모두 이 API로 최초 설정을 완료합니다.
+
+---
+
+## ⚠️ 주요 오류
+
+| HTTP | 코드 | 상황 |
+| --- | --- | --- |
+| `401` | `USER_401_1` | 아이디 또는 비밀번호가 올바르지 않음 (아이디 없음/비밀번호 불일치 공통) |
+| `403` | `USER_403_1` | 계정 상태가 `ACTIVE`가 아니어서 로그인할 수 없음 |
+| `401` | `USER_401_2` | 리프레시 토큰 쿠키가 없음 |
+| `404` | `USER_404_1` | 리프레시 토큰의 사용자 정보를 찾을 수 없음, 또는 사용자 역할 변경 시 대상 계정이 존재하지 않거나 다른 학원 소속이거나 학원 관리자 계정임 |
+| `409` | `USER_409_1` | 같은 학원 내에 이미 존재하는 역할 이름 |
+| `409` | `USER_409_2` | 배정된 구성원이 있는 역할을 삭제하려 시도 |
+| `400` | `USER_400_1` | 존재하지 않는 권한 코드로 역할 권한 조립 시도 |
+| `400` | `USER_400_2` | 비밀번호 설정 실패(아이디 없음/이미 설정 완료/임시비밀번호 불일치 공통) |
+| `404` | `USER_404_2` | 역할이 존재하지 않거나 다른 학원 소속 |
+| `404` | `USER_404_3` | 학원 신청서가 존재하지 않음 |
+| `409` | `USER_409_5` | 이미 검토된(승인/반려) 신청서를 다시 승인/반려 시도 |
+| `409` | `USER_409_6` | 이미 사용 중인 아이디로 직원 계정 발급 시도 |
+| `401` | `AUTH_401_1` | 리프레시 토큰 자체가 위조되었거나 형식이 올바르지 않음 |
+| `401` | `AUTH_401_2` | 리프레시 토큰이 만료됨 |
+| `401` | `AUTH_401_6` | 서버에 저장된 리프레시 토큰이 없음 |
+| `401` | `AUTH_401_7` | 요청된 리프레시 토큰이 저장된 값과 일치하지 않음 (다른 기기 재로그인 등으로 무효화됨) |
+| `400` | `COMMON_400_1` | 요청 형식 오류 (`username`/`password` 누락 또는 길이 초과, 또는 역할 `name`/`description` 형식 오류) |
+| `403` | `COMMON_403_1` | `ROLE:MANAGE` 권한이 없는 계정으로 역할 생성·목록 조회 시도, `PLATFORM:SUPER_ADMIN`이 아닌 계정으로 학원 신청 목록/상세 조회·승인·반려 시도, 또는 `ACCOUNT:MANAGE` 권한이 없는 계정으로 사용자 역할 변경 시도 |

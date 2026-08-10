@@ -1,0 +1,61 @@
+{
+  "family": "mudo-prod-alloy",
+  "networkMode": "host",
+  "requiresCompatibilities": ["EC2"],
+  "executionRoleArn": "arn:aws:iam::<ACCOUNT_ID>:role/mudo-prod-alloy-task-execution-role",
+  "containerDefinitions": [
+    {
+      "name": "alloy",
+      "image": "<ACCOUNT_ID>.dkr.ecr.ap-northeast-2.amazonaws.com/mudo-observability-alloy:<IMAGE_TAG>",
+      "essential": true,
+      "cpu": 128,
+      "memoryReservation": 256,
+      "memory": 512,
+      "user": "0",
+      "environment": [
+        {
+          "name": "PROMETHEUS_REMOTE_WRITE_URL",
+          "value": "http://monitoring.mudo.internal:9090/api/v1/write"
+        },
+        {
+          "name": "LOKI_PUSH_URL",
+          "value": "http://monitoring.mudo.internal:3100/loki/api/v1/push"
+        }
+      ],
+      "mountPoints": [
+        {
+          "sourceVolume": "docker-socket",
+          "containerPath": "/var/run/docker.sock",
+          "readOnly": true
+        },
+        {
+          "sourceVolume": "alloy-data",
+          "containerPath": "/var/lib/alloy",
+          "readOnly": false
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/mudo/prod/monitoring",
+          "awslogs-region": "ap-northeast-2",
+          "awslogs-stream-prefix": "alloy"
+        }
+      }
+    }
+  ],
+  "volumes": [
+    {
+      "name": "docker-socket",
+      "host": {
+        "sourcePath": "/var/run/docker.sock"
+      }
+    },
+    {
+      "name": "alloy-data",
+      "host": {
+        "sourcePath": "/var/lib/mudo-alloy"
+      }
+    }
+  ]
+}

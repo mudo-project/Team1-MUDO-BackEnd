@@ -1,13 +1,17 @@
 package com.academy.mudogroupware.approval.infrastructure.persistence;
 
 import java.util.List;
+import java.util.Optional;
 
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 
 public interface ApprovalTemplateJpaRepository extends JpaRepository<ApprovalTemplateEntity, Long> {
 
-    @Query("select distinct t from ApprovalTemplateEntity t join t.approvalLines l where l.approverId = :approverId")
-    List<ApprovalTemplateEntity> findAllByApproverId(@Param("approverId") Long approverId);
+    Slice<ApprovalTemplateEntity> findAllByTypeAndAcademyId(String type, Long academyId, Pageable pageable);
+
+    List<ApprovalTemplateEntity> findAllByIdInAndType(List<Long> ids, String type);
+
+    Optional<ApprovalTemplateEntity> findByIdAndType(Long id, String type);
 }

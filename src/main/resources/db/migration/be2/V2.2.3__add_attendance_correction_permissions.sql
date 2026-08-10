@@ -1,0 +1,7 @@
+INSERT INTO permission (code, resource, action, description)
+SELECT 'ATTENDANCE:CORRECTION_READ', 'ATTENDANCE', 'CORRECTION_READ', '근태 수정 요청 조회'
+WHERE NOT EXISTS (SELECT 1 FROM permission WHERE code = 'ATTENDANCE:CORRECTION_READ');
+
+INSERT INTO permission (code, resource, action, description)
+SELECT 'ATTENDANCE:CORRECTION_PROCESS', 'ATTENDANCE', 'CORRECTION_PROCESS', '근태 수정 요청 승인 및 반려'
+WHERE NOT EXISTS (SELECT 1 FROM permission WHERE code = 'ATTENDANCE:CORRECTION_PROCESS');

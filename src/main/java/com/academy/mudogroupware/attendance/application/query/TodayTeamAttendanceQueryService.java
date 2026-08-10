@@ -1,0 +1,126 @@
+package com.academy.mudogroupware.attendance.application.query;
+
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.academy.mudogroupware.attendance.application.port.TeamAttendanceEmployee;
+import com.academy.mudogroupware.attendance.application.port.TeamAttendanceQueryPort;
+import com.academy.mudogroupware.attendance.application.usecase.GetTodayTeamAttendanceUseCase;
+import com.academy.mudogroupware.attendance.domain.exception.AttendanceErrorCode;
+import com.academy.mudogroupware.attendance.domain.exception.AttendanceException;
+import com.academy.mudogroupware.attendance.domain.model.AttendancePolicy;
+import com.academy.mudogroupware.attendance.domain.model.AttendancePolicyWeekday;
+import com.academy.mudogroupware.attendance.domain.model.TeamAttendanceStatus;
+import com.academy.mudogroupware.attendance.domain.repository.AttendancePolicyRepository;
+import com.academy.mudogroupware.attendance.domain.repository.LeaveRequestRepository;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+@Transactional(readOnly = true)
+public class TodayTeamAttendanceQueryService implements GetTodayTeamAttendanceUseCase {
+
+    private static final String[] KOREAN_DAY_NAMES = {
+            "월", "화", "수", "목", "금", "토", "일"
+    };
+
+    private final AttendancePolicyRepository attendancePolicyRepository;
+    private final TeamAttendanceQueryPort teamAttendanceQueryPort;
+    private final LeaveRequestRepository leaveRequestRepository;
+    private final Clock clock;
+
+    @Override
+    public TodayTeamAttendanceView getToday(Long requesterId) {
+        log.info("event=attendance_team_today_read_시작 requesterId={}={}", requesterId);
+        AttendancePolicy policy = attendancePolicyRepository.findCurrent()
+                .orElseThrow(() -> new AttendanceException(
+                        AttendanceErrorCode.ATTENDANCE_POLICY_NOT_FOUND));
+
+        LocalDate today = LocalDate.now(clock);
+        WorkSchedule schedule = resolveSchedule(policy, today);
+        // 직원별로 반복 조회하지 않도록 오늘 승인된 휴가자 userId를 한 번만 모아서 조회한다.
+        Set<Long> onLeaveUserIds = leaveRequestRepository.findApprovedUserIds(today);
+        List<TodayTeamAttendanceView.Employee> employees = teamAttendanceQueryPort
+                .findEmployeesWithAttendance(requesterId, today)
+                .stream()
+                .map(employee -> toEmployee(employee, schedule.workday(), onLeaveUserIds))
+                .toList();
+
+        int presentCount = (int) employees.stream()
+                .filter(employee -> employee.status() == TeamAttendanceStatus.PRESENT)
+                .count();
+        int absentCount = (int) employees.stream()
+                .filter(employee -> employee.status() == TeamAttendanceStatus.ABSENT)
+                .count();
+        int offCount = (int) employees.stream()
+                .filter(employee -> employee.status() == TeamAttendanceStatus.OFF)
+                .count();
+        int leaveCount = (int) employees.stream()
+                .filter(employee -> employee.status() == TeamAttendanceStatus.LEAVE)
+                .count();
+
+        TodayTeamAttendanceView result = new TodayTeamAttendanceView(
+                today,
+                KOREAN_DAY_NAMES[today.getDayOfWeek().getValue() - 1],
+                schedule.startTime(),
+                schedule.endTime(),
+                new TodayTeamAttendanceView.Summary(presentCount, absentCount, offCount, leaveCount),
+                employees);
+        log.info("event=attendance_team_today_read_완료 count={}", employees.size());
+        return result;
+    }
+
+    private TodayTeamAttendanceView.Employee toEmployee(
+            TeamAttendanceEmployee employee, boolean workday, Set<Long> onLeaveUserIds) {
+        TeamAttendanceStatus status = !workday
+                ? TeamAttendanceStatus.OFF
+                : employee.clockInAt() != null
+                        ? TeamAttendanceStatus.PRESENT
+                        : onLeaveUserIds.contains(employee.userId())
+                                ? TeamAttendanceStatus.LEAVE
+                                : TeamAttendanceStatus.ABSENT;
+        LocalTime checkInTime = status == TeamAttendanceStatus.PRESENT
+                ? employee.clockInAt().toLocalTime()
+                : null;
+        return new TodayTeamAttendanceView.Employee(
+                employee.userId(), employee.name(), status, checkInTime);
+    }
+
+    private WorkSchedule resolveSchedule(AttendancePolicy policy, LocalDate today) {
+        if (!policy.isWeekdayExceptionEnabled()) {
+            return new WorkSchedule(
+                    true, policy.getDefaultStartTime(), policy.getDefaultEndTime());
+        }
+
+        Optional<AttendancePolicyWeekday> weekday = policy.getWeekdays().stream()
+                .filter(item -> item.dayOfWeek() == today.getDayOfWeek().getValue())
+                .findFirst();
+        if (weekday.isEmpty()) {
+            return new WorkSchedule(
+                    true, policy.getDefaultStartTime(), policy.getDefaultEndTime());
+        }
+
+        AttendancePolicyWeekday setting = weekday.get();
+        if (!setting.workday()) {
+            return new WorkSchedule(
+                    false, policy.getDefaultStartTime(), policy.getDefaultEndTime());
+        }
+        return new WorkSchedule(
+                true,
+                setting.startTime() == null ? policy.getDefaultStartTime() : setting.startTime(),
+                setting.endTime() == null ? policy.getDefaultEndTime() : setting.endTime());
+    }
+
+    private record WorkSchedule(boolean workday, LocalTime startTime, LocalTime endTime) {
+    }
+}

@@ -3,12 +3,15 @@ package com.academy.mudogroupware.approval.infrastructure.persistence;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Repository;
 
-import com.academy.mudogroupware.approval.domain.model.ApprovalContent;
-import com.academy.mudogroupware.approval.domain.model.ApprovalLine;
 import com.academy.mudogroupware.approval.domain.model.ApprovalTemplate;
+import com.academy.mudogroupware.approval.domain.model.ApprovalTemplateLine;
 import com.academy.mudogroupware.approval.domain.repository.ApprovalTemplateRepository;
+import com.academy.mudogroupware.global.domain.common.page.PageResult;
 
 import lombok.RequiredArgsConstructor;
 
@@ -20,63 +23,82 @@ public class ApprovalTemplateRepositoryImpl implements ApprovalTemplateRepositor
 
     @Override
     public ApprovalTemplate save(ApprovalTemplate approvalTemplate) {
-        ApprovalTemplateEntity entity = toEntity(approvalTemplate);
+        ApprovalTemplateEntity entity = approvalTemplate.getId() != null
+                ? updateExisting(approvalTemplate)
+                : toNewEntity(approvalTemplate);
+
         return toDomain(approvalTemplateJpaRepository.save(entity));
     }
 
     @Override
     public Optional<ApprovalTemplate> findById(Long id) {
-        return approvalTemplateJpaRepository.findById(id).map(this::toDomain);
+        return approvalTemplateJpaRepository.findByIdAndType(id, ApprovalTemplateEntity.TYPE).map(this::toDomain);
     }
 
     @Override
-    public List<ApprovalTemplate> findAllByApproverId(Long approverId) {
-        return approvalTemplateJpaRepository.findAllByApproverId(approverId).stream()
+    public List<ApprovalTemplate> findAllById(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+        return approvalTemplateJpaRepository.findAllByIdInAndType(ids, ApprovalTemplateEntity.TYPE).stream()
                 .map(this::toDomain)
                 .toList();
     }
 
-    private ApprovalTemplateEntity toEntity(ApprovalTemplate domain) {
-        ApprovalTemplateEntity entity = ApprovalTemplateEntity.builder()
-                .id(domain.getId())
-                .title(domain.getTitle())
-                .contentType(domain.getContent().getType())
-                .text(domain.getContent().getText())
-                .fileUrl(domain.getContent().getFileUrl())
-                .creatorId(domain.getCreatorId())
-                .status(domain.getStatus())
-                .createdAt(domain.getCreatedAt())
-                .build();
+    @Override
+    public PageResult<ApprovalTemplate> findAll(Long academyId, int page, int size) {
+        Slice<ApprovalTemplateEntity> slice = approvalTemplateJpaRepository.findAllByTypeAndAcademyId(
+                ApprovalTemplateEntity.TYPE, academyId, PageRequest.of(page, size, latestFirstSort()));
+        List<ApprovalTemplate> content = slice.getContent().stream().map(this::toDomain).toList();
+        return PageResult.of(content, slice.getNumber(), slice.getSize(), slice.hasNext());
+    }
 
-        domain.getApprovalLines().forEach(line -> entity.addLine(toLineEntity(line)));
+    private Sort latestFirstSort() {
+        return Sort.by(Sort.Direction.DESC, "createdAt", "id");
+    }
+
+    @Override
+    public void deleteById(Long id) {
+        approvalTemplateJpaRepository.deleteById(id);
+    }
+
+    private ApprovalTemplateEntity toNewEntity(ApprovalTemplate domain) {
+        ApprovalTemplateEntity entity = ApprovalTemplateEntity.builder()
+                .academyId(domain.getAcademyId())
+                .name(domain.getName())
+                .creatorId(domain.getCreatorId())
+                .build();
+        domain.getLines().forEach(line -> entity.addLine(toLineEntity(line)));
         return entity;
     }
 
-    private ApprovalLineEntity toLineEntity(ApprovalLine line) {
-        return ApprovalLineEntity.builder()
-                .id(line.getId())
+    private ApprovalTemplateEntity updateExisting(ApprovalTemplate domain) {
+        ApprovalTemplateEntity entity = approvalTemplateJpaRepository.getReferenceById(domain.getId());
+        entity.setName(domain.getName());
+        entity.clearLines();
+        // orphanRemoval 컬렉션을 비우자마자 다시 채우면, Hibernate가 같은 flush 안에서
+        // 새 라인 INSERT를 기존 라인 DELETE보다 먼저 실행해 (template_id, step_order)
+        // 유니크 제약(uk_approval_line_step_template_step)에 걸린다. 삭제를 먼저 flush한다.
+        approvalTemplateJpaRepository.saveAndFlush(entity);
+        domain.getLines().forEach(line -> entity.addLine(toLineEntity(line)));
+        return entity;
+    }
+
+    private ApprovalTemplateLineEntity toLineEntity(ApprovalTemplateLine line) {
+        return ApprovalTemplateLineEntity.builder()
                 .stepOrder(line.getStepOrder())
                 .approverId(line.getApproverId())
-                .status(line.getStatus())
-                .comment(line.getComment())
-                .decidedAt(line.getDecidedAt())
+                .roleId(line.getRoleId())
                 .build();
     }
 
     private ApprovalTemplate toDomain(ApprovalTemplateEntity entity) {
-        List<ApprovalLine> lines = entity.getApprovalLines().stream()
-                .map(this::toLineDomain)
+        List<ApprovalTemplateLine> lines = entity.getLines().stream()
+                .map(line -> ApprovalTemplateLine.restore(line.getId(), line.getStepOrder(), line.getApproverId(),
+                        line.getRoleId()))
                 .toList();
-        ApprovalContent content = ApprovalContent.restore(entity.getContentType(), entity.getText(), entity.getFileUrl());
 
-        return ApprovalTemplate.restore(
-                entity.getId(), entity.getTitle(), content, entity.getCreatorId(),
-                lines, entity.getStatus(), entity.getCreatedAt());
-    }
-
-    private ApprovalLine toLineDomain(ApprovalLineEntity entity) {
-        return ApprovalLine.restore(
-                entity.getId(), entity.getStepOrder(), entity.getApproverId(),
-                entity.getStatus(), entity.getComment(), entity.getDecidedAt());
+        return ApprovalTemplate.restore(entity.getId(), entity.getAcademyId(), entity.getName(),
+                entity.getCreatorId(), lines, entity.getCreatedAt(), entity.getUpdatedAt());
     }
 }

@@ -1,0 +1,145 @@
+# MODULES.md
+
+## 목적
+
+- 도메인 모듈의 소유권과 모듈 간 협업 규칙 정의
+- 전체 구조와 계층 책임: [ARCHITECTURE.md](ARCHITECTURE.md) 참조
+
+## 모듈 정의
+
+- 도메인 모듈: 하나의 비즈니스 책임을 소유하는 최상위 도메인 패키지
+- 모듈 소유 범위:
+    - 기능과 비즈니스 규칙
+    - Aggregate와 데이터 모델
+    - 내부 구현 코드
+    - 외부에 공개하는 Application API
+
+```text
+<base-package>/
+├─ global/     # 공유 플랫폼 영역
+├─ users/      # 도메인 모듈
+├─ workspace/  # 도메인 모듈
+└─ approval/   # 도메인 모듈
+```
+
+- `global/`은 도메인 모듈이 아닌 공유 플랫폼 영역이다. 세부 책임과 의존 규칙은 [ARCHITECTURE.md](ARCHITECTURE.md)를 따른다.
+
+## 모듈 문서
+
+- 모든 도메인 모듈은 `docs/README.md`를 반드시 가진다.
+
+```text
+<domain>/
+└─ docs/
+   └─ README.md
+```
+
+- `docs/README.md` 역할:
+    - 해당 모듈 문서의 목차
+    - 해당 모듈 작업의 진입점
+    - 세부 문서의 분기 안내
+
+- 작업 규칙:
+    1. 대상 모듈 작업 전 `docs/README.md`를 먼저 읽는다.
+    2. 작업 유형에 따라 `README.md`에서 연결한 세부 문서를 확인한다.
+    3. 다른 모듈과 연동하거나 변경을 요청할 경우, 대상 모듈의 `docs/README.md`를 먼저 읽는다.
+
+- 각 모듈의 `docs/README.md` 최소 포함 항목:
+    - 모듈 책임과 책임 범위
+    - 담당자 또는 담당 팀
+    - 소유하는 주요 데이터와 상태
+    - 외부에 공개하는 Application API
+    - 다른 모듈 또는 외부 시스템에 요청하는 의존성
+    - 발행·소비하는 Event
+    - 변경 시 주의 사항
+    - 세부 문서 링크
+
+## 모듈 간 협업 규칙
+
+### 허용
+
+- 요청 모듈이 정의한 조회 Port 호출
+- 대상 모듈이 해당 Port를 구현하는 Adapter 추가·수정(대상 모듈 담당자 사전 동의 필요)
+- 식별자, Projection 기반의 최소 데이터 전달
+- 대상 모듈의 공개 Event 소비
+- 대상 모듈 담당자에게 조회 Adapter 구현 요청
+
+### 금지
+
+- 다른 모듈의 내부 Service 직접 호출
+- 다른 모듈의 JPA Entity 직접 참조·수정
+- 요청 모듈에서 다른 모듈의 Repository 직접 호출
+- 다른 모듈의 Adapter 직접 호출
+- 다른 모듈의 내부 모델을 API 응답 또는 계약 객체에 노출
+- 도메인 간 Entity 연관관계 또는 공유 Repository 생성
+- 타 도메인 코드 직접 수정·추가·삭제
+
+## 공개 Application API
+
+- 기본 공개 단위: UseCase 또는 요청 모듈이 정의한 조회 Port
+- Facade 사용: 여러 UseCase를 조합한 단일 진입점이 필요한 경우에만 사용
+- 공개 계약에는 내부 Entity와 구현 기술을 포함하지 않는다.
+- 공개 계약 변경 시 대상 모듈의 `docs/README.md`와 세부 문서를 함께 갱신한다.
+
+### 도메인 간 조회 Port 구현 정책
+
+- 요청 모듈은 필요한 최소 조회 Port와 응답 DTO를 정의한다.
+- 대상 모듈 담당자의 사전 동의가 있으면, 데이터를 소유한 대상 모듈이 자기 Infrastructure에 Adapter를 두고 해당 Port를 구현한다.
+- 대상 모듈의 조회 Adapter는 자기 Domain Repository, Persistence Adapter, Spring Data JPA Repository와 최소 JPA 조회 코드만 사용하며, 대상 도메인의 Entity를 Port 응답에 노출하지 않는다. Persistence Adapter는 Domain Repository와 Spring Data JPA Repository를 연결하는 대상 도메인의 영속성 구현체다.
+- 요청 모듈은 Port만 호출하며, 대상 모듈의 Entity, Repository, 내부 Service, Adapter를 직접 참조하지 않는다.
+- Port Adapter 메서드에는 아래 정보를 주석으로 기록한다.
+
+```java
+/**
+ * Consumer: workspace
+ * Purpose: 워크스페이스 초기 참여자 검증 및 후보 검색
+ * Related PR: #123 // 선택
+ */
+```
+
+- 기존에 같은 목적의 조회 Port 또는 Adapter가 있으면 이를 우선 재사용한다.
+- 조회 Port 구현을 위해 필요한 계약·Adapter·Repository 조회 외의 도메인 로직은 수정하지 않는다.
+- 반환값은 요청 도메인에 필요한 식별자와 Projection으로 최소화하며, 내부 Entity를 노출하지 않는다.
+
+## 타 모듈 변경 요청
+
+타 도메인 변경이 필요하면 직접 수정하지 않는다.
+
+```text
+[대상 모듈]
+<변경이 필요한 도메인>
+
+[필요한 변경]
+<추가 / 수정 / 삭제가 필요한 조회 Port·응답 DTO 또는 Adapter>
+
+[입력]
+<필요한 입력값>
+
+[출력]
+<필요한 반환값 또는 처리 결과>
+
+[필요한 이유]
+<현재 도메인에서 이 기능이 필요한 이유>
+
+[영향 범위]
+<변경으로 영향을 받는 기능 또는 도메인>
+```
+
+- 대상 모듈 담당자가 Adapter 구현 여부와 조회 범위를 결정한다.
+- 요청 모듈은 대상 모듈의 Entity·Repository를 직접 참조하지 않는다.
+
+## 새 모듈 추가 기준
+
+다음 중 하나 이상이면 새 모듈 분리를 검토한다.
+
+- 독립된 핵심 비즈니스 규칙과 상태 전이 보유
+- 명확히 분리 가능한 데이터 소유권 보유
+- 기존 모듈과 다른 담당자 또는 변경 주기
+- 다른 모듈에 공개 계약으로 제공할 독립 기능 보유
+
+다음은 새 모듈 분리 사유가 아니다.
+
+- 단순 CRUD
+- 화면 전용 데이터 조합
+- 기존 Aggregate 내부에서 처리 가능한 기능
+- 특정 모듈의 부가 기능

@@ -5,128 +5,123 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import com.academy.mudogroupware.global.error.BusinessException;
+import com.academy.mudogroupware.approval.domain.exception.ApprovalErrorCode;
+import com.academy.mudogroupware.approval.domain.exception.ApprovalException;
 
 public final class ApprovalTemplate {
 
     private final Long id;
-    private final String title;
-    private final ApprovalContent content;
+    private final Long academyId;
+    private String name;
     private final Long creatorId;
-    private final List<ApprovalLine> approvalLines;
-    private ApprovalStatus status;
+    private final List<ApprovalTemplateLine> lines;
     private final LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
-    private ApprovalTemplate(Long id, String title, ApprovalContent content, Long creatorId,
-                              List<ApprovalLine> approvalLines, ApprovalStatus status, LocalDateTime createdAt) {
-        if (title == null || title.isBlank()) {
-            throw new BusinessException(ApprovalErrorCode.INVALID_TITLE);
+    private ApprovalTemplate(Long id, Long academyId, String name, Long creatorId, List<ApprovalTemplateLine> lines,
+                              LocalDateTime createdAt, LocalDateTime updatedAt) {
+        if (academyId == null) {
+            throw new IllegalArgumentException("academyId must not be null");
         }
-        if (content == null) {
-            throw new IllegalArgumentException("content must not be null");
+        if (name == null || name.isBlank()) {
+            throw new ApprovalException(ApprovalErrorCode.TEMPLATE_NAME_REQUIRED);
         }
         if (creatorId == null) {
             throw new IllegalArgumentException("creatorId must not be null");
         }
-        if (approvalLines == null || approvalLines.isEmpty()) {
-            throw new BusinessException(ApprovalErrorCode.NO_APPROVAL_LINES);
+        if (lines == null) {
+            throw new IllegalArgumentException("lines must not be null");
+        }
+        if (createdAt == null) {
+            throw new IllegalArgumentException("createdAt must not be null");
+        }
+        if (updatedAt == null) {
+            throw new IllegalArgumentException("updatedAt must not be null");
         }
         this.id = id;
-        this.title = title;
-        this.content = content;
+        this.academyId = academyId;
+        this.name = name;
         this.creatorId = creatorId;
-        this.approvalLines = new ArrayList<>(approvalLines);
-        this.status = status;
+        this.lines = new ArrayList<>(lines);
         this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
     }
 
-    public static ApprovalTemplate create(String title, ApprovalContent content, Long creatorId, List<Long> approverIds) {
-        List<ApprovalLine> lines = new ArrayList<>();
+    public static ApprovalTemplate create(Long academyId, String name, Long creatorId, List<Long> approverIds,
+                                           LocalDateTime now) {
+        List<ApprovalTemplateLine> lines = buildLines(approverIds);
+        if (lines.isEmpty()) {
+            throw new ApprovalException(ApprovalErrorCode.LINES_REQUIRED);
+        }
+        return new ApprovalTemplate(null, academyId, name, creatorId, lines, now, now);
+    }
+
+    public static ApprovalTemplate restore(Long id, Long academyId, String name, Long creatorId,
+                                            List<ApprovalTemplateLine> lines, LocalDateTime createdAt,
+                                            LocalDateTime updatedAt) {
+        return new ApprovalTemplate(id, academyId, name, creatorId, lines, createdAt, updatedAt);
+    }
+
+    public void update(String name, List<Long> approverIds, LocalDateTime now) {
+        if (now == null) {
+            throw new IllegalArgumentException("now must not be null");
+        }
+        if (name == null || name.isBlank()) {
+            throw new ApprovalException(ApprovalErrorCode.TEMPLATE_NAME_REQUIRED);
+        }
+        List<ApprovalTemplateLine> newLines = buildLines(approverIds);
+        if (newLines.isEmpty()) {
+            throw new ApprovalException(ApprovalErrorCode.LINES_REQUIRED);
+        }
+        this.name = name;
+        this.lines.clear();
+        this.lines.addAll(newLines);
+        this.updatedAt = now;
+    }
+
+    private static List<ApprovalTemplateLine> buildLines(List<Long> approverIds) {
+        List<ApprovalTemplateLine> lines = new ArrayList<>();
         int order = 1;
         if (approverIds != null) {
             for (Long approverId : approverIds) {
-                lines.add(ApprovalLine.create(order++, approverId));
+                lines.add(ApprovalTemplateLine.create(order++, approverId));
             }
         }
-        return new ApprovalTemplate(null, title, content, creatorId, lines, ApprovalStatus.IN_PROGRESS, LocalDateTime.now());
+        return lines;
     }
 
-    public static ApprovalTemplate restore(Long id, String title, ApprovalContent content, Long creatorId,
-                                            List<ApprovalLine> approvalLines, ApprovalStatus status, LocalDateTime createdAt) {
-        return new ApprovalTemplate(id, title, content, creatorId, approvalLines, status, createdAt);
-    }
-
-    public void decide(Long approverId, ApprovalDecision decision, String comment) {
-        if (this.status != ApprovalStatus.IN_PROGRESS) {
-            throw new BusinessException(ApprovalErrorCode.ALREADY_DECIDED);
-        }
-        ApprovalLine currentLine = currentPendingLine();
-        if (currentLine == null) {
-            throw new BusinessException(ApprovalErrorCode.ALREADY_DECIDED);
-        }
-        if (!currentLine.getApproverId().equals(approverId)) {
-            throw new BusinessException(ApprovalErrorCode.NOT_YOUR_TURN);
-        }
-
-        if (decision == ApprovalDecision.APPROVE) {
-            currentLine.approve(comment);
-            activateNextLine(currentLine.getStepOrder());
-            if (isAllApproved()) {
-                this.status = ApprovalStatus.APPROVED;
-            }
-        } else {
-            currentLine.reject(comment);
-            this.status = ApprovalStatus.REJECTED;
-        }
-    }
-
-    public boolean isApprover(Long userId) {
-        return approvalLines.stream().anyMatch(line -> line.getApproverId().equals(userId));
-    }
-
-    private ApprovalLine currentPendingLine() {
-        return approvalLines.stream()
-                .filter(line -> line.getStatus() == ApprovalLineStatus.PENDING)
-                .findFirst()
-                .orElse(null);
-    }
-
-    private void activateNextLine(int currentStepOrder) {
-        approvalLines.stream()
-                .filter(line -> line.getStepOrder() == currentStepOrder + 1)
-                .findFirst()
-                .ifPresent(ApprovalLine::activate);
-    }
-
-    private boolean isAllApproved() {
-        return approvalLines.stream().allMatch(line -> line.getStatus() == ApprovalLineStatus.APPROVED);
+    public List<Long> approverIdsInOrder() {
+        return lines.stream()
+                .sorted((a, b) -> Integer.compare(a.getStepOrder(), b.getStepOrder()))
+                .map(ApprovalTemplateLine::getApproverId)
+                .toList();
     }
 
     public Long getId() {
         return id;
     }
 
-    public String getTitle() {
-        return title;
+    public Long getAcademyId() {
+        return academyId;
     }
 
-    public ApprovalContent getContent() {
-        return content;
+    public String getName() {
+        return name;
     }
 
     public Long getCreatorId() {
         return creatorId;
     }
 
-    public List<ApprovalLine> getApprovalLines() {
-        return Collections.unmodifiableList(approvalLines);
-    }
-
-    public ApprovalStatus getStatus() {
-        return status;
+    public List<ApprovalTemplateLine> getLines() {
+        return Collections.unmodifiableList(lines);
     }
 
     public LocalDateTime getCreatedAt() {
         return createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
     }
 }

@@ -1,3 +1,30 @@
 package com.academy.mudogroupware.file.infrastructure.s3;
-import lombok.RequiredArgsConstructor; import org.springframework.context.annotation.*; import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider; import software.amazon.awssdk.regions.Region; import software.amazon.awssdk.services.s3.S3Client; import software.amazon.awssdk.services.s3.presigner.S3Presigner;
-@Configuration @RequiredArgsConstructor public class S3Config { private final S3Properties p; @Bean S3Client s3Client(){return S3Client.builder().region(Region.of(p.region())).credentialsProvider(DefaultCredentialsProvider.builder().build()).build();} @Bean S3Presigner s3Presigner(){return S3Presigner.builder().region(Region.of(p.region())).credentialsProvider(DefaultCredentialsProvider.builder().build()).build();} }
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.*;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+
+@Configuration
+@RequiredArgsConstructor
+public class S3Config {
+  private final S3Properties p;
+
+  @Bean
+  S3Client s3Client() {
+    return S3Client.builder()
+        .region(Region.of(p.region()))
+        .credentialsProvider(DefaultCredentialsProvider.builder().build())
+        .build();
+  }
+
+  @Bean
+  S3Presigner s3Presigner() {
+    return S3Presigner.builder()
+        .region(Region.of(p.region()))
+        .credentialsProvider(DefaultCredentialsProvider.builder().build())
+        .build();
+  }
+}
