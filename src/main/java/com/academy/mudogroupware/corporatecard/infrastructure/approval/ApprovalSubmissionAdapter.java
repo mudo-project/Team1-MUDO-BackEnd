@@ -1,6 +1,7 @@
 package com.academy.mudogroupware.corporatecard.infrastructure.approval;
 
 import org.springframework.stereotype.Component;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
@@ -23,9 +24,9 @@ public class ApprovalSubmissionAdapter implements ApprovalSubmissionPort {
     private final ApprovalDocumentJpaRepository approvalDocumentJpaRepository;
 
     @Override
-    public Long submit(Long templateId, Long creatorId, String title, String content) {
+    public Long submit(Long templateId, Long creatorId, String title, String content, List<Long> approverIds) {
         return createApprovalDocumentUseCase.createDocument(new CreateApprovalDocumentCommand(
-                templateId, title, ApprovalContentType.TEXT, content, null, creatorId, null, null, null));
+                templateId, title, ApprovalContentType.TEXT, content, null, creatorId, approverIds, null, null));
     }
 
     @Override

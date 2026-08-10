@@ -87,7 +87,8 @@ public class CorporateCardExpenseService {
         }
         String title = "법인카드 사용내역 정산 - " + transaction.merchantName();
         String content = "사용 분류: " + command.expenseCategory().displayName() + "\n사용 내용: " + command.purpose();
-        Long documentId = approvalSubmissionPort.submit(transaction.approvalTemplateId(), command.userId(), title, content);
+        Long documentId = approvalSubmissionPort.submit(
+                transaction.approvalTemplateId(), command.userId(), title, content, command.approverIds());
         LocalDateTime now = LocalDateTime.now();
         CardExpensePort.ExpenseView saved = expense == null
                 ? expensePort.create(transaction.id(), command.userId(), command.expenseCategory(), command.purpose(), documentId, now)
