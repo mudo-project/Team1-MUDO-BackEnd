@@ -14,8 +14,10 @@ import com.academy.mudogroupware.file.application.usecase.GeneratePresignedUploa
 import com.academy.mudogroupware.file.application.usecase.GetFileDownloadUrlUseCase;
 import com.academy.mudogroupware.file.application.usecase.RegisterFileUseCase;
 import com.academy.mudogroupware.file.presentation.api.common.FileResponseCode;
+import com.academy.mudogroupware.file.presentation.api.request.BatchFileDownloadUrlRequest;
 import com.academy.mudogroupware.file.presentation.api.request.GeneratePresignedUploadUrlRequest;
 import com.academy.mudogroupware.file.presentation.api.request.RegisterFileRequest;
+import com.academy.mudogroupware.file.presentation.api.response.BatchFileDownloadUrlResponse;
 import com.academy.mudogroupware.file.presentation.api.response.FileDownloadUrlResponse;
 import com.academy.mudogroupware.file.presentation.api.response.PresignedUploadUrlResponse;
 import com.academy.mudogroupware.file.presentation.api.response.RegisterFileResponse;
@@ -66,5 +68,16 @@ public class FileController {
         String downloadUrl = getFileDownloadUrlUseCase.getDownloadUrl(fileId);
         return ResponseEntity.ok(GlobalApiResponse.ok(FileResponseCode.DOWNLOAD_URL_RETRIEVED,
                 FileDownloadUrlResponse.from(downloadUrl)));
+    }
+
+    @Operation(summary = "다운로드용 URL 일괄 조회",
+            description = "메시지 목록처럼 여러 첨부파일을 한 화면에 표시해야 할 때, fileId 개수만큼 반복 호출하지 않도록 "
+                    + "한 번에 조회한다. 존재하지 않는 fileId는 결과에서 조용히 빠진다(전체 요청이 실패하지 않음).")
+    @PostMapping("/download-urls")
+    public ResponseEntity<GlobalApiResponse<BatchFileDownloadUrlResponse>> getDownloadUrls(
+            @Valid @RequestBody BatchFileDownloadUrlRequest request) {
+        var downloadUrls = getFileDownloadUrlUseCase.getDownloadUrls(request.fileIds());
+        return ResponseEntity.ok(GlobalApiResponse.ok(FileResponseCode.DOWNLOAD_URLS_RETRIEVED,
+                BatchFileDownloadUrlResponse.from(downloadUrls)));
     }
 }

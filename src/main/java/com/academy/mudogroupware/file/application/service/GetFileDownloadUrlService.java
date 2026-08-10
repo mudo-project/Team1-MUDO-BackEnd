@@ -1,5 +1,9 @@
 package com.academy.mudogroupware.file.application.service;
 
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,5 +29,15 @@ public class GetFileDownloadUrlService implements GetFileDownloadUrlUseCase {
         FileMetadataEntity metadata = fileMetadataJpaRepository.findById(fileId)
                 .orElseThrow(() -> new FileException(FileErrorCode.FILE_NOT_FOUND));
         return fileStoragePort.generatePresignedDownloadUrl(metadata.getObjectKey());
+    }
+
+    @Override
+    public Map<Long, String> getDownloadUrls(List<Long> fileIds) {
+        if (fileIds == null || fileIds.isEmpty()) {
+            return Map.of();
+        }
+        return fileMetadataJpaRepository.findAllById(fileIds).stream()
+                .collect(Collectors.toMap(FileMetadataEntity::getId,
+                        metadata -> fileStoragePort.generatePresignedDownloadUrl(metadata.getObjectKey())));
     }
 }
