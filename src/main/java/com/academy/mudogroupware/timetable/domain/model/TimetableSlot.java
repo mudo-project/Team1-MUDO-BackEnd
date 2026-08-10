@@ -5,6 +5,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 
+import com.academy.mudogroupware.timetable.domain.exception.InvalidTimetableSlotException;
+
 public final class TimetableSlot {
 
     private final Long id;
@@ -14,7 +16,7 @@ public final class TimetableSlot {
     private String classroomCode;
     private LocalTime startTime;
     private LocalTime endTime;
-    private String grade;
+    private Grade grade;
     private String teacherName;
     private String subjectName;
     private LocalDate effectiveFrom;
@@ -23,26 +25,29 @@ public final class TimetableSlot {
     private final LocalDateTime updatedAt;
 
     private TimetableSlot(Long id, Long timetableSetId, ClassType classType, DayOfWeek dayOfWeek,
-                           String classroomCode, LocalTime startTime, LocalTime endTime, String grade,
+                           String classroomCode, LocalTime startTime, LocalTime endTime, Grade grade,
                            String teacherName, String subjectName, LocalDate effectiveFrom,
                            LocalDate effectiveUntil, LocalDateTime createdAt, LocalDateTime updatedAt) {
         if (timetableSetId == null) {
-            throw new IllegalArgumentException("timetableSetId must not be null");
+            throw new InvalidTimetableSlotException("timetableSetId");
         }
         if (classType == null) {
-            throw new IllegalArgumentException("classType must not be null");
+            throw new InvalidTimetableSlotException("classType");
         }
         if (dayOfWeek == null) {
-            throw new IllegalArgumentException("dayOfWeek must not be null");
+            throw new InvalidTimetableSlotException("dayOfWeek");
         }
         if (classroomCode == null || classroomCode.isBlank()) {
-            throw new IllegalArgumentException("classroomCode must not be blank");
+            throw new InvalidTimetableSlotException("classroomCode");
         }
         if (startTime == null || endTime == null || !startTime.isBefore(endTime)) {
-            throw new IllegalArgumentException("startTime must be before endTime");
+            throw new InvalidTimetableSlotException("timeRange");
+        }
+        if (grade == null) {
+            throw new InvalidTimetableSlotException("grade");
         }
         if (effectiveFrom == null || effectiveUntil == null || effectiveUntil.isBefore(effectiveFrom)) {
-            throw new IllegalArgumentException("effectiveUntil must not be before effectiveFrom");
+            throw new InvalidTimetableSlotException("effectivePeriod");
         }
         this.id = id;
         this.timetableSetId = timetableSetId;
@@ -61,7 +66,7 @@ public final class TimetableSlot {
     }
 
     public static TimetableSlot create(Long timetableSetId, ClassType classType, DayOfWeek dayOfWeek,
-                                        String classroomCode, LocalTime startTime, LocalTime endTime, String grade,
+                                        String classroomCode, LocalTime startTime, LocalTime endTime, Grade grade,
                                         String teacherName, String subjectName, LocalDate effectiveFrom,
                                         LocalDate effectiveUntil) {
         return new TimetableSlot(null, timetableSetId, classType, dayOfWeek, classroomCode, startTime, endTime,
@@ -69,7 +74,7 @@ public final class TimetableSlot {
     }
 
     public static TimetableSlot restore(Long id, Long timetableSetId, ClassType classType, DayOfWeek dayOfWeek,
-                                         String classroomCode, LocalTime startTime, LocalTime endTime, String grade,
+                                         String classroomCode, LocalTime startTime, LocalTime endTime, Grade grade,
                                          String teacherName, String subjectName, LocalDate effectiveFrom,
                                          LocalDate effectiveUntil, LocalDateTime createdAt, LocalDateTime updatedAt) {
         return new TimetableSlot(id, timetableSetId, classType, dayOfWeek, classroomCode, startTime, endTime, grade,
@@ -77,12 +82,15 @@ public final class TimetableSlot {
     }
 
     public void applyFullUpdate(ClassType classType, DayOfWeek dayOfWeek, String classroomCode, LocalTime startTime,
-                                 LocalTime endTime, String grade, String teacherName, String subjectName) {
+                                 LocalTime endTime, Grade grade, String teacherName, String subjectName) {
         if (classroomCode == null || classroomCode.isBlank()) {
-            throw new IllegalArgumentException("classroomCode must not be blank");
+            throw new InvalidTimetableSlotException("classroomCode");
         }
         if (startTime == null || endTime == null || !startTime.isBefore(endTime)) {
-            throw new IllegalArgumentException("startTime must be before endTime");
+            throw new InvalidTimetableSlotException("timeRange");
+        }
+        if (grade == null) {
+            throw new InvalidTimetableSlotException("grade");
         }
         this.classType = classType;
         this.dayOfWeek = dayOfWeek;
@@ -95,8 +103,8 @@ public final class TimetableSlot {
     }
 
     public void closeEffectiveUntil(LocalDate newEffectiveUntil) {
-        if (newEffectiveUntil.isBefore(effectiveFrom)) {
-            throw new IllegalArgumentException("newEffectiveUntil must not be before effectiveFrom");
+        if (newEffectiveUntil == null || newEffectiveUntil.isBefore(effectiveFrom)) {
+            throw new InvalidTimetableSlotException("effectiveUntil");
         }
         this.effectiveUntil = newEffectiveUntil;
     }
@@ -139,7 +147,7 @@ public final class TimetableSlot {
         return endTime;
     }
 
-    public String getGrade() {
+    public Grade getGrade() {
         return grade;
     }
 

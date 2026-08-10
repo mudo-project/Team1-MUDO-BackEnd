@@ -22,6 +22,7 @@ import com.academy.mudogroupware.timetable.application.command.CreateTimetableSl
 import com.academy.mudogroupware.timetable.domain.exception.ClassroomTimeConflictException;
 import com.academy.mudogroupware.timetable.domain.exception.TimetableSetNotFoundException;
 import com.academy.mudogroupware.timetable.domain.model.ClassType;
+import com.academy.mudogroupware.timetable.domain.model.Grade;
 import com.academy.mudogroupware.timetable.domain.model.TimetableClassroom;
 import com.academy.mudogroupware.timetable.domain.model.TimetableSet;
 import com.academy.mudogroupware.timetable.domain.model.TimetableSlot;
@@ -56,12 +57,12 @@ class CreateTimetableSlotServiceTest {
         when(timetableSlotRepository.findAllByTimetableSetIdAndClassroomCode(1L, "601")).thenReturn(List.of());
         TimetableSlot saved = TimetableSlot.restore(
                 100L, 1L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                "고3", "정T", "미적분", SET_START, SET_END, null, null);
+                Grade.HIGH_3, "정T", "미적분", SET_START, SET_END, null, null);
         when(timetableSlotRepository.save(any(TimetableSlot.class))).thenReturn(saved);
 
         CreateTimetableSlotCommand command = new CreateTimetableSlotCommand(
                 1L, 1L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                "고3", "정T", "미적분");
+                Grade.HIGH_3, "정T", "미적분");
 
         Long id = service.createSlot(command);
 
@@ -73,7 +74,7 @@ class CreateTimetableSlotServiceTest {
         when(timetableSetRepository.findById(999L)).thenReturn(Optional.empty());
         CreateTimetableSlotCommand command = new CreateTimetableSlotCommand(
                 1L, 999L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                "고3", "정T", "미적분");
+                Grade.HIGH_3, "정T", "미적분");
 
         assertThatThrownBy(() -> service.createSlot(command))
                 .isInstanceOf(TimetableSetNotFoundException.class);
@@ -84,13 +85,13 @@ class CreateTimetableSlotServiceTest {
         when(timetableSetRepository.findById(1L)).thenReturn(Optional.of(timetableSet()));
         TimetableSlot existing = TimetableSlot.restore(
                 50L, 1L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                "고3", "정T", "미적분", SET_START, SET_END, null, null);
+                Grade.HIGH_3, "정T", "미적분", SET_START, SET_END, null, null);
         when(timetableSlotRepository.findAllByTimetableSetIdAndClassroomCode(1L, "601"))
                 .thenReturn(List.of(existing));
 
         CreateTimetableSlotCommand command = new CreateTimetableSlotCommand(
                 1L, 1L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(10, 0), LocalTime.of(12, 0),
-                "고3", "정T", "미적분");
+                Grade.HIGH_3, "정T", "미적분");
 
         assertThatThrownBy(() -> service.createSlot(command))
                 .isInstanceOf(ClassroomTimeConflictException.class);

@@ -23,6 +23,7 @@ import com.academy.mudogroupware.timetable.domain.exception.TimetableSetNotFound
 import com.academy.mudogroupware.timetable.domain.exception.TimetableSlotNotFoundException;
 import com.academy.mudogroupware.timetable.domain.exception.UnsupportedSlotScopeException;
 import com.academy.mudogroupware.timetable.domain.model.ClassType;
+import com.academy.mudogroupware.timetable.domain.model.Grade;
 import com.academy.mudogroupware.timetable.domain.model.TimetableClassroom;
 import com.academy.mudogroupware.timetable.domain.model.TimetableSet;
 import com.academy.mudogroupware.timetable.domain.model.TimetableSlot;
@@ -49,7 +50,7 @@ class UpdateTimetableSlotServiceTest {
     private TimetableSlot existingSlot() {
         return TimetableSlot.restore(
                 100L, 1L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                "고3", "정T", "미적분", FROM, UNTIL, null, null);
+                Grade.HIGH_3, "정T", "미적분", FROM, UNTIL, null, null);
     }
 
     private TimetableSet timetableSet(Long academyId) {
@@ -66,7 +67,7 @@ class UpdateTimetableSlotServiceTest {
         when(timetableSlotRepository.findAllByTimetableSetIdAndClassroomCode(1L, "602")).thenReturn(List.of());
         UpdateTimetableSlotCommand command = new UpdateTimetableSlotCommand(
                 1L, 1L, 100L, UpdateScope.ALL, ClassType.SPECIAL, DayOfWeek.TUESDAY, "602",
-                LocalTime.of(13, 0), LocalTime.of(15, 0), "고2", "오T", "물리");
+                LocalTime.of(13, 0), LocalTime.of(15, 0), Grade.HIGH_2, "오T", "물리");
 
         service.updateSlot(command);
 
@@ -77,7 +78,7 @@ class UpdateTimetableSlotServiceTest {
     void updateSlotThrowsWhenScopeIsNotAll() {
         UpdateTimetableSlotCommand command = new UpdateTimetableSlotCommand(
                 1L, 1L, 100L, UpdateScope.THIS_OCCURRENCE, ClassType.CLASS, DayOfWeek.MONDAY, "601",
-                LocalTime.of(9, 0), LocalTime.of(11, 0), "고3", "정T", "미적분");
+                LocalTime.of(9, 0), LocalTime.of(11, 0), Grade.HIGH_3, "정T", "미적분");
 
         assertThatThrownBy(() -> service.updateSlot(command))
                 .isInstanceOf(UnsupportedSlotScopeException.class);
@@ -88,7 +89,7 @@ class UpdateTimetableSlotServiceTest {
         when(timetableSetRepository.findById(999L)).thenReturn(Optional.empty());
         UpdateTimetableSlotCommand command = new UpdateTimetableSlotCommand(
                 1L, 999L, 100L, UpdateScope.ALL, ClassType.CLASS, DayOfWeek.MONDAY, "601",
-                LocalTime.of(9, 0), LocalTime.of(11, 0), "고3", "정T", "미적분");
+                LocalTime.of(9, 0), LocalTime.of(11, 0), Grade.HIGH_3, "정T", "미적분");
 
         assertThatThrownBy(() -> service.updateSlot(command))
                 .isInstanceOf(TimetableSetNotFoundException.class);
@@ -99,7 +100,7 @@ class UpdateTimetableSlotServiceTest {
         when(timetableSetRepository.findById(1L)).thenReturn(Optional.of(timetableSet(2L)));
         UpdateTimetableSlotCommand command = new UpdateTimetableSlotCommand(
                 1L, 1L, 100L, UpdateScope.ALL, ClassType.CLASS, DayOfWeek.MONDAY, "601",
-                LocalTime.of(9, 0), LocalTime.of(11, 0), "고3", "정T", "미적분");
+                LocalTime.of(9, 0), LocalTime.of(11, 0), Grade.HIGH_3, "정T", "미적분");
 
         assertThatThrownBy(() -> service.updateSlot(command))
                 .isInstanceOf(TimetableSetNotFoundException.class);
@@ -111,7 +112,7 @@ class UpdateTimetableSlotServiceTest {
         when(timetableSlotRepository.findById(999L)).thenReturn(Optional.empty());
         UpdateTimetableSlotCommand command = new UpdateTimetableSlotCommand(
                 1L, 1L, 999L, UpdateScope.ALL, ClassType.CLASS, DayOfWeek.MONDAY, "601",
-                LocalTime.of(9, 0), LocalTime.of(11, 0), "고3", "정T", "미적분");
+                LocalTime.of(9, 0), LocalTime.of(11, 0), Grade.HIGH_3, "정T", "미적분");
 
         assertThatThrownBy(() -> service.updateSlot(command))
                 .isInstanceOf(TimetableSlotNotFoundException.class);
@@ -124,12 +125,12 @@ class UpdateTimetableSlotServiceTest {
         when(timetableSlotRepository.findById(100L)).thenReturn(Optional.of(slot));
         TimetableSlot other = TimetableSlot.restore(
                 200L, 1L, ClassType.CLASS, DayOfWeek.TUESDAY, "602", LocalTime.of(13, 0), LocalTime.of(15, 0),
-                "고2", "오T", "물리", FROM, UNTIL, null, null);
+                Grade.HIGH_2, "오T", "물리", FROM, UNTIL, null, null);
         when(timetableSlotRepository.findAllByTimetableSetIdAndClassroomCode(1L, "602")).thenReturn(List.of(other));
 
         UpdateTimetableSlotCommand command = new UpdateTimetableSlotCommand(
                 1L, 1L, 100L, UpdateScope.ALL, ClassType.SPECIAL, DayOfWeek.TUESDAY, "602",
-                LocalTime.of(14, 0), LocalTime.of(16, 0), "고2", "오T", "물리");
+                LocalTime.of(14, 0), LocalTime.of(16, 0), Grade.HIGH_2, "오T", "물리");
 
         assertThatThrownBy(() -> service.updateSlot(command))
                 .isInstanceOf(ClassroomTimeConflictException.class);
