@@ -6,6 +6,7 @@ import java.util.Optional;
 
 import org.springframework.stereotype.Repository;
 
+import com.academy.mudogroupware.users.domain.exception.AcademyApplicationAlreadyReviewedException;
 import com.academy.mudogroupware.users.domain.model.AcademyApplication;
 import com.academy.mudogroupware.users.domain.repository.AcademyApplicationRepository;
 
@@ -45,9 +46,10 @@ public class AcademyApplicationRepositoryImpl implements AcademyApplicationRepos
 
     @Override
     public void markApproved(Long id, Long reviewerId, LocalDateTime reviewedAt) {
-        AcademyApplicationEntity entity = academyApplicationJpaRepository.findById(id)
-                .orElseThrow(() -> new IllegalStateException("방금 조회한 신청서를 찾을 수 없습니다: " + id));
-        entity.markApproved(reviewerId, reviewedAt);
+        int updated = academyApplicationJpaRepository.markApprovedIfPending(id, reviewerId, reviewedAt);
+        if (updated == 0) {
+            throw new AcademyApplicationAlreadyReviewedException();
+        }
     }
 
     @Override
