@@ -303,6 +303,6 @@ Content-Disposition: attachment; filename="attendance_1_2026-08-06.xlsx"
 
 ## SMS 발송 상태
 
-솔라피(SOLAPI) REST API로 실제 발송을 구현했다(2026-08-10). 발송 이력 저장, 실패 자동 재시도, 과금 정책은 아직 없다 — 요청/응답으로만 성공·실패를 즉시 확인한다.
+솔라피(SOLAPI) REST API로 실제 발송을 구현했다(2026-08-10). 실제 발송 테스트로 정상 접수(`statusCode: "2000"`)와 실제 수신까지 확인했다. 발송 이력 저장, 실패 자동 재시도, 과금 정책은 아직 없다 — 요청/응답으로만 성공·실패를 즉시 확인한다.
 
 필요한 환경변수: `SOLAPI_API_KEY`, `SOLAPI_API_SECRET`, `SOLAPI_SENDER_NUMBER`(사전에 솔라피에 등록된 발신번호).
