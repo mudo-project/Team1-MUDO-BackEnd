@@ -90,7 +90,7 @@ public class WorkspaceController {
       @AuthenticationPrincipal AuthUser authUser,
       @RequestParam(defaultValue = "MINE") WorkspaceListScope scope) {
     List<WorkspaceListResponse> response =
-        workspaceQueryUseCase.getWorkspaces(authUser.academyId(), authUser.userId(), scope).stream()
+        workspaceQueryUseCase.getWorkspaces(authUser.userId(), scope).stream()
             .map(WorkspaceListResponse::from)
             .toList();
 
@@ -135,7 +135,7 @@ public class WorkspaceController {
             .anyMatch(authority -> WORKSPACE_READ_ALL_AUTHORITY.equals(authority.getAuthority()));
 
     recordWorkspaceRecentAccessUseCase.recordRecentAccess(
-        authUser.academyId(), authUser.userId(), workspaceId, canReadAll);
+        authUser.userId(), workspaceId, canReadAll);
     return ResponseEntity.noContent().build();
   }
 
@@ -161,7 +161,7 @@ public class WorkspaceController {
 
     var detail =
         workspaceDetailQueryUseCase.getWorkspaceDetail(
-            authUser.academyId(), authUser.userId(), workspaceId, targetDate, canReadAll);
+            authUser.userId(), workspaceId, targetDate, canReadAll);
 
     return ResponseEntity.ok(
         GlobalApiResponse.ok(

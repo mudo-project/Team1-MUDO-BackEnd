@@ -17,7 +17,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 @Import({TimeConfig.class, WorkspaceListQueryAdapter.class})
 class WorkspaceListQueryAdapterDataJpaTest {
 
-  private static final long ACADEMY_ID = 1L;
   private static final long REQUESTER_ID = 10L;
 
   @Autowired private JdbcTemplate jdbcTemplate;
@@ -26,15 +25,15 @@ class WorkspaceListQueryAdapterDataJpaTest {
 
   @Test
   void findMineOrdersRequesterRecentAccessByNewestFirstAndCountsCurrentMembers() {
-    insertWorkspace(1L, ACADEMY_ID, "older-access", at(1));
-    insertWorkspace(2L, ACADEMY_ID, "newer-access", at(2));
+    insertWorkspace(1L, "older-access", at(1));
+    insertWorkspace(2L, "newer-access", at(2));
     insertMember(1L, REQUESTER_ID);
     insertMember(1L, 20L);
     insertMember(2L, REQUESTER_ID);
     insertRecentAccess(REQUESTER_ID, 1L, at(4));
     insertRecentAccess(REQUESTER_ID, 2L, at(5));
 
-    List<WorkspaceListItem> result = workspaceListQueryAdapter.findMine(ACADEMY_ID, REQUESTER_ID);
+    List<WorkspaceListItem> result = workspaceListQueryAdapter.findMine(REQUESTER_ID);
 
     assertThat(result)
         .extracting(WorkspaceListItem::workspaceId, WorkspaceListItem::memberCount)
@@ -43,10 +42,10 @@ class WorkspaceListQueryAdapterDataJpaTest {
 
   @Test
   void findMinePlacesUnvisitedRowsAfterVisitedRowsByCreatedAtAndIgnoresAnotherUsersAccess() {
-    insertWorkspace(1L, ACADEMY_ID, "visited", at(1));
-    insertWorkspace(2L, ACADEMY_ID, "unvisited-old", at(2));
-    insertWorkspace(3L, ACADEMY_ID, "unvisited-new", at(3));
-    insertWorkspace(4L, ACADEMY_ID, "another-user-access", at(4));
+    insertWorkspace(1L, "visited", at(1));
+    insertWorkspace(2L, "unvisited-old", at(2));
+    insertWorkspace(3L, "unvisited-new", at(3));
+    insertWorkspace(4L, "another-user-access", at(4));
     insertMember(1L, REQUESTER_ID);
     insertMember(2L, REQUESTER_ID);
     insertMember(3L, REQUESTER_ID);
@@ -54,7 +53,7 @@ class WorkspaceListQueryAdapterDataJpaTest {
     insertRecentAccess(REQUESTER_ID, 1L, at(5));
     insertRecentAccess(99L, 4L, at(6));
 
-    List<WorkspaceListItem> result = workspaceListQueryAdapter.findMine(ACADEMY_ID, REQUESTER_ID);
+    List<WorkspaceListItem> result = workspaceListQueryAdapter.findMine(REQUESTER_ID);
 
     assertThat(result)
         .extracting(WorkspaceListItem::workspaceId)
@@ -62,17 +61,15 @@ class WorkspaceListQueryAdapterDataJpaTest {
   }
 
   @Test
-  void findAllExcludesDifferentAcademyAndSoftDeletedWorkspaces() {
-    insertWorkspace(1L, ACADEMY_ID, "included", at(1));
-    insertWorkspace(2L, 2L, "different-academy", at(2));
-    insertWorkspace(3L, ACADEMY_ID, "deleted", at(3));
+  void findAllExcludesSoftDeletedWorkspaces() {
+    insertWorkspace(1L, "included", at(1));
+    insertWorkspace(3L, "deleted", at(3));
     insertMember(1L, REQUESTER_ID);
     insertMember(1L, 20L);
-    insertMember(2L, REQUESTER_ID);
     insertMember(3L, REQUESTER_ID);
     markWorkspaceDeleted(3L, at(4));
 
-    List<WorkspaceListItem> result = workspaceListQueryAdapter.findAll(ACADEMY_ID, REQUESTER_ID);
+    List<WorkspaceListItem> result = workspaceListQueryAdapter.findAll(REQUESTER_ID);
 
     assertThat(result)
         .extracting(WorkspaceListItem::workspaceId, WorkspaceListItem::memberCount)
@@ -81,15 +78,15 @@ class WorkspaceListQueryAdapterDataJpaTest {
 
   @Test
   void findAllOrdersOnlyRequestersRecentAccessAndIgnoresAnotherUsersAccess() {
-    insertWorkspace(1L, ACADEMY_ID, "requester-older-access", at(4));
-    insertWorkspace(2L, ACADEMY_ID, "requester-newer-access", at(3));
-    insertWorkspace(3L, ACADEMY_ID, "another-user-access", at(2));
-    insertWorkspace(4L, ACADEMY_ID, "unvisited", at(1));
+    insertWorkspace(1L, "requester-older-access", at(4));
+    insertWorkspace(2L, "requester-newer-access", at(3));
+    insertWorkspace(3L, "another-user-access", at(2));
+    insertWorkspace(4L, "unvisited", at(1));
     insertRecentAccess(REQUESTER_ID, 1L, at(5));
     insertRecentAccess(REQUESTER_ID, 2L, at(6));
     insertRecentAccess(99L, 3L, at(7));
 
-    List<WorkspaceListItem> result = workspaceListQueryAdapter.findAll(ACADEMY_ID, REQUESTER_ID);
+    List<WorkspaceListItem> result = workspaceListQueryAdapter.findAll(REQUESTER_ID);
 
     assertThat(result)
         .extracting(WorkspaceListItem::workspaceId)
@@ -98,54 +95,37 @@ class WorkspaceListQueryAdapterDataJpaTest {
 
   @Test
   void findAllUsesWorkspaceIdAsFinalTieBreakerWhenRecentAccessAndCreatedAtMatch() {
-    insertWorkspace(1L, ACADEMY_ID, "first", at(1));
-    insertWorkspace(2L, ACADEMY_ID, "second", at(1));
+    insertWorkspace(1L, "first", at(1));
+    insertWorkspace(2L, "second", at(1));
     insertRecentAccess(REQUESTER_ID, 1L, at(2));
     insertRecentAccess(REQUESTER_ID, 2L, at(2));
 
-    List<WorkspaceListItem> result = workspaceListQueryAdapter.findAll(ACADEMY_ID, REQUESTER_ID);
+    List<WorkspaceListItem> result = workspaceListQueryAdapter.findAll(REQUESTER_ID);
 
     assertThat(result).extracting(WorkspaceListItem::workspaceId).containsExactly(2L, 1L);
   }
 
   @Test
   void existsAccessibleRequiresMembershipUnlessRequesterCanReadAll() {
-    insertWorkspace(1L, ACADEMY_ID, "member", at(1));
-    insertWorkspace(2L, ACADEMY_ID, "non-member", at(2));
-    insertWorkspace(3L, ACADEMY_ID, "deleted", at(3));
+    insertWorkspace(1L, "member", at(1));
+    insertWorkspace(2L, "non-member", at(2));
+    insertWorkspace(3L, "deleted", at(3));
     insertMember(1L, REQUESTER_ID);
     markWorkspaceDeleted(3L, at(4));
 
-    assertThat(workspaceListQueryAdapter.existsAccessible(1L, ACADEMY_ID, REQUESTER_ID, false))
-        .isTrue();
-    assertThat(workspaceListQueryAdapter.existsAccessible(2L, ACADEMY_ID, REQUESTER_ID, false))
-        .isFalse();
-    assertThat(workspaceListQueryAdapter.existsAccessible(2L, ACADEMY_ID, REQUESTER_ID, true))
-        .isTrue();
-    assertThat(workspaceListQueryAdapter.existsAccessible(3L, ACADEMY_ID, REQUESTER_ID, true))
-        .isFalse();
+    assertThat(workspaceListQueryAdapter.existsAccessible(1L, REQUESTER_ID, false)).isTrue();
+    assertThat(workspaceListQueryAdapter.existsAccessible(2L, REQUESTER_ID, false)).isFalse();
+    assertThat(workspaceListQueryAdapter.existsAccessible(2L, REQUESTER_ID, true)).isTrue();
+    assertThat(workspaceListQueryAdapter.existsAccessible(3L, REQUESTER_ID, true)).isFalse();
   }
 
-  @Test
-  void existsAccessibleRejectsWorkspaceFromAnotherAcademyRegardlessOfReadAllPermission() {
-    insertWorkspace(1L, 2L, "another-academy", at(1));
-    insertMember(1L, REQUESTER_ID);
-
-    assertThat(workspaceListQueryAdapter.existsAccessible(1L, ACADEMY_ID, REQUESTER_ID, false))
-        .isFalse();
-    assertThat(workspaceListQueryAdapter.existsAccessible(1L, ACADEMY_ID, REQUESTER_ID, true))
-        .isFalse();
-  }
-
-  private void insertWorkspace(
-      long workspaceId, long academyId, String name, LocalDateTime createdAt) {
+  private void insertWorkspace(long workspaceId, String name, LocalDateTime createdAt) {
     jdbcTemplate.update(
         """
         insert into workspace (workspace_id, academy_id, name, created_by, created_at, updated_at)
-        values (?, ?, ?, ?, ?, ?)
+        values (?, 1, ?, ?, ?, ?)
         """,
         workspaceId,
-        academyId,
         name,
         REQUESTER_ID,
         createdAt,
