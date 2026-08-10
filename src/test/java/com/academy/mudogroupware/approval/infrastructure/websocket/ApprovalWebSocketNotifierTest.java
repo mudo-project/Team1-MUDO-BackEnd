@@ -9,14 +9,14 @@ import java.time.LocalDateTime;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import com.academy.mudogroupware.approval.domain.event.ApprovalLineActivatedEvent;
+import com.academy.mudogroupware.global.infrastructure.websocket.WebSocketEventPublisher;
 
 class ApprovalWebSocketNotifierTest {
 
-    private final SimpMessagingTemplate messagingTemplate = mock(SimpMessagingTemplate.class);
-    private final ApprovalWebSocketNotifier notifier = new ApprovalWebSocketNotifier(messagingTemplate);
+    private final WebSocketEventPublisher eventPublisher = mock(WebSocketEventPublisher.class);
+    private final ApprovalWebSocketNotifier notifier = new ApprovalWebSocketNotifier(eventPublisher);
 
     @Test
     void sendsActivatedLineEventToApproverTopic() {
@@ -27,7 +27,7 @@ class ApprovalWebSocketNotifierTest {
 
         ArgumentCaptor<ApprovalLineActivatedSocketResponse> captor =
                 ArgumentCaptor.forClass(ApprovalLineActivatedSocketResponse.class);
-        verify(messagingTemplate).convertAndSend(eq("/topic/approvals/users/2"), captor.capture());
+        verify(eventPublisher).publish(eq("/topic/approvals/users/2"), captor.capture());
         assertThat(captor.getValue().eventType()).isEqualTo("APPROVAL_LINE_ACTIVATED");
         assertThat(captor.getValue().documentId()).isEqualTo(1L);
         assertThat(captor.getValue().approverId()).isEqualTo(2L);

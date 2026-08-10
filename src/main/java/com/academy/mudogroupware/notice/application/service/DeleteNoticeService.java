@@ -23,20 +23,14 @@ public class DeleteNoticeService implements DeleteNoticeUseCase {
     @Override
     public void deleteNotice(Long noticeId, Long requesterId) {
         log.info("event=notice_delete_시작 noticeId={}, requesterId={}", noticeId, requesterId);
-        try {
-            Notice notice = noticeRepository.findById(noticeId)
-                    .orElseThrow(() -> new NoticeException(NoticeErrorCode.NOTICE_NOT_FOUND));
+        Notice notice = noticeRepository.findById(noticeId)
+                .orElseThrow(() -> new NoticeException(NoticeErrorCode.NOTICE_NOT_FOUND));
 
-            if (!notice.isAuthor(requesterId)) {
-                throw new NoticeException(NoticeErrorCode.NOT_AUTHOR_DELETE);
-            }
-
-            noticeRepository.deleteById(noticeId);
-            log.info("event=notice_delete_완료 noticeId={}, requesterId={}", noticeId, requesterId);
-        } catch (RuntimeException e) {
-            log.warn("event=notice_delete_실패 noticeId={}, requesterId={}, reason={}", noticeId, requesterId,
-                    e.getMessage(), e);
-            throw e;
+        if (!notice.isAuthor(requesterId)) {
+            throw new NoticeException(NoticeErrorCode.NOT_AUTHOR_DELETE);
         }
+
+        noticeRepository.deleteById(noticeId);
+        log.info("event=notice_delete_완료 noticeId={}, requesterId={}", noticeId, requesterId);
     }
 }

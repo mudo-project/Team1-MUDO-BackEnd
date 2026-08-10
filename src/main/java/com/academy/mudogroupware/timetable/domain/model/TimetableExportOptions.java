@@ -9,11 +9,10 @@ public record TimetableExportOptions(
 
     private static final TimetableExportColor DEFAULT_COLOR = new TimetableExportColor(255, 255, 255);
 
-    public TimetableExportColor colorFor(String classroomCode, String teacherName, String grade) {
+    public TimetableExportColor colorFor(String classroomCode, String teacherName) {
         String key = switch (colorCriterion) {
             case CLASSROOM -> classroomCode;
             case TEACHER -> teacherName;
-            case GRADE -> grade;
         };
         return key == null ? DEFAULT_COLOR : colorsByGroupValue.getOrDefault(key, DEFAULT_COLOR);
     }

@@ -6,6 +6,7 @@ import java.time.LocalTime;
 
 import com.academy.mudogroupware.global.infrastructure.persistence.BaseTimeEntity;
 import com.academy.mudogroupware.timetable.domain.model.ClassType;
+import com.academy.mudogroupware.timetable.domain.model.Grade;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -51,8 +52,9 @@ public class TimetableSlotEntity extends BaseTimeEntity {
     @Column(name = "end_time", nullable = false)
     private LocalTime endTime;
 
-    @Column(length = 20)
-    private String grade;
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20, nullable = false)
+    private Grade grade;
 
     @Column(name = "teacher_name", length = 50)
     private String teacherName;
@@ -68,7 +70,7 @@ public class TimetableSlotEntity extends BaseTimeEntity {
 
     @Builder
     private TimetableSlotEntity(Long id, Long timetableSetId, ClassType classType, DayOfWeek dayOfWeek,
-                                 String classroomCode, LocalTime startTime, LocalTime endTime, String grade,
+                                 String classroomCode, LocalTime startTime, LocalTime endTime, Grade grade,
                                  String teacherName, String subjectName, LocalDate effectiveFrom,
                                  LocalDate effectiveUntil) {
         this.id = id;
@@ -86,7 +88,7 @@ public class TimetableSlotEntity extends BaseTimeEntity {
     }
 
     public void update(ClassType classType, DayOfWeek dayOfWeek, String classroomCode, LocalTime startTime,
-                        LocalTime endTime, String grade, String teacherName, String subjectName,
+                        LocalTime endTime, Grade grade, String teacherName, String subjectName,
                         LocalDate effectiveFrom, LocalDate effectiveUntil) {
         this.classType = classType;
         this.dayOfWeek = dayOfWeek;

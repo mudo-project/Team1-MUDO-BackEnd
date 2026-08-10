@@ -32,18 +32,13 @@ public class CreateMemoService implements CreateMemoUseCase {
     @Override
     public Long createMemo(CreateMemoCommand command) {
         log.info("event=memo_create_시작 userId={}", command.userId());
-        try {
-            if (memoRepository.countByUserId(command.userId()) >= MAX_MEMO_COUNT_PER_USER) {
-                throw new MemoException(MemoErrorCode.MEMO_LIMIT_EXCEEDED);
-            }
-            Memo memo = Memo.create(command.userId(), command.title(), command.content(), command.color(),
-                    LocalDateTime.now(clock));
-            Long memoId = memoRepository.save(memo).getId();
-            log.info("event=memo_create_완료 userId={}, memoId={}", command.userId(), memoId);
-            return memoId;
-        } catch (RuntimeException e) {
-            log.warn("event=memo_create_실패 userId={}, reason={}", command.userId(), e.getMessage(), e);
-            throw e;
+        if (memoRepository.countByUserId(command.userId()) >= MAX_MEMO_COUNT_PER_USER) {
+            throw new MemoException(MemoErrorCode.MEMO_LIMIT_EXCEEDED);
         }
+        Memo memo = Memo.create(command.userId(), command.title(), command.content(), command.color(),
+                LocalDateTime.now(clock));
+        Long memoId = memoRepository.save(memo).getId();
+        log.info("event=memo_create_완료 userId={}, memoId={}", command.userId(), memoId);
+        return memoId;
     }
 }

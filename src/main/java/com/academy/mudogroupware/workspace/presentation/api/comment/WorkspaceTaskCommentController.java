@@ -28,6 +28,7 @@ import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -40,7 +41,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-// TODO: 권한 모듈의 WORKSPACE:CREATE 권한이 준비되면 @PreAuthorize를 추가한다.
 @Tag(name = "업무 댓글", description = "업무 댓글 및 멘션 CRUD API")
 @RestController
 @RequestMapping("/api/workspaces/{workspaceId}/tasks/{taskId}/comments")
@@ -79,21 +79,26 @@ public class WorkspaceTaskCommentController {
 
   @Operation(
       summary = "댓글 목록 조회",
-      description = "현재 참여자만 조회할 수 있습니다. 생성일 오름차순(오래된 댓글 먼저) 페이지네이션 응답입니다.")
+      description = "현재 참여자이거나 WORKSPACE:READ_ALL 권한 보유자만 조회할 수 있습니다(같은 학원 소속에 한함). 생성일 오름차순(오래된 댓글 먼저) 페이지네이션 응답입니다.")
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "댓글 목록 조회 성공"),
-    @ApiResponse(responseCode = "403", description = "참여자가 아님"),
+    @ApiResponse(responseCode = "403", description = "참여자가 아니고 WORKSPACE:READ_ALL 권한도 없음, 또는 다른 학원 소속"),
     @ApiResponse(responseCode = "404", description = "워크스페이스 또는 업무가 존재하지 않음")
   })
   @GetMapping
   public ResponseEntity<GlobalApiResponse<SliceResponse<TaskCommentListItemResponse>>> getComments(
       @AuthenticationPrincipal AuthUser authUser,
+      Authentication authentication,
       @PathVariable Long workspaceId,
       @PathVariable Long taskId,
       @RequestParam(defaultValue = "0") @Min(0) int page,
       @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
+    boolean canReadAll =
+        authentication.getAuthorities().stream()
+            .anyMatch(authority -> "WORKSPACE:READ_ALL".equals(authority.getAuthority()));
     PageResult<TaskCommentListItem> comments =
-        taskCommentListQueryUseCase.getComments(workspaceId, taskId, authUser.userId(), page, size);
+        taskCommentListQueryUseCase.getComments(
+            workspaceId, taskId, authUser.userId(), page, size, authUser.academyId(), canReadAll);
     SliceResponse<TaskCommentListItemResponse> response =
         SliceResponse.from(comments, TaskCommentListItemResponse::from);
     return ResponseEntity.ok(

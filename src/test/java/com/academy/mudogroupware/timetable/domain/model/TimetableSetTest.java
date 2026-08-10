@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 
 import com.academy.mudogroupware.timetable.domain.exception.DuplicateClassroomCodeException;
 import com.academy.mudogroupware.timetable.domain.exception.InvalidTimetablePeriodException;
+import com.academy.mudogroupware.timetable.domain.exception.InvalidTimetableSetException;
 import com.academy.mudogroupware.timetable.domain.exception.TimetableNameRequiredException;
 
 class TimetableSetTest {
@@ -58,6 +59,16 @@ class TimetableSetTest {
                 1L, "이름", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16),
                 LocalTime.of(8, 30), LocalTime.of(22, 0), DAYS, 30, duplicated))
                 .isInstanceOf(DuplicateClassroomCodeException.class);
+    }
+
+    @Test
+    void createThrowsDomainExceptionWhenOperatingDaysAreMissing() {
+        assertThatThrownBy(() -> TimetableSet.create(
+                1L, "이름", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16),
+                LocalTime.of(8, 30), LocalTime.of(22, 0), Set.of(), 30, CLASSROOMS))
+                .isInstanceOf(InvalidTimetableSetException.class)
+                .satisfies(e -> assertThat(((InvalidTimetableSetException) e).getContext())
+                        .containsEntry("field", "operatingDays"));
     }
 
     @Test

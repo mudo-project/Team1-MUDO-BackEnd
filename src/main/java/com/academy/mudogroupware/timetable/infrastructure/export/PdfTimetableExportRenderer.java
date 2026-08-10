@@ -68,7 +68,7 @@ public class PdfTimetableExportRenderer implements TimetableExportRenderer {
             table.addCell(headerCell);
         }
         for (TimetableSlotView slot : sortedSlots) {
-            TimetableExportColor color = options.colorFor(slot.classroomCode(), slot.teacherName(), slot.grade());
+            TimetableExportColor color = options.colorFor(slot.classroomCode(), slot.teacherName());
             for (String value : TimetableExportLabels.toRow(slot)) {
                 PdfPCell cell = new PdfPCell(new Phrase(value, bodyFont));
                 cell.setMinimumHeight(rowHeightPoints);

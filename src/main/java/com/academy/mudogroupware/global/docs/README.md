@@ -1,6 +1,6 @@
 # 🌐 global 모듈
 
-> 업데이트: 2026-08-04 · 공용 페이지네이션 컴포넌트(`PageResult`, `SliceResponse`)를 추가했습니다.
+> 업데이트: 2026-08-10 · WebSocket 알림 전송 공통 발행기(`WebSocketEventPublisher`)를 추가했습니다.
 
 ## 📦 책임과 범위
 
@@ -20,7 +20,8 @@
 - ⏰ **시간 정책**: `TimeConfig` — `Clock` 빈(`Asia/Seoul` 고정), JPA Auditing용 `DateTimeProvider`
 - 🧱 **공통 타임스탬프 Base Entity**: `CreatedAtEntity`, `BaseTimeEntity`, `SoftDeleteTimeEntity`
 - 📄 **공용 페이지네이션**: `PageResult<T>`(domain 계층), `SliceResponse<T>`(presentation 계층) — `docs/API_CONTRACT.md`의 `page`/`size`/`content`/`hasNext` 규칙을 구현한 프레임워크-비의존 래퍼
-- 🔐 그 외 보안(JWT/CORS), WebSocket, 공통 예외 응답, AOP 성능 로깅, TraceId 필터
+- 🔌 **WebSocket 인프라**: `WebSocketConfig`, `WebSocketEventPublisher` — 도메인 Notifier가 정한 STOMP destination/payload를 실제로 발행
+- 🔐 그 외 보안(JWT/CORS), 공통 예외 응답, AOP 성능 로깅, TraceId 필터
 
 세부 목록과 사용 방법은 [API.md](API.md)를 참고해주세요.
 
@@ -41,6 +42,7 @@
 - 시간대 정책 전체 맥락은 저장소 루트 `docs/DATABASE.md`를 참고해주세요. 요약: **JVM 기본 시간대는 UTC로 유지**하고, 업무적으로 필요한 시각은 시스템 기본값에 의존하지 않고 `TimeConfig`의 `Clock`(`Asia/Seoul` 고정)으로 명시적으로 생성합니다.
 - `CreatedAtEntity`/`BaseTimeEntity`의 `createdAt`/`updatedAt`은 JPA Auditing(`AuditingEntityListener` + `Clock` 기반 `DateTimeProvider`)이 자동으로 채웁니다. 엔티티 안에서 `LocalDateTime.now()`를 직접 호출하지 않습니다.
 - `SoftDeleteTimeEntity`의 `deletedAt`은 Auditing 대상이 아니라 자동으로 채워지지 않습니다. 호출하는 서비스 계층에서 `Clock`을 주입받아 `entity.markDeleted(LocalDateTime.now(clock))` 형태로 명시적으로 호출해야 합니다.
+- 도메인별 WebSocket Notifier는 `SimpMessagingTemplate`를 직접 주입하지 않고 `WebSocketEventPublisher`에 전송을 위임합니다. 알림 payload와 destination 정책은 각 도메인이 소유합니다.
 - `global`에 도메인 비즈니스 규칙이나 도메인 소유 JPA Entity를 추가하지 않습니다(저장소 루트 `docs/ARCHITECTURE.md` 위반).
 
 ## 📚 세부 문서
