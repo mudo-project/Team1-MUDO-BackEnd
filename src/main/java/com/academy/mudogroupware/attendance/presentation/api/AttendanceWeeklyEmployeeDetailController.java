@@ -37,6 +37,6 @@ public class AttendanceWeeklyEmployeeDetailController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return GlobalApiResponse.ok(AttendanceResponseCode.WEEKLY_EMPLOYEE_DETAIL_RETRIEVED,
                 WeeklyEmployeeDetailResponse.from(useCase.getWeeklyDetail(
-                        user.userId(), user.academyId(), userId, date)));
+                        user.userId(), userId, date)));
     }
 }

@@ -21,8 +21,6 @@ import com.academy.mudogroupware.attendance.domain.exception.AttendanceErrorCode
 import com.academy.mudogroupware.attendance.domain.exception.AttendanceException;
 import com.academy.mudogroupware.attendance.domain.model.AttendancePolicy;
 import com.academy.mudogroupware.attendance.domain.model.MyAttendanceDayStatus;
-import com.academy.mudogroupware.attendance.domain.model.OwnedAcademy;
-import com.academy.mudogroupware.attendance.domain.repository.AcademyRepository;
 import com.academy.mudogroupware.attendance.domain.repository.AttendancePolicyRepository;
 import com.academy.mudogroupware.attendance.domain.repository.LeaveRequestRepository;
 import com.academy.mudogroupware.global.domain.common.page.PageResult;
@@ -36,7 +34,6 @@ import lombok.extern.slf4j.Slf4j;
 @Transactional(readOnly = true)
 public class WeeklyEmployeeAttendanceQueryService implements GetWeeklyEmployeeAttendanceUseCase {
 
-    private final AcademyRepository academyRepository;
     private final AttendancePolicyRepository policyRepository;
     private final WeeklyAttendanceQueryPort attendanceQueryPort;
     private final LeaveRequestRepository leaveRequestRepository;
@@ -45,17 +42,13 @@ public class WeeklyEmployeeAttendanceQueryService implements GetWeeklyEmployeeAt
 
     @Override
     public WeeklyEmployeeAttendanceView getWeekly(
-            Long requesterId, Long academyId, LocalDate date, String keyword,
+            Long requesterId, LocalDate date, String keyword,
             MyAttendanceDayStatus status, int page, int size) {
-        log.info("event=attendance_employee_weekly_read_시작 requesterId={}, academyId={}, date={}, page={}, size={}", requesterId, academyId, date, page, size);
+        log.info("event=attendance_employee_weekly_read_시작 requesterId={}={}, date={}, page={}, size={}", requesterId, date, page, size);
         if (date == null || page < 0 || size < 1 || size > 100) {
             throw new AttendanceException(AttendanceErrorCode.INVALID_ATTENDANCE_QUERY_PERIOD);
         }
-        OwnedAcademy academy = academyRepository.findByOwnerUserId(requesterId)
-                .filter(owned -> owned.id().equals(academyId))
-                .orElseThrow(() -> new AttendanceException(
-                        AttendanceErrorCode.TEAM_ATTENDANCE_VIEW_FORBIDDEN));
-        AttendancePolicy policy = policyRepository.findByAcademyId(academy.id())
+        AttendancePolicy policy = policyRepository.findCurrent()
                 .orElseThrow(() -> new AttendanceException(
                         AttendanceErrorCode.ATTENDANCE_POLICY_NOT_FOUND));
 
@@ -64,7 +57,7 @@ public class WeeklyEmployeeAttendanceQueryService implements GetWeeklyEmployeeAt
         LocalDate today = LocalDate.now(clock);
         LocalTimeSnapshot now = new LocalTimeSnapshot(today, java.time.LocalTime.now(clock));
         Map<Long, List<WeeklyAttendanceEmployee>> rows = attendanceQueryPort
-                .findEmployees(academy.id(), academy.ownerUserId(), startDate, endDate)
+                .findEmployees(requesterId, startDate, endDate)
                 .stream().collect(Collectors.groupingBy(
                         WeeklyAttendanceEmployee::userId, LinkedHashMap::new, Collectors.toList()));
 
@@ -75,7 +68,7 @@ public class WeeklyEmployeeAttendanceQueryService implements GetWeeklyEmployeeAt
             MyAttendanceScheduleResolver.WorkSchedule schedule = scheduleResolver.resolve(policy, current);
             boolean workday = schedule.workday();
             schedules.put(current, schedule);
-            approvedLeaves.put(current, leaveRequestRepository.findApprovedUserIds(academy.id(), current));
+            approvedLeaves.put(current, leaveRequestRepository.findApprovedUserIds(current));
             if (workday) {
                 scheduledWorkDays++;
             }
@@ -116,7 +109,7 @@ public class WeeklyEmployeeAttendanceQueryService implements GetWeeklyEmployeeAt
         int to = Math.min(from + size, filtered.size());
         WeeklyEmployeeAttendanceView result = new WeeklyEmployeeAttendanceView(startDate, endDate, scheduledWorkDays,
                 PageResult.of(filtered.subList(from, to), page, size, to < filtered.size()));
-        log.info("event=attendance_employee_weekly_read_완료 academyId={}, count={}", academyId, filtered.size());
+        log.info("event=attendance_employee_weekly_read_완료 count={}", filtered.size());
         return result;
     }
 

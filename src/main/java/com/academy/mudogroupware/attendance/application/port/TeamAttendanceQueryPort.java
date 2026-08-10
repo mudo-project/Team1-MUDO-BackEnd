@@ -5,5 +5,5 @@ import java.util.List;
 
 public interface TeamAttendanceQueryPort {
     List<TeamAttendanceEmployee> findEmployeesWithAttendance(
-            Long academyId, Long ownerUserId, LocalDate workDate);
+            Long ownerUserId, LocalDate workDate);
 }

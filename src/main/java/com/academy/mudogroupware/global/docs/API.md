@@ -1,6 +1,6 @@
 # 🧩 global 공통 컴포넌트
 
-> 업데이트: 2026-08-10 · `WebSocketEventPublisher`를 추가해 도메인 알림 전송이 공통 STOMP 발행기를 거치도록 정리했습니다.
+> 업데이트: 2026-08-10 · `WebSocketEventPublisher`를 추가해 도메인 알림 전송이 공통 STOMP 발행기를 거치도록 정리했고, 도메인별 삭제·정리 배치를 공통 실행하는 `GlobalRetentionScheduler`를 추가했습니다.
 
 `global`은 도메인 모듈이 아니므로 REST 엔드포인트를 공개하지 않습니다. 대신 도메인 모듈이 의존해서 쓰는 공통 Bean/추상 클래스를 "공개 계약"으로 취급합니다. 아래 표는 API.md 표준 형식(엔드포인트/Method/권한)을 이 모듈 성격에 맞게 컴포넌트/종류/사용 방법으로 대체한 것입니다.
 
@@ -47,6 +47,20 @@
 | `WebSocketEventPublisher` | Spring Bean | 도메인 Notifier에서 주입 후 `publish(destination, payload)` 호출 | `SimpMessagingTemplate` 직접 사용을 `global`로 모은 공통 발행기. `/topic/`, `/queue/` 목적지만 허용하고 payload null을 차단 |
 
 세부 명세: [WebSocketConfig.java](../infrastructure/config/WebSocketConfig.java) · [WebSocketEventPublisher.java](../infrastructure/websocket/WebSocketEventPublisher.java)
+
+---
+
+## 🧹 삭제·정리 배치 공통 스케줄러
+
+| 컴포넌트 | 종류 | 사용 방법 | 기능 요약 |
+| --- | --- | --- | --- |
+| `RetentionJob` | 인터페이스 | 도메인이 구현체를 만들어 `@Component`로 등록하면 자동 수집됨 | `name()`, `run(LocalDateTime now)` 두 메서드만 계약. Global Scheduler 수정 없이 새 도메인 Job 추가 가능 |
+| `RetentionJobResult` | record | 도메인 Job이 반환 | `jobName`/`candidateCount`/`deletedChildCount`/`deletedParentCount`. 자식 테이블이 없으면 `deletedChildCount=0` |
+| `GlobalRetentionScheduler` | Spring Bean, `@Scheduled` | 직접 호출하지 않음 — 매일 03:00(KST) 자동 실행 | 등록된 `List<RetentionJob>`을 순회 실행. 한 Job이 실패해도 나머지 Job은 계속 실행(`try/catch` 격리) |
+
+Cron/시간대는 `app.scheduler.retention.cron`/`app.scheduler.retention.zone` 프로퍼티(환경변수 `APP_SCHEDULER_RETENTION_CRON`/`APP_SCHEDULER_RETENTION_ZONE`)로 재정의할 수 있습니다. 보관 기간·배치 크기는 비밀값이 아니므로 각 도메인의 `{Domain}RetentionProperties` 기본값으로 관리합니다. 설계 배경과 새 도메인 추가 절차는 [BOILER_PLATE.md](BOILER_PLATE.md), 실제 구현 예시는 `student/application/retention/*`를 참고해주세요.
+
+세부 명세: [RetentionJob.java](../scheduler/RetentionJob.java) · [RetentionJobResult.java](../scheduler/RetentionJobResult.java) · [GlobalRetentionScheduler.java](../scheduler/GlobalRetentionScheduler.java)
 
 ---
 

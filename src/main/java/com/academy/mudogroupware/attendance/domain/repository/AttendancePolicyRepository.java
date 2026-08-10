@@ -5,6 +5,6 @@ import java.util.Optional;
 import com.academy.mudogroupware.attendance.domain.model.AttendancePolicy;
 
 public interface AttendancePolicyRepository {
-    Optional<AttendancePolicy> findByAcademyId(Long academyId);
+    Optional<AttendancePolicy> findCurrent();
     AttendancePolicy save(AttendancePolicy policy);
 }

@@ -26,11 +26,11 @@ public record UpdateTimetableSetRequest(
         @Schema(description = "층별 강의실 구성") @NotEmpty List<ClassroomGroupRequest> classrooms
 ) {
 
-    public UpdateTimetableSetCommand toCommand(Long academyId, Long timetableSetId) {
+    public UpdateTimetableSetCommand toCommand(Long timetableSetId) {
         List<TimetableClassroom> flattened = classrooms.stream()
                 .flatMap(group -> group.codes().stream().map(code -> new TimetableClassroom(group.floor(), code)))
                 .toList();
-        return new UpdateTimetableSetCommand(academyId, timetableSetId, name, startDate, endDate,
+        return new UpdateTimetableSetCommand(timetableSetId, name, startDate, endDate,
                 operatingStartTime, operatingEndTime, operatingDays, slotUnitMinutes, flattened);
     }
 }

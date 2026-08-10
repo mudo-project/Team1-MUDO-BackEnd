@@ -41,22 +41,22 @@ class GetTimetableSlotServiceTest {
         service = new GetTimetableSlotService(timetableSetRepository, timetableSlotRepository);
     }
 
-    private TimetableSet timetableSet(Long academyId) {
+    private TimetableSet timetableSet() {
         return TimetableSet.restore(
-                1L, academyId, "이름", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16),
+                1L, "이름", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16),
                 LocalTime.of(8, 30), LocalTime.of(22, 0), Set.of(DayOfWeek.MONDAY), 30,
                 List.of(new TimetableClassroom("6층", "601")), null, null);
     }
 
     @Test
     void getSlotReturnsViewWhenBelongsToSet() {
-        when(timetableSetRepository.findById(1L)).thenReturn(Optional.of(timetableSet(1L)));
+        when(timetableSetRepository.findById(1L)).thenReturn(Optional.of(timetableSet()));
         TimetableSlot slot = TimetableSlot.restore(
                 100L, 1L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
                 Grade.HIGH_3, "정T", "미적분", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16), null, null);
         when(timetableSlotRepository.findById(100L)).thenReturn(Optional.of(slot));
 
-        TimetableSlotView view = service.getSlot(1L, 1L, 100L);
+        TimetableSlotView view = service.getSlot(1L, 100L);
 
         assertThat(view.teacherName()).isEqualTo("정T");
     }
@@ -65,36 +65,36 @@ class GetTimetableSlotServiceTest {
     void getSlotThrowsWhenTimetableSetNotFound() {
         when(timetableSetRepository.findById(999L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.getSlot(1L, 999L, 100L))
+        assertThatThrownBy(() -> service.getSlot(999L, 100L))
                 .isInstanceOf(TimetableSetNotFoundException.class);
     }
 
     @Test
-    void getSlotThrowsWhenTimetableSetBelongsToDifferentAcademy() {
-        when(timetableSetRepository.findById(1L)).thenReturn(Optional.of(timetableSet(2L)));
+    void getSlotThrowsWhenSlotIsMissing() {
+        when(timetableSetRepository.findById(1L)).thenReturn(Optional.of(timetableSet()));
 
-        assertThatThrownBy(() -> service.getSlot(1L, 1L, 100L))
-                .isInstanceOf(TimetableSetNotFoundException.class);
+        assertThatThrownBy(() -> service.getSlot(1L, 100L))
+                .isInstanceOf(TimetableSlotNotFoundException.class);
     }
 
     @Test
     void getSlotThrowsWhenNotFound() {
-        when(timetableSetRepository.findById(1L)).thenReturn(Optional.of(timetableSet(1L)));
+        when(timetableSetRepository.findById(1L)).thenReturn(Optional.of(timetableSet()));
         when(timetableSlotRepository.findById(999L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.getSlot(1L, 1L, 999L))
+        assertThatThrownBy(() -> service.getSlot(1L, 999L))
                 .isInstanceOf(TimetableSlotNotFoundException.class);
     }
 
     @Test
     void getSlotThrowsWhenBelongsToDifferentSet() {
-        when(timetableSetRepository.findById(1L)).thenReturn(Optional.of(timetableSet(1L)));
+        when(timetableSetRepository.findById(1L)).thenReturn(Optional.of(timetableSet()));
         TimetableSlot slot = TimetableSlot.restore(
                 100L, 2L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
                 Grade.HIGH_3, "정T", "미적분", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16), null, null);
         when(timetableSlotRepository.findById(100L)).thenReturn(Optional.of(slot));
 
-        assertThatThrownBy(() -> service.getSlot(1L, 1L, 100L))
+        assertThatThrownBy(() -> service.getSlot(1L, 100L))
                 .isInstanceOf(TimetableSlotNotFoundException.class);
     }
 }

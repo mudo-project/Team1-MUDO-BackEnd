@@ -3,11 +3,15 @@ package com.academy.mudogroupware.attendance.infrastructure.persistence;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
 
 public interface AcademyWifiIpJpaRepository extends JpaRepository<AcademyWifiIpJpaEntity, Long> {
-    boolean existsByAcademyIdAndIpAddress(Long academyId, String ipAddress);
+    boolean existsByIpAddress(String ipAddress);
 
-    List<AcademyWifiIpJpaEntity> findAllByAcademyIdOrderByCreatedAtAscIdAsc(Long academyId);
+    List<AcademyWifiIpJpaEntity> findAllByOrderByCreatedAtAscIdAsc();
 
-    long deleteByIdAndAcademyId(Long wifiIpId, Long academyId);
+    @Modifying
+    @Query("delete from AcademyWifiIpJpaEntity w where w.id = :wifiIpId")
+    int deleteByIdReturningCount(Long wifiIpId);
 }

@@ -25,8 +25,8 @@ public class GetGoogleAccountConnectionService implements GetGoogleAccountConnec
     private final RequiredGoogleScopePort requiredGoogleScopePort;
 
     @Override
-    public Optional<GoogleAccountConnectionView> getConnection(Long academyId) {
-        return googleAccountConnectionRepository.findByAcademyId(academyId).map(this::toView);
+    public Optional<GoogleAccountConnectionView> getConnection() {
+        return googleAccountConnectionRepository.find().map(this::toView);
     }
 
     private GoogleAccountConnectionView toView(GoogleAccountConnection connection) {

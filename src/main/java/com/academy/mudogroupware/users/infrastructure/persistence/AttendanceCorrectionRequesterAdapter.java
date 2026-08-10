@@ -19,13 +19,12 @@ public class AttendanceCorrectionRequesterAdapter implements AttendanceCorrectio
     private final RoleJpaRepository roleJpaRepository;
 
     @Override
-    public Map<Long, Requester> findByAcademyIdAndUserIds(Long academyId, Set<Long> userIds) {
+    public Map<Long, Requester> findByUserIds(Set<Long> userIds) {
         Map<Long, String> roleNames = roleJpaRepository.findAllById(
                         userRepository.findAllById(userIds).stream()
                                 .map(User::getRoleId).filter(java.util.Objects::nonNull).collect(Collectors.toSet()))
                 .stream().collect(Collectors.toMap(RoleEntity::getId, RoleEntity::getName));
         return userRepository.findAllById(userIds).stream()
-                .filter(user -> academyId.equals(user.getAcademyId()))
                 .collect(Collectors.toMap(User::getId,
                         user -> new Requester(user.getId(), user.getName(), roleNames.get(user.getRoleId()))));
     }

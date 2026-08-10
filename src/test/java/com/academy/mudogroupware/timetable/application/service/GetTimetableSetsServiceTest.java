@@ -42,12 +42,12 @@ class GetTimetableSetsServiceTest {
     @Test
     void getTimetableSetsReturnsSummariesWithDerivedStatus() {
         TimetableSet active = TimetableSet.restore(
-                1L, 1L, "2026 여름특강", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16),
+                1L, "2026 여름특강", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16),
                 LocalTime.of(8, 30), LocalTime.of(22, 0), Set.of(DayOfWeek.MONDAY), 30,
                 List.of(new TimetableClassroom("6층", "601")), null, null);
-        when(timetableSetRepository.findAllByAcademyId(1L)).thenReturn(List.of(active));
+        when(timetableSetRepository.findAll()).thenReturn(List.of(active));
 
-        List<TimetableSetSummaryView> views = service.getTimetableSets(1L);
+        List<TimetableSetSummaryView> views = service.getTimetableSets();
 
         assertThat(views).hasSize(1);
         assertThat(views.get(0).status()).isEqualTo(TimetableSetStatus.ACTIVE);

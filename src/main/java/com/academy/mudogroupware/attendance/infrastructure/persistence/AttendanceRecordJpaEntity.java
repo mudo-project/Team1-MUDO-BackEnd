@@ -30,9 +30,6 @@ public class AttendanceRecordJpaEntity {
     @Column(name = "attendance_id")
     private Long id;
 
-    @Column(name = "academy_id", nullable = false)
-    private Long academyId;
-
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
@@ -66,14 +63,13 @@ public class AttendanceRecordJpaEntity {
     private LocalDateTime updatedAt;
 
     @Builder
-    private AttendanceRecordJpaEntity(Long id, Long academyId, Long userId,
+    private AttendanceRecordJpaEntity(Long id, Long userId,
                                       LocalDate workDate, LocalDateTime clockInAt,
                                       String clockInNote, LocalDateTime clockOutAt,
                                       String clockOutNote, ClockOutType clockOutType,
                                       AttendanceStatus status,
                                       LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
-        this.academyId = academyId;
         this.userId = userId;
         this.workDate = workDate;
         this.clockInAt = clockInAt;

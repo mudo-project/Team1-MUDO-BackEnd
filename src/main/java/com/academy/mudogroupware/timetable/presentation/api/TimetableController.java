@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Map;
 
 import com.academy.mudogroupware.global.presentation.api.common.GlobalApiResponse;
-import com.academy.mudogroupware.global.presentation.security.AuthUser;
 import com.academy.mudogroupware.timetable.application.command.DeleteTimetableSetCommand;
 import com.academy.mudogroupware.timetable.application.command.ExportTimetableCommand;
 import com.academy.mudogroupware.timetable.application.usecase.CreateTimetableSetUseCase;
@@ -43,7 +42,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -77,9 +75,8 @@ public class TimetableController {
     @PreAuthorize("hasAuthority('TIMETABLE:MANAGE')")
     @PostMapping
     public ResponseEntity<GlobalApiResponse<CreateTimetableSetResponse>> createTimetableSet(
-            @AuthenticationPrincipal AuthUser authUser,
             @Valid @RequestBody CreateTimetableSetRequest request) {
-        Long timetableSetId = createTimetableSetUseCase.createTimetableSet(request.toCommand(authUser.academyId()));
+        Long timetableSetId = createTimetableSetUseCase.createTimetableSet(request.toCommand());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(GlobalApiResponse.created(
                         TimetableResponseCode.SET_CREATED, CreateTimetableSetResponse.from(timetableSetId)));
@@ -90,10 +87,9 @@ public class TimetableController {
         @ApiResponse(responseCode = "200", description = "목록 조회 성공")
     })
     @GetMapping
-    public ResponseEntity<GlobalApiResponse<List<TimetableSetSummaryResponse>>> getTimetableSets(
-            @AuthenticationPrincipal AuthUser authUser) {
+    public ResponseEntity<GlobalApiResponse<List<TimetableSetSummaryResponse>>> getTimetableSets() {
         List<TimetableSetSummaryResponse> responses = getTimetableSetsUseCase
-                .getTimetableSets(authUser.academyId()).stream()
+                .getTimetableSets().stream()
                 .map(TimetableSetSummaryResponse::from)
                 .toList();
         return ResponseEntity.ok(GlobalApiResponse.ok(TimetableResponseCode.SET_LIST_RETRIEVED, responses));
@@ -106,10 +102,9 @@ public class TimetableController {
     })
     @GetMapping("/{timetableSetId}")
     public ResponseEntity<GlobalApiResponse<TimetableSetDetailResponse>> getTimetableSet(
-            @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long timetableSetId) {
         TimetableSetDetailResponse response = TimetableSetDetailResponse.from(
-                getTimetableSetUseCase.getTimetableSet(authUser.academyId(), timetableSetId));
+                getTimetableSetUseCase.getTimetableSet(timetableSetId));
         return ResponseEntity.ok(GlobalApiResponse.ok(TimetableResponseCode.SET_DETAIL_RETRIEVED, response));
     }
 
@@ -123,10 +118,9 @@ public class TimetableController {
     @PreAuthorize("hasAuthority('TIMETABLE:MANAGE')")
     @PatchMapping("/{timetableSetId}")
     public ResponseEntity<Void> updateTimetableSet(
-            @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long timetableSetId,
             @Valid @RequestBody UpdateTimetableSetRequest request) {
-        updateTimetableSetUseCase.updateTimetableSet(request.toCommand(authUser.academyId(), timetableSetId));
+        updateTimetableSetUseCase.updateTimetableSet(request.toCommand(timetableSetId));
         return ResponseEntity.noContent().build();
     }
 
@@ -138,10 +132,8 @@ public class TimetableController {
     })
     @PreAuthorize("hasAuthority('TIMETABLE:MANAGE')")
     @DeleteMapping("/{timetableSetId}")
-    public ResponseEntity<Void> deleteTimetableSet(
-            @AuthenticationPrincipal AuthUser authUser,
-            @PathVariable Long timetableSetId) {
-        deleteTimetableSetUseCase.deleteTimetableSet(new DeleteTimetableSetCommand(authUser.academyId(), timetableSetId));
+    public ResponseEntity<Void> deleteTimetableSet(@PathVariable Long timetableSetId) {
+        deleteTimetableSetUseCase.deleteTimetableSet(new DeleteTimetableSetCommand(timetableSetId));
         return ResponseEntity.noContent().build();
     }
 
@@ -155,7 +147,6 @@ public class TimetableController {
     })
     @GetMapping("/{timetableSetId}/export")
     public ResponseEntity<byte[]> exportTimetable(
-            @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long timetableSetId,
             @RequestParam TimetableExportFormat format,
             @RequestParam TimetableExportColorCriterion colorCriterion,
@@ -166,7 +157,7 @@ public class TimetableController {
             @RequestParam(required = false) ClassType classType) {
         Map<String, String> colors = parseColorMap(colorMap);
         byte[] file = exportTimetableUseCase.export(new ExportTimetableCommand(
-                authUser.academyId(), timetableSetId, format, colorCriterion, colors, density,
+                timetableSetId, format, colorCriterion, colors, density,
                 dayOfWeek, floor, classType));
 
         String filename = "timetable_" + timetableSetId + "." + extension(format);

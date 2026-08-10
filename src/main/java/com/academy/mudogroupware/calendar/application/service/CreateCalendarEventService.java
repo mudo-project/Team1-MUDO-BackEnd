@@ -20,7 +20,7 @@ public class CreateCalendarEventService implements CreateCalendarEventUseCase {
     @Override
     public Long createEvent(CreateCalendarEventCommand command) {
         CalendarEvent calendarEvent = CalendarEvent.create(
-                command.academyId(), command.title(), command.content(),
+                command.title(), command.content(),
                 command.eventStartAt(), command.eventEndAt(), command.allDay(),
                 command.color(), command.createdBy());
 

@@ -1,5 +1,12 @@
 # 학생 관리 Changelog
 
+## 2026-08-10 - 소프트 삭제된 학생 자동 하드 삭제 배치 추가
+
+- `global`의 Global Retention Scheduler 보일러플레이트([global/docs/BOILER_PLATE.md](../../global/docs/BOILER_PLATE.md))를 처음으로 실제 구현했다. `RetentionJob`/`RetentionJobResult`/`GlobalRetentionScheduler`가 `global.scheduler`에 새로 생겼다.
+- `StudentRetentionJob`/`StudentRetentionService`/`StudentRetentionProperties`/`StudentRetentionPort`/`StudentRetentionAdapter`를 추가했다. 소프트 삭제(`deleted_at`) 후 30일이 지난 학생을 매일 03:00(KST) 배치로 하드 삭제한다.
+- 삭제 순서는 수강 이력(자식) → 학생(부모)이며, 삭제 시점에 `deleted_at < threshold` 조건을 다시 검사해 후보 조회 이후 상태가 바뀐 경우를 방어한다.
+- 단위 테스트(서비스 로직, 자식→부모 삭제 순서), Global Scheduler 테스트(전체 Job 실행/실패 격리/빈 목록), 실제 H2 DB 기반 DataJpaTest(후보 조회 필터링/배치 크기 제한/실제 삭제)를 추가했다.
+
 ## 2026-08-08 - 학생관리 권한 단순화
 
 - 학생관리 탭 접근, 목록/상세 조회, 학생 등록/수정, 수강 등록/종료를 `STUDENT:MANAGE` 하나로 통합했다.

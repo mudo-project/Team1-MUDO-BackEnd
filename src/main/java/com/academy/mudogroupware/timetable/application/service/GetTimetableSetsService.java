@@ -23,9 +23,9 @@ public class GetTimetableSetsService implements GetTimetableSetsUseCase {
     private final Clock clock;
 
     @Override
-    public List<TimetableSetSummaryView> getTimetableSets(Long academyId) {
+    public List<TimetableSetSummaryView> getTimetableSets() {
         LocalDate today = LocalDate.now(clock);
-        return timetableSetRepository.findAllByAcademyId(academyId).stream()
+        return timetableSetRepository.findAll().stream()
                 .map(set -> toView(set, today))
                 .toList();
     }

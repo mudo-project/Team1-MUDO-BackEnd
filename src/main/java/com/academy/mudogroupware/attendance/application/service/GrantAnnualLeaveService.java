@@ -32,12 +32,12 @@ public class GrantAnnualLeaveService implements GrantAnnualLeaveUseCase {
         int grantedCount = 0;
         for (LeaveGrantEmployee employee : leaveGrantEmployeePort.findActiveEmployeesWithJoinedDate()) {
             LocalDate grantDate = currentGrantDate(employee.joinedDate(), today);
-            if (grantDate == null || leaveGrantRepository.existsByAcademyIdAndUserIdAndGrantDate(
-                    employee.academyId(), employee.userId(), grantDate)) {
+            if (grantDate == null || leaveGrantRepository.existsByUserIdAndGrantDate(
+                    employee.userId(), grantDate)) {
                 continue;
             }
             leaveGrantRepository.save(LeaveGrant.annual(
-                    employee.academyId(), employee.userId(), grantDate, now));
+                    employee.userId(), grantDate, now));
             grantedCount++;
         }
         log.info("event=attendance_annual_leave_grant_완료 grantDate={}, count={}", today, grantedCount);

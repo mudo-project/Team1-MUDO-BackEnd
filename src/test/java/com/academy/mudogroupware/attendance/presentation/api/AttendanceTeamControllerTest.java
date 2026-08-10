@@ -33,11 +33,11 @@ class AttendanceTeamControllerTest {
                 new TodayTeamAttendanceView.Summary(1, 0, 0, 0),
                 List.of(new TodayTeamAttendanceView.Employee(
                         2L, "김지수", TeamAttendanceStatus.PRESENT, LocalTime.of(8, 52))));
-        when(useCase.getToday(1L, 10L)).thenReturn(view);
+        when(useCase.getToday(1L)).thenReturn(view);
 
         GlobalApiResponse<TodayTeamAttendanceResponse> response = controller.getToday(authUser);
 
-        verify(useCase).getToday(1L, 10L);
+        verify(useCase).getToday(1L);
         assertEquals("ATTENDANCE_200_3", response.code());
         assertEquals(1, response.data().summary().presentCount());
         assertEquals("김지수", response.data().employees().get(0).name());

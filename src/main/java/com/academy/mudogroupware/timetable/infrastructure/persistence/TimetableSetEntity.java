@@ -33,9 +33,6 @@ public class TimetableSetEntity extends BaseTimeEntity {
     @Column(name = "timetable_set_id")
     private Long id;
 
-    @Column(name = "academy_id", nullable = false)
-    private Long academyId;
-
     @Column(nullable = false, length = 100)
     private String name;
 
@@ -62,11 +59,10 @@ public class TimetableSetEntity extends BaseTimeEntity {
     private List<TimetableClassroomEmbeddable> classrooms = new ArrayList<>();
 
     @Builder
-    private TimetableSetEntity(Long id, Long academyId, String name, LocalDate startDate, LocalDate endDate,
+    private TimetableSetEntity(Long id, String name, LocalDate startDate, LocalDate endDate,
                                 LocalTime operatingStartTime, LocalTime operatingEndTime, String operatingDays,
                                 int slotUnitMinutes, List<TimetableClassroomEmbeddable> classrooms) {
         this.id = id;
-        this.academyId = academyId;
         this.name = name;
         this.startDate = startDate;
         this.endDate = endDate;

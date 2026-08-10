@@ -29,8 +29,8 @@ public final class ApprovalTemplate {
         if (creatorId == null) {
             throw new IllegalArgumentException("creatorId must not be null");
         }
-        if (lines == null || lines.isEmpty()) {
-            throw new ApprovalException(ApprovalErrorCode.LINES_REQUIRED);
+        if (lines == null) {
+            throw new IllegalArgumentException("lines must not be null");
         }
         if (createdAt == null) {
             throw new IllegalArgumentException("createdAt must not be null");
@@ -49,7 +49,11 @@ public final class ApprovalTemplate {
 
     public static ApprovalTemplate create(Long academyId, String name, Long creatorId, List<Long> approverIds,
                                            LocalDateTime now) {
-        return new ApprovalTemplate(null, academyId, name, creatorId, buildLines(approverIds), now, now);
+        List<ApprovalTemplateLine> lines = buildLines(approverIds);
+        if (lines.isEmpty()) {
+            throw new ApprovalException(ApprovalErrorCode.LINES_REQUIRED);
+        }
+        return new ApprovalTemplate(null, academyId, name, creatorId, lines, now, now);
     }
 
     public static ApprovalTemplate restore(Long id, Long academyId, String name, Long creatorId,

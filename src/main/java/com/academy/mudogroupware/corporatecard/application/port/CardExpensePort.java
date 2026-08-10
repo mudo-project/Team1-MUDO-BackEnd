@@ -9,7 +9,7 @@ import com.academy.mudogroupware.corporatecard.domain.model.ExpenseCategory;
 
 public interface CardExpensePort {
     Optional<ExpenseView> findByTransactionId(Long transactionId);
-    Optional<ExpenseView> findForUpdate(Long transactionId, Long academyId);
+    Optional<ExpenseView> findForUpdate(Long transactionId);
     Map<Long, ExpenseView> findByTransactionIds(List<Long> transactionIds);
     ExpenseView create(Long transactionId, Long userId, ExpenseCategory category, String purpose,
                        Long approvalDocumentId, LocalDateTime now);

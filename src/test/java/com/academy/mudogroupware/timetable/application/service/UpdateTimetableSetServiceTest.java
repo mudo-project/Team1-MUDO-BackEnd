@@ -38,12 +38,12 @@ class UpdateTimetableSetServiceTest {
     @Test
     void updateTimetableSetAppliesNewValues() {
         TimetableSet set = TimetableSet.restore(
-                1L, 1L, "이름", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16),
+                1L, "이름", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16),
                 LocalTime.of(8, 30), LocalTime.of(22, 0), Set.of(DayOfWeek.MONDAY), 30,
                 List.of(new TimetableClassroom("6층", "601")), null, null);
         when(timetableSetRepository.findById(1L)).thenReturn(Optional.of(set));
         UpdateTimetableSetCommand command = new UpdateTimetableSetCommand(
-                1L, 1L, "새 이름", LocalDate.of(2026, 9, 1), LocalDate.of(2026, 12, 31),
+                1L, "새 이름", LocalDate.of(2026, 9, 1), LocalDate.of(2026, 12, 31),
                 LocalTime.of(9, 0), LocalTime.of(21, 0), Set.of(DayOfWeek.TUESDAY), 10,
                 List.of(new TimetableClassroom("3층", "301")));
 
@@ -56,7 +56,7 @@ class UpdateTimetableSetServiceTest {
     void updateTimetableSetThrowsWhenNotFound() {
         when(timetableSetRepository.findById(999L)).thenReturn(Optional.empty());
         UpdateTimetableSetCommand command = new UpdateTimetableSetCommand(
-                1L, 999L, "이름", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16),
+                999L, "이름", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16),
                 LocalTime.of(8, 30), LocalTime.of(22, 0), Set.of(DayOfWeek.MONDAY), 30,
                 List.of(new TimetableClassroom("6층", "601")));
 
@@ -65,14 +65,14 @@ class UpdateTimetableSetServiceTest {
     }
 
     @Test
-    void updateTimetableSetThrowsWhenBelongsToDifferentAcademy() {
+    void updateTimetableSetThrowsWhenSetIsMissing() {
         TimetableSet set = TimetableSet.restore(
-                1L, 2L, "다른 학원", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16),
+                1L, "다른 세트", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16),
                 LocalTime.of(8, 30), LocalTime.of(22, 0), Set.of(DayOfWeek.MONDAY), 30,
                 List.of(new TimetableClassroom("6층", "601")), null, null);
-        when(timetableSetRepository.findById(1L)).thenReturn(Optional.of(set));
+        when(timetableSetRepository.findById(1L)).thenReturn(Optional.empty());
         UpdateTimetableSetCommand command = new UpdateTimetableSetCommand(
-                1L, 1L, "이름", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16),
+                1L, "이름", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16),
                 LocalTime.of(8, 30), LocalTime.of(22, 0), Set.of(DayOfWeek.MONDAY), 30,
                 List.of(new TimetableClassroom("6층", "601")));
 

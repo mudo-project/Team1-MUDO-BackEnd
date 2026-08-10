@@ -28,21 +28,20 @@ class AcademyWifiIpRepositoryImplTest {
         AcademyWifiIpRepositoryImpl repository = new AcademyWifiIpRepositoryImpl(jpaRepository);
         LocalDateTime createdAt = LocalDateTime.of(2026, 8, 5, 10, 30);
         AcademyWifiIpJpaEntity entity = AcademyWifiIpJpaEntity.builder()
-                .academyId(1L)
                 .ipAddress("203.0.113.10")
                 .note("본관 와이파이")
                 .createdAt(createdAt)
                 .updatedAt(createdAt)
                 .build();
-        when(jpaRepository.findAllByAcademyIdOrderByCreatedAtAscIdAsc(1L))
+        when(jpaRepository.findAllByOrderByCreatedAtAscIdAsc())
                 .thenReturn(List.of(entity));
 
-        List<AcademyWifiIp> result = repository.findAllByAcademyId(1L);
+        List<AcademyWifiIp> result = repository.findAll();
 
         assertEquals(1, result.size());
         assertNull(result.get(0).getId());
         assertEquals("203.0.113.10", result.get(0).getIpAddress());
-        verify(jpaRepository).findAllByAcademyIdOrderByCreatedAtAscIdAsc(1L);
+        verify(jpaRepository).findAllByOrderByCreatedAtAscIdAsc();
     }
 
     @Test
@@ -50,12 +49,12 @@ class AcademyWifiIpRepositoryImplTest {
         AcademyWifiIpJpaRepository jpaRepository =
                 org.mockito.Mockito.mock(AcademyWifiIpJpaRepository.class);
         AcademyWifiIpRepositoryImpl repository = new AcademyWifiIpRepositoryImpl(jpaRepository);
-        when(jpaRepository.deleteByIdAndAcademyId(5L, 1L)).thenReturn(1L);
+        when(jpaRepository.deleteByIdReturningCount(5L)).thenReturn(1);
 
-        boolean deleted = repository.deleteByIdAndAcademyId(5L, 1L);
+        boolean deleted = repository.deleteById(5L);
 
         assertTrue(deleted);
-        verify(jpaRepository).deleteByIdAndAcademyId(5L, 1L);
+        verify(jpaRepository).deleteByIdReturningCount(5L);
     }
 
     @Test
@@ -69,7 +68,7 @@ class AcademyWifiIpRepositoryImplTest {
 
         AttendanceException exception = assertThrows(
                 AttendanceException.class,
-                () -> repository.save(AcademyWifiIp.create(1L, "203.0.113.10", null)));
+                () -> repository.save(AcademyWifiIp.create( "203.0.113.10", null)));
 
         assertSame(AttendanceErrorCode.WIFI_IP_ALREADY_REGISTERED, exception.getErrorCode());
     }
@@ -86,7 +85,7 @@ class AcademyWifiIpRepositoryImplTest {
 
         DataIntegrityViolationException thrown = assertThrows(
                 DataIntegrityViolationException.class,
-                () -> repository.save(AcademyWifiIp.create(1L, "203.0.113.10", null)));
+                () -> repository.save(AcademyWifiIp.create( "203.0.113.10", null)));
 
         assertSame(violation, thrown);
     }

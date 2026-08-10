@@ -12,8 +12,7 @@ class AttendanceCorrectionRequestTest {
 
     @Test
     void snapshotsBothNotesWhenRequestingClockInTimeCorrection() {
-        AttendanceCorrectionRequest request = AttendanceCorrectionRequest.submit(
-                1L, 10L, attendance(), DATE, AttendanceCorrectionType.CLOCK_IN_TIME,
+        AttendanceCorrectionRequest request = AttendanceCorrectionRequest.submit( 10L, attendance(), DATE, AttendanceCorrectionType.CLOCK_IN_TIME,
                 DATE.atTime(9, 0), null, null, null, " 버튼을 늦게 누름 ", REQUESTED_AT);
         assertEquals("출근 메모", request.getOriginalClockInNote());
         assertEquals("퇴근 메모", request.getOriginalClockOutNote());
@@ -23,8 +22,7 @@ class AttendanceCorrectionRequestTest {
 
     @Test
     void separatesClockOutNoteCorrectionFromClockInNote() {
-        AttendanceCorrectionRequest request = AttendanceCorrectionRequest.submit(
-                1L, 10L, attendance(), DATE, AttendanceCorrectionType.CLOCK_OUT_NOTE,
+        AttendanceCorrectionRequest request = AttendanceCorrectionRequest.submit( 10L, attendance(), DATE, AttendanceCorrectionType.CLOCK_OUT_NOTE,
                 null, null, null, " 외근 후 퇴근 ", "비고 오입력", REQUESTED_AT);
         assertNull(request.getRequestedClockInNote());
         assertEquals("외근 후 퇴근", request.getRequestedClockOutNote());
@@ -33,7 +31,7 @@ class AttendanceCorrectionRequestTest {
     @Test
     void missingRecordRequiresNoExistingAttendance() {
         AttendanceException exception = assertThrows(AttendanceException.class,
-                () -> AttendanceCorrectionRequest.submit(1L, 10L, attendance(), DATE,
+                () -> AttendanceCorrectionRequest.submit( 10L, attendance(), DATE,
                         AttendanceCorrectionType.MISSING_RECORD, DATE.atTime(9, 0),
                         DATE.atTime(18, 0), null, null, "누락", REQUESTED_AT));
         assertSame(AttendanceErrorCode.INVALID_CORRECTION_REQUEST, exception.getErrorCode());
@@ -42,13 +40,13 @@ class AttendanceCorrectionRequestTest {
     @Test
     void rejectsFieldsUnrelatedToSelectedType() {
         assertThrows(AttendanceException.class,
-                () -> AttendanceCorrectionRequest.submit(1L, 10L, attendance(), DATE,
+                () -> AttendanceCorrectionRequest.submit( 10L, attendance(), DATE,
                         AttendanceCorrectionType.CLOCK_IN_NOTE, DATE.atTime(9, 0), null,
                         "수정 메모", null, "사유", REQUESTED_AT));
     }
 
     private AttendanceRecord attendance() {
-        return AttendanceRecord.restore(7L, 1L, 10L, DATE, DATE.atTime(9, 5), "출근 메모",
+        return AttendanceRecord.restore(7L, 10L, DATE, DATE.atTime(9, 5), "출근 메모",
                 DATE.atTime(18, 0), "퇴근 메모", ClockOutType.NORMAL, AttendanceStatus.NORMAL,
                 DATE.atTime(9, 5), DATE.atTime(18, 0));
     }

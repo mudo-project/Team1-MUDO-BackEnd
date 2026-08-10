@@ -32,20 +32,20 @@ public class MyTodayAttendanceQueryService implements GetMyTodayAttendanceUseCas
     private final Clock clock;
 
     @Override
-    public MyTodayAttendanceView getToday(Long userId, Long academyId) {
-        log.info("event=attendance_today_read_시작 userId={}, academyId={}", userId, academyId);
+    public MyTodayAttendanceView getToday(Long userId) {
+        log.info("event=attendance_today_read_시작 userId={}={}", userId);
         LocalDateTime now = LocalDateTime.now(clock);
         LocalDate today = now.toLocalDate();
         LocalTime currentTime = now.toLocalTime();
-        var policy = attendancePolicyRepository.findByAcademyId(academyId)
+        var policy = attendancePolicyRepository.findCurrent()
                 .orElseThrow(() -> new AttendanceException(
                         AttendanceErrorCode.ATTENDANCE_POLICY_NOT_FOUND));
         var schedule = scheduleResolver.resolve(policy, today);
         AttendanceRecord record = attendanceRecordRepository
-                .findByAcademyIdAndUserIdAndWorkDate(academyId, userId, today)
+                .findByUserIdAndWorkDate(userId, today)
                 .orElse(null);
         var approvedLeaves = leaveRequestRepository.findApprovedOverlapping(
-                academyId, userId, today, today);
+                userId, today, today);
         var status = statusResolver.resolve(
                 today, schedule, record, approvedLeaves, today, currentTime);
 
@@ -57,7 +57,7 @@ public class MyTodayAttendanceQueryService implements GetMyTodayAttendanceUseCas
                 toOffset(record == null ? null : record.getClockOutAt()),
                 status,
                 now.atZone(clock.getZone()).toOffsetDateTime());
-        log.info("event=attendance_today_read_완료 userId={}, academyId={}, status={}", userId, academyId, status);
+        log.info("event=attendance_today_read_완료 userId={}={}, status={}", userId, status);
         return result;
     }
 

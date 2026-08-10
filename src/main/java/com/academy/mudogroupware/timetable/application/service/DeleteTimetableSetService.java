@@ -6,7 +6,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.academy.mudogroupware.timetable.application.command.DeleteTimetableSetCommand;
 import com.academy.mudogroupware.timetable.application.usecase.DeleteTimetableSetUseCase;
 import com.academy.mudogroupware.timetable.domain.exception.TimetableSetNotFoundException;
-import com.academy.mudogroupware.timetable.domain.model.TimetableSet;
 import com.academy.mudogroupware.timetable.domain.repository.TimetableSetRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -20,10 +19,9 @@ public class DeleteTimetableSetService implements DeleteTimetableSetUseCase {
 
     @Override
     public void deleteTimetableSet(DeleteTimetableSetCommand command) {
-        TimetableSet set = timetableSetRepository.findById(command.timetableSetId())
-                .filter(found -> found.getAcademyId().equals(command.academyId()))
+        timetableSetRepository.findById(command.timetableSetId())
                 .orElseThrow(TimetableSetNotFoundException::new);
 
-        timetableSetRepository.deleteById(set.getId());
+        timetableSetRepository.deleteById(command.timetableSetId());
     }
 }

@@ -29,9 +29,6 @@ public class LeaveRequestJpaEntity {
     @Column(name = "leave_request_id")
     private Long id;
 
-    @Column(name = "academy_id", nullable = false)
-    private Long academyId;
-
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
@@ -58,11 +55,10 @@ public class LeaveRequestJpaEntity {
     private LocalDateTime updatedAt;
 
     @Builder
-    private LeaveRequestJpaEntity(Long id, Long academyId, Long userId, Long documentId, LocalDate startDate,
+    private LeaveRequestJpaEntity(Long id, Long userId, Long documentId, LocalDate startDate,
                                   LocalDate endDate, int usedDays, LeaveRequestStatus status, LocalDateTime createdAt,
                                   LocalDateTime updatedAt) {
         this.id = id;
-        this.academyId = academyId;
         this.userId = userId;
         this.documentId = documentId;
         this.startDate = startDate;

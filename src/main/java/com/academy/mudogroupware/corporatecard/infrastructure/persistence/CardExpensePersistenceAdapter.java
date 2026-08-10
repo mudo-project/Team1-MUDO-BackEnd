@@ -23,8 +23,8 @@ public class CardExpensePersistenceAdapter implements CardExpensePort {
     @Override public Optional<ExpenseView> findByTransactionId(Long transactionId) {
         return repository.findByTransaction_Id(transactionId).map(this::toView);
     }
-    @Override public Optional<ExpenseView> findForUpdate(Long transactionId, Long academyId) {
-        return repository.findForUpdate(transactionId, academyId).map(this::toView);
+    @Override public Optional<ExpenseView> findForUpdate(Long transactionId) {
+        return repository.findForUpdate(transactionId).map(this::toView);
     }
     @Override public Map<Long, ExpenseView> findByTransactionIds(List<Long> transactionIds) {
         return repository.findAllByTransaction_IdIn(transactionIds).stream().map(this::toView)

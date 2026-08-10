@@ -45,7 +45,7 @@ HTTP `200 OK`
 
 ### Business Rules
 
-- `state`에 요청자의 `academyId`·`userId`·`switchAccount` 여부를 HMAC-SHA256으로 서명해 담는다(10분 유효). 콜백에서 이 서명을 검증해 위조·재사용을 막는다.
+- `state`에 요청자의 `userId`·`switchAccount` 여부를 HMAC-SHA256으로 서명해 담는다(10분 유효). 콜백에서 이 서명을 검증해 위조·재사용을 막는다.
 - "재연결"과 "계정 교체" 모두 이 엔드포인트를 사용한다. 별도 엔드포인트를 두지 않는다.
 
 ## 구글 OAuth 콜백

@@ -16,9 +16,8 @@ class GoogleAccountConnectionTest {
     @Test
     void connectBuildsConnectionWithSixtyDayExpiry() {
         GoogleAccountConnection connection = GoogleAccountConnection.connect(
-                1L, "academy@mudo.co.kr", 7L, "drive.file", "refresh-token", CONNECTED_AT);
+                "academy@mudo.co.kr", 7L, "drive.file", "refresh-token", CONNECTED_AT);
 
-        assertThat(connection.getAcademyId()).isEqualTo(1L);
         assertThat(connection.getGoogleEmail()).isEqualTo("academy@mudo.co.kr");
         assertThat(connection.getConnectedByUserId()).isEqualTo(7L);
         assertThat(connection.getRefreshToken()).isEqualTo("refresh-token");
@@ -30,20 +29,20 @@ class GoogleAccountConnectionTest {
 
     @Test
     void connectThrowsWhenGoogleEmailIsBlank() {
-        assertThatThrownBy(() -> GoogleAccountConnection.connect(1L, "  ", 7L, "scope", "token", CONNECTED_AT))
+        assertThatThrownBy(() -> GoogleAccountConnection.connect("  ", 7L, "scope", "token", CONNECTED_AT))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void connectThrowsWhenRefreshTokenIsBlank() {
-        assertThatThrownBy(() -> GoogleAccountConnection.connect(1L, "a@b.com", 7L, "scope", " ", CONNECTED_AT))
+        assertThatThrownBy(() -> GoogleAccountConnection.connect("a@b.com", 7L, "scope", " ", CONNECTED_AT))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void deriveStatusReturnsConnectedWellBeforeExpiry() {
         GoogleAccountConnection connection = GoogleAccountConnection.connect(
-                1L, "a@b.com", 7L, "scope", "token", CONNECTED_AT);
+                "a@b.com", 7L, "scope", "token", CONNECTED_AT);
 
         assertThat(connection.deriveStatus(CONNECTED_AT.plusDays(1), GRANTED_SCOPE_REQUIREMENT))
                 .isEqualTo(GoogleConnectionStatus.CONNECTED);
@@ -52,7 +51,7 @@ class GoogleAccountConnectionTest {
     @Test
     void deriveStatusReturnsExpiringWithinThreeDaysOfExpiry() {
         GoogleAccountConnection connection = GoogleAccountConnection.connect(
-                1L, "a@b.com", 7L, "scope", "token", CONNECTED_AT);
+                "a@b.com", 7L, "scope", "token", CONNECTED_AT);
 
         LocalDateTime withinWarningWindow = connection.getTokenExpiresAt().minusDays(1);
 
@@ -63,7 +62,7 @@ class GoogleAccountConnectionTest {
     @Test
     void deriveStatusReturnsExpiredAfterExpiry() {
         GoogleAccountConnection connection = GoogleAccountConnection.connect(
-                1L, "a@b.com", 7L, "scope", "token", CONNECTED_AT);
+                "a@b.com", 7L, "scope", "token", CONNECTED_AT);
 
         assertThat(connection.deriveStatus(connection.getTokenExpiresAt().plusSeconds(1), GRANTED_SCOPE_REQUIREMENT))
                 .isEqualTo(GoogleConnectionStatus.EXPIRED);
@@ -72,7 +71,7 @@ class GoogleAccountConnectionTest {
     @Test
     void deriveStatusReturnsExpiringExactlyAtWarningBoundary() {
         GoogleAccountConnection connection = GoogleAccountConnection.connect(
-                1L, "a@b.com", 7L, "scope", "token", CONNECTED_AT);
+                "a@b.com", 7L, "scope", "token", CONNECTED_AT);
 
         assertThat(connection.deriveStatus(connection.getTokenExpiresAt().minusDays(3), GRANTED_SCOPE_REQUIREMENT))
                 .isEqualTo(GoogleConnectionStatus.EXPIRING);
@@ -81,7 +80,7 @@ class GoogleAccountConnectionTest {
     @Test
     void deriveStatusReturnsExpiredExactlyAtExpiry() {
         GoogleAccountConnection connection = GoogleAccountConnection.connect(
-                1L, "a@b.com", 7L, "scope", "token", CONNECTED_AT);
+                "a@b.com", 7L, "scope", "token", CONNECTED_AT);
 
         assertThat(connection.deriveStatus(connection.getTokenExpiresAt(), GRANTED_SCOPE_REQUIREMENT))
                 .isEqualTo(GoogleConnectionStatus.EXPIRED);
@@ -90,7 +89,7 @@ class GoogleAccountConnectionTest {
     @Test
     void deriveStatusReturnsFailedWhenMarkedInvalidRegardlessOfExpiry() {
         GoogleAccountConnection connection = GoogleAccountConnection.connect(
-                1L, "a@b.com", 7L, "scope", "token", CONNECTED_AT);
+                "a@b.com", 7L, "scope", "token", CONNECTED_AT);
         connection.markCheckResult(CONNECTED_AT.plusDays(1), false);
 
         assertThat(connection.deriveStatus(CONNECTED_AT.plusDays(1), GRANTED_SCOPE_REQUIREMENT))
@@ -100,7 +99,7 @@ class GoogleAccountConnectionTest {
     @Test
     void deriveStatusReturnsFailedWhenRequiredScopeIsMissing() {
         GoogleAccountConnection connection = GoogleAccountConnection.connect(
-                1L, "a@b.com", 7L, "openid email", "token", CONNECTED_AT);
+                "a@b.com", 7L, "openid email", "token", CONNECTED_AT);
 
         GoogleConnectionStatus status = connection.deriveStatus(
                 CONNECTED_AT.plusDays(1), Set.of("openid", "email", "drive.file"));
@@ -111,7 +110,7 @@ class GoogleAccountConnectionTest {
     @Test
     void deriveStatusIgnoresScopeCheckWhenRequiredScopesEmpty() {
         GoogleAccountConnection connection = GoogleAccountConnection.connect(
-                1L, "a@b.com", 7L, "openid email", "token", CONNECTED_AT);
+                "a@b.com", 7L, "openid email", "token", CONNECTED_AT);
 
         GoogleConnectionStatus status = connection.deriveStatus(CONNECTED_AT.plusDays(1), Set.of());
 
@@ -121,7 +120,7 @@ class GoogleAccountConnectionTest {
     @Test
     void markCheckResultUpdatesLastCheckedAtAndFailedFlag() {
         GoogleAccountConnection connection = GoogleAccountConnection.connect(
-                1L, "a@b.com", 7L, "scope", "token", CONNECTED_AT);
+                "a@b.com", 7L, "scope", "token", CONNECTED_AT);
         LocalDateTime checkedAt = CONNECTED_AT.plusDays(10);
 
         connection.markCheckResult(checkedAt, true);

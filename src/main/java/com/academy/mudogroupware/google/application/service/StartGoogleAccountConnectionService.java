@@ -22,7 +22,7 @@ public class StartGoogleAccountConnectionService implements StartGoogleAccountCo
     @Override
     public String start(StartGoogleConnectionCommand command) {
         String state = googleOAuthStatePort.sign(new GoogleOAuthStateClaims(
-                command.academyId(), command.userId(), command.forceAccountSelection()));
+                command.userId(), command.forceAccountSelection()));
         try {
             return googleOAuthPort.buildAuthorizationUrl(state, command.forceAccountSelection());
         } catch (GoogleOAuthCallException e) {
