@@ -25,6 +25,7 @@ import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -37,7 +38,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-// TODO: 권한 모듈의 WORKSPACE:CREATE/READ 권한이 준비되면 @PreAuthorize를 추가한다.
 @Tag(name = "반복 업무 템플릿", description = "워크스페이스 반복 업무 템플릿 생성 및 관리 API")
 @RestController
 @RequestMapping("/api/workspaces/{workspaceId}/recurring-templates")
@@ -62,13 +62,17 @@ public class WorkspaceRecurringTaskTemplateController {
   @GetMapping
   public ResponseEntity<GlobalApiResponse<SliceResponse<RecurringTaskTemplateListResponse>>> getTemplates(
       @AuthenticationPrincipal AuthUser authUser,
+      Authentication authentication,
       @PathVariable Long workspaceId,
       @RequestParam(defaultValue = "0") @Min(0) int page,
       @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
+    boolean canReadAll =
+        authentication.getAuthorities().stream()
+            .anyMatch(authority -> "WORKSPACE:READ_ALL".equals(authority.getAuthority()));
     SliceResponse<RecurringTaskTemplateListResponse> response =
         SliceResponse.from(
             getRecurringTaskTemplatesUseCase.getTemplates(
-                workspaceId, authUser.userId(), page, size),
+                workspaceId, authUser.userId(), page, size, canReadAll),
             RecurringTaskTemplateListResponse::from);
     return ResponseEntity.ok(
         GlobalApiResponse.ok(WorkspaceResponseCode.RECURRING_TEMPLATE_LIST_RETRIEVED, response));

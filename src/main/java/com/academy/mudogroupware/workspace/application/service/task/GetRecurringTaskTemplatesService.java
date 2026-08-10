@@ -24,7 +24,7 @@ public class GetRecurringTaskTemplatesService implements GetRecurringTaskTemplat
 
   @Override
   public PageResult<RecurringTaskTemplate> getTemplates(
-      Long workspaceId, Long requesterId, int page, int size) {
+      Long workspaceId, Long requesterId, int page, int size, boolean canReadAll) {
     log.info(
         "event=recurring_template_list_시작 workspaceId={}, page={}, size={}",
         workspaceId,
@@ -35,8 +35,7 @@ public class GetRecurringTaskTemplatesService implements GetRecurringTaskTemplat
     Workspace workspace =
         workspaceRepository.findById(workspaceId).orElseThrow(WorkspaceNotFoundException::new);
 
-    // TODO: 권한 모듈의 WORKSPACE:READ 권한이 준비되면 참여자 조건에 추가한다.
-    if (!workspace.getMemberIds().contains(requesterId)) {
+    if (!workspace.getMemberIds().contains(requesterId) && !canReadAll) {
       throw new WorkspaceAccessDeniedException();
     }
 
