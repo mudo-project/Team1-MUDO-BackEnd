@@ -75,7 +75,14 @@ public class ChatMessageQueryService implements ChatMessageQueryUseCase {
         Map<Long, ChatMemberInfo> senders = chatMemberDirectoryPort.getMembers(senderIds);
         List<Long> messageIds = pageMessages.stream().map(ChatMessage::getId).toList();
         Map<Long, Long> unreadCounts = chatMessageRepository.countUnreadByMessageIds(chatRoomId, messageIds);
-        List<Long> fileIds = pageMessages.stream().map(ChatMessage::getFileId).filter(Objects::nonNull).toList();
+        // 삭제된 메시지는 응답에서 fileId/fileDownloadUrl이 항상 마스킹되므로, 조회 대상에서도 제외해
+        // file 모듈에 불필요한 호출을 보내지 않는다.
+        List<Long> fileIds = pageMessages.stream()
+                .filter(message -> message.getDeletedAt() == null)
+                .map(ChatMessage::getFileId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
         Map<Long, String> downloadUrls = fileIds.isEmpty() ? Map.of()
                 : getFileDownloadUrlUseCase.getDownloadUrls(fileIds, chatRoom.getAcademyId());
         List<ChatMessageView> messageViews = pageMessages.stream()
