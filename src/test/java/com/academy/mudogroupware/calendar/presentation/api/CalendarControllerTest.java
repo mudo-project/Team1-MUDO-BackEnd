@@ -137,8 +137,8 @@ class CalendarControllerTest {
         LocalDateTime start = LocalDateTime.of(2026, 8, 3, 10, 0);
         LocalDateTime end = LocalDateTime.of(2026, 8, 3, 11, 30);
         CalendarEvent event = CalendarEvent.restore(
-                101L, 1L, "2학기 수업 준비 회의", "교재 배분 논의", start, end, false, "green", 7L, start, start);
-        when(getCalendarEventsUseCase.getEvents(1L,
+                101L, "2학기 수업 준비 회의", "교재 배분 논의", start, end, false, "green", 7L, start, start);
+        when(getCalendarEventsUseCase.getEvents(
                 LocalDateTime.of(2026, 8, 3, 0, 0), LocalDateTime.of(2026, 8, 3, 23, 59, 59, 999_999_999)))
                 .thenReturn(List.of(event));
 
@@ -158,8 +158,8 @@ class CalendarControllerTest {
         LocalDateTime start = LocalDateTime.of(2026, 8, 3, 10, 0);
         LocalDateTime end = LocalDateTime.of(2026, 8, 3, 11, 30);
         CalendarEvent event = CalendarEvent.restore(
-                101L, 1L, "2학기 수업 준비 회의", "교재 배분 논의", start, end, false, "green", 7L, start, start);
-        when(getCalendarEventsUseCase.getEvents(1L,
+                101L, "2학기 수업 준비 회의", "교재 배분 논의", start, end, false, "green", 7L, start, start);
+        when(getCalendarEventsUseCase.getEvents(
                 LocalDateTime.of(2026, 8, 1, 0, 0),
                 LocalDateTime.of(2026, 8, 31, 23, 59, 59, 999_999_999)))
                 .thenReturn(List.of(event));
@@ -224,7 +224,7 @@ class CalendarControllerTest {
 
     @Test
     void getEventsReturns200ForLeapYearFebruaryMonthQuery() throws Exception {
-        when(getCalendarEventsUseCase.getEvents(1L,
+        when(getCalendarEventsUseCase.getEvents(
                 LocalDateTime.of(2024, 2, 1, 0, 0),
                 LocalDateTime.of(2024, 2, 29, 23, 59, 59, 999_999_999)))
                 .thenReturn(List.of());
@@ -236,7 +236,7 @@ class CalendarControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data").isEmpty());
 
-        verify(getCalendarEventsUseCase).getEvents(1L,
+        verify(getCalendarEventsUseCase).getEvents(
                 LocalDateTime.of(2024, 2, 1, 0, 0),
                 LocalDateTime.of(2024, 2, 29, 23, 59, 59, 999_999_999));
     }
@@ -259,7 +259,7 @@ class CalendarControllerTest {
                         .with(csrf()))
                 .andExpect(status().isNoContent());
 
-        verify(deleteCalendarEventUseCase).deleteEvent(new DeleteCalendarEventCommand(101L, 1L));
+        verify(deleteCalendarEventUseCase).deleteEvent(new DeleteCalendarEventCommand(101L));
     }
 
     @Test

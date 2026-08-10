@@ -7,5 +7,5 @@ import com.academy.mudogroupware.calendar.domain.model.CalendarEvent;
 
 public interface GetCalendarEventsUseCase {
 
-    List<CalendarEvent> getEvents(Long academyId, LocalDateTime from, LocalDateTime to);
+    List<CalendarEvent> getEvents(LocalDateTime from, LocalDateTime to);
 }

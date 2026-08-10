@@ -134,7 +134,7 @@ class TimetableSlotControllerTest {
 
     @Test
     void getSlotsReturns200WithList() throws Exception {
-        when(getTimetableSlotsUseCase.getSlots(1L, 1L)).thenReturn(List.of(
+        when(getTimetableSlotsUseCase.getSlots(1L)).thenReturn(List.of(
                 new TimetableSlotView(100L, ClassType.CLASS, DayOfWeek.MONDAY, "601",
                         LocalTime.of(9, 0), LocalTime.of(11, 0), Grade.HIGH_3, "정T", "미적분")));
 
@@ -148,7 +148,7 @@ class TimetableSlotControllerTest {
 
     @Test
     void getSlotReturns200WithDetail() throws Exception {
-        when(getTimetableSlotUseCase.getSlot(1L, 1L, 100L)).thenReturn(
+        when(getTimetableSlotUseCase.getSlot(1L, 100L)).thenReturn(
                 new TimetableSlotView(100L, ClassType.CLASS, DayOfWeek.MONDAY, "601",
                         LocalTime.of(9, 0), LocalTime.of(11, 0), Grade.HIGH_3, "정T", "미적분"));
 
@@ -162,7 +162,7 @@ class TimetableSlotControllerTest {
 
     @Test
     void getSlotReturns404WhenNotFound() throws Exception {
-        when(getTimetableSlotUseCase.getSlot(1L, 1L, 999L)).thenThrow(new TimetableSlotNotFoundException());
+        when(getTimetableSlotUseCase.getSlot(1L, 999L)).thenThrow(new TimetableSlotNotFoundException());
 
         mockMvc.perform(get("/api/timetables/1/slots/999")
                         .with(authentication(authenticatedUser())))

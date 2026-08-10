@@ -45,19 +45,19 @@ class GetGoogleAccountConnectionServiceTest {
 
     @Test
     void getConnectionReturnsEmptyWhenNotConnected() {
-        when(googleAccountConnectionRepository.findByAcademyId(1L)).thenReturn(Optional.empty());
+        when(googleAccountConnectionRepository.find()).thenReturn(Optional.empty());
 
-        assertThat(service.getConnection(1L)).isEmpty();
+        assertThat(service.getConnection()).isEmpty();
     }
 
     @Test
     void getConnectionReturnsViewWithDerivedStatus() {
         GoogleAccountConnection connection = GoogleAccountConnection.restore(
-                10L, 1L, "academy@mudo.co.kr", 7L, "scope", "refresh-token", CONNECTED_AT,
+                10L, "academy@mudo.co.kr", 7L, "scope", "refresh-token", CONNECTED_AT,
                 CONNECTED_AT.plusDays(60), CONNECTED_AT, false);
-        when(googleAccountConnectionRepository.findByAcademyId(1L)).thenReturn(Optional.of(connection));
+        when(googleAccountConnectionRepository.find()).thenReturn(Optional.of(connection));
 
-        Optional<GoogleAccountConnectionView> view = service.getConnection(1L);
+        Optional<GoogleAccountConnectionView> view = service.getConnection();
 
         assertThat(view).isPresent();
         assertThat(view.get().googleEmail()).isEqualTo("academy@mudo.co.kr");
@@ -69,11 +69,11 @@ class GetGoogleAccountConnectionServiceTest {
     void getConnectionReturnsFailedWhenStoredScopeMissingNewlyRequiredScope() {
         GetGoogleAccountConnectionService serviceWithExpandedScope = serviceWithScope("openid email drive.file");
         GoogleAccountConnection connection = GoogleAccountConnection.restore(
-                10L, 1L, "academy@mudo.co.kr", 7L, "openid email", "refresh-token", CONNECTED_AT,
+                10L, "academy@mudo.co.kr", 7L, "openid email", "refresh-token", CONNECTED_AT,
                 CONNECTED_AT.plusDays(60), CONNECTED_AT, false);
-        when(googleAccountConnectionRepository.findByAcademyId(1L)).thenReturn(Optional.of(connection));
+        when(googleAccountConnectionRepository.find()).thenReturn(Optional.of(connection));
 
-        Optional<GoogleAccountConnectionView> view = serviceWithExpandedScope.getConnection(1L);
+        Optional<GoogleAccountConnectionView> view = serviceWithExpandedScope.getConnection();
 
         assertThat(view).isPresent();
         assertThat(view.get().status()).isEqualTo(GoogleConnectionStatus.FAILED);

@@ -22,9 +22,6 @@ public class UpdateCalendarEventService implements UpdateCalendarEventUseCase {
     public void updateEvent(UpdateCalendarEventCommand command) {
         CalendarEvent event = calendarEventRepository.findById(command.eventId())
                 .orElseThrow(() -> new CalendarEventNotFoundException(command.eventId()));
-        if (!event.getAcademyId().equals(command.academyId())) {
-            throw new CalendarEventNotFoundException(command.eventId());
-        }
 
         event.update(command.title(), command.content(), command.eventStartAt(),
                 command.eventEndAt(), command.allDay(), command.color());

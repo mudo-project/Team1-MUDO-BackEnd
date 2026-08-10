@@ -48,13 +48,12 @@ public class CompleteGoogleAccountConnectionService implements CompleteGoogleAcc
                     new IllegalStateException("구글이 리프레시 토큰을 반환하지 않았습니다."));
         }
 
-        Optional<GoogleAccountConnection> existing =
-                googleAccountConnectionRepository.findByAcademyId(claims.academyId());
+        Optional<GoogleAccountConnection> existing = googleAccountConnectionRepository.find();
         existing.ifPresent(connection -> googleOAuthPort.revoke(connection.getRefreshToken()));
-        googleAccountConnectionRepository.deleteByAcademyId(claims.academyId());
+        googleAccountConnectionRepository.deleteAll();
 
         GoogleAccountConnection connection = GoogleAccountConnection.connect(
-                claims.academyId(), googleEmail, claims.userId(), tokens.scope(), tokens.refreshToken(),
+                googleEmail, claims.userId(), tokens.scope(), tokens.refreshToken(),
                 LocalDateTime.now(clock));
         googleAccountConnectionRepository.save(connection);
     }

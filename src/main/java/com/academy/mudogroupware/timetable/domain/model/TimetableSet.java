@@ -18,7 +18,6 @@ import com.academy.mudogroupware.timetable.domain.exception.TimetableNameRequire
 public final class TimetableSet {
 
     private final Long id;
-    private final Long academyId;
     private String name;
     private LocalDate startDate;
     private LocalDate endDate;
@@ -30,35 +29,31 @@ public final class TimetableSet {
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
 
-    private TimetableSet(Long id, Long academyId, String name, LocalDate startDate, LocalDate endDate,
+    private TimetableSet(Long id, String name, LocalDate startDate, LocalDate endDate,
                           LocalTime operatingStartTime, LocalTime operatingEndTime, Set<DayOfWeek> operatingDays,
                           int slotUnitMinutes, List<TimetableClassroom> classrooms, LocalDateTime createdAt,
                           LocalDateTime updatedAt) {
-        if (academyId == null) {
-            throw new InvalidTimetableSetException("academyId");
-        }
         validateAndAssign(name, startDate, endDate, operatingStartTime, operatingEndTime, operatingDays,
                 slotUnitMinutes, classrooms);
         this.id = id;
-        this.academyId = academyId;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
 
-    public static TimetableSet create(Long academyId, String name, LocalDate startDate, LocalDate endDate,
+    public static TimetableSet create(String name, LocalDate startDate, LocalDate endDate,
                                        LocalTime operatingStartTime, LocalTime operatingEndTime,
                                        Set<DayOfWeek> operatingDays, int slotUnitMinutes,
                                        List<TimetableClassroom> classrooms) {
-        return new TimetableSet(null, academyId, name, startDate, endDate, operatingStartTime, operatingEndTime,
+        return new TimetableSet(null, name, startDate, endDate, operatingStartTime, operatingEndTime,
                 operatingDays, slotUnitMinutes, classrooms, null, null);
     }
 
-    public static TimetableSet restore(Long id, Long academyId, String name, LocalDate startDate, LocalDate endDate,
+    public static TimetableSet restore(Long id, String name, LocalDate startDate, LocalDate endDate,
                                         LocalTime operatingStartTime, LocalTime operatingEndTime,
                                         Set<DayOfWeek> operatingDays, int slotUnitMinutes,
                                         List<TimetableClassroom> classrooms, LocalDateTime createdAt,
                                         LocalDateTime updatedAt) {
-        return new TimetableSet(id, academyId, name, startDate, endDate, operatingStartTime, operatingEndTime,
+        return new TimetableSet(id, name, startDate, endDate, operatingStartTime, operatingEndTime,
                 operatingDays, slotUnitMinutes, classrooms, createdAt, updatedAt);
     }
 
@@ -119,10 +114,6 @@ public final class TimetableSet {
 
     public Long getId() {
         return id;
-    }
-
-    public Long getAcademyId() {
-        return academyId;
     }
 
     public String getName() {

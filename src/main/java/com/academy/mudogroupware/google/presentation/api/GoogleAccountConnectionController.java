@@ -16,9 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.academy.mudogroupware.global.presentation.api.common.GlobalApiResponse;
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
-import com.academy.mudogroupware.google.application.command.CheckGoogleConnectionCommand;
 import com.academy.mudogroupware.google.application.command.CompleteGoogleConnectionCommand;
-import com.academy.mudogroupware.google.application.command.DisconnectGoogleAccountCommand;
 import com.academy.mudogroupware.google.application.command.StartGoogleConnectionCommand;
 import com.academy.mudogroupware.google.application.usecase.CheckGoogleAccountConnectionUseCase;
 import com.academy.mudogroupware.google.application.usecase.CompleteGoogleAccountConnectionUseCase;
@@ -62,7 +60,7 @@ public class GoogleAccountConnectionController {
             @AuthenticationPrincipal AuthUser authUser,
             @RequestParam(defaultValue = "false") boolean switchAccount) {
         String authorizationUrl = startGoogleAccountConnectionUseCase.start(
-                new StartGoogleConnectionCommand(authUser.academyId(), authUser.userId(), switchAccount));
+                new StartGoogleConnectionCommand(authUser.userId(), switchAccount));
         return ResponseEntity.ok(GlobalApiResponse.ok(
                 GoogleResponseCode.AUTHORIZATION_URL_ISSUED, GoogleAuthorizationUrlResponse.from(authorizationUrl)));
     }
@@ -95,10 +93,9 @@ public class GoogleAccountConnectionController {
     })
     @PreAuthorize("hasAuthority('ACADEMY:OWNER')")
     @GetMapping
-    public ResponseEntity<GlobalApiResponse<GoogleAccountConnectionResponse>> getConnection(
-            @AuthenticationPrincipal AuthUser authUser) {
+    public ResponseEntity<GlobalApiResponse<GoogleAccountConnectionResponse>> getConnection() {
         GoogleAccountConnectionResponse response = getGoogleAccountConnectionUseCase
-                .getConnection(authUser.academyId())
+                .getConnection()
                 .map(GoogleAccountConnectionResponse::from)
                 .orElse(null);
         return ResponseEntity.ok(GlobalApiResponse.ok(GoogleResponseCode.CONNECTION_RETRIEVED, response));
@@ -112,8 +109,8 @@ public class GoogleAccountConnectionController {
     })
     @PreAuthorize("hasAuthority('ACADEMY:OWNER')")
     @PostMapping("/check")
-    public ResponseEntity<Void> checkConnection(@AuthenticationPrincipal AuthUser authUser) {
-        checkGoogleAccountConnectionUseCase.check(new CheckGoogleConnectionCommand(authUser.academyId()));
+    public ResponseEntity<Void> checkConnection() {
+        checkGoogleAccountConnectionUseCase.check();
         return ResponseEntity.noContent().build();
     }
 
@@ -125,8 +122,8 @@ public class GoogleAccountConnectionController {
     })
     @PreAuthorize("hasAuthority('ACADEMY:OWNER')")
     @DeleteMapping
-    public ResponseEntity<Void> disconnect(@AuthenticationPrincipal AuthUser authUser) {
-        disconnectGoogleAccountUseCase.disconnect(new DisconnectGoogleAccountCommand(authUser.academyId()));
+    public ResponseEntity<Void> disconnect() {
+        disconnectGoogleAccountUseCase.disconnect();
         return ResponseEntity.noContent().build();
     }
 }

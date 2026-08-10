@@ -22,8 +22,8 @@ public record CreateTimetableSlotRequest(
         @Schema(description = "과목", example = "미적분") String subjectName
 ) {
 
-    public CreateTimetableSlotCommand toCommand(Long academyId, Long timetableSetId) {
-        return new CreateTimetableSlotCommand(academyId, timetableSetId, classType, dayOfWeek, classroomCode,
+    public CreateTimetableSlotCommand toCommand(Long timetableSetId) {
+        return new CreateTimetableSlotCommand(timetableSetId, classType, dayOfWeek, classroomCode,
                 startTime, endTime, grade, teacherName, subjectName);
     }
 }

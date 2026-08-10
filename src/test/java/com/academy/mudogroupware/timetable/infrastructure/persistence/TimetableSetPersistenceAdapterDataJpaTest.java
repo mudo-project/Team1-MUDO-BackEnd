@@ -28,7 +28,7 @@ class TimetableSetPersistenceAdapterDataJpaTest {
     @Test
     void savesAndFindsTimetableSetWithClassrooms() {
         TimetableSet set = TimetableSet.create(
-                1L, "2026 여름특강", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16),
+                "2026 여름특강", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16),
                 LocalTime.of(8, 30), LocalTime.of(22, 0), Set.of(DayOfWeek.MONDAY),
                 30, List.of(new TimetableClassroom("6층", "601")));
 
@@ -43,7 +43,7 @@ class TimetableSetPersistenceAdapterDataJpaTest {
     @Test
     void deletesTimetableSetById() {
         TimetableSet set = TimetableSet.create(
-                1L, "삭제될 세트", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16),
+                "삭제될 세트", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16),
                 LocalTime.of(8, 30), LocalTime.of(22, 0), Set.of(DayOfWeek.MONDAY),
                 30, List.of(new TimetableClassroom("6층", "601")));
         TimetableSet saved = adapter.save(set);

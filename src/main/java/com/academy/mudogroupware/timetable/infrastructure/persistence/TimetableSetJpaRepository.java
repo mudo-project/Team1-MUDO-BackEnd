@@ -6,5 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface TimetableSetJpaRepository extends JpaRepository<TimetableSetEntity, Long> {
 
-    List<TimetableSetEntity> findAllByAcademyIdOrderByStartDateDesc(Long academyId);
+    List<TimetableSetEntity> findAllByOrderByStartDateDesc();
 }

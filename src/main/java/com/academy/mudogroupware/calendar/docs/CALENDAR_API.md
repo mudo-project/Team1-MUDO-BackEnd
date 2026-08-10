@@ -75,7 +75,7 @@ HTTP `201 Created`
 
 ### Business Rules
 
-- `academyId`와 `createdBy`는 요청 본문이 아니라 Access Token의 인증 정보(`AuthUser`)에서 가져온다.
+- `createdBy`는 요청 본문이 아니라 Access Token의 인증 정보(`AuthUser`)에서 가져온다.
 - `createdAt`, `updatedAt`은 `BaseTimeEntity`(Spring Data JPA Auditing)가 저장 시 자동으로 채운다.
 - 도메인 검증은 `CalendarEvent.create(...)` 내부에서 수행하며, 위반 시 `CalendarTitleRequiredException`(`CALENDAR_400_1`) 또는 `InvalidCalendarPeriodException`(`CALENDAR_400_2`)이 발생한다.
 - 자세한 처리 흐름은 [CALENDAR_API_FLOW.md](CALENDAR_API_FLOW.md), 도메인 규칙은 [BUSINESS_RULES.md](BUSINESS_RULES.md)를 참고한다.
@@ -89,7 +89,7 @@ HTTP `201 Created`
 ### 인증 및 권한
 
 - `Authorization: Bearer {accessToken}` 헤더가 필요하다.
-- 같은 학원(`AuthUser.academyId()`) 소속으로 인증된 사용자라면 누구나 호출할 수 있다. 별도 권한 검사는 없다.
+- 현재 테넌트에 인증된 사용자라면 누구나 호출할 수 있다. 별도 권한 검사는 없다.
 
 ### Request Header
 
@@ -156,7 +156,7 @@ HTTP `200 OK`
 
 ### Business Rules
 
-- 조회 대상은 요청자의 `academyId` 소속 일정으로 한정한다. 다른 학원의 일정은 조회되지 않는다.
+- 조회 대상은 현재 테넌트 DB의 일정으로 한정한다. 다른 학원의 일정은 별도 DB에 저장된다.
 - 현재 조회 조건은 `event_start_at`이 계산된 구간에 포함되는 일정만 반환한다(종료 시각이 구간 밖까지 걸치는 일정은 포함하지 않음).
 - 목록/일별/상세 조회는 모두 `CalendarEventResponse`를 공용으로 사용한다.
 - 구간 계산은 한국 시간(Asia/Seoul) 기준이며, 시스템 기본 시간대에 의존하지 않는다(`docs/DATABASE.md`의 시간대 정책과 동일).
@@ -228,7 +228,7 @@ HTTP `204 No Content` (응답 본문 없음)
 ### Business Rules
 
 - 다른 학원 소속 일정을 수정하려고 하면 존재 여부를 노출하지 않기 위해 "존재하지 않음"과 동일하게 `CALENDAR_404_1`로 응답한다(별도의 403 응답을 두지 않음).
-- `academyId`, `createdBy`, `createdAt`은 수정 대상이 아니다. `updatedAt`은 `BaseTimeEntity`(Spring Data JPA Auditing)가 수정 시 자동으로 갱신한다.
+- `createdBy`, `createdAt`은 수정 대상이 아니다. `updatedAt`은 `BaseTimeEntity`(Spring Data JPA Auditing)가 수정 시 자동으로 갱신한다.
 - 도메인 검증은 `CalendarEvent.update(...)` 내부에서 수행하며, 위반 시 `CalendarTitleRequiredException`(`CALENDAR_400_1`) 또는 `InvalidCalendarPeriodException`(`CALENDAR_400_2`)이 발생한다.
 
 ## 일정 상세 조회
@@ -240,7 +240,7 @@ HTTP `204 No Content` (응답 본문 없음)
 ### 인증 및 권한
 
 - `Authorization: Bearer {accessToken}` 헤더가 필요하다.
-- 같은 학원(`AuthUser.academyId()`) 소속으로 인증된 사용자라면 누구나 호출할 수 있다. 별도 권한 검사는 없다.
+- 현재 테넌트에 인증된 사용자라면 누구나 호출할 수 있다. 별도 권한 검사는 없다.
 
 ### Request Header
 

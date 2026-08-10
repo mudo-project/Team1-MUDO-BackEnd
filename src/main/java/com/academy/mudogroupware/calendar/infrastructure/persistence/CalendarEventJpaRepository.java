@@ -7,6 +7,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface CalendarEventJpaRepository extends JpaRepository<CalendarEventEntity, Long> {
 
-    List<CalendarEventEntity> findAllByAcademyIdAndEventStartAtBetween(
-            Long academyId, LocalDateTime from, LocalDateTime to);
+    List<CalendarEventEntity> findAllByEventStartAtBetween(LocalDateTime from, LocalDateTime to);
 }

@@ -47,7 +47,7 @@ class CreateTimetableSlotServiceTest {
 
     private TimetableSet timetableSet() {
         return TimetableSet.restore(
-                1L, 1L, "2026 여름특강", SET_START, SET_END, LocalTime.of(8, 30), LocalTime.of(22, 0),
+                1L, "2026 여름특강", SET_START, SET_END, LocalTime.of(8, 30), LocalTime.of(22, 0),
                 Set.of(DayOfWeek.MONDAY), 30, List.of(new TimetableClassroom("6층", "601")), null, null);
     }
 
@@ -61,7 +61,7 @@ class CreateTimetableSlotServiceTest {
         when(timetableSlotRepository.save(any(TimetableSlot.class))).thenReturn(saved);
 
         CreateTimetableSlotCommand command = new CreateTimetableSlotCommand(
-                1L, 1L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
+                1L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
                 Grade.HIGH_3, "정T", "미적분");
 
         Long id = service.createSlot(command);
@@ -73,7 +73,7 @@ class CreateTimetableSlotServiceTest {
     void createSlotThrowsWhenTimetableSetNotFound() {
         when(timetableSetRepository.findById(999L)).thenReturn(Optional.empty());
         CreateTimetableSlotCommand command = new CreateTimetableSlotCommand(
-                1L, 999L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
+                999L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
                 Grade.HIGH_3, "정T", "미적분");
 
         assertThatThrownBy(() -> service.createSlot(command))
@@ -90,7 +90,7 @@ class CreateTimetableSlotServiceTest {
                 .thenReturn(List.of(existing));
 
         CreateTimetableSlotCommand command = new CreateTimetableSlotCommand(
-                1L, 1L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(10, 0), LocalTime.of(12, 0),
+                1L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(10, 0), LocalTime.of(12, 0),
                 Grade.HIGH_3, "정T", "미적분");
 
         assertThatThrownBy(() -> service.createSlot(command))

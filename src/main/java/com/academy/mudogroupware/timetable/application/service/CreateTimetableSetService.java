@@ -20,7 +20,7 @@ public class CreateTimetableSetService implements CreateTimetableSetUseCase {
     @Override
     public Long createTimetableSet(CreateTimetableSetCommand command) {
         TimetableSet timetableSet = TimetableSet.create(
-                command.academyId(), command.name(), command.startDate(), command.endDate(),
+                command.name(), command.startDate(), command.endDate(),
                 command.operatingStartTime(), command.operatingEndTime(), command.operatingDays(),
                 command.slotUnitMinutes(), command.classrooms());
 

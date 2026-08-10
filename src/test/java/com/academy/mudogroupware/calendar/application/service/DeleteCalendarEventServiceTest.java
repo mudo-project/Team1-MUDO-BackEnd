@@ -21,26 +21,24 @@ import com.academy.mudogroupware.calendar.domain.repository.CalendarEventReposit
 
 @ExtendWith(MockitoExtension.class)
 class DeleteCalendarEventServiceTest {
-
     private static final LocalDateTime START = LocalDateTime.of(2026, 8, 3, 10, 0);
     private static final LocalDateTime END = LocalDateTime.of(2026, 8, 3, 11, 30);
 
     @Mock private CalendarEventRepository calendarEventRepository;
-
-    private DeleteCalendarEventService deleteCalendarEventService;
+    private DeleteCalendarEventService service;
 
     @BeforeEach
     void setUp() {
-        deleteCalendarEventService = new DeleteCalendarEventService(calendarEventRepository);
+        service = new DeleteCalendarEventService(calendarEventRepository);
     }
 
     @Test
-    void deleteEventDeletesWhenEventBelongsToSameAcademy() {
+    void deleteEventDeletesExistingEvent() {
         CalendarEvent existing = CalendarEvent.restore(
-                101L, 1L, "제목", "내용", START, END, false, "green", 7L, START, START);
+                101L, "제목", "내용", START, END, false, "green", 7L, START, START);
         when(calendarEventRepository.findById(101L)).thenReturn(Optional.of(existing));
 
-        deleteCalendarEventService.deleteEvent(new DeleteCalendarEventCommand(101L, 1L));
+        service.deleteEvent(new DeleteCalendarEventCommand(101L));
 
         verify(calendarEventRepository).deleteById(101L);
     }
@@ -49,18 +47,7 @@ class DeleteCalendarEventServiceTest {
     void deleteEventThrowsWhenEventDoesNotExist() {
         when(calendarEventRepository.findById(999L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> deleteCalendarEventService.deleteEvent(new DeleteCalendarEventCommand(999L, 1L)))
-                .isInstanceOf(CalendarEventNotFoundException.class);
-        verify(calendarEventRepository, never()).deleteById(org.mockito.ArgumentMatchers.any());
-    }
-
-    @Test
-    void deleteEventThrowsWhenEventBelongsToDifferentAcademy() {
-        CalendarEvent existing = CalendarEvent.restore(
-                101L, 2L, "다른 학원 일정", null, START, END, false, null, 7L, START, START);
-        when(calendarEventRepository.findById(101L)).thenReturn(Optional.of(existing));
-
-        assertThatThrownBy(() -> deleteCalendarEventService.deleteEvent(new DeleteCalendarEventCommand(101L, 1L)))
+        assertThatThrownBy(() -> service.deleteEvent(new DeleteCalendarEventCommand(999L)))
                 .isInstanceOf(CalendarEventNotFoundException.class);
         verify(calendarEventRepository, never()).deleteById(org.mockito.ArgumentMatchers.any());
     }
