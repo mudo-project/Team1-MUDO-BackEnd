@@ -7,6 +7,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.academy.mudogroupware.file.application.usecase.GetFileDownloadUrlUseCase;
 import com.academy.mudogroupware.messenger.application.command.SendMessageCommand;
 import com.academy.mudogroupware.messenger.application.usecase.SendMessageUseCase;
 import com.academy.mudogroupware.messenger.domain.event.ChatMessageSentEvent;
@@ -28,6 +29,7 @@ public class SendMessageService implements SendMessageUseCase {
 
     private final ChatRoomRepository chatRoomRepository;
     private final ChatMessageRepository chatMessageRepository;
+    private final GetFileDownloadUrlUseCase getFileDownloadUrlUseCase;
     private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
 
@@ -46,9 +48,11 @@ public class SendMessageService implements SendMessageUseCase {
         ChatMessage saved = chatMessageRepository.save(chatMessage);
         chatRoom.markRead(command.senderId(), saved.getCreatedAt());
         chatRoomRepository.markRead(command.chatRoomId(), command.senderId(), saved.getCreatedAt());
+        String fileDownloadUrl = saved.getFileId() == null ? null
+                : getFileDownloadUrlUseCase.getDownloadUrl(saved.getFileId(), chatRoom.getAcademyId());
         eventPublisher.publishEvent(new ChatMessageSentEvent(saved.getChatRoomId(), saved.getId(),
                 saved.getSenderUserId(), saved.getMessageType(), saved.getContent(), saved.getFileId(),
-                saved.getFileName(), saved.getCreatedAt(), chatRoom.getMembers().size() - 1L));
+                fileDownloadUrl, saved.getFileName(), saved.getCreatedAt(), chatRoom.getMembers().size() - 1L));
         log.info("event=message_send_완료 chatRoomId={}, senderId={}, messageId={}", command.chatRoomId(),
                 command.senderId(), saved.getId());
         return saved.getId();

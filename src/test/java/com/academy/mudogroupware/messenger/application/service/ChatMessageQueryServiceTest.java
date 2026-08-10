@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.context.ApplicationEventPublisher;
 
+import com.academy.mudogroupware.file.application.usecase.GetFileDownloadUrlUseCase;
 import com.academy.mudogroupware.messenger.application.port.ChatMemberDirectoryPort;
 import com.academy.mudogroupware.messenger.application.port.ChatMemberInfo;
 import com.academy.mudogroupware.messenger.application.query.ChatMessagePageView;
@@ -33,17 +34,19 @@ class ChatMessageQueryServiceTest {
     private final ChatRoomRepository chatRoomRepository = mock(ChatRoomRepository.class);
     private final ChatMessageRepository chatMessageRepository = mock(ChatMessageRepository.class);
     private final ChatMemberDirectoryPort chatMemberDirectoryPort = mock(ChatMemberDirectoryPort.class);
+    private final GetFileDownloadUrlUseCase getFileDownloadUrlUseCase = mock(GetFileDownloadUrlUseCase.class);
     private final ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
     private final ChatMessageQueryService service =
             new ChatMessageQueryService(chatRoomRepository, chatMessageRepository, chatMemberDirectoryPort,
-                    eventPublisher);
+                    getFileDownloadUrlUseCase, eventPublisher);
 
     @Test
     void rejectsOversizedMessagePageSizeBeforeQuerying() {
         assertThatThrownBy(() -> service.getMessages(1L, 1L, null, null, 101))
                 .isInstanceOf(MessengerException.class);
 
-        verifyNoInteractions(chatRoomRepository, chatMessageRepository, chatMemberDirectoryPort, eventPublisher);
+        verifyNoInteractions(chatRoomRepository, chatMessageRepository, chatMemberDirectoryPort,
+                getFileDownloadUrlUseCase, eventPublisher);
     }
 
     @Test

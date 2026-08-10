@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.context.ApplicationEventPublisher;
 
+import com.academy.mudogroupware.file.application.usecase.GetFileDownloadUrlUseCase;
 import com.academy.mudogroupware.messenger.application.command.SendMessageCommand;
 import com.academy.mudogroupware.messenger.domain.event.ChatMessageSentEvent;
 import com.academy.mudogroupware.messenger.domain.model.ChatMessage;
@@ -33,11 +34,13 @@ class SendMessageServiceTest {
 
     private final ChatRoomRepository chatRoomRepository = mock(ChatRoomRepository.class);
     private final ChatMessageRepository chatMessageRepository = mock(ChatMessageRepository.class);
+    private final GetFileDownloadUrlUseCase getFileDownloadUrlUseCase = mock(GetFileDownloadUrlUseCase.class);
     private final ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
     private final Clock clock = Clock.fixed(
             NOW.atZone(ZoneId.of("Asia/Seoul")).toInstant(), ZoneId.of("Asia/Seoul"));
     private final SendMessageService service =
-            new SendMessageService(chatRoomRepository, chatMessageRepository, eventPublisher, clock);
+            new SendMessageService(chatRoomRepository, chatMessageRepository, getFileDownloadUrlUseCase,
+                    eventPublisher, clock);
 
     @Test
     void sendsMessageWithClockBasedTimestampAndMarksSenderRead() {

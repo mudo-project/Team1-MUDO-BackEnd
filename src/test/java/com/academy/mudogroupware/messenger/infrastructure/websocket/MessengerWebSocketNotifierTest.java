@@ -32,7 +32,7 @@ class MessengerWebSocketNotifierTest {
     void sendsMessageEventToRoomTopic() {
         LocalDateTime createdAt = LocalDateTime.of(2026, 8, 5, 14, 30);
         ChatMessageSentEvent event = new ChatMessageSentEvent(
-                1L, 5L, 2L, MessageType.TEXT, "hello", null, null, createdAt, 3L);
+                1L, 5L, 2L, MessageType.TEXT, "hello", null, null, null, createdAt, 3L);
 
         notifier.handle(event);
 

@@ -11,6 +11,7 @@ public record ChatMessageSentEvent(
         MessageType messageType,
         String content,
         Long fileId,
+        String fileDownloadUrl,
         String fileName,
         LocalDateTime createdAt,
         long unreadCount

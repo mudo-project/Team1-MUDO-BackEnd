@@ -11,6 +11,7 @@ public record ChatMessageView(
         MessageType messageType,
         String content,
         Long fileId,
+        String fileDownloadUrl,
         String fileName,
         LocalDateTime createdAt,
         LocalDateTime editedAt,
