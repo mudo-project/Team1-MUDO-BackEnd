@@ -29,21 +29,15 @@ public class UpdateMemoColorService implements UpdateMemoColorUseCase {
     public void updateColor(UpdateMemoColorCommand command) {
         log.info("event=memo_color_update_시작 memoId={}, userId={}, color={}", command.memoId(), command.userId(),
                 command.color());
-        try {
-            Memo memo = memoRepository.findById(command.memoId())
-                    .orElseThrow(() -> new MemoException(MemoErrorCode.MEMO_NOT_FOUND));
-            if (!memo.isOwnedBy(command.userId())) {
-                throw new MemoException(MemoErrorCode.NOT_MEMO_OWNER);
-            }
-            LocalDateTime now = LocalDateTime.now(clock);
-            memo.updateColor(command.color(), now);
-            memoRepository.updateColor(memo.getId(), memo.getColor(), now);
-            log.info("event=memo_color_update_완료 memoId={}, userId={}, color={}", command.memoId(),
-                    command.userId(), memo.getColor());
-        } catch (RuntimeException e) {
-            log.warn("event=memo_color_update_실패 memoId={}, userId={}, reason={}", command.memoId(),
-                    command.userId(), e.getMessage(), e);
-            throw e;
+        Memo memo = memoRepository.findById(command.memoId())
+                .orElseThrow(() -> new MemoException(MemoErrorCode.MEMO_NOT_FOUND));
+        if (!memo.isOwnedBy(command.userId())) {
+            throw new MemoException(MemoErrorCode.NOT_MEMO_OWNER);
         }
+        LocalDateTime now = LocalDateTime.now(clock);
+        memo.updateColor(command.color(), now);
+        memoRepository.updateColor(memo.getId(), memo.getColor(), now);
+        log.info("event=memo_color_update_완료 memoId={}, userId={}, color={}", command.memoId(),
+                command.userId(), memo.getColor());
     }
 }
