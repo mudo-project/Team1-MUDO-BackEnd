@@ -11,7 +11,8 @@ public record ChatMessageResponse(
         String senderName,
         MessageType messageType,
         String content,
-        String fileUrl,
+        Long fileId,
+        String fileDownloadUrl,
         String fileName,
         LocalDateTime createdAt,
         LocalDateTime editedAt,
@@ -23,7 +24,8 @@ public record ChatMessageResponse(
     public static ChatMessageResponse from(ChatMessageView view) {
         boolean deleted = view.deletedAt() != null;
         return new ChatMessageResponse(view.id(), view.senderId(), view.senderName(), view.messageType(),
-                deleted ? null : view.content(), deleted ? null : view.fileUrl(), deleted ? null : view.fileName(),
+                deleted ? null : view.content(), deleted ? null : view.fileId(),
+                deleted ? null : view.fileDownloadUrl(), deleted ? null : view.fileName(),
                 view.createdAt(), view.editedAt(), view.deletedAt(), deleted, view.unreadCount());
     }
 }

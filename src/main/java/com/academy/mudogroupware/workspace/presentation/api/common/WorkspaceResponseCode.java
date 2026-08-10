@@ -28,7 +28,8 @@ public enum WorkspaceResponseCode implements ResponseCode {
   TASK_COMMENT_DELETED("WORKSPACE_200_14", "업무 댓글 삭제에 성공했습니다."),
   RECURRING_TEMPLATE_DELETED("WORKSPACE_200_15", "반복 업무 템플릿 삭제에 성공했습니다."),
   TASK_DETAIL_RETRIEVED("WORKSPACE_200_16", "업무 상세 조회에 성공했습니다."),
-  TASK_COMMENT_LIST_RETRIEVED("WORKSPACE_200_17", "댓글 목록 조회에 성공했습니다.");
+  TASK_COMMENT_LIST_RETRIEVED("WORKSPACE_200_17", "댓글 목록 조회에 성공했습니다."),
+  MY_TASK_LIST_RETRIEVED("WORKSPACE_200_18", "내 업무 목록 조회에 성공했습니다.");
 
   private final String code;
   private final String message;

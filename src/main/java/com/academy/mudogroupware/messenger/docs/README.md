@@ -12,7 +12,7 @@ BE6 메신저 담당
 
 - `ChatRoom` — DB 테이블 `chat_room` (academy_id, name, type(DM/GROUP), created_by)
 - `ChatRoomMember` — DB 테이블 `chat_room_member` (chat_room_id + user_id 진짜 복합키, last_read_at — 안읽은 메시지 수 계산에 사용). JPA는 `@ElementCollection`으로 매핑(값 객체라 자체 identity 없음, 복합키라 surrogate id 없이도 매핑 가능).
-- `ChatMessage` — DB 테이블 `chat_message` (message_type: TEXT/IMAGE/FILE, TEXT는 content 필수, IMAGE/FILE은 file_url 필수)
+- `ChatMessage` — DB 테이블 `chat_message` (message_type: TEXT/IMAGE/FILE, TEXT는 content 필수, IMAGE/FILE은 file_id 필수)
 - `ChatTaskCard` — DB 테이블 `chat_task_card` (chat_room_id, assigner_user_id, content, due_date(nullable))
 - `ChatTaskAssignee` — DB 테이블 `chat_task_assignee` (card_id + user_id 유니크, completed_at — 담당자별 완료 여부). `chat_room_member`와 달리 surrogate id + UNIQUE KEY 구조(notice_read와 동일 컨벤션). JPA도 `@ElementCollection`으로 매핑.
 - 명시적으로 제외된 컬럼: `write_policy`, `hidden_at`/`hidden_by`(나가기·숨김 기능 없음, 확정), `notification_id`(알림함/푸시 기능 자체가 미설계 상태라 제거)
@@ -31,7 +31,7 @@ BE6 메신저 담당
 ## 다른 모듈 또는 외부 시스템에 요청하는 의존성
 
 - **참여자·발신자 이름 조회 및 활성 사용자 검증**: `ChatMemberDirectoryPort`(application/port)로 추상화한다. 활성 사용자 여부는 users 모듈의 공개 계약인 `UserDirectoryUseCase.findActiveUserIds()`로 확인한다. 다만 이름·소속 학원 조회는 아직 users 쪽 공개 조회 계약이 부족해, `ChatMemberInfoEntity`가 `users` 테이블을 읽기 전용으로 직접 매핑하는 임시 shim으로 남아 있다.
-- **파일 업로드**: 이미지·파일 메시지는 `file` 모듈의 presigned URL 방식을 그대로 참조한다. 메시지 전송 API가 파일 업로드를 직접 처리하지 않고 `fileUrl`/`fileName`만 받는다(approval 컨벤션을 따르기로 사용자가 명시적으로 결정).
+- **파일 업로드**: 이미지·파일 메시지는 `file` 모듈에서 발급받은 `fileId`를 참조한다(`ChatMessage.fileId` → `file_metadata`). 메시지 전송 API가 파일 업로드를 직접 처리하지 않고 `fileId`/`fileName`만 받는다. 원래는 프론트가 `fileUrl`을 직접 채워 보내는 방식이었으나, 파일을 업로드해서 URL을 발급받는 API 자체가 없어 실제로 채울 수 없는 값이었음이 확인되어 approval/notice와 동일하게 `fileId` 참조 방식으로 전환했다(2026-08-10).
 - **실시간 전송**: `global` 모듈에 추가된 WebSocket(STOMP, `/ws`) 인프라를 사용해, 메시지 전송·읽음 처리·업무지시 등록·업무지시 완료를 이벤트 기반으로 room topic에 브로드캐스트한다. 발신자/행위자를 제외하지 않고 room 전체를 대상으로 보낸다(echo 방식) — 프론트가 optimistic UI로 자기 행위는 즉시 그리고, 자신에게 돌아온 echo는 무시하는 방식을 채택하기로 확정했다(2026-08-06). 유저 단위 알림 채널(`/user/queue` 등, 방을 보고 있지 않아도 오는 알림)은 이번 스코프에서 필요 없다고 확인되어 만들지 않았다 — room topic 구독 중일 때만 실시간이고, 안 보고 있으면 REST 재조회로 확인한다.
 
 ## 발행·소비하는 Event

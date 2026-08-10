@@ -1,9 +1,68 @@
 > 작성일: 2026-08-04
-> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청/승인 워크플로우(PR 1·2·3/3, "계정 발급 체계" 2단계) 완료, 역할 관리 API 7개(생성/목록/상세/수정/삭제/권한 조립/권한 카탈로그 조회) 완료, 사용자 역할 변경 API 완료, 학원 구성원 검색 API 완료, 역할 색상/인원수 완료, CodeRabbit 피드백 반영 + 로깅 컨벤션 전체 도메인(Service 17개) 적용 완료, 직원 계정 발급 API 완료("계정 발급 체계" 3단계 완료) · 후속 작업: 이메일 발송, mustChangePw 로그인 흐름 연동, 원장 신청 시 username 중복 확인
+> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청/승인 워크플로우(PR 1·2·3/3, "계정 발급 체계" 2단계) 완료, 역할 관리 API 7개(생성/목록/상세/수정/삭제/권한 조립/권한 카탈로그 조회) 완료, 사용자 역할 변경 API 완료, 학원 구성원 검색 API 완료, 역할 색상/인원수 완료, CodeRabbit 피드백 반영 + 로깅 컨벤션 전체 도메인(Service 17개) 적용 완료, 직원 계정 발급 API 완료("계정 발급 체계" 3단계 완료), 학원 신청 접수 API 완료(최소 스코프, "계정 발급 체계" 2단계 최종 완결) · 후속 작업: 이메일 발송, mustChangePw 로그인 흐름 연동, 원장 신청 시 username 중복 확인, 사업자등록증 검증(OCR·국세청 API)
 
 ## 🎯 변경 목적
 
 계정·권한(users) 도메인을 신설하고, 로그인과 액세스 토큰 재발급을 구현한다. 초기세팅 때 approval 도메인이 참조용으로 임시로 만들어둔 `users` 테이블을 팀이 확정한 ERD에 맞게 정합화하고, 그 위에서 인증 흐름을 짠다.
+
+---
+
+## ✅ 2026-08-10 · CodeRabbit 리뷰 반영 (PR #301)
+
+학원 신청 접수 API(아래 항목) 리뷰에서 나온 지적 중 하나를 실제 버그로 확인해 고쳤다: `ApproveAcademyApplicationService`가 `requestedLoginId` 중복 확인 없이 바로 계정을 생성하고 있었다(`CreateAccountService`는 `existsByUsername` 사전 체크가 있는데 승인 서비스만 빠져 있었음). 지금까지는 크래시 없이 `GlobalExceptionHandler`의 `DataIntegrityViolationException` 처리로 `409 COMMON_409_1`(일반 충돌)까지는 방어됐지만, 원인을 알 수 없는 일반 메시지였다. `UserRepository.existsByUsername(...)` 사전 체크를 추가해 `409 USER_409_6`("이미 사용 중인 아이디입니다")로 명확하게 응답하도록 고쳤다(신규 예외 클래스 없이 기존 `UsernameDuplicateException` 재사용). `requestedLoginId` 중복 확인 자체를 접수 시점에 막는 것은 여전히 후속 작업으로 남아있다 — 이번 수정은 승인 시점 충돌이 발생했을 때의 응답만 명확히 한 것.
+
+그 외 README 문구 정확도, 마이그레이션 SQLFluff 포맷팅, API.md 검증·정책 설명 보강, 실패 케이스(빈 `requestedLoginId`/`plan` 누락 시 400) 테스트 추가도 함께 반영했다.
+
+---
+
+## ✅ 2026-08-10 · 학원 신청 접수 API 구현, 최소 스코프 (`POST /api/academy-applications`, `V4.1.5`)
+
+### 배경
+
+`2026-08-07-academy-application-design.md`에서 "제외됨 — 참고용"으로 남겨뒀던 신청 접수(`POST`)를 이번에 구현했다. 원래는 사업자등록증 파일 업로드(presigned URL 또는 서버 직접 수신) + OCR(사업자등록증 텍스트 추출) + 국세청 사업자등록정보 진위확인 API + 소유권 검증(전화확인/본인인증) + 악의적 공격 방어(글로벌 rate limit, `businessNo` 유니크 제약) 조합까지 상세 설계했으나, **팀 논의 결과 이 설계 전체를 보류하고 훨씬 단순한 버전으로 구현하기로 결정했다** — 사업자등록증 검증 자체를 안 할 거면 파일을 받을 필요도 없다는 판단.
+
+### 이번에 뺀 것 (전부 향후 별도 작업)
+
+- 사업자등록증 파일 업로드/OCR/국세청 진위확인 API 연동
+- 소유권 검증(전화확인/본인인증)
+- 악의적 공격 방어(rate limit, `businessNo` 유니크 제약)
+- `requestedLoginId` 중복 확인(기존에도 미뤄뒀던 항목, 계속 미룸)
+- 결제 연동 — `plan`은 신청 시점 선택값만 저장, 실제 리소스(EC2/S3/RDS) 프로비저닝·결제 처리는 이 프로젝트 스코프 밖
+
+### 신규 도입
+
+- `Plan` enum(`FREE`/`PAID`) — 향후 등급이 늘어나면 enum 상수만 추가하면 됨
+- `academy_application.business_no`를 `NOT NULL → NULL` 허용으로 완화(컬럼은 유지 — 나중에 검증 기능이 붙을 때 재사용 목적)
+- `AcademyApplication.submit(...)` 생성 팩토리 신규(지금까지 `restore(...)`만 있었음)
+- `AcademyApplicationRepository.save(...)` 신규
+
+### 로컬 e2e 검증 중 발견해 함께 고친 버그 2개
+
+1. **`plan` NOT NULL 컬럼을 기본값 없이 바로 추가하면 기존 행이 빈 문자열이 됨** — MySQL이 strict 모드가 아니면 `ADD COLUMN ... NOT NULL`에 암묵적 기본값(VARCHAR는 빈 문자열)을 채우는데, 이걸 Hibernate가 enum으로 역직렬화하지 못해 목록 조회가 500으로 깨졌다. `NULL 허용으로 추가 → 'FREE'로 백필 → NOT NULL로 재변경` 3단계로 수정.
+2. **`academy.business_no`도 nullable로 함께 완화해야 했음** — 접수 시점에 사업자등록번호를 안 받으니 신청서의 `businessNo`가 항상 `null`인데, 승인 시 `Academy.create(...)`가 그 값을 그대로 `academy.business_no`에 복사하다가 기존 `NOT NULL` 제약에 걸려 **승인 자체가 항상 실패**했다. `academy.business_no`를 nullable로 완화(`uk_academy_business_no` UNIQUE 제약은 유지 — MySQL은 NULL 여러 개를 유니크 위반으로 보지 않음).
+
+### 접근 제어
+
+`POST /api/academy-applications`만 `SecurityConfig`에서 `permitAll` — 기존 목록/상세/승인/반려 4개는 그대로 `PLATFORM:SUPER_ADMIN` 필요.
+
+### 나중에 검증 기능을 다시 붙일 때 참고
+
+설계 검토 과정에서 결론 낸 것들(구현은 안 했지만 기록):
+
+- 파일 업로드는 `academy_application` 접수 API만 멀티파트로 직접 수신하고(기존 `file` 모듈의 인증 필수 presigned-URL 흐름은 안 건드림), `users` 도메인이 `BusinessLicenseStoragePort`를 소유하고 `file` 모듈이 그 어댑터를 구현하는 구조(`approval`의 `AttachmentContentPort` 패턴과 동일)가 이 코드베이스 아키텍처에 맞다.
+- 검증 순서는 필드검증 → OCR(사업자등록증에서 실제 사업자번호 추출) → 국세청 진위확인(OCR 값 기준) → 중복 체크(OCR 값 기준, `PENDING`+`APPROVED`만 유니크, `REJECTED`는 재신청 허용) → 전부 통과해야 S3 업로드, 순으로 가야 한다(중복 체크가 타이핑 값이 아니라 검증된 값 기준이어야 함).
+- 국세청 API는 OCR(예: CLOVA OCR 사업자등록증 특화모델)과 조합하는 게 기본안 — CLOVA eKYC(OCR+진위확인 통합)는 금융 클라우드존 B2B 상품이라 접근성이 불확실해 폴백으로만 고려.
+- 자동 검증(OCR+국세청)은 "데이터가 실존 사업자와 일치하는가"만 확인하고 "제출자가 그 사업자 소유주인가"는 확인 못 한다 — 이 갭은 SUPER_ADMIN 승인 단계 수동 검토(서류 대조·전화 확인)에 계속 의존해야 한다.
+
+### 완료 기준
+
+- [x] `V4.1.5__academy_application_plan.sql` 마이그레이션(`business_no` nullable 완화 2곳, `plan` 컬럼 추가+백필)
+- [x] `Plan` enum, `AcademyApplication.submit(...)` 생성 팩토리
+- [x] `AcademyApplicationRepository.save(...)` + `DataJpaTest`
+- [x] `SubmitAcademyApplicationService`(TDD, 로깅 컨벤션 적용)
+- [x] 요청/응답 DTO, 응답 코드, 기존 `AcademyApplicationResponse`에 `plan` 노출
+- [x] `AcademyApplicationController` POST 핸들러, `SecurityConfig` `permitAll`
+- [x] 로컬 curl e2e(접수 → 400 검증 → 목록/상세 노출 → 승인 → 발급된 계정으로 실제 로그인까지 확인) + `./gradlew build` 통과
 
 ---
 

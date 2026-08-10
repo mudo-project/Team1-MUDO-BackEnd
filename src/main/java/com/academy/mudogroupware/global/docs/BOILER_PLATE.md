@@ -1,6 +1,6 @@
 # 🧰 Global Retention Scheduler 보일러플레이트
 
-> 업데이트: 2026-08-06 · 최초 작성. 아직 구현되지 않은 **설계 가이드/보일러플레이트**입니다 — 이 문서에 있는 코드는 실제 코드베이스에 없습니다. 실제 삭제성 배치 Job이 필요해지는 시점에 이 문서를 그대로 따라 구현하면 됩니다.
+> 업데이트: 2026-08-10 · **student 도메인에 최초로 실제 구현됨.** `global.scheduler` 패키지의 `RetentionJob`/`RetentionJobResult`/`GlobalRetentionScheduler`는 이제 실제 코드베이스에 존재합니다(문서의 코드와 동일). 소프트 삭제된 학생을 30일 후 하드 삭제하는 `student.application.retention.*`가 실제 구현 예시입니다 — 새 도메인을 추가할 땐 아래 설계 대신 이 실제 코드를 참고하세요. 이 문서는 설계 배경 설명용으로 유지합니다.
 
 ## 🎯 언제 쓰는가
 
@@ -375,6 +375,6 @@ DB 접근과 쿼리 구현 → Infrastructure
 
 ## 📝 문서 정보
 
-- 업데이트일: `2026-08-06`
-- 상태: 설계 가이드(미구현) — 실제 삭제성 배치 Job이 필요해지면 이 문서를 그대로 따라 구현합니다.
+- 업데이트일: `2026-08-10`
+- 상태: **구현됨** — `global/scheduler/{RetentionJob,RetentionJobResult,GlobalRetentionScheduler}.java`, 첫 적용 사례는 `student/application/retention/*`(소프트 삭제 후 30일 경과 시 하드 삭제). 새 도메인을 추가할 땐 "🆕 새 도메인 추가 절차" 순서를 그대로 따르면 됩니다.
 - 관련 판단 기록: [workspace/docs/REVISION.md](../../workspace/docs/REVISION.md) — 업무 자동 지연 스케줄러가 이 패턴 대신 도메인 전용 스케줄러를 선택한 이유

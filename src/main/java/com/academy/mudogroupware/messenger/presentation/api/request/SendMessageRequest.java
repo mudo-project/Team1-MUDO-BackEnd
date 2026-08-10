@@ -8,11 +8,11 @@ import jakarta.validation.constraints.NotNull;
 public record SendMessageRequest(
         @NotNull MessageType messageType,
         String content,
-        String fileUrl,
+        Long fileId,
         String fileName
 ) {
 
     public SendMessageCommand toCommand(Long chatRoomId, Long senderId) {
-        return new SendMessageCommand(chatRoomId, senderId, messageType, content, fileUrl, fileName);
+        return new SendMessageCommand(chatRoomId, senderId, messageType, content, fileId, fileName);
     }
 }

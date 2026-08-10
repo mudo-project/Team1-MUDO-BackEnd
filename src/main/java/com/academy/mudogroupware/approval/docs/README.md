@@ -17,6 +17,7 @@
 
 - users: `ApproverDirectoryPort`를 users 모듈의 `ApprovalApproverDirectoryAdapter`가 구현한다. approval은 users 테이블을 직접 매핑하지 않는다.
 - file: `AttachmentContentPort`를 file 모듈의 `ApprovalAttachmentContentAdapter`가 구현한다. 텍스트 계열 파일 원문만 Gemini 요약으로 전달한다.
+- file: 첨부파일 다운로드 URL 발급은 file 모듈이 공개하는 `GetFileDownloadUrlUseCase`를 직접 주입해서 쓴다(`GetApprovalAttachmentDownloadUrlService`). approval이 신청자/결재선 참여자 검증과 fileId의 문서 소속 검증을 먼저 마친 뒤에만 호출한다 — file 모듈의 범용 다운로드 API는 academyId만 검증하므로 그대로 노출하면 결재선과 무관한 사람도 URL을 받을 수 있다.
 - attendance: 휴가 기간이 포함된 결재는 `LeaveRequestSubmittedEvent`와 `ApprovalDocumentDecidedEvent`로 휴가 상태를 전달한다.
 - global security: `AuthUser`로 인증 사용자 정보를 받는다.
 

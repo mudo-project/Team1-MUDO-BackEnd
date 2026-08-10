@@ -3,6 +3,7 @@ package com.academy.mudogroupware.users.presentation.api.response;
 import java.time.LocalDateTime;
 
 import com.academy.mudogroupware.users.domain.model.AcademyApplication;
+import com.academy.mudogroupware.users.domain.model.Plan;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
@@ -14,6 +15,7 @@ public record AcademyApplicationResponse(
         @Schema(description = "대표자(원장) 이름", example = "홍길동") String representativeName,
         @Schema(description = "대표자 이메일", example = "hong@example.com") String representativeEmail,
         @Schema(description = "대표자 전화번호", example = "010-0000-0000") String representativePhone,
+        @Schema(description = "신청 시 선택한 플랜(FREE/PAID)", example = "FREE") Plan plan,
         @Schema(description = "신청 상태(PENDING/APPROVED/REJECTED)", example = "PENDING") String status,
         @Schema(description = "반려 사유. 반려되지 않았으면 null", example = "null") String rejectReason,
         @Schema(description = "신청 접수 시각") LocalDateTime createdAt) {
@@ -21,7 +23,7 @@ public record AcademyApplicationResponse(
     public static AcademyApplicationResponse from(AcademyApplication application) {
         return new AcademyApplicationResponse(application.getId(), application.getRequestedLoginId(),
                 application.getAcademyName(), application.getBusinessNo(), application.getRepresentativeName(),
-                application.getRepresentativeEmail(), application.getRepresentativePhone(),
+                application.getRepresentativeEmail(), application.getRepresentativePhone(), application.getPlan(),
                 application.getStatus().name(), application.getRejectReason(), application.getCreatedAt());
     }
 }
