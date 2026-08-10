@@ -1,6 +1,8 @@
 ALTER TABLE academy_application MODIFY COLUMN business_no VARCHAR(20) NULL;
 ALTER TABLE academy_application ADD COLUMN plan VARCHAR(10) NULL;
-UPDATE academy_application SET plan = 'FREE' WHERE plan IS NULL OR plan = '';
+UPDATE academy_application
+SET plan = 'FREE'
+WHERE plan IS NULL OR plan = '';
 ALTER TABLE academy_application MODIFY COLUMN plan VARCHAR(10) NOT NULL;
 
 -- 접수 시점에 사업자등록번호를 더 이상 받지 않으므로(신청서 business_no가 항상 null),

@@ -2,6 +2,7 @@ package com.academy.mudogroupware.users.presentation.api;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -89,6 +90,45 @@ class AcademyApplicationSecurityIntegrationTest {
                                 """))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.code").value("ACADEMY_APPLICATION_201_1"));
+    }
+
+    @Test
+    void submitReturnsBadRequestWhenRequestedLoginIdIsBlank() throws Exception {
+        mockMvc.perform(post("/api/academy-applications")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "requestedLoginId": "",
+                                  "academyName": "테스트학원",
+                                  "representativeName": "홍길동",
+                                  "representativeEmail": "hong@example.com",
+                                  "representativePhone": "010-0000-0000",
+                                  "plan": "FREE"
+                                }
+                                """))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(submitAcademyApplicationUseCase);
+    }
+
+    @Test
+    void submitReturnsBadRequestWhenPlanIsMissing() throws Exception {
+        mockMvc.perform(post("/api/academy-applications")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "requestedLoginId": "academy01",
+                                  "academyName": "테스트학원",
+                                  "representativeName": "홍길동",
+                                  "representativeEmail": "hong@example.com",
+                                  "representativePhone": "010-0000-0000"
+                                }
+                                """))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(submitAcademyApplicationUseCase);
     }
 
     @Test

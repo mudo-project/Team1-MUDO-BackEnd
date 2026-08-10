@@ -7,6 +7,14 @@
 
 ---
 
+## ✅ 2026-08-10 · CodeRabbit 리뷰 반영 (PR #301)
+
+학원 신청 접수 API(아래 항목) 리뷰에서 나온 지적 중 하나를 실제 버그로 확인해 고쳤다: `ApproveAcademyApplicationService`가 `requestedLoginId` 중복 확인 없이 바로 계정을 생성하고 있었다(`CreateAccountService`는 `existsByUsername` 사전 체크가 있는데 승인 서비스만 빠져 있었음). 지금까지는 크래시 없이 `GlobalExceptionHandler`의 `DataIntegrityViolationException` 처리로 `409 COMMON_409_1`(일반 충돌)까지는 방어됐지만, 원인을 알 수 없는 일반 메시지였다. `UserRepository.existsByUsername(...)` 사전 체크를 추가해 `409 USER_409_6`("이미 사용 중인 아이디입니다")로 명확하게 응답하도록 고쳤다(신규 예외 클래스 없이 기존 `UsernameDuplicateException` 재사용). `requestedLoginId` 중복 확인 자체를 접수 시점에 막는 것은 여전히 후속 작업으로 남아있다 — 이번 수정은 승인 시점 충돌이 발생했을 때의 응답만 명확히 한 것.
+
+그 외 README 문구 정확도, 마이그레이션 SQLFluff 포맷팅, API.md 검증·정책 설명 보강, 실패 케이스(빈 `requestedLoginId`/`plan` 누락 시 400) 테스트 추가도 함께 반영했다.
+
+---
+
 ## ✅ 2026-08-10 · 학원 신청 접수 API 구현, 최소 스코프 (`POST /api/academy-applications`, `V4.1.5`)
 
 ### 배경
