@@ -72,7 +72,7 @@ public class WorkspaceRecurringTaskTemplateController {
     SliceResponse<RecurringTaskTemplateListResponse> response =
         SliceResponse.from(
             getRecurringTaskTemplatesUseCase.getTemplates(
-                workspaceId, authUser.userId(), page, size, authUser.academyId(), canReadAll),
+                workspaceId, authUser.userId(), page, size, canReadAll),
             RecurringTaskTemplateListResponse::from);
     return ResponseEntity.ok(
         GlobalApiResponse.ok(WorkspaceResponseCode.RECURRING_TEMPLATE_LIST_RETRIEVED, response));
