@@ -4,5 +4,6 @@ import com.academy.mudogroupware.workspace.application.query.task.TaskDetail;
 
 public interface TaskDetailQueryUseCase {
 
-  TaskDetail getTaskDetail(Long workspaceId, Long taskId, Long requesterId);
+  TaskDetail getTaskDetail(
+      Long workspaceId, Long taskId, Long requesterId, Long academyId, boolean canReadAll);
 }

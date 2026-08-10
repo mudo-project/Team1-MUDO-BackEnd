@@ -6,5 +6,11 @@ import com.academy.mudogroupware.workspace.application.query.comment.TaskComment
 public interface TaskCommentListQueryUseCase {
 
   PageResult<TaskCommentListItem> getComments(
-      Long workspaceId, Long taskId, Long requesterId, int page, int size);
+      Long workspaceId,
+      Long taskId,
+      Long requesterId,
+      int page,
+      int size,
+      Long academyId,
+      boolean canReadAll);
 }

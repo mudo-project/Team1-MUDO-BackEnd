@@ -2,6 +2,8 @@ package com.academy.mudogroupware.workspace.application.service.comment;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.academy.mudogroupware.global.domain.common.page.PageResult;
@@ -35,6 +37,8 @@ class TaskCommentListQueryServiceTest {
   private static final long TASK_ID = 101L;
   private static final long MEMBER_ID = 10L;
   private static final long OUTSIDER_ID = 99L;
+  private static final long ACADEMY_ID = 1L;
+  private static final long OTHER_ACADEMY_ID = 2L;
 
   @Mock private WorkspaceRepository workspaceRepository;
   @Mock private TaskRepository taskRepository;
@@ -61,7 +65,7 @@ class TaskCommentListQueryServiceTest {
         .thenReturn(List.of(new WorkspaceMemberInfo(MEMBER_ID, "윤예진")));
 
     PageResult<TaskCommentListItem> result =
-        service().getComments(WORKSPACE_ID, TASK_ID, MEMBER_ID, 0, 20);
+        service().getComments(WORKSPACE_ID, TASK_ID, MEMBER_ID, 0, 20, ACADEMY_ID, false);
 
     assertThat(result.content()).hasSize(1);
     TaskCommentListItem item = result.content().get(0);
@@ -85,7 +89,7 @@ class TaskCommentListQueryServiceTest {
     when(workspaceUserInfoPort.findUserInfo(Set.of(MEMBER_ID))).thenReturn(List.of());
 
     PageResult<TaskCommentListItem> result =
-        service().getComments(WORKSPACE_ID, TASK_ID, MEMBER_ID, 0, 20);
+        service().getComments(WORKSPACE_ID, TASK_ID, MEMBER_ID, 0, 20, ACADEMY_ID, false);
 
     assertThat(result.content().get(0).author()).isEqualTo(new WorkspaceMemberInfo(MEMBER_ID, "알 수 없음"));
   }
@@ -94,16 +98,66 @@ class TaskCommentListQueryServiceTest {
   void rejectsMissingWorkspace() {
     when(workspaceRepository.findById(WORKSPACE_ID)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> service().getComments(WORKSPACE_ID, TASK_ID, MEMBER_ID, 0, 20))
+    assertThatThrownBy(
+            () -> service().getComments(WORKSPACE_ID, TASK_ID, MEMBER_ID, 0, 20, ACADEMY_ID, false))
         .isInstanceOf(WorkspaceNotFoundException.class);
+  }
+
+  @Test
+  void rejectsMissingWorkspaceEvenWhenCanReadAllIsTrue() {
+    when(workspaceRepository.findById(WORKSPACE_ID)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(
+            () ->
+                service().getComments(WORKSPACE_ID, TASK_ID, OUTSIDER_ID, 0, 20, ACADEMY_ID, true))
+        .isInstanceOf(WorkspaceNotFoundException.class);
+
+    verify(taskRepository, never()).findById(WORKSPACE_ID, TASK_ID);
   }
 
   @Test
   void rejectsNonMember() {
     givenWorkspaceWithMember();
 
-    assertThatThrownBy(() -> service().getComments(WORKSPACE_ID, TASK_ID, OUTSIDER_ID, 0, 20))
+    assertThatThrownBy(
+            () ->
+                service().getComments(WORKSPACE_ID, TASK_ID, OUTSIDER_ID, 0, 20, ACADEMY_ID, false))
         .isInstanceOf(WorkspaceAccessDeniedException.class);
+  }
+
+  @Test
+  void rejectsOtherAcademyEvenWhenCanReadAllIsTrue() {
+    givenWorkspaceWithMember();
+
+    assertThatThrownBy(
+            () ->
+                service()
+                    .getComments(WORKSPACE_ID, TASK_ID, OUTSIDER_ID, 0, 20, OTHER_ACADEMY_ID, true))
+        .isInstanceOf(WorkspaceAccessDeniedException.class);
+
+    verify(taskRepository, never()).findById(WORKSPACE_ID, TASK_ID);
+  }
+
+  @Test
+  void allowsNonMemberWhenCanReadAllIsTrue() {
+    givenWorkspaceWithMember();
+    givenTask();
+    TaskComment comment =
+        TaskComment.restore(
+            1L, TASK_ID, MEMBER_ID, "수학A반 완료", true, MEMBER_ID,
+            LocalDateTime.of(2026, 8, 1, 16, 0), List.of(),
+            LocalDateTime.of(2026, 8, 1, 16, 0), LocalDateTime.of(2026, 8, 1, 16, 0));
+    when(taskCommentRepository.findAllByTaskId(TASK_ID, 0, 20))
+        .thenReturn(PageResult.of(List.of(comment), 0, 20, false));
+    when(workspaceUserInfoPort.findUserInfo(Set.of(MEMBER_ID)))
+        .thenReturn(List.of(new WorkspaceMemberInfo(MEMBER_ID, "윤예진")));
+
+    PageResult<TaskCommentListItem> result =
+        service().getComments(WORKSPACE_ID, TASK_ID, OUTSIDER_ID, 0, 20, ACADEMY_ID, true);
+
+    assertThat(result.content()).hasSize(1);
+    assertThat(result.content().get(0).content()).isEqualTo("수학A반 완료");
+    assertThat(result.content().get(0).author()).isEqualTo(new WorkspaceMemberInfo(MEMBER_ID, "윤예진"));
   }
 
   @Test
@@ -111,13 +165,14 @@ class TaskCommentListQueryServiceTest {
     givenWorkspaceWithMember();
     when(taskRepository.findById(WORKSPACE_ID, TASK_ID)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> service().getComments(WORKSPACE_ID, TASK_ID, MEMBER_ID, 0, 20))
+    assertThatThrownBy(
+            () -> service().getComments(WORKSPACE_ID, TASK_ID, MEMBER_ID, 0, 20, ACADEMY_ID, false))
         .isInstanceOf(TaskNotFoundException.class);
   }
 
   private void givenWorkspaceWithMember() {
     Workspace workspace =
-        Workspace.restore(WORKSPACE_ID, 1L, "8월 학사 운영", MEMBER_ID, Set.of(MEMBER_ID));
+        Workspace.restore(WORKSPACE_ID, ACADEMY_ID, "8월 학사 운영", MEMBER_ID, Set.of(MEMBER_ID));
     when(workspaceRepository.findById(WORKSPACE_ID)).thenReturn(Optional.of(workspace));
   }
 

@@ -25,6 +25,7 @@ import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -37,7 +38,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-// TODO: 권한 모듈의 WORKSPACE:CREATE/READ 권한이 준비되면 @PreAuthorize를 추가한다.
 @Tag(name = "반복 업무 템플릿", description = "워크스페이스 반복 업무 템플릿 생성 및 관리 API")
 @RestController
 @RequestMapping("/api/workspaces/{workspaceId}/recurring-templates")
@@ -52,23 +52,27 @@ public class WorkspaceRecurringTaskTemplateController {
 
   @Operation(
       summary = "반복 업무 템플릿 목록 조회",
-      description = "현재 참여자만 조회할 수 있습니다. 최신 생성순으로 페이지 단위(기본 20개)로 반환합니다.")
+      description = "현재 참여자이거나 WORKSPACE:READ_ALL 권한 보유자만 조회할 수 있습니다(같은 학원 소속에 한함). 최신 생성순으로 페이지 단위(기본 20개)로 반환합니다.")
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "목록 조회 성공"),
     @ApiResponse(responseCode = "400", description = "page 또는 size 값이 유효하지 않음"),
-    @ApiResponse(responseCode = "403", description = "참여자가 아님"),
+    @ApiResponse(responseCode = "403", description = "참여자가 아니고 WORKSPACE:READ_ALL 권한도 없음, 또는 다른 학원 소속"),
     @ApiResponse(responseCode = "404", description = "워크스페이스가 존재하지 않거나 삭제됨")
   })
   @GetMapping
   public ResponseEntity<GlobalApiResponse<SliceResponse<RecurringTaskTemplateListResponse>>> getTemplates(
       @AuthenticationPrincipal AuthUser authUser,
+      Authentication authentication,
       @PathVariable Long workspaceId,
       @RequestParam(defaultValue = "0") @Min(0) int page,
       @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
+    boolean canReadAll =
+        authentication.getAuthorities().stream()
+            .anyMatch(authority -> "WORKSPACE:READ_ALL".equals(authority.getAuthority()));
     SliceResponse<RecurringTaskTemplateListResponse> response =
         SliceResponse.from(
             getRecurringTaskTemplatesUseCase.getTemplates(
-                workspaceId, authUser.userId(), page, size),
+                workspaceId, authUser.userId(), page, size, authUser.academyId(), canReadAll),
             RecurringTaskTemplateListResponse::from);
     return ResponseEntity.ok(
         GlobalApiResponse.ok(WorkspaceResponseCode.RECURRING_TEMPLATE_LIST_RETRIEVED, response));
