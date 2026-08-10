@@ -1,11 +1,16 @@
 package com.academy.mudogroupware.workspace.infrastructure.persistence.comment;
 
 import java.util.List;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface TaskCommentJpaRepository extends JpaRepository<TaskCommentJpaEntity, Long> {
+
+  @Query("select c from TaskCommentJpaEntity c where c.task.id = :taskId order by c.createdAt asc, c.id asc")
+  Slice<TaskCommentJpaEntity> findAllByTaskId(@Param("taskId") Long taskId, Pageable pageable);
 
   @Query(
       """

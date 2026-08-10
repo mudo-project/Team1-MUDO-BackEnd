@@ -17,7 +17,9 @@ import com.academy.mudogroupware.messenger.domain.model.ChatRoomMember;
 import com.academy.mudogroupware.messenger.domain.repository.ChatRoomRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -28,20 +30,30 @@ public class ChatRoomMemberQueryService implements ChatRoomMemberQueryUseCase {
 
     @Override
     public List<ChatRoomMemberView> getMembers(Long chatRoomId, Long requesterId) {
-        ChatRoom chatRoom = chatRoomRepository.findById(chatRoomId)
-                .orElseThrow(() -> new MessengerException(MessengerErrorCode.CHAT_ROOM_NOT_FOUND));
-        if (!chatRoom.isMember(requesterId)) {
-            throw new MessengerException(MessengerErrorCode.NOT_ROOM_MEMBER);
+        log.info("event=chat_room_member_list_시작 chatRoomId={}, requesterId={}", chatRoomId, requesterId);
+        try {
+            ChatRoom chatRoom = chatRoomRepository.findById(chatRoomId)
+                    .orElseThrow(() -> new MessengerException(MessengerErrorCode.CHAT_ROOM_NOT_FOUND));
+            if (!chatRoom.isMember(requesterId)) {
+                throw new MessengerException(MessengerErrorCode.NOT_ROOM_MEMBER);
+            }
+
+            List<Long> memberIds = chatRoom.getMembers().stream()
+                    .map(ChatRoomMember::getUserId)
+                    .toList();
+            Map<Long, ChatMemberInfo> members = chatMemberDirectoryPort.getMembers(memberIds);
+
+            List<ChatRoomMemberView> views = chatRoom.getMembers().stream()
+                    .map(member -> toMemberView(member, members))
+                    .toList();
+            log.info("event=chat_room_member_list_완료 chatRoomId={}, requesterId={}, count={}", chatRoomId,
+                    requesterId, views.size());
+            return views;
+        } catch (RuntimeException e) {
+            log.warn("event=chat_room_member_list_실패 chatRoomId={}, requesterId={}, reason={}", chatRoomId,
+                    requesterId, e.getMessage(), e);
+            throw e;
         }
-
-        List<Long> memberIds = chatRoom.getMembers().stream()
-                .map(ChatRoomMember::getUserId)
-                .toList();
-        Map<Long, ChatMemberInfo> members = chatMemberDirectoryPort.getMembers(memberIds);
-
-        return chatRoom.getMembers().stream()
-                .map(member -> toMemberView(member, members))
-                .toList();
     }
 
     private ChatRoomMemberView toMemberView(ChatRoomMember member, Map<Long, ChatMemberInfo> members) {

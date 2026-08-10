@@ -1,5 +1,41 @@
 # 🔄 워크스페이스 생성 이름 중복 정책 단순화
 
+## ✅ 2026-08-10 · 업무 상세 조회 & 댓글 목록 조회 API 추가
+
+### 변경 목적
+
+업무 목록 조회는 워크스페이스 상세 조회에 이미 카드 형태로 포함되어 있었지만, 업무 하나를 클릭해 들어가는 상세 화면과 그 화면의 댓글 영역을 채울 API가 없었다. Figma 목업 기준으로 필요한 항목을 확인해 두 개의 독립된 조회(Query) API를 추가했다(이슈 #277, #278 / PR #279).
+
+브레인스토밍 과정에서 두 가지를 프론트와 합의했다: ① 최종 상태 변경자(누가 바꿨는지)는 기록은 유지하되 응답에는 노출하지 않는다. ② 코멘트 목록은 무한스크롤을 전제로 업무 상세와 별도 API로 분리한다.
+
+### 구현 변경
+
+- `GET /api/workspaces/{workspaceId}/tasks/{taskId}` — 업무 상세 조회. 제목·등록자·등록일·상태·기한·최종 상태 변경일시를 반환한다. `TaskDetailQueryUseCase`/`Service` 신규 작성.
+- `GET /api/workspaces/{workspaceId}/tasks/{taskId}/comments` — 댓글 목록 조회. 내용·작성자·완료 여부·생성일을 반환하며 `createdAt asc, id asc`로 페이지네이션(기본 20개)한다. `TaskCommentListQueryUseCase`/`Service` 신규 작성.
+- `Task` 도메인 모델에 `createdAt`을 추가했다. 기존 8-arg `restore(...)`를 11개 파일이 호출하고 있어 시그니처를 바꾸지 않고, `createdAt`을 받는 9-arg `restore(...)` 오버로드만 추가했다(기존 8-arg는 내부적으로 9-arg에 `createdAt=null`로 위임).
+- `TaskRepository.findById(workspaceId, taskId)`(락 없음)을 신규 추가했다. 기존 유일한 단건 조회인 `findByIdForUpdate`는 비관적 락을 잡아서, 조회 전용 API에 그대로 쓰면 불필요한 락 경합을 유발한다.
+- `TaskStatusHistoryRepository.findLatestChangedAt(taskId)`을 신규 추가했다. 전체 이력이 아니라 가장 최근 1건의 `createdAt`만 `Pageable(0, 1)`로 가져온다(MySQL 5.7 호환을 위해 `LIMIT` 서브쿼리 대신 페이지네이션 사용). **변경자(`changedBy`)는 조회하지 않는다** — 이력 자체는 계속 저장되므로 나중에 노출이 필요해지면 조회 메서드만 추가하면 된다.
+- `TaskCommentRepository.findAllByTaskId(taskId, page, size)`를 신규 추가했다. `createdAt`만으로는 동시간대 저장 시 정렬이 비결정적일 수 있어 `id`를 2차 정렬 기준으로 추가했다(반복 업무 템플릿 목록과 동일한 tie-break 이유).
+- `WorkspaceResponseCode`에 `WORKSPACE_200_16`(업무 상세 조회), `WORKSPACE_200_17`(댓글 목록 조회)을 추가했다.
+
+### 코드 리뷰 반영 (CodeRabbit)
+
+whole-PR 리뷰에서 6건이 나왔고, 4건 반영 + 2건 반박했다.
+
+- **반영**: `WorkspaceTaskCommentController.getComments`의 `page`/`size`에 `@Validated` + `@Min`/`@Max` 검증을 추가했다. `GlobalExceptionHandler`에 `IllegalArgumentException` 전용 핸들러가 없어서, 검증 없이 두면 `page=-1`/`size=0` 요청이 `PageRequest.of()`의 `IllegalArgumentException` → `500`으로 새어나가는 걸 확인했다(형제 API인 반복 업무 템플릿 목록은 이미 이 패턴을 쓰고 있었다).
+- **반영**: 댓글 정렬 테스트(`findAllByTaskIdReturnsOldestFirstWithinPageSize`)가 실제로는 `createdAt` 정렬을 검증하지 못하고 있었다 — `TaskCommentJpaEntity.create()`가 `createdAt`을 받지 않고 `@CreatedDate`가 실제 저장 시각을 찍기 때문에, save 호출 순서(→ id tie-break)로 우연히 통과하던 테스트였다. insertion 순서와 의도한 시간 순서를 반대로 만들고 `jdbcTemplate`으로 `created_at`을 직접 덮어쓴 뒤 `entityManager.clear()`로 1차 캐시를 비워, 실제 컬럼 기준 정렬을 검증하도록 수정했다.
+- **반영**: 두 컨트롤러 테스트에 누락된 `createdAt` 응답 필드 assertion을 추가했다.
+- **반박**: `Task.restore()`에 반복 업무 불변식(`recurringTemplateId != null`인데 `scheduledFor == null`인 조합 차단) 검증 추가 제안. 이 불변식은 원래 8-arg `restore()`에도 없던 검증이고, 현재 코드베이스에 반복 업무 템플릿으로부터 실제 occurrence를 생성하는 서비스가 아직 없어 이 조합이 만들어질 프로덕션 경로가 없다. `restore()`에서 막으면 나중에 occurrence 생성 로직이 실수로 이 조합을 만들었을 때 조회 시점에 늦게 500으로 터진다 — 생성 시점에 검증하는 별도 이슈로 미뤘다.
+- **반박**: 댓글 목록의 offset(page/size) → keyset(cursor) 페이지네이션 전환 제안. 브레인스토밍 때 이미 결정한 방향이고 형제 API(반복 업무 템플릿 목록)도 동일 패턴이다. 업무당 댓글 수가 소셜 피드처럼 커질 상황이 아니라 YAGNI로 보류했다.
+
+### 검증
+
+- `TaskTest`, `TaskPersistenceAdapterDataJpaTest`, `TaskDetailQueryServiceTest`, `WorkspaceTaskControllerTest`(신규 4케이스: 정상/이력없음/404/403)로 업무 상세 조회를 검증했다.
+- `TaskCommentPersistenceAdapterDataJpaTest`, `TaskCommentListQueryServiceTest`, `WorkspaceTaskCommentControllerTest`(신규 케이스: 정상 페이지/커스텀 page·size/404/403 + page/size 검증 3케이스)로 댓글 목록 조회를 검증했다.
+- 전체 `./gradlew build` 통과, 기존 8-arg `Task.restore(...)` 호출부(11개 파일) 회귀 없음 확인.
+
+> API 계약은 [TASK_API.md](TASK_API.md)/[COMMENT_API.md](COMMENT_API.md), 호출 흐름은 [TASK_API_FLOW.md](TASK_API_FLOW.md)/[COMMENT_API_FLOW.md](COMMENT_API_FLOW.md)에 반영했다. 📚
+
 ## ✅ 2026-08-09 · 반복 업무 템플릿 삭제 API와 삭제 응답 형식 표준화
 
 ### 변경 목적

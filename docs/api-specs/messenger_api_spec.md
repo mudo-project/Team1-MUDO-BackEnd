@@ -756,7 +756,7 @@ REST와 달리 클라이언트가 요청을 보내는 게 아니라 서버가 �
 | --- | --- |
 | 연결 엔드포인트 | `/ws` |
 | 프로토콜 | STOMP over WebSocket (SockJS fallback) |
-| 인증 | STOMP `CONNECT` 프레임에 JWT를 담아 인증(`JwtHandshakeInterceptor`/`JwtChannelInterceptor`). 인증 실패 시 연결은 되지만 이후 구독 권한이 없음. |
+| 인증 | httpOnly `accessToken` 쿠키 기반. SockJS 핸드셰이크 HTTP 요청에 브라우저가 자동으로 실어 보내는 쿠키를 `JwtHandshakeInterceptor`가 읽어 세션에 저장하고, `JwtChannelInterceptor`가 STOMP `CONNECT` 시점에 이를 검증합니다. **프론트는 토큰 값을 직접 읽거나 CONNECT 프레임 헤더에 넣을 필요가 없고, SockJS 연결 시 `withCredentials: true`(cross-origin일 때 쿠키 전송에 필요)만 설정하면 됩니다.** 인증 실패 시 SockJS/WebSocket transport 핸드셰이크가 완료될 수 있지만 STOMP `CONNECT`가 거부되며, 클라이언트는 구독할 수 없습니다. |
 
 ### 구독 경로
 

@@ -165,6 +165,27 @@ class RecurringTaskTemplatePersistenceAdapterDataJpaTest {
   }
 
   @Test
+  void findAllExcludesTemplatesInSoftDeletedWorkspace() {
+    insertWorkspace(WORKSPACE_ID);
+    insertWorkspace(2L);
+    recurringTaskTemplateRepository.save(
+        RecurringTaskTemplate.create(
+            WORKSPACE_ID, "삭제된 워크스페이스 템플릿", RecurrenceType.WEEKLY,
+            Map.of("daysOfWeek", List.of(1)), CREATOR_ID));
+    recurringTaskTemplateRepository.save(
+        RecurringTaskTemplate.create(
+            2L, "정상 워크스페이스 템플릿", RecurrenceType.WEEKLY,
+            Map.of("daysOfWeek", List.of(1)), CREATOR_ID));
+    jdbcTemplate.update(
+        "update workspace set deleted_at = ? where workspace_id = ?",
+        LocalDateTime.now(), WORKSPACE_ID);
+
+    assertThat(recurringTaskTemplateRepository.findAll())
+        .extracting(RecurringTaskTemplate::getTitle)
+        .containsExactly("정상 워크스페이스 템플릿");
+  }
+
+  @Test
   void findAllByWorkspaceIdReturnsNewestFirstWithinPageSize() {
     insertWorkspace(WORKSPACE_ID);
     insertWorkspace(2L);

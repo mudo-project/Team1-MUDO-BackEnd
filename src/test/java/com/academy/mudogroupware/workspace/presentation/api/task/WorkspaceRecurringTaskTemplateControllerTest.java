@@ -322,11 +322,24 @@ class WorkspaceRecurringTaskTemplateControllerTest {
                 .with(authentication(auth()))
                 .with(csrf()))
         .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value(200))
         .andExpect(jsonPath("$.code").value("WORKSPACE_200_15"))
-        .andExpect(jsonPath("$.message").value("반복 업무 템플릿 삭제에 성공했습니다."));
+        .andExpect(jsonPath("$.message").value("반복 업무 템플릿 삭제에 성공했습니다."))
+        .andExpect(jsonPath("$.data").value(org.hamcrest.Matchers.nullValue()));
 
     verify(deleteRecurringTaskTemplateUseCase)
         .delete(new DeleteRecurringTaskTemplateCommand(1L, 101L, 10L));
+  }
+
+  @Test
+  void deleteTemplateReturns401WhenUnauthenticated() throws Exception {
+    mockMvc
+        .perform(
+            delete("/api/workspaces/{workspaceId}/recurring-templates/{templateId}", 1L, 101L)
+                .with(csrf()))
+        .andExpect(status().isUnauthorized());
+
+    verifyNoInteractions(deleteRecurringTaskTemplateUseCase);
   }
 
   @Test

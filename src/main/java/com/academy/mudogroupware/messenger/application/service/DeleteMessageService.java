@@ -15,7 +15,9 @@ import com.academy.mudogroupware.messenger.domain.model.ChatMessage;
 import com.academy.mudogroupware.messenger.domain.repository.ChatMessageRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -27,15 +29,25 @@ public class DeleteMessageService implements DeleteMessageUseCase {
 
     @Override
     public void delete(Long chatRoomId, Long messageId, Long requesterId) {
-        ChatMessage message = chatMessageRepository.findById(messageId)
-                .orElseThrow(() -> new MessengerException(MessengerErrorCode.CHAT_ROOM_NOT_FOUND));
-        if (!message.getChatRoomId().equals(chatRoomId)) {
-            throw new MessengerException(MessengerErrorCode.CHAT_ROOM_NOT_FOUND);
-        }
+        log.info("event=message_delete_시작 chatRoomId={}, messageId={}, requesterId={}", chatRoomId, messageId,
+                requesterId);
+        try {
+            ChatMessage message = chatMessageRepository.findById(messageId)
+                    .orElseThrow(() -> new MessengerException(MessengerErrorCode.CHAT_ROOM_NOT_FOUND));
+            if (!message.getChatRoomId().equals(chatRoomId)) {
+                throw new MessengerException(MessengerErrorCode.CHAT_ROOM_NOT_FOUND);
+            }
 
-        message.delete(requesterId, LocalDateTime.now(clock));
-        chatMessageRepository.save(message);
-        eventPublisher.publishEvent(new MessageDeletedEvent(message.getChatRoomId(), message.getId(),
-                requesterId, message.getDeletedAt()));
+            message.delete(requesterId, LocalDateTime.now(clock));
+            chatMessageRepository.save(message);
+            eventPublisher.publishEvent(new MessageDeletedEvent(message.getChatRoomId(), message.getId(),
+                    requesterId, message.getDeletedAt()));
+            log.info("event=message_delete_완료 chatRoomId={}, messageId={}, requesterId={}", chatRoomId, messageId,
+                    requesterId);
+        } catch (RuntimeException e) {
+            log.warn("event=message_delete_실패 chatRoomId={}, messageId={}, requesterId={}, reason={}", chatRoomId,
+                    messageId, requesterId, e.getMessage(), e);
+            throw e;
+        }
     }
 }

@@ -37,6 +37,8 @@ dependencies {
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6'
     // 출결부 엑셀 다운로드(rollcall)에 필요
     implementation 'org.apache.poi:poi-ooxml:5.5.1'
+    // 시간표 내보내기 PDF 생성(timetable)에 필요
+    implementation 'com.github.librepdf:openpdf:1.3.42'
     compileOnly 'org.projectlombok:lombok'
     runtimeOnly 'com.mysql:mysql-connector-j'
     annotationProcessor 'org.projectlombok:lombok'

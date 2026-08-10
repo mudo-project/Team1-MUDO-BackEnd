@@ -3,14 +3,17 @@ package com.academy.mudogroupware.workspace.presentation.api.task;
 import com.academy.mudogroupware.global.presentation.api.common.GlobalApiResponse;
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
 import com.academy.mudogroupware.workspace.application.command.task.DeleteTaskCommand;
+import com.academy.mudogroupware.workspace.application.query.task.TaskDetail;
 import com.academy.mudogroupware.workspace.application.usecase.task.CreateTaskUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.task.DeleteTaskUseCase;
+import com.academy.mudogroupware.workspace.application.usecase.task.TaskDetailQueryUseCase;
 import com.academy.mudogroupware.workspace.application.usecase.task.UpdateTaskUseCase;
 import com.academy.mudogroupware.workspace.domain.model.task.Task;
 import com.academy.mudogroupware.workspace.presentation.api.common.WorkspaceResponseCode;
 import com.academy.mudogroupware.workspace.presentation.api.request.task.CreateTaskRequest;
 import com.academy.mudogroupware.workspace.presentation.api.request.task.UpdateTaskRequest;
 import com.academy.mudogroupware.workspace.presentation.api.response.task.CreateTaskResponse;
+import com.academy.mudogroupware.workspace.presentation.api.response.task.TaskDetailResponse;
 import com.academy.mudogroupware.workspace.presentation.api.response.task.TaskUpdateResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -22,6 +25,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -37,6 +41,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class WorkspaceTaskController {
 
   private final CreateTaskUseCase createTaskUseCase;
+  private final TaskDetailQueryUseCase taskDetailQueryUseCase;
   private final UpdateTaskUseCase updateTaskUseCase;
   private final DeleteTaskUseCase deleteTaskUseCase;
 
@@ -59,6 +64,24 @@ public class WorkspaceTaskController {
         .body(
             GlobalApiResponse.created(
                 WorkspaceResponseCode.TASK_CREATED, CreateTaskResponse.from(taskId)));
+  }
+
+  @Operation(
+      summary = "업무 상세 조회",
+      description = "현재 참여자만 조회할 수 있습니다. 최종 상태 변경 이력이 없으면 lastStatusChangedAt 필드가 생략됩니다.")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "업무 상세 조회 성공"),
+    @ApiResponse(responseCode = "403", description = "참여자가 아님"),
+    @ApiResponse(responseCode = "404", description = "워크스페이스 또는 업무가 존재하지 않음")
+  })
+  @GetMapping("/{taskId}")
+  public ResponseEntity<GlobalApiResponse<TaskDetailResponse>> getTaskDetail(
+      @AuthenticationPrincipal AuthUser authUser,
+      @PathVariable Long workspaceId,
+      @PathVariable Long taskId) {
+    TaskDetail detail = taskDetailQueryUseCase.getTaskDetail(workspaceId, taskId, authUser.userId());
+    return ResponseEntity.ok(
+        GlobalApiResponse.ok(WorkspaceResponseCode.TASK_DETAIL_RETRIEVED, TaskDetailResponse.from(detail)));
   }
 
   @Operation(
