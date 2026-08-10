@@ -7,6 +7,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -52,6 +53,7 @@ public class GeminiImportAnalysisAdapter implements ImportAnalysisPort {
     private final DataImportGeminiProperties geminiProperties;
     private final ObjectMapper objectMapper;
 
+    @Autowired
     public GeminiImportAnalysisAdapter(DataImportGeminiProperties geminiProperties,
                                        ObjectMapper objectMapper) {
         this(RestClient.builder()
