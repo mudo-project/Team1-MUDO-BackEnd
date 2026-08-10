@@ -26,44 +26,32 @@ public class PinNoticeService implements PinNoticeUseCase {
     @Override
     public void pin(Long noticeId, Long requesterId) {
         log.info("event=notice_pin_시작 noticeId={}, requesterId={}", noticeId, requesterId);
-        try {
-            Notice notice = noticeRepository.findById(noticeId)
-                    .orElseThrow(() -> new NoticeException(NoticeErrorCode.NOTICE_NOT_FOUND));
+        Notice notice = noticeRepository.findById(noticeId)
+                .orElseThrow(() -> new NoticeException(NoticeErrorCode.NOTICE_NOT_FOUND));
 
-            AuthorInfo requester = noticeAuthorDirectoryPort.getAuthor(requesterId);
-            if (!notice.getAcademyId().equals(requester.academyId())) {
-                throw new NoticeException(NoticeErrorCode.CROSS_ACADEMY_NOTICE);
-            }
-
-            notice.pin();
-            noticeRepository.save(notice);
-            log.info("event=notice_pin_완료 noticeId={}, requesterId={}", noticeId, requesterId);
-        } catch (RuntimeException e) {
-            log.warn("event=notice_pin_실패 noticeId={}, requesterId={}, reason={}", noticeId, requesterId,
-                    e.getMessage(), e);
-            throw e;
+        AuthorInfo requester = noticeAuthorDirectoryPort.getAuthor(requesterId);
+        if (!notice.getAcademyId().equals(requester.academyId())) {
+            throw new NoticeException(NoticeErrorCode.CROSS_ACADEMY_NOTICE);
         }
+
+        notice.pin();
+        noticeRepository.save(notice);
+        log.info("event=notice_pin_완료 noticeId={}, requesterId={}", noticeId, requesterId);
     }
 
     @Override
     public void unpin(Long noticeId, Long requesterId) {
         log.info("event=notice_unpin_시작 noticeId={}, requesterId={}", noticeId, requesterId);
-        try {
-            Notice notice = noticeRepository.findById(noticeId)
-                    .orElseThrow(() -> new NoticeException(NoticeErrorCode.NOTICE_NOT_FOUND));
+        Notice notice = noticeRepository.findById(noticeId)
+                .orElseThrow(() -> new NoticeException(NoticeErrorCode.NOTICE_NOT_FOUND));
 
-            AuthorInfo requester = noticeAuthorDirectoryPort.getAuthor(requesterId);
-            if (!notice.getAcademyId().equals(requester.academyId())) {
-                throw new NoticeException(NoticeErrorCode.CROSS_ACADEMY_NOTICE);
-            }
-
-            notice.unpin();
-            noticeRepository.save(notice);
-            log.info("event=notice_unpin_완료 noticeId={}, requesterId={}", noticeId, requesterId);
-        } catch (RuntimeException e) {
-            log.warn("event=notice_unpin_실패 noticeId={}, requesterId={}, reason={}", noticeId, requesterId,
-                    e.getMessage(), e);
-            throw e;
+        AuthorInfo requester = noticeAuthorDirectoryPort.getAuthor(requesterId);
+        if (!notice.getAcademyId().equals(requester.academyId())) {
+            throw new NoticeException(NoticeErrorCode.CROSS_ACADEMY_NOTICE);
         }
+
+        notice.unpin();
+        noticeRepository.save(notice);
+        log.info("event=notice_unpin_완료 noticeId={}, requesterId={}", noticeId, requesterId);
     }
 }
