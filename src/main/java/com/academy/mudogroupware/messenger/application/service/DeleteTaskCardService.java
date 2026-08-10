@@ -32,33 +32,28 @@ public class DeleteTaskCardService implements DeleteTaskCardUseCase {
     public void delete(DeleteTaskCardCommand command) {
         log.info("event=task_card_delete_시작 chatRoomId={}, cardId={}, requesterId={}", command.chatRoomId(),
                 command.cardId(), command.requesterId());
-        try {
-            ChatTaskCard chatTaskCard = chatTaskCardRepository.findById(command.cardId())
-                    .orElseThrow(() -> new MessengerException(MessengerErrorCode.TASK_CARD_NOT_FOUND));
-            if (!chatTaskCard.getChatRoomId().equals(command.chatRoomId())) {
-                throw new MessengerException(MessengerErrorCode.TASK_CARD_NOT_FOUND);
-            }
-
-            // delete()는 이미 삭제된 카드엔 조용히 아무 것도 안 하는 idempotent 동작이다(권한 검증은 항상 수행).
-            // 실제로 상태가 바뀐 경우에만 저장/이벤트 발행을 해서, 재요청 시 중복 브로드캐스트가 나가지 않게 한다.
-            boolean alreadyDeleted = chatTaskCard.isDeleted();
-            LocalDateTime deletedAt = LocalDateTime.now(clock);
-            chatTaskCard.delete(command.requesterId(), deletedAt);
-            if (alreadyDeleted) {
-                log.info("event=task_card_delete_완료 chatRoomId={}, cardId={}, requesterId={}, alreadyDeleted=true",
-                        command.chatRoomId(), command.cardId(), command.requesterId());
-                return;
-            }
-
-            chatTaskCardRepository.markDeleted(chatTaskCard.getId(), chatTaskCard.getDeletedAt());
-            eventPublisher.publishEvent(new TaskCardDeletedEvent(chatTaskCard.getChatRoomId(), chatTaskCard.getId(),
-                    chatTaskCard.getDeletedAt()));
-            log.info("event=task_card_delete_완료 chatRoomId={}, cardId={}, requesterId={}, alreadyDeleted=false",
-                    command.chatRoomId(), command.cardId(), command.requesterId());
-        } catch (RuntimeException e) {
-            log.warn("event=task_card_delete_실패 chatRoomId={}, cardId={}, requesterId={}, reason={}",
-                    command.chatRoomId(), command.cardId(), command.requesterId(), e.getMessage(), e);
-            throw e;
+        ChatTaskCard chatTaskCard = chatTaskCardRepository.findById(command.cardId())
+                .orElseThrow(() -> new MessengerException(MessengerErrorCode.TASK_CARD_NOT_FOUND));
+        if (!chatTaskCard.getChatRoomId().equals(command.chatRoomId())) {
+            throw new MessengerException(MessengerErrorCode.TASK_CARD_NOT_FOUND);
         }
+
+        // delete()는 이미 삭제된 카드엔 조용히 아무 것도 안 하는 idempotent 동작이다(권한 검증은 항상 수행).
+        // markDeleted는 deleted_at is null 조건의 UPDATE라 행을 잠근다. 영향받은 행이 없으면 이미
+        // 삭제됐거나 동시 삭제 요청 중 하나가 먼저 커밋했다는 뜻이므로, 이벤트 발행 없이 여기서 멈춘다
+        // (메모리 상 상태만으로 판단하면 동시 요청 둘 다 이벤트를 중복 발행할 수 있어서, DB 갱신 결과로 판단한다).
+        LocalDateTime deletedAt = LocalDateTime.now(clock);
+        chatTaskCard.delete(command.requesterId(), deletedAt);
+        boolean deleted = chatTaskCardRepository.markDeleted(chatTaskCard.getId(), chatTaskCard.getDeletedAt());
+        if (!deleted) {
+            log.info("event=task_card_delete_완료 chatRoomId={}, cardId={}, requesterId={}, alreadyDeleted=true",
+                    command.chatRoomId(), command.cardId(), command.requesterId());
+            return;
+        }
+
+        eventPublisher.publishEvent(new TaskCardDeletedEvent(chatTaskCard.getChatRoomId(), chatTaskCard.getId(),
+                chatTaskCard.getDeletedAt()));
+        log.info("event=task_card_delete_완료 chatRoomId={}, cardId={}, requesterId={}, alreadyDeleted=false",
+                command.chatRoomId(), command.cardId(), command.requesterId());
     }
 }

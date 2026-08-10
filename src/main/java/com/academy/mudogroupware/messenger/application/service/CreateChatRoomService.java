@@ -35,39 +35,33 @@ public class CreateChatRoomService implements CreateChatRoomUseCase {
     @Override
     public Long createRoom(CreateChatRoomCommand command) {
         log.info("event=chat_room_create_시작 requesterId={}", command.requesterId());
-        try {
-            ChatMemberInfo requester = chatMemberDirectoryPort.getMember(command.requesterId());
+        ChatMemberInfo requester = chatMemberDirectoryPort.getMember(command.requesterId());
 
-            List<Long> participantIds = command.participantIds();
-            Map<Long, ChatMemberInfo> participants = chatMemberDirectoryPort.getMembers(participantIds);
-            if (participants.size() < participantIds.stream().distinct().count()) {
-                throw new MessengerException(MessengerErrorCode.INVALID_PARTICIPANT);
-            }
-            boolean crossAcademy = participants.values().stream()
-                    .anyMatch(participant -> !participant.academyId().equals(requester.academyId()));
-            if (crossAcademy) {
-                throw new MessengerException(MessengerErrorCode.CROSS_ACADEMY_INVITE);
-            }
-
-            Set<Long> inviteeIds = new LinkedHashSet<>(participantIds);
-            inviteeIds.remove(requester.userId());
-            Long chatRoomId;
-            if (inviteeIds.size() == 1) {
-                Long otherUserId = inviteeIds.iterator().next();
-                chatRoomId = chatRoomRepository.findDirectMessage(requester.academyId(), requester.userId(),
-                                otherUserId)
-                        .map(ChatRoom::getId)
-                        .orElseGet(() -> createRoom(requester, participantIds, command.name()));
-            } else {
-                chatRoomId = createRoom(requester, participantIds, command.name());
-            }
-            log.info("event=chat_room_create_완료 requesterId={}, chatRoomId={}", command.requesterId(), chatRoomId);
-            return chatRoomId;
-        } catch (RuntimeException e) {
-            log.warn("event=chat_room_create_실패 requesterId={}, reason={}", command.requesterId(), e.getMessage(),
-                    e);
-            throw e;
+        List<Long> participantIds = command.participantIds();
+        Map<Long, ChatMemberInfo> participants = chatMemberDirectoryPort.getMembers(participantIds);
+        if (participants.size() < participantIds.stream().distinct().count()) {
+            throw new MessengerException(MessengerErrorCode.INVALID_PARTICIPANT);
         }
+        boolean crossAcademy = participants.values().stream()
+                .anyMatch(participant -> !participant.academyId().equals(requester.academyId()));
+        if (crossAcademy) {
+            throw new MessengerException(MessengerErrorCode.CROSS_ACADEMY_INVITE);
+        }
+
+        Set<Long> inviteeIds = new LinkedHashSet<>(participantIds);
+        inviteeIds.remove(requester.userId());
+        Long chatRoomId;
+        if (inviteeIds.size() == 1) {
+            Long otherUserId = inviteeIds.iterator().next();
+            chatRoomId = chatRoomRepository.findDirectMessage(requester.academyId(), requester.userId(),
+                            otherUserId)
+                    .map(ChatRoom::getId)
+                    .orElseGet(() -> createRoom(requester, participantIds, command.name()));
+        } else {
+            chatRoomId = createRoom(requester, participantIds, command.name());
+        }
+        log.info("event=chat_room_create_완료 requesterId={}, chatRoomId={}", command.requesterId(), chatRoomId);
+        return chatRoomId;
     }
 
     private Long createRoom(ChatMemberInfo requester, List<Long> participantIds, String name) {
