@@ -84,6 +84,9 @@ class SendMessageServiceTest {
 
         service.sendMessage(new SendMessageCommand(1L, 1L, MessageType.IMAGE, null, 99L, "photo.png"));
 
+        ArgumentCaptor<ChatMessage> messageCaptor = ArgumentCaptor.forClass(ChatMessage.class);
+        verify(chatMessageRepository).save(messageCaptor.capture());
+        assertThat(messageCaptor.getValue().getFileId()).isEqualTo(99L);
         verify(getFileDownloadUrlUseCase).getDownloadUrl(99L, 10L);
         ArgumentCaptor<ChatMessageSentEvent> eventCaptor = ArgumentCaptor.forClass(ChatMessageSentEvent.class);
         verify(eventPublisher).publishEvent(eventCaptor.capture());
