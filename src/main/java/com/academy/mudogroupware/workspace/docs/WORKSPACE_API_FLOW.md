@@ -41,7 +41,7 @@ POST /api/workspaces
 
 ## 4. 이름 확인과 저장
 
-`WorkspaceService`는 하나의 트랜잭션에서 활성 이름 사용 여부를 조회한다.
+`WorkspaceService`는 이름을 정리하고 참여자를 검증한 뒤, 하나의 트랜잭션에서 활성 이름 사용 여부를 조회한다.
 
 - 이미 존재하는 활성 이름이면 `WorkspaceNameConflictException`을 발생시켜 `WORKSPACE_409_1`을 반환한다.
 - 사용 가능한 이름이면 앞뒤 공백을 제거한 이름과 참여자 ID로 `Workspace` Domain Model을 만들고 `WorkspaceRepository`에 전달한다.

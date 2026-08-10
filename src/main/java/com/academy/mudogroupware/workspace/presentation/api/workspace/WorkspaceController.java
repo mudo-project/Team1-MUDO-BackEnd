@@ -102,7 +102,7 @@ public class WorkspaceController {
   @ApiResponses({
     @ApiResponse(responseCode = "201", description = "워크스페이스 생성 성공"),
     @ApiResponse(responseCode = "400", description = "요청값 또는 참여자가 유효하지 않음"),
-    @ApiResponse(responseCode = "409", description = "같은 학원에 동일한 활성 워크스페이스 이름이 존재함")
+    @ApiResponse(responseCode = "409", description = "동일한 활성 워크스페이스 이름이 이미 존재함")
   })
   @PreAuthorize("hasAuthority('WORKSPACE:CREATE')")
   @PostMapping
@@ -174,7 +174,7 @@ public class WorkspaceController {
     @ApiResponse(responseCode = "200", description = "이름 수정 성공"),
     @ApiResponse(responseCode = "403", description = "참여자가 아님"),
     @ApiResponse(responseCode = "404", description = "워크스페이스가 존재하지 않거나 삭제됨"),
-    @ApiResponse(responseCode = "409", description = "같은 학원에 동일한 활성 워크스페이스 이름이 존재함")
+    @ApiResponse(responseCode = "409", description = "동일한 활성 워크스페이스 이름이 이미 존재함")
   })
   @PatchMapping("/{workspaceId}")
   public ResponseEntity<GlobalApiResponse<WorkspaceRenameResponse>> renameWorkspace(
