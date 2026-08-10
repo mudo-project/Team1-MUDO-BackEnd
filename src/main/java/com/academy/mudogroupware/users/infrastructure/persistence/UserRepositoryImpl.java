@@ -60,6 +60,11 @@ public class UserRepositoryImpl implements UserRepository {
     }
 
     @Override
+    public boolean completePasswordSetup(Long userId, String newPasswordHash) {
+        return userJpaRepository.completePasswordSetupIfMustChange(userId, newPasswordHash) > 0;
+    }
+
+    @Override
     public List<User> searchByAcademyId(Long academyId, String keyword) {
         String normalizedKeyword = keyword == null ? "" : keyword.trim();
         List<UserEntity> entities = normalizedKeyword.isEmpty()

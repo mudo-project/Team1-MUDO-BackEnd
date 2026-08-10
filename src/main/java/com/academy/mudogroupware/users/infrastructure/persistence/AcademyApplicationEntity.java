@@ -89,13 +89,6 @@ public class AcademyApplicationEntity {
         this.updatedAt = updatedAt;
     }
 
-    void markApproved(Long reviewerId, LocalDateTime reviewedAt) {
-        this.status = AcademyApplicationStatus.APPROVED;
-        this.reviewedByUserId = reviewerId;
-        this.reviewedAt = reviewedAt;
-        this.updatedAt = reviewedAt;
-    }
-
     void markRejected(Long reviewerId, LocalDateTime reviewedAt, String reason) {
         this.status = AcademyApplicationStatus.REJECTED;
         this.reviewedByUserId = reviewerId;
