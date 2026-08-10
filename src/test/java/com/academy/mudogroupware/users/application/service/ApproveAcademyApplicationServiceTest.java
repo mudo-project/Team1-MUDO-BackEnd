@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -14,7 +13,9 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
@@ -32,11 +33,15 @@ import com.academy.mudogroupware.users.domain.exception.UsernameDuplicateExcepti
 import com.academy.mudogroupware.users.domain.model.Academy;
 import com.academy.mudogroupware.users.domain.model.AcademyApplication;
 import com.academy.mudogroupware.users.domain.model.AcademyApplicationStatus;
+import com.academy.mudogroupware.users.domain.model.Permission;
 import com.academy.mudogroupware.users.domain.model.Plan;
+import com.academy.mudogroupware.users.domain.model.Role;
 import com.academy.mudogroupware.users.domain.model.User;
 import com.academy.mudogroupware.users.domain.model.UserStatus;
 import com.academy.mudogroupware.users.domain.repository.AcademyApplicationRepository;
 import com.academy.mudogroupware.users.domain.repository.AcademyRepository;
+import com.academy.mudogroupware.users.domain.repository.PermissionRepository;
+import com.academy.mudogroupware.users.domain.repository.RoleRepository;
 import com.academy.mudogroupware.users.domain.repository.UserRepository;
 
 class ApproveAcademyApplicationServiceTest {
@@ -44,11 +49,14 @@ class ApproveAcademyApplicationServiceTest {
     private final AcademyApplicationRepository academyApplicationRepository = mock(AcademyApplicationRepository.class);
     private final AcademyRepository academyRepository = mock(AcademyRepository.class);
     private final UserRepository userRepository = mock(UserRepository.class);
+    private final RoleRepository roleRepository = mock(RoleRepository.class);
+    private final PermissionRepository permissionRepository = mock(PermissionRepository.class);
     private final AccountIssuer accountIssuer = mock(AccountIssuer.class);
     private final ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
     private final Clock clock = Clock.fixed(Instant.parse("2026-08-07T00:00:00Z"), ZoneId.of("UTC"));
     private final ApproveAcademyApplicationService service = new ApproveAcademyApplicationService(
-            academyApplicationRepository, academyRepository, userRepository, accountIssuer, eventPublisher, clock);
+            academyApplicationRepository, academyRepository, userRepository, roleRepository, permissionRepository,
+            accountIssuer, eventPublisher, clock);
 
     private AcademyApplication pendingApplication() {
         return AcademyApplication.restore(1L, "newacademy01", "새학원", "111-11-11111", "홍길동",
@@ -84,22 +92,31 @@ class ApproveAcademyApplicationServiceTest {
                 .isInstanceOf(UsernameDuplicateException.class);
 
         verify(academyApplicationRepository, times(0)).markApproved(any(), any(), any());
+        verify(roleRepository, times(0)).save(any());
         verify(accountIssuer, times(0)).issue(any(), any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
-    void approvesAndCreatesAcademyAndUser() {
+    void approvesCreatesAcademyDirectorRoleWithFullPermissionsAndUser() {
         when(academyApplicationRepository.findById(1L)).thenReturn(Optional.of(pendingApplication()));
         when(academyRepository.save(any())).thenAnswer(invocation -> {
             Academy input = invocation.getArgument(0);
             return Academy.restore(100L, input.getName(), input.getBusinessNo(), null, input.getApplicationId(),
                     input.getStatus(), input.getCreatedAt());
         });
+        when(roleRepository.save(any())).thenAnswer(invocation -> {
+            Role input = invocation.getArgument(0);
+            return Role.restore(300L, input.getAcademyId(), input.getName(), input.getDescription(),
+                    input.getCreatedAt(), Set.of());
+        });
+        when(permissionRepository.findAll()).thenReturn(List.of(
+                new Permission(1L, "ROLE:MANAGE", "ROLE", "MANAGE", null),
+                new Permission(2L, "ACCOUNT:CREATE", "ACCOUNT", "CREATE", null)));
         User issuedUser = User.restore(200L, 100L, "newacademy01", "hashed-password", "홍길동", "010-1111-2222",
-                "hong@example.com", null, UserStatus.ACTIVE, true, AccountType.ADMIN, AdminScope.ACADEMY,
+                "hong@example.com", 300L, UserStatus.ACTIVE, true, AccountType.ADMIN, AdminScope.ACADEMY,
                 LocalDateTime.now(clock), LocalDateTime.now(clock), LocalDateTime.now(clock));
         when(accountIssuer.issue(eq(100L), eq("newacademy01"), eq("홍길동"), eq("010-1111-2222"),
-                eq("hong@example.com"), isNull(), eq(AccountType.ADMIN), eq(AdminScope.ACADEMY),
+                eq("hong@example.com"), eq(300L), eq(AccountType.ADMIN), eq(AdminScope.ACADEMY),
                 eq(LocalDateTime.now(clock))))
                 .thenReturn(new IssuedAccount(issuedUser, "http://localhost:3000/password-setup?username=newacademy01&tempPassword=abc"));
 
@@ -111,6 +128,7 @@ class ApproveAcademyApplicationServiceTest {
                 .isEqualTo("http://localhost:3000/password-setup?username=newacademy01&tempPassword=abc");
         verify(academyApplicationRepository, times(1)).markApproved(1L, 99L, LocalDateTime.now(clock));
         verify(academyRepository, times(1)).assignUser(100L, 200L, LocalDateTime.now(clock));
+        verify(roleRepository, times(1)).updatePermissions(300L, Set.of("ROLE:MANAGE", "ACCOUNT:CREATE"));
         verify(eventPublisher, times(1)).publishEvent(new AcademyApplicationApprovedEvent(100L, 200L, 1L));
     }
 }
