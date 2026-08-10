@@ -40,32 +40,36 @@ public class ConfirmOnboardingImportService implements ConfirmOnboardingImportUs
     private final CreateStudentUseCase createStudentUseCase;
     private final CreateLectureUseCase createLectureUseCase;
     private final EnrollStudentUseCase enrollStudentUseCase;
+    private final ImportDraftSanitizer importDraftSanitizer;
     private final Clock clock;
 
     @Override
-    public ImportResult confirm(Long academyId, Long importId, Long requesterId) {
-        DataImportJob job = loadScopedDraftJob(academyId, importId);
-        ImportDraft draft = job.getDraft();
-        assertSelectedRowsReady(draft);
+    public ImportResult confirm(Long importId, Long requesterId) {
+        DataImportJob job = loadScopedDraftJob(requesterId, importId);
+        ImportDraft originalDraft = job.getDraft();
+        ImportDraft draft = importDraftSanitizer.sanitize(originalDraft);
+        assertSelectedRowsReady(originalDraft, draft);
+        LocalDateTime now = LocalDateTime.now(clock);
 
-        Map<String, Long> createdStudentIds = createStudents(academyId, draft.students());
-        Map<String, Long> createdLectureIds = createLectures(academyId, requesterId, draft.lectures());
-        int createdEnrollments = createEnrollments(academyId, draft.enrollments(), createdStudentIds,
+        Map<String, Long> createdStudentIds = createStudents(draft.students());
+        Map<String, Long> createdLectureIds = createLectures(requesterId, draft.lectures());
+        int createdEnrollments = createEnrollments(draft.enrollments(), createdStudentIds,
                 createdLectureIds);
 
         int selectedRows = selectedCount(draft);
         int totalRows = draft.students().size() + draft.lectures().size() + draft.enrollments().size();
         ImportResult result = new ImportResult(createdStudentIds.size(), createdLectureIds.size(), createdEnrollments,
                 totalRows - selectedRows, 0);
-        job.confirm(result, LocalDateTime.now(clock));
+        job.updateDraft(draft, now);
+        job.confirm(result, now);
         dataImportJobRepository.save(job);
         return result;
     }
 
-    private DataImportJob loadScopedDraftJob(Long academyId, Long importId) {
+    private DataImportJob loadScopedDraftJob(Long requesterId, Long importId) {
         DataImportJob job = dataImportJobRepository.findById(importId)
                 .orElseThrow(() -> new DataImportException(DataImportErrorCode.IMPORT_NOT_FOUND));
-        if (!job.getAcademyId().equals(academyId)) {
+        if (!job.getCreatedBy().equals(requesterId)) {
             throw new DataImportException(DataImportErrorCode.IMPORT_ACCESS_DENIED);
         }
         if (job.getStatus() != DataImportStatus.DRAFT) {
@@ -74,35 +78,41 @@ public class ConfirmOnboardingImportService implements ConfirmOnboardingImportUs
         return job;
     }
 
-    private void assertSelectedRowsReady(ImportDraft draft) {
-        boolean hasInvalidSelectedRow = draft.students().stream().anyMatch(this::selectedButNotReady)
-                || draft.lectures().stream().anyMatch(this::selectedButNotReady)
-                || draft.enrollments().stream().anyMatch(this::selectedButNotReady);
-        if (hasInvalidSelectedRow) {
+    private void assertSelectedRowsReady(ImportDraft originalDraft, ImportDraft sanitizedDraft) {
+        if (hasSelectedRowThatIsNotReady(originalDraft, sanitizedDraft)) {
             throw new DataImportException(DataImportErrorCode.SELECTED_ROW_NOT_READY);
         }
     }
 
-    private boolean selectedButNotReady(ImportStudentCandidate candidate) {
-        return candidate.selected() && candidate.status() != ImportRowStatus.READY;
+    private boolean hasSelectedRowThatIsNotReady(ImportDraft originalDraft, ImportDraft sanitizedDraft) {
+        for (int index = 0; index < originalDraft.students().size(); index++) {
+            if (originalDraft.students().get(index).selected()
+                    && sanitizedDraft.students().get(index).status() != ImportRowStatus.READY) {
+                return true;
+            }
+        }
+        for (int index = 0; index < originalDraft.lectures().size(); index++) {
+            if (originalDraft.lectures().get(index).selected()
+                    && sanitizedDraft.lectures().get(index).status() != ImportRowStatus.READY) {
+                return true;
+            }
+        }
+        for (int index = 0; index < originalDraft.enrollments().size(); index++) {
+            if (originalDraft.enrollments().get(index).selected()
+                    && sanitizedDraft.enrollments().get(index).status() != ImportRowStatus.READY) {
+                return true;
+            }
+        }
+        return false;
     }
 
-    private boolean selectedButNotReady(ImportLectureCandidate candidate) {
-        return candidate.selected() && candidate.status() != ImportRowStatus.READY;
-    }
-
-    private boolean selectedButNotReady(ImportEnrollmentCandidate candidate) {
-        return candidate.selected() && candidate.status() != ImportRowStatus.READY;
-    }
-
-    private Map<String, Long> createStudents(Long academyId, List<ImportStudentCandidate> candidates) {
+    private Map<String, Long> createStudents(List<ImportStudentCandidate> candidates) {
         Map<String, Long> ids = new HashMap<>();
         for (ImportStudentCandidate candidate : candidates) {
             if (!candidate.selected()) {
                 continue;
             }
             Long studentId = createStudentUseCase.createStudent(new CreateStudentCommand(
-                    academyId,
                     candidate.name(),
                     candidate.grade(),
                     candidate.school(),
@@ -114,7 +124,7 @@ public class ConfirmOnboardingImportService implements ConfirmOnboardingImportUs
         return ids;
     }
 
-    private Map<String, Long> createLectures(Long academyId, Long requesterId, List<ImportLectureCandidate> candidates) {
+    private Map<String, Long> createLectures(Long requesterId, List<ImportLectureCandidate> candidates) {
         Map<String, Long> ids = new HashMap<>();
         for (ImportLectureCandidate candidate : candidates) {
             if (!candidate.selected()) {
@@ -124,7 +134,6 @@ public class ConfirmOnboardingImportService implements ConfirmOnboardingImportUs
                     .map(schedule -> new ScheduleInput(schedule.dayOfWeek(), schedule.startTime(), schedule.endTime()))
                     .toList();
             Long lectureId = createLectureUseCase.createLecture(new CreateLectureCommand(
-                    academyId,
                     candidate.name(),
                     candidate.grade(),
                     candidate.termName(),
@@ -140,7 +149,7 @@ public class ConfirmOnboardingImportService implements ConfirmOnboardingImportUs
         return ids;
     }
 
-    private int createEnrollments(Long academyId, List<ImportEnrollmentCandidate> candidates,
+    private int createEnrollments(List<ImportEnrollmentCandidate> candidates,
                                   Map<String, Long> studentIds, Map<String, Long> lectureIds) {
         int created = 0;
         for (ImportEnrollmentCandidate candidate : candidates) {
@@ -152,7 +161,7 @@ public class ConfirmOnboardingImportService implements ConfirmOnboardingImportUs
             if (studentId == null || lectureId == null) {
                 throw new DataImportException(DataImportErrorCode.ENROLLMENT_TARGET_NOT_FOUND);
             }
-            enrollStudentUseCase.enroll(new EnrollStudentCommand(academyId, studentId, lectureId));
+            enrollStudentUseCase.enroll(new EnrollStudentCommand(studentId, lectureId));
             created++;
         }
         return created;

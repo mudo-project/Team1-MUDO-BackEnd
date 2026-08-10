@@ -35,7 +35,7 @@ class DataImportJobRepositoryImplDataJpaTest {
                         "김민수", StudentGrade.HIGH_1, "무도고", "010-1111-2222", null, null, List.of())),
                 List.of(),
                 List.of());
-        DataImportJob saved = repository.save(DataImportJob.create(1L, 10L,
+        DataImportJob saved = repository.save(DataImportJob.create(10L,
                 List.of("students.xlsx"), draft, NOW));
 
         DataImportJob restored = repository.findById(saved.getId()).orElseThrow();
@@ -48,7 +48,7 @@ class DataImportJobRepositoryImplDataJpaTest {
 
     @Test
     void savesAndRestoresResultJson() {
-        DataImportJob job = DataImportJob.create(1L, 10L, List.of("students.xlsx"), ImportDraft.empty(), NOW);
+        DataImportJob job = DataImportJob.create(10L, List.of("students.xlsx"), ImportDraft.empty(), NOW);
         job.confirm(new ImportResult(1, 2, 3, 4, 5), NOW.plusMinutes(1));
 
         DataImportJob saved = repository.save(job);

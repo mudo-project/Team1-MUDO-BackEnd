@@ -4,5 +4,5 @@ import com.academy.mudogroupware.dataimport.domain.model.ImportDraft;
 
 public interface GetImportDraftUseCase {
 
-    ImportDraft getDraft(Long academyId, Long importId);
+    ImportDraft getDraft(Long requesterId, Long importId);
 }
