@@ -221,7 +221,8 @@ class AcademyApplicationSecurityIntegrationTest {
     @Test
     void approveIsOkForPlatformSuperAdmin() throws Exception {
         when(approveAcademyApplicationUseCase.approve(any()))
-                .thenReturn(new ApproveAcademyApplicationResult(10L, 20L, "TempPass123!"));
+                .thenReturn(new ApproveAcademyApplicationResult(10L, 20L,
+                        "http://localhost:3000/password-setup?username=academy01&tempPassword=abc"));
         TestingAuthenticationToken superAdmin =
                 new TestingAuthenticationToken(SUPER_ADMIN_PRINCIPAL, null, "PLATFORM:SUPER_ADMIN");
 
@@ -232,7 +233,8 @@ class AcademyApplicationSecurityIntegrationTest {
                 .andExpect(jsonPath("$.code").value("ACADEMY_APPLICATION_200_3"))
                 .andExpect(jsonPath("$.data.academyId").value(10))
                 .andExpect(jsonPath("$.data.userId").value(20))
-                .andExpect(jsonPath("$.data.temporaryPassword").value("TempPass123!"));
+                .andExpect(jsonPath("$.data.passwordSetupLink")
+                        .value("http://localhost:3000/password-setup?username=academy01&tempPassword=abc"));
 
         verify(approveAcademyApplicationUseCase).approve(new ApproveAcademyApplicationCommand(1L, 99L));
     }

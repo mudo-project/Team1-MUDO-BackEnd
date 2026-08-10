@@ -101,13 +101,14 @@ class ApproveAcademyApplicationServiceTest {
         when(accountIssuer.issue(eq(100L), eq("newacademy01"), eq("홍길동"), eq("010-1111-2222"),
                 eq("hong@example.com"), isNull(), eq(AccountType.ADMIN), eq(AdminScope.ACADEMY),
                 eq(LocalDateTime.now(clock))))
-                .thenReturn(new IssuedAccount(issuedUser, "temp-password"));
+                .thenReturn(new IssuedAccount(issuedUser, "http://localhost:3000/password-setup?username=newacademy01&tempPassword=abc"));
 
         ApproveAcademyApplicationResult result = service.approve(new ApproveAcademyApplicationCommand(1L, 99L));
 
         assertThat(result.academyId()).isEqualTo(100L);
         assertThat(result.userId()).isEqualTo(200L);
-        assertThat(result.temporaryPassword()).isEqualTo("temp-password");
+        assertThat(result.passwordSetupLink())
+                .isEqualTo("http://localhost:3000/password-setup?username=newacademy01&tempPassword=abc");
         verify(academyApplicationRepository, times(1)).markApproved(1L, 99L, LocalDateTime.now(clock));
         verify(academyRepository, times(1)).assignUser(100L, 200L, LocalDateTime.now(clock));
         verify(eventPublisher, times(1)).publishEvent(new AcademyApplicationApprovedEvent(100L, 200L, 1L));

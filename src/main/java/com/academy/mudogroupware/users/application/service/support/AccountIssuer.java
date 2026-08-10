@@ -23,13 +23,15 @@ public class AccountIssuer {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final PasswordSetupLinkBuilder passwordSetupLinkBuilder;
 
     public IssuedAccount issue(Long academyId, String username, String name, String phone, String email,
                                 Long roleId, AccountType accountType, AdminScope adminScope, LocalDateTime now) {
         String temporaryPassword = generateTemporaryPassword();
         User user = userRepository.save(User.create(academyId, username, passwordEncoder.encode(temporaryPassword),
                 name, phone, email, roleId, accountType, adminScope, now));
-        return new IssuedAccount(user, temporaryPassword);
+        String passwordSetupLink = passwordSetupLinkBuilder.build(username, temporaryPassword);
+        return new IssuedAccount(user, passwordSetupLink);
     }
 
     private String generateTemporaryPassword() {
