@@ -126,6 +126,7 @@ GET /api/data-imports/onboarding/{importId}/result
 학생 필수값:
 
 - 이름
+- 학년
 
 강의 필수값:
 

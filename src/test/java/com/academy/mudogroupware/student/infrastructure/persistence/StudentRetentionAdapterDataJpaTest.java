@@ -28,12 +28,13 @@ class StudentRetentionAdapterDataJpaTest {
     void findsOnlySoftDeletedStudentsOlderThanThresholdUpToBatchSize() {
         insertStudent(1L, "old-1", THRESHOLD.minusDays(1)); // 대상: threshold보다 오래됨
         insertStudent(2L, "old-2", THRESHOLD.minusDays(2)); // 대상
-        insertStudent(3L, "recent", THRESHOLD.plusDays(1)); // 제외: threshold보다 최근
-        insertStudent(4L, "not-deleted", null); // 제외: 소프트 삭제 안 됨
+        insertStudent(3L, "boundary", THRESHOLD); // 대상: 보관 기간이 정확히 경과함
+        insertStudent(4L, "recent", THRESHOLD.plusDays(1)); // 제외: threshold보다 최근
+        insertStudent(5L, "not-deleted", null); // 제외: 소프트 삭제 안 됨
 
         List<Long> candidates = adapter.findHardDeleteCandidateIds(THRESHOLD, 10);
 
-        assertThat(candidates).containsExactlyInAnyOrder(1L, 2L);
+        assertThat(candidates).containsExactlyInAnyOrder(1L, 2L, 3L);
     }
 
     @Test

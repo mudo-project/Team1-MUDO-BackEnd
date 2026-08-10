@@ -34,17 +34,17 @@ public interface StudentJpaRepository extends JpaRepository<StudentEntity, Long>
             + "where student_id = :id and deleted_at is null", nativeQuery = true)
     int markDeleted(@Param("id") Long id, @Param("deletedAt") LocalDateTime deletedAt);
 
-    // Retention 배치 전용: 소프트 삭제 후 threshold보다 오래된 학생만 하드 삭제 대상으로 잡는다.
+    // Retention 배치 전용: 소프트 삭제 후 threshold 시각까지 보관 기간이 경과한 학생만 하드 삭제 대상으로 잡는다.
     @Query(value = "select student_id from student "
-            + "where deleted_at is not null and deleted_at < :threshold "
-            + "order by deleted_at asc limit :batchSize", nativeQuery = true)
+            + "where deleted_at is not null and deleted_at <= :threshold "
+            + "order by deleted_at asc limit :batchSize for update", nativeQuery = true)
     List<Long> findHardDeleteCandidateIds(@Param("threshold") LocalDateTime threshold,
                                            @Param("batchSize") int batchSize);
 
     // 후보 조회와 삭제 사이 데이터가 바뀌는 경우를 막기 위해 threshold 조건을 삭제 시점에도 다시 검사한다.
     @Modifying
     @Query(value = "delete from student "
-            + "where student_id in :ids and deleted_at is not null and deleted_at < :threshold",
+            + "where student_id in :ids and deleted_at is not null and deleted_at <= :threshold",
             nativeQuery = true)
     int hardDeleteByIds(@Param("ids") List<Long> ids, @Param("threshold") LocalDateTime threshold);
 }

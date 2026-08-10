@@ -2,11 +2,13 @@ package com.academy.mudogroupware.dataimport.presentation.api;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -17,6 +19,8 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -121,6 +125,60 @@ class OnboardingDataImportControllerTest {
                 .andExpect(jsonPath("$.data.skippedRows").value(4));
     }
 
+    @Test
+    void uploadFilesRejectsUserWithoutImportPermission() throws Exception {
+        MockMultipartFile studentFile = new MockMultipartFile("studentFile", "students.csv",
+                "text/csv", "이름,학년\n김민수,고1".getBytes(StandardCharsets.UTF_8));
+
+        mockMvc.perform(multipart("/api/data-imports/onboarding/files")
+                        .file(studentFile)
+                        .with(authentication(userWithoutImportPermission()))
+                        .with(csrf()))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(createOnboardingImportUseCase);
+    }
+
+    @Test
+    void getDraftRejectsUserWithoutImportPermission() throws Exception {
+        mockMvc.perform(get("/api/data-imports/onboarding/1/draft")
+                        .with(authentication(userWithoutImportPermission())))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(getImportDraftUseCase);
+    }
+
+    @Test
+    void updateDraftRejectsUserWithoutImportPermission() throws Exception {
+        mockMvc.perform(patch("/api/data-imports/onboarding/1/draft")
+                        .contentType("application/json")
+                        .content("{\"students\":[],\"lectures\":[],\"enrollments\":[]}")
+                        .with(authentication(userWithoutImportPermission()))
+                        .with(csrf()))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(updateImportDraftUseCase);
+    }
+
+    @Test
+    void confirmRejectsUserWithoutImportPermission() throws Exception {
+        mockMvc.perform(post("/api/data-imports/onboarding/1/confirm")
+                        .with(authentication(userWithoutImportPermission()))
+                        .with(csrf()))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(confirmOnboardingImportUseCase);
+    }
+
+    @Test
+    void getResultRejectsUserWithoutImportPermission() throws Exception {
+        mockMvc.perform(get("/api/data-imports/onboarding/1/result")
+                        .with(authentication(userWithoutImportPermission())))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(getImportResultUseCase);
+    }
+
     private Authentication authenticatedUser() {
         return new UsernamePasswordAuthenticationToken(
                 AUTH_USER,
@@ -128,5 +186,17 @@ class OnboardingDataImportControllerTest {
                 List.of("STUDENT:MANAGE", "LECTURE:MANAGE").stream()
                         .map(SimpleGrantedAuthority::new)
                         .toList());
+    }
+
+    private Authentication userWithoutImportPermission() {
+        return new UsernamePasswordAuthenticationToken(
+                AUTH_USER,
+                null,
+                List.of(new SimpleGrantedAuthority("STUDENT:MANAGE")));
+    }
+
+    @TestConfiguration
+    @EnableMethodSecurity
+    static class MethodSecurityTestConfig {
     }
 }

@@ -54,6 +54,73 @@ class ImportDraftBuilderTest {
         assertThat(draft.students().get(0).messages()).contains("학생 학년은 필수입니다.");
     }
 
+    @Test
+    void enrollmentReferencingNonReadyStudentNeedsReview() {
+        ParsedImportSheet studentSheet = new ParsedImportSheet(ImportFileRole.STUDENT, "students.csv",
+                List.of(new ParsedImportRow(2, Map.of(
+                        "이름", "김민수",
+                        "연락처", "010-1111-2222"))));
+
+        ImportDraft draft = builder.build(List.of(studentSheet, lectureSheet(), enrollmentSheet()));
+
+        assertThat(draft.students().get(0).status()).isEqualTo(ImportRowStatus.ERROR);
+        assertThat(draft.enrollments().get(0).status()).isEqualTo(ImportRowStatus.NEEDS_REVIEW);
+        assertThat(draft.enrollments().get(0).selected()).isFalse();
+        assertThat(draft.enrollments().get(0).studentRowId()).isNull();
+        assertThat(draft.enrollments().get(0).messages()).contains("학생 후보 확인이 필요합니다.");
+    }
+
+    @Test
+    void enrollmentReferencingNonReadyLectureNeedsReview() {
+        ImportDraft draft = builder.build(List.of(studentSheet(), lectureSheetWithTeacherNameOnly(), enrollmentSheet()));
+
+        assertThat(draft.lectures().get(0).status()).isEqualTo(ImportRowStatus.NEEDS_REVIEW);
+        assertThat(draft.enrollments().get(0).status()).isEqualTo(ImportRowStatus.NEEDS_REVIEW);
+        assertThat(draft.enrollments().get(0).selected()).isFalse();
+        assertThat(draft.enrollments().get(0).lectureRowId()).isNull();
+        assertThat(draft.enrollments().get(0).messages()).contains("강의 후보 확인이 필요합니다.");
+    }
+
+    @Test
+    void buildsMultipleSchedulesFromDelimitedDays() {
+        ParsedImportSheet sheet = new ParsedImportSheet(ImportFileRole.LECTURE, "lectures.csv", List.of(
+                new ParsedImportRow(2, Map.ofEntries(
+                        Map.entry("강의명", "고1 수학"),
+                        Map.entry("학년", "고1"),
+                        Map.entry("학기", "2026 여름"),
+                        Map.entry("과목", "수학"),
+                        Map.entry("강사ID", "30"),
+                        Map.entry("교실", "101호"),
+                        Map.entry("요일", "월,수,금"),
+                        Map.entry("시작", "15:00"),
+                        Map.entry("종료", "17:00")))));
+
+        ImportDraft draft = builder.build(List.of(sheet));
+
+        assertThat(draft.lectures().get(0).schedules()).hasSize(3);
+        assertThat(draft.lectures().get(0).status()).isEqualTo(ImportRowStatus.READY);
+    }
+
+    @Test
+    void lectureWithInvalidScheduleValueReportsSpecificMessage() {
+        ParsedImportSheet sheet = new ParsedImportSheet(ImportFileRole.LECTURE, "lectures.csv", List.of(
+                new ParsedImportRow(2, Map.ofEntries(
+                        Map.entry("강의명", "고1 수학"),
+                        Map.entry("학년", "고1"),
+                        Map.entry("학기", "2026 여름"),
+                        Map.entry("과목", "수학"),
+                        Map.entry("강사ID", "30"),
+                        Map.entry("교실", "101호"),
+                        Map.entry("요일", "월"),
+                        Map.entry("시작", "25:00"),
+                        Map.entry("종료", "17:00")))));
+
+        ImportDraft draft = builder.build(List.of(sheet));
+
+        assertThat(draft.lectures().get(0).status()).isEqualTo(ImportRowStatus.ERROR);
+        assertThat(draft.lectures().get(0).messages()).contains("시작 시간 형식이 올바르지 않습니다: 25:00");
+    }
+
     private ParsedImportSheet studentSheet() {
         return new ParsedImportSheet(ImportFileRole.STUDENT, "students.csv", List.of(
                 new ParsedImportRow(2, Map.of(

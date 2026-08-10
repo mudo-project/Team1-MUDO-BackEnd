@@ -27,7 +27,8 @@ public class ImportDraftValidator {
     }
 
     public Result validateLecture(String name, Grade grade, String termName, String subjectName, Long teacherId,
-                                  String teacherName, String classroomName, List<ImportLectureSchedule> schedules) {
+                                  String teacherName, String classroomName, List<ImportLectureSchedule> schedules,
+                                  List<String> scheduleMessages) {
         List<String> messages = new ArrayList<>();
         if (name == null || name.isBlank()) {
             messages.add("강의명은 필수입니다.");
@@ -44,7 +45,9 @@ public class ImportDraftValidator {
         if (classroomName == null || classroomName.isBlank()) {
             messages.add("교실명은 필수입니다.");
         }
-        if (schedules == null || schedules.isEmpty()) {
+        List<String> safeScheduleMessages = scheduleMessages != null ? scheduleMessages : List.of();
+        messages.addAll(safeScheduleMessages);
+        if ((schedules == null || schedules.isEmpty()) && safeScheduleMessages.isEmpty()) {
             messages.add("강의 일정은 필수입니다.");
         }
         if (!messages.isEmpty()) {

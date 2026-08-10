@@ -106,6 +106,10 @@ public class ImportValueNormalizer {
         if (value == null) {
             return null;
         }
+        return dayOfWeekValue(value);
+    }
+
+    public DayOfWeek dayOfWeekValue(String value) {
         String normalized = normalize(value);
         try {
             return DayOfWeek.valueOf(value.trim().toUpperCase(Locale.ROOT));
@@ -128,6 +132,10 @@ public class ImportValueNormalizer {
         if (value == null) {
             return null;
         }
+        return timeValue(value);
+    }
+
+    public LocalTime timeValue(String value) {
         String normalized = normalize(value);
         try {
             return LocalTime.parse(value.trim());

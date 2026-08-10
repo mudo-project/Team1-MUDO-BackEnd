@@ -41,8 +41,9 @@ class StudentRetentionServiceTest {
 
         assertThat(result).isEqualTo(new RetentionJobResult(StudentRetentionService.JOB_NAME, 3, 5, 3));
         // 자식(수강 이력) 삭제가 부모(학생) 삭제보다 먼저 호출돼야 한다.
-        assertThat(port.deleteEnrollmentsCalls).containsExactly(List.of(1L, 2L, 3L));
-        assertThat(port.hardDeleteCalls).hasSize(1);
+        assertThat(port.invocations).containsExactly(
+                "deleteEnrollments:[1, 2, 3]",
+                "hardDeleteStudents:[1, 2, 3]");
     }
 
     @Test
@@ -64,6 +65,7 @@ class StudentRetentionServiceTest {
         private int lastBatchSize;
         private final List<List<Long>> deleteEnrollmentsCalls = new ArrayList<>();
         private final List<List<Long>> hardDeleteCalls = new ArrayList<>();
+        private final List<String> invocations = new ArrayList<>();
 
         @Override
         public List<Long> findHardDeleteCandidateIds(LocalDateTime threshold, int batchSize) {
@@ -75,12 +77,14 @@ class StudentRetentionServiceTest {
         @Override
         public int deleteEnrollmentsByStudentIds(List<Long> studentIds) {
             deleteEnrollmentsCalls.add(studentIds);
+            invocations.add("deleteEnrollments:" + studentIds);
             return enrollmentDeleteCount;
         }
 
         @Override
         public int hardDeleteStudentsByIds(List<Long> studentIds, LocalDateTime threshold) {
             hardDeleteCalls.add(studentIds);
+            invocations.add("hardDeleteStudents:" + studentIds);
             return studentDeleteCount;
         }
     }

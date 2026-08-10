@@ -750,7 +750,7 @@ Response Body
 
 결재 첨부파일은 기밀 자료이므로 신청자 또는 결재선 참여자만 다운로드 URL을 받을 수 있다. 내부적으로 `file` 모듈의 `GET /api/files/{fileId}/download-url`([file 모듈 API.md](../../file/docs/API.md))이 하는 academyId 검증에 더해, "요청자가 이 결재 문서의 신청자/결재선 참여자인지"와 "이 fileId가 실제로 이 documentId 소속인지"를 먼저 검증한다. 두 조건을 모두 통과해야 presigned URL을 발급한다.
 
-# **[request]**
+### **14.1 요청**
 
 Request Header
 
@@ -769,9 +769,9 @@ Request Body
 
 없음
 
-# **[response]**
+### **14.2 응답**
 
-### **성공코드**
+#### **성공코드**
 
 | **HTTP 상태** | **설명** |
 | --- | --- |
