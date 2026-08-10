@@ -54,14 +54,14 @@ class MyAttendanceStatusResolverTest {
     private AttendanceRecord normalRecord() {
         LocalDateTime clockInAt = TODAY.atTime(8, 55);
         return AttendanceRecord.restore(
-                1L, 10L, 2L, TODAY, clockInAt, null, null, null, null,
+                1L, 2L, TODAY, clockInAt, null, null, null, null,
                 AttendanceStatus.NORMAL, clockInAt, clockInAt);
     }
 
     private LeaveRequest approvedLeave() {
         LocalDateTime now = TODAY.atStartOfDay();
         return LeaveRequest.restore(
-                1L, 10L, 2L, 100L, TODAY, TODAY, 1,
+                1L, 2L, 100L, TODAY, TODAY, 1,
                 LeaveRequestStatus.APPROVED, now, now);
     }
 }

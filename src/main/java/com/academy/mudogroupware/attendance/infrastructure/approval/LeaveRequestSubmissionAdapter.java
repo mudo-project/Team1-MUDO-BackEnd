@@ -18,9 +18,9 @@ public class LeaveRequestSubmissionAdapter implements LeaveRequestSubmissionPort
     private final SubmitLeaveRequestUseCase submitLeaveRequestUseCase;
 
     @Override
-    public void submit(Long documentId, Long academyId, Long requesterId, LocalDate startDate, LocalDate endDate,
+    public void submit(Long documentId, Long requesterId, LocalDate startDate, LocalDate endDate,
                        LocalDateTime submittedAt) {
-        submitLeaveRequestUseCase.submit(new SubmitLeaveRequestCommand(documentId, academyId, requesterId,
+        submitLeaveRequestUseCase.submit(new SubmitLeaveRequestCommand(documentId, requesterId,
                 startDate, endDate, submittedAt));
     }
 }

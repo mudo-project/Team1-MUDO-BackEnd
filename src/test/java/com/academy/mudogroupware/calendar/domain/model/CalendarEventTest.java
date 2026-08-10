@@ -18,10 +18,9 @@ class CalendarEventTest {
     @Test
     void createBuildsEventWithGivenFields() {
         CalendarEvent event = CalendarEvent.create(
-                1L, "2학기 수업 준비 회의", "교재 배분 논의", START, END, false, "green", 7L);
+                "수업 준비 회의", "교재 배분 논의", START, END, false, "green", 7L);
 
-        assertThat(event.getAcademyId()).isEqualTo(1L);
-        assertThat(event.getTitle()).isEqualTo("2학기 수업 준비 회의");
+        assertThat(event.getTitle()).isEqualTo("수업 준비 회의");
         assertThat(event.getContent()).isEqualTo("교재 배분 논의");
         assertThat(event.getEventStartAt()).isEqualTo(START);
         assertThat(event.getEventEndAt()).isEqualTo(END);
@@ -32,7 +31,7 @@ class CalendarEventTest {
 
     @Test
     void createThrowsWhenTitleIsBlank() {
-        assertThatThrownBy(() -> CalendarEvent.create(1L, "  ", null, START, END, false, null, 7L))
+        assertThatThrownBy(() -> CalendarEvent.create("  ", null, START, END, false, null, 7L))
                 .isInstanceOf(CalendarTitleRequiredException.class);
     }
 
@@ -40,13 +39,13 @@ class CalendarEventTest {
     void createThrowsWhenEventEndAtIsBeforeEventStartAt() {
         LocalDateTime invalidEnd = START.minusMinutes(1);
 
-        assertThatThrownBy(() -> CalendarEvent.create(1L, "제목", null, START, invalidEnd, false, null, 7L))
+        assertThatThrownBy(() -> CalendarEvent.create("제목", null, START, invalidEnd, false, null, 7L))
                 .isInstanceOf(InvalidCalendarPeriodException.class);
     }
 
     @Test
     void updateReplacesMutableFields() {
-        CalendarEvent event = CalendarEvent.create(1L, "제목", "내용", START, END, false, "green", 7L);
+        CalendarEvent event = CalendarEvent.create("제목", "내용", START, END, false, "green", 7L);
         LocalDateTime newStart = LocalDateTime.of(2026, 8, 4, 12, 30);
         LocalDateTime newEnd = LocalDateTime.of(2026, 8, 4, 15, 30);
 
@@ -62,7 +61,7 @@ class CalendarEventTest {
 
     @Test
     void updateThrowsWhenTitleIsBlank() {
-        CalendarEvent event = CalendarEvent.create(1L, "제목", "내용", START, END, false, "green", 7L);
+        CalendarEvent event = CalendarEvent.create("제목", "내용", START, END, false, "green", 7L);
 
         assertThatThrownBy(() -> event.update(" ", "내용", START, END, false, "green"))
                 .isInstanceOf(CalendarTitleRequiredException.class);

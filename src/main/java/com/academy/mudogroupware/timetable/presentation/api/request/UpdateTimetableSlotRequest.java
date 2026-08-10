@@ -24,8 +24,8 @@ public record UpdateTimetableSlotRequest(
         @Schema(description = "과목") String subjectName
 ) {
 
-    public UpdateTimetableSlotCommand toCommand(Long academyId, Long timetableSetId, Long timetableSlotId) {
-        return new UpdateTimetableSlotCommand(academyId, timetableSetId, timetableSlotId, scope, classType,
+    public UpdateTimetableSlotCommand toCommand(Long timetableSetId, Long timetableSlotId) {
+        return new UpdateTimetableSlotCommand(timetableSetId, timetableSlotId, scope, classType,
                 dayOfWeek, classroomCode, startTime, endTime, grade, teacherName, subjectName);
     }
 }

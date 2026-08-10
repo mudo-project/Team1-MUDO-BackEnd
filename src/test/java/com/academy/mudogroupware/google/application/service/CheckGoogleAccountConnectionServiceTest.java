@@ -18,7 +18,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.academy.mudogroupware.google.application.command.CheckGoogleConnectionCommand;
 import com.academy.mudogroupware.google.application.port.GoogleOAuthCallException;
 import com.academy.mudogroupware.google.application.port.GoogleOAuthPort;
 import com.academy.mudogroupware.google.application.port.GoogleTokenExchangeResult;
@@ -46,13 +45,13 @@ class CheckGoogleAccountConnectionServiceTest {
     @Test
     void checkMarksValidWhenGoogleRefreshSucceeds() {
         GoogleAccountConnection connection = GoogleAccountConnection.restore(
-                10L, 1L, "a@b.com", 7L, "scope", "refresh-token", CONNECTED_AT, CONNECTED_AT.plusDays(60),
+                10L, "a@b.com", 7L, "scope", "refresh-token", CONNECTED_AT, CONNECTED_AT.plusDays(60),
                 CONNECTED_AT, false);
-        when(googleAccountConnectionRepository.findByAcademyId(1L)).thenReturn(Optional.of(connection));
+        when(googleAccountConnectionRepository.find()).thenReturn(Optional.of(connection));
         when(googleOAuthPort.refreshAccessToken("refresh-token"))
                 .thenReturn(new GoogleTokenExchangeResult("access-token", null, "scope"));
 
-        service.check(new CheckGoogleConnectionCommand(1L));
+        service.check();
 
         ArgumentCaptor<GoogleAccountConnection> captor = ArgumentCaptor.forClass(GoogleAccountConnection.class);
         verify(googleAccountConnectionRepository).save(captor.capture());
@@ -63,13 +62,13 @@ class CheckGoogleAccountConnectionServiceTest {
     @Test
     void checkMarksFailedWhenGoogleRefreshFails() {
         GoogleAccountConnection connection = GoogleAccountConnection.restore(
-                10L, 1L, "a@b.com", 7L, "scope", "refresh-token", CONNECTED_AT, CONNECTED_AT.plusDays(60),
+                10L, "a@b.com", 7L, "scope", "refresh-token", CONNECTED_AT, CONNECTED_AT.plusDays(60),
                 CONNECTED_AT, false);
-        when(googleAccountConnectionRepository.findByAcademyId(1L)).thenReturn(Optional.of(connection));
+        when(googleAccountConnectionRepository.find()).thenReturn(Optional.of(connection));
         when(googleOAuthPort.refreshAccessToken("refresh-token"))
                 .thenThrow(new GoogleOAuthCallException("revoked"));
 
-        service.check(new CheckGoogleConnectionCommand(1L));
+        service.check();
 
         ArgumentCaptor<GoogleAccountConnection> captor = ArgumentCaptor.forClass(GoogleAccountConnection.class);
         verify(googleAccountConnectionRepository).save(captor.capture());
@@ -78,9 +77,9 @@ class CheckGoogleAccountConnectionServiceTest {
 
     @Test
     void checkThrowsWhenNotConnected() {
-        when(googleAccountConnectionRepository.findByAcademyId(1L)).thenReturn(Optional.empty());
+        when(googleAccountConnectionRepository.find()).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.check(new CheckGoogleConnectionCommand(1L)))
+        assertThatThrownBy(service::check)
                 .isInstanceOf(GoogleAccountNotConnectedException.class);
     }
 }

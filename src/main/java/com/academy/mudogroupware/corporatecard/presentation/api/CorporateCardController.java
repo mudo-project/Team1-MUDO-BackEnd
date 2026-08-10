@@ -49,7 +49,7 @@ public class CorporateCardController {
             throw new IllegalArgumentException("page는 0 이상, size는 1~100이어야 합니다.");
         }
         return GlobalApiResponse.ok("CORPORATE_CARD_TRANSACTIONS_RETRIEVED", "법인카드 사용내역 조회가 완료되었습니다.",
-                CorporateCardTransactionPageResponse.from(service.getTransactions(authUser.academyId(), page, size)));
+                CorporateCardTransactionPageResponse.from(service.getTransactions(page, size)));
     }
 
     @Operation(summary = "법인카드 사용내역 상세 조회")
@@ -58,7 +58,7 @@ public class CorporateCardController {
     public GlobalApiResponse<CardExpenseResponse> getTransaction(
             @AuthenticationPrincipal AuthUser authUser, @PathVariable Long transactionId) {
         return GlobalApiResponse.ok("CORPORATE_CARD_TRANSACTION_RETRIEVED", "법인카드 사용내역 조회가 완료되었습니다.",
-                CardExpenseResponse.from(service.getTransaction(authUser.academyId(), transactionId)));
+                CardExpenseResponse.from(service.getTransaction(transactionId)));
     }
 
     @Operation(summary = "법인카드 사용내역 일괄 정산 상신")
@@ -68,7 +68,7 @@ public class CorporateCardController {
             @AuthenticationPrincipal AuthUser authUser,
             @Valid @RequestBody BatchSubmitCardExpensesRequest request) {
         BatchSubmitCardExpensesResponse response = BatchSubmitCardExpensesResponse.from(
-                batchSubmitUseCase.submit(request.toCommand(), authUser.academyId(), authUser.userId()));
+                batchSubmitUseCase.submit(request.toCommand(), authUser.userId()));
         return GlobalApiResponse.ok("CORPORATE_CARD_EXPENSES_SUBMITTED",
                 "법인카드 사용내역 일괄 상신 처리가 완료되었습니다.", response);
     }
@@ -81,7 +81,7 @@ public class CorporateCardController {
             @PathVariable Long transactionId,
             @Valid @RequestBody SubmitCardExpenseRequest request) {
         CardExpenseResponse response = CardExpenseResponse.from(
-                service.submit(request.toCommand(transactionId, authUser.userId()), authUser.academyId()));
+                service.submit(request.toCommand(transactionId, authUser.userId())));
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(GlobalApiResponse.created("CORPORATE_CARD_EXPENSE_SUBMITTED",
                         "법인카드 정산이 상신되었습니다.", response));
@@ -95,7 +95,7 @@ public class CorporateCardController {
             @PathVariable Long transactionId,
             @Valid @RequestBody SaveCardExpenseRequest request) {
         CardExpenseResponse response = CardExpenseResponse.from(service.saveExpense(
-                transactionId, authUser.userId(), request.category(), request.purpose(), authUser.academyId()));
+                transactionId, authUser.userId(), request.category(), request.purpose()));
         return GlobalApiResponse.ok("CORPORATE_CARD_EXPENSE_SAVED",
                 "법인카드 정산 정보가 저장되었습니다.", response);
     }

@@ -43,11 +43,11 @@ public class MyMonthlyAttendanceQueryService implements GetMyMonthlyAttendanceUs
 
     @Override
     public MyMonthlyAttendanceView getMonthly(
-            Long userId, Long academyId, int year, int month) {
-        log.info("event=attendance_monthly_read_시작 userId={}, academyId={}, year={}, month={}", userId, academyId, year, month);
+            Long userId, int year, int month) {
+        log.info("event=attendance_monthly_read_시작 userId={}={}, year={}, month={}", userId, year, month);
         YearMonth targetMonth = toYearMonth(year, month);
         LocalDate today = LocalDate.now(clock);
-        LocalDate hireDate = employmentSummaryPort.findByUserIdAndAcademyId(userId, academyId)
+        LocalDate hireDate = employmentSummaryPort.findByUserId(userId)
                 .orElseThrow(() -> new AttendanceException(
                         AttendanceErrorCode.EMPLOYMENT_INFO_NOT_FOUND))
                 .hireDate();
@@ -55,19 +55,19 @@ public class MyMonthlyAttendanceQueryService implements GetMyMonthlyAttendanceUs
         LocalDate endDate = earlierOf(targetMonth.atEndOfMonth(), today);
         if (startDate.isAfter(endDate)) {
             MyMonthlyAttendanceView result = new MyMonthlyAttendanceView(year, month, List.of());
-            log.info("event=attendance_monthly_read_완료 userId={}, academyId={}, count=0", userId, academyId); return result;
+            log.info("event=attendance_monthly_read_완료 userId={}={}, count=0", userId); return result;
         }
 
-        AttendancePolicy policy = attendancePolicyRepository.findByAcademyId(academyId)
+        AttendancePolicy policy = attendancePolicyRepository.findCurrent()
                 .orElseThrow(() -> new AttendanceException(
                         AttendanceErrorCode.ATTENDANCE_POLICY_NOT_FOUND));
         Map<LocalDate, AttendanceRecord> records = attendanceRecordRepository
-                .findByAcademyIdAndUserIdAndWorkDateBetween(
-                        academyId, userId, startDate, endDate)
+                .findByUserIdAndWorkDateBetween(
+                        userId, startDate, endDate)
                 .stream()
                 .collect(Collectors.toMap(AttendanceRecord::getWorkDate, Function.identity()));
         List<LeaveRequest> approvedLeaves = leaveRequestRepository.findApprovedOverlapping(
-                academyId, userId, startDate, endDate);
+                userId, startDate, endDate);
         LocalTime currentTime = LocalTime.now(clock);
 
         List<MyMonthlyAttendanceView.Day> days = startDate.datesUntil(endDate.plusDays(1))
@@ -75,7 +75,7 @@ public class MyMonthlyAttendanceQueryService implements GetMyMonthlyAttendanceUs
                         date, policy, records.get(date), approvedLeaves, today, currentTime))
                 .toList();
         MyMonthlyAttendanceView result = new MyMonthlyAttendanceView(year, month, days);
-        log.info("event=attendance_monthly_read_완료 userId={}, academyId={}, count={}", userId, academyId, days.size());
+        log.info("event=attendance_monthly_read_완료 userId={}={}, count={}", userId, days.size());
         return result;
     }
 

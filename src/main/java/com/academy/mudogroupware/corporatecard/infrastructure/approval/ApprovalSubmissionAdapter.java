@@ -1,6 +1,7 @@
 package com.academy.mudogroupware.corporatecard.infrastructure.approval;
 
 import org.springframework.stereotype.Component;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -30,7 +31,7 @@ public class ApprovalSubmissionAdapter implements ApprovalSubmissionPort {
     public Long submit(Long templateId, Long creatorId, String title, String content, List<Long> approverIds) {
         return createApprovalDocumentUseCase.createDocument(new CreateApprovalDocumentCommand(
                 templateId, title, ApprovalContentType.TEXT, content, null, creatorId, approverIds, null, null,
-                ApprovalDocumentSourceType.CORPORATE_CARD_EXPENSE, null));
+                ApprovalDocumentSourceType.CORPORATE_CARD_EXPENSE));
     }
 
     @Override
@@ -45,6 +46,16 @@ public class ApprovalSubmissionAdapter implements ApprovalSubmissionPort {
         return approvalTemplateRepository.findById(templateId)
                 .map(template -> template.approverIdsInOrder())
                 .orElse(List.of());
+    }
+
+    @Override
+    public void saveDefaultApproverIdsIfEmpty(Long templateId, List<Long> approverIds) {
+        var template = approvalTemplateRepository.findById(templateId)
+                .orElseThrow(() -> new IllegalStateException("법인카드 결재 템플릿을 찾을 수 없습니다."));
+        if (template.approverIdsInOrder().isEmpty()) {
+            template.update(template.getName(), approverIds, LocalDateTime.now());
+            approvalTemplateRepository.save(template);
+        }
     }
 
     @Override

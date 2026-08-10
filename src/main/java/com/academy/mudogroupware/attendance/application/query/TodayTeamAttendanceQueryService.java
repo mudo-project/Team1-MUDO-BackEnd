@@ -17,9 +17,7 @@ import com.academy.mudogroupware.attendance.domain.exception.AttendanceErrorCode
 import com.academy.mudogroupware.attendance.domain.exception.AttendanceException;
 import com.academy.mudogroupware.attendance.domain.model.AttendancePolicy;
 import com.academy.mudogroupware.attendance.domain.model.AttendancePolicyWeekday;
-import com.academy.mudogroupware.attendance.domain.model.OwnedAcademy;
 import com.academy.mudogroupware.attendance.domain.model.TeamAttendanceStatus;
-import com.academy.mudogroupware.attendance.domain.repository.AcademyRepository;
 import com.academy.mudogroupware.attendance.domain.repository.AttendancePolicyRepository;
 import com.academy.mudogroupware.attendance.domain.repository.LeaveRequestRepository;
 
@@ -36,29 +34,24 @@ public class TodayTeamAttendanceQueryService implements GetTodayTeamAttendanceUs
             "월", "화", "수", "목", "금", "토", "일"
     };
 
-    private final AcademyRepository academyRepository;
     private final AttendancePolicyRepository attendancePolicyRepository;
     private final TeamAttendanceQueryPort teamAttendanceQueryPort;
     private final LeaveRequestRepository leaveRequestRepository;
     private final Clock clock;
 
     @Override
-    public TodayTeamAttendanceView getToday(Long requesterId, Long academyId) {
-        log.info("event=attendance_team_today_read_시작 requesterId={}, academyId={}", requesterId, academyId);
-        OwnedAcademy academy = academyRepository.findByOwnerUserId(requesterId)
-                .filter(owned -> owned.id().equals(academyId))
-                .orElseThrow(() -> new AttendanceException(
-                        AttendanceErrorCode.TEAM_ATTENDANCE_VIEW_FORBIDDEN));
-        AttendancePolicy policy = attendancePolicyRepository.findByAcademyId(academy.id())
+    public TodayTeamAttendanceView getToday(Long requesterId) {
+        log.info("event=attendance_team_today_read_시작 requesterId={}={}", requesterId);
+        AttendancePolicy policy = attendancePolicyRepository.findCurrent()
                 .orElseThrow(() -> new AttendanceException(
                         AttendanceErrorCode.ATTENDANCE_POLICY_NOT_FOUND));
 
         LocalDate today = LocalDate.now(clock);
         WorkSchedule schedule = resolveSchedule(policy, today);
         // 직원별로 반복 조회하지 않도록 오늘 승인된 휴가자 userId를 한 번만 모아서 조회한다.
-        Set<Long> onLeaveUserIds = leaveRequestRepository.findApprovedUserIds(academy.id(), today);
+        Set<Long> onLeaveUserIds = leaveRequestRepository.findApprovedUserIds(today);
         List<TodayTeamAttendanceView.Employee> employees = teamAttendanceQueryPort
-                .findEmployeesWithAttendance(academy.id(), academy.ownerUserId(), today)
+                .findEmployeesWithAttendance(requesterId, today)
                 .stream()
                 .map(employee -> toEmployee(employee, schedule.workday(), onLeaveUserIds))
                 .toList();
@@ -83,7 +76,7 @@ public class TodayTeamAttendanceQueryService implements GetTodayTeamAttendanceUs
                 schedule.endTime(),
                 new TodayTeamAttendanceView.Summary(presentCount, absentCount, offCount, leaveCount),
                 employees);
-        log.info("event=attendance_team_today_read_완료 academyId={}, count={}", academyId, employees.size());
+        log.info("event=attendance_team_today_read_완료 count={}", employees.size());
         return result;
     }
 

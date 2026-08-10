@@ -9,7 +9,7 @@ import com.academy.mudogroupware.timetable.domain.model.TimetableExportDensity;
 import com.academy.mudogroupware.timetable.domain.model.TimetableExportFormat;
 
 public record ExportTimetableCommand(
-        Long academyId, Long timetableSetId, TimetableExportFormat format,
+        Long timetableSetId, TimetableExportFormat format,
         TimetableExportColorCriterion colorCriterion, Map<String, String> colorHexByGroupValue,
         TimetableExportDensity density, DayOfWeek dayOfWeek, String floor, ClassType classType) {
 }

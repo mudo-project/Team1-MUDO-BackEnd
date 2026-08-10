@@ -16,7 +16,6 @@ import lombok.NoArgsConstructor;
 public class CorporateCardJpaEntity {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "card_id") private Long id;
-    @Column(name = "academy_id", nullable = false) private Long academyId;
     @Column(name = "card_name", nullable = false, length = 100) private String cardName;
     @Column(name = "card_company", nullable = false, length = 100) private String cardCompany;
     @Column(name = "card_number_masked", nullable = false, length = 30) private String cardNumberMasked;

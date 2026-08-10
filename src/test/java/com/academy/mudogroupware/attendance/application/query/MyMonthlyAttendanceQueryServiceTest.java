@@ -57,15 +57,15 @@ class MyMonthlyAttendanceQueryServiceTest {
         LocalDate hireDate = LocalDate.of(2026, 8, 3);
         var record = attendanceRecord(hireDate);
         var leave = approvedLeave(LocalDate.of(2026, 8, 4));
-        when(employmentPort.findByUserIdAndAcademyId(USER_ID, ACADEMY_ID))
+        when(employmentPort.findByUserId(USER_ID))
                 .thenReturn(Optional.of(new EmploymentSummaryPort.EmploymentSummary(hireDate)));
-        when(policyRepository.findByAcademyId(ACADEMY_ID)).thenReturn(Optional.of(policy()));
-        when(recordRepository.findByAcademyIdAndUserIdAndWorkDateBetween(
-                ACADEMY_ID, USER_ID, hireDate, TODAY)).thenReturn(List.of(record));
+        when(policyRepository.findCurrent()).thenReturn(Optional.of(policy()));
+        when(recordRepository.findByUserIdAndWorkDateBetween(
+                USER_ID, hireDate, TODAY)).thenReturn(List.of(record));
         when(leaveRepository.findApprovedOverlapping(
-                ACADEMY_ID, USER_ID, hireDate, TODAY)).thenReturn(List.of(leave));
+                USER_ID, hireDate, TODAY)).thenReturn(List.of(leave));
 
-        var result = service.getMonthly(USER_ID, ACADEMY_ID, 2026, 8);
+        var result = service.getMonthly(USER_ID, 2026, 8);
 
         assertEquals(5, result.days().size());
         assertEquals(MyAttendanceDayStatus.NORMAL, result.days().get(0).status());
@@ -77,14 +77,14 @@ class MyMonthlyAttendanceQueryServiceTest {
     private AttendancePolicy policy() {
         LocalDateTime createdAt = LocalDateTime.of(2026, 8, 1, 0, 0);
         return AttendancePolicy.restore(
-                1L, ACADEMY_ID, LocalTime.of(9, 0), LocalTime.of(18, 0),
+                1L, LocalTime.of(9, 0), LocalTime.of(18, 0),
                 10, false, List.of(), createdAt, createdAt);
     }
 
     private AttendanceRecord attendanceRecord(LocalDate date) {
         LocalDateTime clockInAt = date.atTime(8, 55);
         return AttendanceRecord.restore(
-                1L, ACADEMY_ID, USER_ID, date, clockInAt, null,
+                1L, USER_ID, date, clockInAt, null,
                 date.atTime(18, 0), null, null, AttendanceStatus.NORMAL,
                 clockInAt, date.atTime(18, 0));
     }
@@ -92,7 +92,7 @@ class MyMonthlyAttendanceQueryServiceTest {
     private LeaveRequest approvedLeave(LocalDate date) {
         LocalDateTime now = date.atStartOfDay();
         return LeaveRequest.restore(
-                1L, ACADEMY_ID, USER_ID, 100L, date, date, 1,
+                1L, USER_ID, 100L, date, date, 1,
                 LeaveRequestStatus.APPROVED, now, now);
     }
 }

@@ -29,9 +29,7 @@ import com.academy.mudogroupware.attendance.domain.exception.AttendanceErrorCode
 import com.academy.mudogroupware.attendance.domain.exception.AttendanceException;
 import com.academy.mudogroupware.attendance.domain.model.AttendancePolicy;
 import com.academy.mudogroupware.attendance.domain.model.AttendancePolicyWeekday;
-import com.academy.mudogroupware.attendance.domain.model.OwnedAcademy;
 import com.academy.mudogroupware.attendance.domain.model.TeamAttendanceStatus;
-import com.academy.mudogroupware.attendance.domain.repository.AcademyRepository;
 import com.academy.mudogroupware.attendance.domain.repository.AttendancePolicyRepository;
 import com.academy.mudogroupware.attendance.domain.repository.LeaveRequestRepository;
 
@@ -42,8 +40,6 @@ class TodayTeamAttendanceQueryServiceTest {
     private static final Long ACADEMY_ID = 10L;
     private static final LocalDate TODAY = LocalDate.of(2026, 8, 5);
 
-    @Mock
-    private AcademyRepository academyRepository;
     @Mock
     private AttendancePolicyRepository attendancePolicyRepository;
     @Mock
@@ -58,27 +54,25 @@ class TodayTeamAttendanceQueryServiceTest {
         Clock clock = Clock.fixed(
                 Instant.parse("2026-08-05T03:00:00Z"), ZoneId.of("Asia/Seoul"));
         service = new TodayTeamAttendanceQueryService(
-                academyRepository, attendancePolicyRepository,
+                attendancePolicyRepository,
                 teamAttendanceQueryPort, leaveRequestRepository, clock);
     }
 
     @Test
     void returnsPresentAndAbsentEmployeesOnWorkday() {
         AttendancePolicy policy = policy(false, List.of());
-        when(academyRepository.findByOwnerUserId(OWNER_ID))
-                .thenReturn(Optional.of(new OwnedAcademy(ACADEMY_ID, OWNER_ID)));
-        when(attendancePolicyRepository.findByAcademyId(ACADEMY_ID))
+        when(attendancePolicyRepository.findCurrent())
                 .thenReturn(Optional.of(policy));
-        when(leaveRequestRepository.findApprovedUserIds(ACADEMY_ID, TODAY))
+        when(leaveRequestRepository.findApprovedUserIds(TODAY))
                 .thenReturn(Set.of());
         when(teamAttendanceQueryPort.findEmployeesWithAttendance(
-                ACADEMY_ID, OWNER_ID, TODAY))
+                OWNER_ID, TODAY))
                 .thenReturn(List.of(
                         new TeamAttendanceEmployee(
                                 2L, "김지수", LocalDateTime.of(2026, 8, 5, 8, 52)),
                         new TeamAttendanceEmployee(3L, "박서연", null)));
 
-        TodayTeamAttendanceView result = service.getToday(OWNER_ID, ACADEMY_ID);
+        TodayTeamAttendanceView result = service.getToday(OWNER_ID);
 
         assertEquals(TODAY, result.date());
         assertEquals("수", result.dayOfWeek());
@@ -97,17 +91,15 @@ class TodayTeamAttendanceQueryServiceTest {
     @Test
     void returnsLeaveForEmployeeWithApprovedLeaveRequestToday() {
         AttendancePolicy policy = policy(false, List.of());
-        when(academyRepository.findByOwnerUserId(OWNER_ID))
-                .thenReturn(Optional.of(new OwnedAcademy(ACADEMY_ID, OWNER_ID)));
-        when(attendancePolicyRepository.findByAcademyId(ACADEMY_ID))
+        when(attendancePolicyRepository.findCurrent())
                 .thenReturn(Optional.of(policy));
-        when(leaveRequestRepository.findApprovedUserIds(ACADEMY_ID, TODAY))
+        when(leaveRequestRepository.findApprovedUserIds(TODAY))
                 .thenReturn(Set.of(3L));
         when(teamAttendanceQueryPort.findEmployeesWithAttendance(
-                ACADEMY_ID, OWNER_ID, TODAY))
+                OWNER_ID, TODAY))
                 .thenReturn(List.of(new TeamAttendanceEmployee(3L, "박서연", null)));
 
-        TodayTeamAttendanceView result = service.getToday(OWNER_ID, ACADEMY_ID);
+        TodayTeamAttendanceView result = service.getToday(OWNER_ID);
 
         assertEquals(TeamAttendanceStatus.LEAVE, result.employees().get(0).status());
         assertNull(result.employees().get(0).checkInTime());
@@ -119,19 +111,17 @@ class TodayTeamAttendanceQueryServiceTest {
     void returnsAllEmployeesAsOffOnConfiguredNonWorkday() {
         AttendancePolicy policy = policy(
                 true, List.of(new AttendancePolicyWeekday(3, false, null, null)));
-        when(academyRepository.findByOwnerUserId(OWNER_ID))
-                .thenReturn(Optional.of(new OwnedAcademy(ACADEMY_ID, OWNER_ID)));
-        when(attendancePolicyRepository.findByAcademyId(ACADEMY_ID))
+        when(attendancePolicyRepository.findCurrent())
                 .thenReturn(Optional.of(policy));
-        when(leaveRequestRepository.findApprovedUserIds(ACADEMY_ID, TODAY))
+        when(leaveRequestRepository.findApprovedUserIds(TODAY))
                 .thenReturn(Set.of());
         when(teamAttendanceQueryPort.findEmployeesWithAttendance(
-                ACADEMY_ID, OWNER_ID, TODAY))
+                OWNER_ID, TODAY))
                 .thenReturn(List.of(
                         new TeamAttendanceEmployee(2L, "김지수", null),
                         new TeamAttendanceEmployee(3L, "박서연", null)));
 
-        TodayTeamAttendanceView result = service.getToday(OWNER_ID, ACADEMY_ID);
+        TodayTeamAttendanceView result = service.getToday(OWNER_ID);
 
         assertEquals(0, result.summary().presentCount());
         assertEquals(0, result.summary().absentCount());
@@ -147,33 +137,17 @@ class TodayTeamAttendanceQueryServiceTest {
                 true,
                 List.of(new AttendancePolicyWeekday(
                         3, true, LocalTime.of(10, 0), LocalTime.of(19, 0))));
-        when(academyRepository.findByOwnerUserId(OWNER_ID))
-                .thenReturn(Optional.of(new OwnedAcademy(ACADEMY_ID, OWNER_ID)));
-        when(attendancePolicyRepository.findByAcademyId(ACADEMY_ID))
+        when(attendancePolicyRepository.findCurrent())
                 .thenReturn(Optional.of(policy));
-        when(leaveRequestRepository.findApprovedUserIds(ACADEMY_ID, TODAY))
+        when(leaveRequestRepository.findApprovedUserIds(TODAY))
                 .thenReturn(Set.of());
         when(teamAttendanceQueryPort.findEmployeesWithAttendance(
-                ACADEMY_ID, OWNER_ID, TODAY)).thenReturn(List.of());
+                OWNER_ID, TODAY)).thenReturn(List.of());
 
-        TodayTeamAttendanceView result = service.getToday(OWNER_ID, ACADEMY_ID);
+        TodayTeamAttendanceView result = service.getToday(OWNER_ID);
 
         assertEquals(LocalTime.of(10, 0), result.regularWorkStartTime());
         assertEquals(LocalTime.of(19, 0), result.regularWorkEndTime());
-    }
-
-    @Test
-    void rejectsRequesterWhoDoesNotOwnAuthenticatedAcademy() {
-        when(academyRepository.findByOwnerUserId(OWNER_ID))
-                .thenReturn(Optional.of(new OwnedAcademy(99L, OWNER_ID)));
-
-        AttendanceException exception = assertThrows(
-                AttendanceException.class,
-                () -> service.getToday(OWNER_ID, ACADEMY_ID));
-
-        assertSame(AttendanceErrorCode.TEAM_ATTENDANCE_VIEW_FORBIDDEN,
-                exception.getErrorCode());
-        verifyNoInteractions(attendancePolicyRepository, teamAttendanceQueryPort, leaveRequestRepository);
     }
 
     private AttendancePolicy policy(
@@ -182,7 +156,6 @@ class TodayTeamAttendanceQueryServiceTest {
         LocalDateTime createdAt = LocalDateTime.of(2026, 8, 1, 0, 0);
         return AttendancePolicy.restore(
                 1L,
-                ACADEMY_ID,
                 LocalTime.of(9, 0),
                 LocalTime.of(18, 0),
                 10,

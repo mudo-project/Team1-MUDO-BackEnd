@@ -9,7 +9,6 @@ public final class GoogleAccountConnection {
     private static final long EXPIRING_WARNING_DAYS = 3;
 
     private final Long id;
-    private final Long academyId;
     private final String googleEmail;
     private final Long connectedByUserId;
     private final String scope;
@@ -19,12 +18,9 @@ public final class GoogleAccountConnection {
     private LocalDateTime lastCheckedAt;
     private boolean failed;
 
-    private GoogleAccountConnection(Long id, Long academyId, String googleEmail, Long connectedByUserId,
+    private GoogleAccountConnection(Long id, String googleEmail, Long connectedByUserId,
                                      String scope, String refreshToken, LocalDateTime connectedAt,
                                      LocalDateTime tokenExpiresAt, LocalDateTime lastCheckedAt, boolean failed) {
-        if (academyId == null) {
-            throw new IllegalArgumentException("academyId must not be null");
-        }
         if (googleEmail == null || googleEmail.isBlank()) {
             throw new IllegalArgumentException("googleEmail must not be null or blank");
         }
@@ -35,7 +31,6 @@ public final class GoogleAccountConnection {
             throw new IllegalArgumentException("refreshToken must not be null or blank");
         }
         this.id = id;
-        this.academyId = academyId;
         this.googleEmail = googleEmail;
         this.connectedByUserId = connectedByUserId;
         this.scope = scope;
@@ -46,17 +41,17 @@ public final class GoogleAccountConnection {
         this.failed = failed;
     }
 
-    public static GoogleAccountConnection connect(Long academyId, String googleEmail, Long connectedByUserId,
+    public static GoogleAccountConnection connect(String googleEmail, Long connectedByUserId,
                                                    String scope, String refreshToken, LocalDateTime connectedAt) {
-        return new GoogleAccountConnection(null, academyId, googleEmail, connectedByUserId, scope, refreshToken,
+        return new GoogleAccountConnection(null, googleEmail, connectedByUserId, scope, refreshToken,
                 connectedAt, connectedAt.plusDays(TOKEN_VALID_DAYS), connectedAt, false);
     }
 
-    public static GoogleAccountConnection restore(Long id, Long academyId, String googleEmail,
+    public static GoogleAccountConnection restore(Long id, String googleEmail,
                                                    Long connectedByUserId, String scope, String refreshToken,
                                                    LocalDateTime connectedAt, LocalDateTime tokenExpiresAt,
                                                    LocalDateTime lastCheckedAt, boolean failed) {
-        return new GoogleAccountConnection(id, academyId, googleEmail, connectedByUserId, scope, refreshToken,
+        return new GoogleAccountConnection(id, googleEmail, connectedByUserId, scope, refreshToken,
                 connectedAt, tokenExpiresAt, lastCheckedAt, failed);
     }
 
@@ -90,10 +85,6 @@ public final class GoogleAccountConnection {
 
     public Long getId() {
         return id;
-    }
-
-    public Long getAcademyId() {
-        return academyId;
     }
 
     public String getGoogleEmail() {

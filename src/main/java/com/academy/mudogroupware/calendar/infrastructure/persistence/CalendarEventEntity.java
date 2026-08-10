@@ -26,9 +26,6 @@ public class CalendarEventEntity extends BaseTimeEntity {
     @Column(name = "event_id")
     private Long id;
 
-    @Column(name = "academy_id", nullable = false)
-    private Long academyId;
-
     @Column(nullable = false, length = 200)
     private String title;
 
@@ -51,11 +48,10 @@ public class CalendarEventEntity extends BaseTimeEntity {
     private Long createdBy;
 
     @Builder
-    private CalendarEventEntity(Long id, Long academyId, String title, String content,
+    private CalendarEventEntity(Long id, String title, String content,
                                  LocalDateTime eventStartAt, LocalDateTime eventEndAt, boolean allDay,
                                  String color, Long createdBy) {
         this.id = id;
-        this.academyId = academyId;
         this.title = title;
         this.content = content;
         this.eventStartAt = eventStartAt;

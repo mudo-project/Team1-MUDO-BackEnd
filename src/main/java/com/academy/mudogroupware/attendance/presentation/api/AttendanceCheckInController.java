@@ -44,7 +44,7 @@ public class AttendanceCheckInController {
             HttpServletRequest servletRequest) {
         String clientIp = clientIpResolver.resolve(servletRequest);
         CheckInResult result = checkInUseCase.checkIn(
-                request.toCommand(authUser.userId(), authUser.academyId(), clientIp));
+                request.toCommand(authUser.userId(), clientIp));
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(GlobalApiResponse.created(

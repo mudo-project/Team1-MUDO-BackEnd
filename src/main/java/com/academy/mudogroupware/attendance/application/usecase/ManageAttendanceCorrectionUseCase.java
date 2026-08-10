@@ -6,8 +6,8 @@ import com.academy.mudogroupware.global.domain.common.page.PageResult;
 
 public interface ManageAttendanceCorrectionUseCase {
     PageResult<AdminAttendanceCorrectionView> getAll(
-            Long academyId, AttendanceCorrectionStatus status, int page, int size);
-    AdminAttendanceCorrectionView get(Long academyId, Long requestId);
-    void approve(Long academyId, Long requestId, Long processorId);
-    void reject(Long academyId, Long requestId, Long processorId, String reason);
+            AttendanceCorrectionStatus status, int page, int size);
+    AdminAttendanceCorrectionView get(Long requestId);
+    void approve(Long requestId, Long processorId);
+    void reject(Long requestId, Long processorId, String reason);
 }

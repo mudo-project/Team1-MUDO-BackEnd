@@ -9,8 +9,6 @@ import com.academy.mudogroupware.attendance.application.usecase.RegisterWifiIpUs
 import com.academy.mudogroupware.attendance.domain.exception.AttendanceErrorCode;
 import com.academy.mudogroupware.attendance.domain.exception.AttendanceException;
 import com.academy.mudogroupware.attendance.domain.model.AcademyWifiIp;
-import com.academy.mudogroupware.attendance.domain.model.OwnedAcademy;
-import com.academy.mudogroupware.attendance.domain.repository.AcademyRepository;
 import com.academy.mudogroupware.attendance.domain.repository.AcademyWifiIpRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -22,28 +20,23 @@ import lombok.extern.slf4j.Slf4j;
 @Transactional
 public class RegisterWifiIpService implements RegisterWifiIpUseCase {
 
-    private final AcademyRepository academyRepository;
     private final AcademyWifiIpRepository academyWifiIpRepository;
 
     @Override
     public RegisterWifiIpResult register(RegisterWifiIpCommand command) {
         log.info("event=attendance_wifi_ip_register_시작 requesterId={}", command.requesterId());
         try {
-            OwnedAcademy academy = academyRepository.findByOwnerUserId(command.requesterId())
-                    .orElseThrow(() -> new AttendanceException(
-                            AttendanceErrorCode.WIFI_IP_REGISTRATION_FORBIDDEN));
-
         AcademyWifiIp confirmedWifiIp = AcademyWifiIp.create(
-                academy.id(), command.confirmedIpAddress(), null);
+                command.confirmedIpAddress(), null);
         AcademyWifiIp detectedWifiIp = AcademyWifiIp.create(
-                academy.id(), command.detectedIpAddress(), command.note());
+                command.detectedIpAddress(), command.note());
 
         if (!confirmedWifiIp.getIpAddress().equals(detectedWifiIp.getIpAddress())) {
             throw new AttendanceException(AttendanceErrorCode.WIFI_IP_CHANGED);
         }
 
-        if (academyWifiIpRepository.existsByAcademyIdAndIpAddress(
-                academy.id(), detectedWifiIp.getIpAddress())) {
+        if (academyWifiIpRepository.existsByIpAddress(
+                detectedWifiIp.getIpAddress())) {
             throw new AttendanceException(AttendanceErrorCode.WIFI_IP_ALREADY_REGISTERED);
         }
 

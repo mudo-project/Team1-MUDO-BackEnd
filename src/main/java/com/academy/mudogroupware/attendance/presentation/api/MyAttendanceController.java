@@ -47,7 +47,7 @@ public class MyAttendanceController {
         return GlobalApiResponse.ok(
                 AttendanceResponseCode.MY_MONTHLY_ATTENDANCE_RETRIEVED,
                 MyMonthlyAttendanceResponse.from(monthlyAttendanceUseCase.getMonthly(
-                        authUser.userId(), authUser.academyId(), year, month)));
+                        authUser.userId(), year, month)));
     }
 
     @Operation(summary = "내 오늘 근태 조회",
@@ -58,7 +58,7 @@ public class MyAttendanceController {
         return GlobalApiResponse.ok(
                 AttendanceResponseCode.MY_TODAY_ATTENDANCE_RETRIEVED,
                 MyTodayAttendanceResponse.from(todayAttendanceUseCase.getToday(
-                        authUser.userId(), authUser.academyId())));
+                        authUser.userId())));
     }
 
     @Operation(summary = "내 근태 대시보드 조회",
@@ -71,6 +71,6 @@ public class MyAttendanceController {
         return GlobalApiResponse.ok(
                 AttendanceResponseCode.MY_ATTENDANCE_DASHBOARD_RETRIEVED,
                 MyAttendanceDashboardResponse.from(dashboardUseCase.getDashboard(
-                        authUser.userId(), authUser.academyId(), year, month)));
+                        authUser.userId(), year, month)));
     }
 }

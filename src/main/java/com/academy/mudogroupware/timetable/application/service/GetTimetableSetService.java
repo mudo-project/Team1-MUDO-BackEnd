@@ -23,9 +23,8 @@ public class GetTimetableSetService implements GetTimetableSetUseCase {
     private final Clock clock;
 
     @Override
-    public TimetableSetDetailView getTimetableSet(Long academyId, Long timetableSetId) {
+    public TimetableSetDetailView getTimetableSet(Long timetableSetId) {
         TimetableSet set = timetableSetRepository.findById(timetableSetId)
-                .filter(found -> found.getAcademyId().equals(academyId))
                 .orElseThrow(TimetableSetNotFoundException::new);
 
         LocalDate today = LocalDate.now(clock);

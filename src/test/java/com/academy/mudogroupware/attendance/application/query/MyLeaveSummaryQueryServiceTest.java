@@ -28,27 +28,26 @@ class MyLeaveSummaryQueryServiceTest {
 
     @Test
     void subtractsApprovedAndPendingDaysFromRemainingDays() {
-        Long academyId = 10L;
         Long userId = 2L;
         LocalDate today = LocalDate.of(2026, 8, 7);
         LocalDate grantDate = LocalDate.of(2026, 3, 1);
         LocalDate expirationDate = LocalDate.of(2027, 2, 28);
         var grant = LeaveGrant.restore(
-                1L, academyId, userId, grantDate, expirationDate, 15,
+                1L, userId, grantDate, expirationDate, 15,
                 LocalDateTime.of(2026, 3, 1, 0, 0));
-        when(grantRepository.findActive(academyId, userId, today))
+        when(grantRepository.findActive(userId, today))
                 .thenReturn(Optional.of(grant));
         when(requestRepository.sumUsedDaysByStatus(
-                academyId, userId, grantDate, expirationDate, LeaveRequestStatus.APPROVED))
+                userId, grantDate, expirationDate, LeaveRequestStatus.APPROVED))
                 .thenReturn(5);
         when(requestRepository.sumUsedDaysByStatus(
-                academyId, userId, grantDate, expirationDate, LeaveRequestStatus.PENDING))
+                userId, grantDate, expirationDate, LeaveRequestStatus.PENDING))
                 .thenReturn(2);
         var service = new MyLeaveSummaryQueryService(
                 grantRepository, requestRepository,
                 Clock.fixed(Instant.parse("2026-08-07T03:00:00Z"), ZoneId.of("Asia/Seoul")));
 
-        var result = service.getSummary(userId, academyId);
+        var result = service.getSummary(userId);
 
         assertEquals(15, result.totalDays());
         assertEquals(5, result.usedDays());

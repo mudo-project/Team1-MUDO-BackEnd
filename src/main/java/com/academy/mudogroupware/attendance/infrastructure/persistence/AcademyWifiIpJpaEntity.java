@@ -24,9 +24,6 @@ public class AcademyWifiIpJpaEntity {
     @Column(name = "wifi_ip_id")
     private Long id;
 
-    @Column(name = "academy_id", nullable = false)
-    private Long academyId;
-
     @Column(name = "ip_address", nullable = false, length = 45)
     private String ipAddress;
 
@@ -40,9 +37,8 @@ public class AcademyWifiIpJpaEntity {
     private LocalDateTime updatedAt;
 
     @Builder
-    private AcademyWifiIpJpaEntity(Long academyId, String ipAddress, String note,
+    private AcademyWifiIpJpaEntity(String ipAddress, String note,
                                    LocalDateTime createdAt, LocalDateTime updatedAt) {
-        this.academyId = academyId;
         this.ipAddress = ipAddress;
         this.note = note;
         this.createdAt = createdAt;

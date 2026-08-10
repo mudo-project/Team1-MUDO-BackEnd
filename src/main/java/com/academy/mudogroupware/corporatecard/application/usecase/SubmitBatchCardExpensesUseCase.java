@@ -4,5 +4,5 @@ import com.academy.mudogroupware.corporatecard.application.command.SubmitBatchCa
 import com.academy.mudogroupware.corporatecard.application.query.BatchSubmitCardExpensesResult;
 
 public interface SubmitBatchCardExpensesUseCase {
-    BatchSubmitCardExpensesResult submit(SubmitBatchCardExpensesCommand command, Long academyId, Long userId);
+    BatchSubmitCardExpensesResult submit(SubmitBatchCardExpensesCommand command, Long userId);
 }

@@ -4,5 +4,5 @@ import com.academy.mudogroupware.timetable.application.query.TimetableSetDetailV
 
 public interface GetTimetableSetUseCase {
 
-    TimetableSetDetailView getTimetableSet(Long academyId, Long timetableSetId);
+    TimetableSetDetailView getTimetableSet(Long timetableSetId);
 }

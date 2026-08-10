@@ -3,7 +3,7 @@ package com.academy.mudogroupware.google.application.port;
 public interface GoogleOAuthStatePort {
 
     /**
-     * 콜백 위조·재사용을 막기 위해 academyId·userId를 서명해 state 문자열로 만든다.
+     * 콜백 위조·재사용을 막기 위해 userId를 서명해 state 문자열로 만든다.
      */
     String sign(GoogleOAuthStateClaims claims);
 

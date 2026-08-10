@@ -4,7 +4,7 @@ import java.time.LocalDate;
 import java.util.Optional;
 
 public interface EmploymentSummaryPort {
-    Optional<EmploymentSummary> findByUserIdAndAcademyId(Long userId, Long academyId);
+    Optional<EmploymentSummary> findByUserId(Long userId);
 
     record EmploymentSummary(LocalDate hireDate) {
     }

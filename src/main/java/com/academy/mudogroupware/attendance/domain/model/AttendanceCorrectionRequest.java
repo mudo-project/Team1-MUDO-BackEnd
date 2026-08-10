@@ -9,7 +9,6 @@ import com.academy.mudogroupware.attendance.domain.exception.AttendanceException
 public final class AttendanceCorrectionRequest {
 
     private final Long id;
-    private final Long academyId;
     private final Long userId;
     private final Long attendanceId;
     private final LocalDate workDate;
@@ -30,7 +29,7 @@ public final class AttendanceCorrectionRequest {
     private final String rejectionReason;
 
     private AttendanceCorrectionRequest(
-            Long id, Long academyId, Long userId, Long attendanceId, LocalDate workDate,
+            Long id, Long userId, Long attendanceId, LocalDate workDate,
             AttendanceCorrectionType type, AttendanceCorrectionStatus status,
             LocalDateTime originalClockInAt, LocalDateTime originalClockOutAt,
             String originalClockInNote, String originalClockOutNote,
@@ -39,7 +38,6 @@ public final class AttendanceCorrectionRequest {
             String reason, LocalDateTime requestedAt, LocalDateTime processedAt,
             Long processedBy, String rejectionReason) {
         this.id = id;
-        this.academyId = academyId;
         this.userId = userId;
         this.attendanceId = attendanceId;
         this.workDate = workDate;
@@ -61,11 +59,11 @@ public final class AttendanceCorrectionRequest {
     }
 
     public static AttendanceCorrectionRequest submit(
-            Long academyId, Long userId, AttendanceRecord attendance, LocalDate workDate,
+            Long userId, AttendanceRecord attendance, LocalDate workDate,
             AttendanceCorrectionType type, LocalDateTime requestedClockInAt,
             LocalDateTime requestedClockOutAt, String requestedClockInNote,
             String requestedClockOutNote, String reason, LocalDateTime requestedAt) {
-        validateBase(academyId, userId, workDate, type, reason, requestedAt);
+        validateBase(userId, workDate, type, reason, requestedAt);
         validateRequestFields(
                 type, attendance, workDate, requestedClockInAt, requestedClockOutAt,
                 requestedClockInNote, requestedClockOutNote);
@@ -75,7 +73,7 @@ public final class AttendanceCorrectionRequest {
         validateLengths(normalizedReason, normalizedClockInNote, normalizedClockOutNote);
 
         return new AttendanceCorrectionRequest(
-                null, academyId, userId, attendance == null ? null : attendance.getId(), workDate,
+                null, userId, attendance == null ? null : attendance.getId(), workDate,
                 type, AttendanceCorrectionStatus.PENDING,
                 attendance == null ? null : attendance.getClockInAt(),
                 attendance == null ? null : attendance.getClockOutAt(),
@@ -87,7 +85,7 @@ public final class AttendanceCorrectionRequest {
     }
 
     public static AttendanceCorrectionRequest restore(
-            Long id, Long academyId, Long userId, Long attendanceId, LocalDate workDate,
+            Long id, Long userId, Long attendanceId, LocalDate workDate,
             AttendanceCorrectionType type, AttendanceCorrectionStatus status,
             LocalDateTime originalClockInAt, LocalDateTime originalClockOutAt,
             String originalClockInNote, String originalClockOutNote,
@@ -96,7 +94,7 @@ public final class AttendanceCorrectionRequest {
             String reason, LocalDateTime requestedAt, LocalDateTime processedAt,
             Long processedBy, String rejectionReason) {
         return new AttendanceCorrectionRequest(
-                id, academyId, userId, attendanceId, workDate, type, status,
+                id, userId, attendanceId, workDate, type, status,
                 originalClockInAt, originalClockOutAt, originalClockInNote, originalClockOutNote,
                 requestedClockInAt, requestedClockOutAt, requestedClockInNote,
                 requestedClockOutNote, reason, requestedAt, processedAt,
@@ -104,9 +102,9 @@ public final class AttendanceCorrectionRequest {
     }
 
     private static void validateBase(
-            Long academyId, Long userId, LocalDate workDate, AttendanceCorrectionType type,
+            Long userId, LocalDate workDate, AttendanceCorrectionType type,
             String reason, LocalDateTime requestedAt) {
-        if (academyId == null || userId == null || workDate == null || type == null
+        if (userId == null || workDate == null || type == null
                 || requestedAt == null || normalize(reason) == null) {
             throw new AttendanceException(AttendanceErrorCode.INVALID_CORRECTION_REQUEST);
         }
@@ -192,7 +190,6 @@ public final class AttendanceCorrectionRequest {
     }
 
     public Long getId() { return id; }
-    public Long getAcademyId() { return academyId; }
     public Long getUserId() { return userId; }
     public Long getAttendanceId() { return attendanceId; }
     public LocalDate getWorkDate() { return workDate; }
@@ -214,7 +211,7 @@ public final class AttendanceCorrectionRequest {
 
     public AttendanceCorrectionRequest approve(Long processorId, LocalDateTime processedAt) {
         validatePending();
-        return new AttendanceCorrectionRequest(id, academyId, userId, attendanceId, workDate, type,
+        return new AttendanceCorrectionRequest(id, userId, attendanceId, workDate, type,
                 AttendanceCorrectionStatus.APPROVED, originalClockInAt, originalClockOutAt,
                 originalClockInNote, originalClockOutNote, requestedClockInAt, requestedClockOutAt,
                 requestedClockInNote, requestedClockOutNote, reason, requestedAt, processedAt,
@@ -222,7 +219,7 @@ public final class AttendanceCorrectionRequest {
     }
 
     public AttendanceCorrectionRequest attachAttendanceId(Long nextAttendanceId) {
-        return new AttendanceCorrectionRequest(id, academyId, userId, nextAttendanceId, workDate,
+        return new AttendanceCorrectionRequest(id, userId, nextAttendanceId, workDate,
                 type, status, originalClockInAt, originalClockOutAt, originalClockInNote,
                 originalClockOutNote, requestedClockInAt, requestedClockOutAt, requestedClockInNote,
                 requestedClockOutNote, reason, requestedAt, processedAt, processedBy, rejectionReason);
@@ -235,7 +232,7 @@ public final class AttendanceCorrectionRequest {
         if (normalized == null || normalized.length() > 500) {
             throw new AttendanceException(AttendanceErrorCode.INVALID_CORRECTION_REJECTION_REASON);
         }
-        return new AttendanceCorrectionRequest(id, academyId, userId, attendanceId, workDate, type,
+        return new AttendanceCorrectionRequest(id, userId, attendanceId, workDate, type,
                 AttendanceCorrectionStatus.REJECTED, originalClockInAt, originalClockOutAt,
                 originalClockInNote, originalClockOutNote, requestedClockInAt, requestedClockOutAt,
                 requestedClockInNote, requestedClockOutNote, reason, requestedAt, processedAt,

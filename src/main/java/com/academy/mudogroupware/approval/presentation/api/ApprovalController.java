@@ -76,7 +76,7 @@ public class ApprovalController {
             @AuthenticationPrincipal AuthUser authUser,
             @Valid @RequestBody CreateApprovalDocumentRequest request) {
         Long documentId = createApprovalDocumentUseCase.createDocument(
-                request.toCommand(authUser.userId(), authUser.academyId()));
+                request.toCommand(authUser.userId()));
         ApprovalCreateResponse data = ApprovalCreateResponse.from(documentId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(GlobalApiResponse.created(ApprovalResponseCode.DOCUMENT_CREATED, data));

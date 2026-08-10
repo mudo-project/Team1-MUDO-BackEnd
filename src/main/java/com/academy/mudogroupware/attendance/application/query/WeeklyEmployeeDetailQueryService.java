@@ -42,18 +42,18 @@ public class WeeklyEmployeeDetailQueryService implements GetWeeklyEmployeeDetail
 
     @Override
     public WeeklyEmployeeDetailView getWeeklyDetail(
-            Long requesterId, Long academyId, Long userId, LocalDate date) {
-        log.info("event=attendance_employee_weekly_detail_read_시작 requesterId={}, academyId={}, userId={}, date={}", requesterId, academyId, userId, date);
+            Long requesterId, Long userId, LocalDate date) {
+        log.info("event=attendance_employee_weekly_detail_read_시작 requesterId={}={}, userId={}, date={}", requesterId, userId, date);
         if (date == null || userId == null) {
             throw new AttendanceException(AttendanceErrorCode.INVALID_ATTENDANCE_QUERY_PERIOD);
         }
-        AttendancePolicy policy = policyRepository.findByAcademyId(academyId)
+        AttendancePolicy policy = policyRepository.findCurrent()
                 .orElseThrow(() -> new AttendanceException(
                         AttendanceErrorCode.ATTENDANCE_POLICY_NOT_FOUND));
         LocalDate startDate = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
         LocalDate endDate = startDate.plusDays(6);
         List<WeeklyEmployeeDetail> rows = detailQueryPort.findByEmployee(
-                academyId, userId, startDate, endDate);
+                userId, startDate, endDate);
         if (rows.isEmpty()) {
             throw new AttendanceException(AttendanceErrorCode.ATTENDANCE_EMPLOYEE_NOT_FOUND);
         }
@@ -68,7 +68,7 @@ public class WeeklyEmployeeDetailQueryService implements GetWeeklyEmployeeDetail
         for (LocalDate current = startDate; !current.isAfter(endDate); current = current.plusDays(1)) {
             MyAttendanceScheduleResolver.WorkSchedule schedule = scheduleResolver.resolve(policy, current);
             schedules.put(current, schedule);
-            approvedLeaves.put(current, leaveRequestRepository.findApprovedUserIds(academyId, current));
+            approvedLeaves.put(current, leaveRequestRepository.findApprovedUserIds(current));
             if (schedule.workday()) {
                 scheduledWorkDays++;
             }
@@ -94,7 +94,7 @@ public class WeeklyEmployeeDetailQueryService implements GetWeeklyEmployeeDetail
         WeeklyEmployeeDetailView result = new WeeklyEmployeeDetailView(
                 new WeeklyEmployeeDetailView.Employee(employee.userId(), employee.name(), employee.position()),
                 startDate, endDate, scheduledWorkDays, attendedDays, days);
-        log.info("event=attendance_employee_weekly_detail_read_완료 academyId={}, userId={}, attendedDays={}", academyId, userId, attendedDays);
+        log.info("event=attendance_employee_weekly_detail_read_완료 userId={}, attendedDays={}", userId, attendedDays);
         return result;
     }
 

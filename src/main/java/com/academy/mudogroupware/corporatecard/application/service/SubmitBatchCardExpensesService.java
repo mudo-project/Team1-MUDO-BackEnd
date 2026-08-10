@@ -24,6 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 @Slf4j
 public class SubmitBatchCardExpensesService implements SubmitBatchCardExpensesUseCase {
+    private static final Long CORPORATE_CARD_APPROVAL_TEMPLATE_ID = 1L;
 
     private final CorporateCardExpenseService singleSubmitService;
     private final CorporateCardTransactionPort transactionPort;
@@ -32,14 +33,14 @@ public class SubmitBatchCardExpensesService implements SubmitBatchCardExpensesUs
 
     @Override
     public BatchSubmitCardExpensesResult submit(
-            SubmitBatchCardExpensesCommand command, Long academyId, Long userId) {
-        log.info("event=corporate_card_expense_batch_submit_시작 academyId={}, userId={}, count={}",
-                academyId, userId, command.items() == null ? 0 : command.items().size());
+            SubmitBatchCardExpensesCommand command, Long userId) {
+        log.info("event=corporate_card_expense_batch_submit_시작 userId={}, count={}",
+                userId, command.items() == null ? 0 : command.items().size());
         try {
         validateTransactionIds(command.items());
         List<Long> commonApproverIds = normalize(command.approverIds());
         Map<Long, String> preValidationFailures = commonApproverIds == null
-                ? validateDefaultApprovalLines(command.items(), academyId)
+                ? validateDefaultApprovalLines(command.items())
                 : Map.of();
 
         List<BatchSubmitCardExpensesResult.ItemResult> results = new ArrayList<>();
@@ -57,7 +58,7 @@ public class SubmitBatchCardExpensesService implements SubmitBatchCardExpensesUs
                 }
                 SubmitCardExpenseCommand singleCommand = new SubmitCardExpenseCommand(
                         item.transactionId(), userId, expense.category(), expense.purpose(), commonApproverIds);
-                var submitted = singleSubmitService.submit(singleCommand, academyId);
+                var submitted = singleSubmitService.submit(singleCommand);
                 results.add(new BatchSubmitCardExpensesResult.ItemResult(
                         item.transactionId(), true, submitted.approvalDocumentId(), null));
             } catch (RuntimeException e) {
@@ -69,12 +70,11 @@ public class SubmitBatchCardExpensesService implements SubmitBatchCardExpensesUs
         int successCount = (int) results.stream().filter(BatchSubmitCardExpensesResult.ItemResult::success).count();
         BatchSubmitCardExpensesResult result = new BatchSubmitCardExpensesResult(
                 successCount, results.size() - successCount, results);
-        log.info("event=corporate_card_expense_batch_submit_완료 academyId={}, userId={}, successCount={}, failureCount={}",
-                academyId, userId, result.successCount(), result.failureCount());
+        log.info("event=corporate_card_expense_batch_submit_완료 userId={}, successCount={}, failureCount={}",
+                userId, result.successCount(), result.failureCount());
         return result;
         } catch (RuntimeException e) {
-            log.warn("event=corporate_card_expense_batch_submit_실패 academyId={}, userId={}, reason={}",
-                    academyId, userId, e.getMessage());
+            log.warn("event=corporate_card_expense_batch_submit_실패 userId={}, reason={}", userId, e.getMessage());
             throw e;
         }
     }
@@ -88,20 +88,20 @@ public class SubmitBatchCardExpensesService implements SubmitBatchCardExpensesUs
     }
 
     private Map<Long, String> validateDefaultApprovalLines(
-            List<SubmitBatchCardExpensesCommand.Item> items, Long academyId) {
+            List<SubmitBatchCardExpensesCommand.Item> items) {
         List<Long> expected = null;
         Map<Long, String> failures = new HashMap<>();
         for (SubmitBatchCardExpensesCommand.Item item : items) {
-            var transaction = transactionPort.find(academyId, item.transactionId()).orElse(null);
+            var transaction = transactionPort.find(item.transactionId()).orElse(null);
             if (transaction == null) {
                 failures.put(item.transactionId(), "카드 사용내역을 찾을 수 없습니다.");
                 continue;
             }
-            if (transaction.approvalTemplateId() == null) {
-                failures.put(item.transactionId(), "법인카드 결재 템플릿이 설정되지 않았습니다.");
+            List<Long> current = approvalSubmissionPort.findDefaultApproverIds(CORPORATE_CARD_APPROVAL_TEMPLATE_ID);
+            if (current.isEmpty()) {
+                failures.put(item.transactionId(), "법인카드 결재선을 지정해야 합니다.");
                 continue;
             }
-            List<Long> current = approvalSubmissionPort.findDefaultApproverIds(transaction.approvalTemplateId());
             if (expected == null) {
                 expected = current;
             } else if (!expected.equals(current)) {

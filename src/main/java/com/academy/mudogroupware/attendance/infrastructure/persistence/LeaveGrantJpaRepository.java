@@ -12,20 +12,18 @@ import jakarta.persistence.LockModeType;
 
 public interface LeaveGrantJpaRepository extends JpaRepository<LeaveGrantJpaEntity, Long> {
 
-    boolean existsByAcademyIdAndUserIdAndGrantDate(Long academyId, Long userId, LocalDate grantDate);
+    boolean existsByUserIdAndGrantDate(Long userId, LocalDate grantDate);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select g from LeaveGrantJpaEntity g "
-            + "where g.academyId = :academyId and g.userId = :userId "
+            + "where g.userId = :userId "
             + "and g.grantDate <= :date and g.expirationDate >= :date")
-    Optional<LeaveGrantJpaEntity> findActiveForUpdate(@Param("academyId") Long academyId,
-                                                       @Param("userId") Long userId,
+    Optional<LeaveGrantJpaEntity> findActiveForUpdate(@Param("userId") Long userId,
                                                        @Param("date") LocalDate date);
 
     @Query("select g from LeaveGrantJpaEntity g "
-            + "where g.academyId = :academyId and g.userId = :userId "
+            + "where g.userId = :userId "
             + "and g.grantDate <= :date and g.expirationDate >= :date")
-    Optional<LeaveGrantJpaEntity> findActive(@Param("academyId") Long academyId,
-                                              @Param("userId") Long userId,
+    Optional<LeaveGrantJpaEntity> findActive(@Param("userId") Long userId,
                                               @Param("date") LocalDate date);
 }

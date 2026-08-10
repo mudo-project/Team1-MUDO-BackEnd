@@ -32,7 +32,7 @@ class StartGoogleAccountConnectionServiceTest {
 
     @Test
     void startSignsStateAndBuildsAuthorizationUrl() {
-        StartGoogleConnectionCommand command = new StartGoogleConnectionCommand(1L, 7L, true);
+        StartGoogleConnectionCommand command = new StartGoogleConnectionCommand(7L, true);
         when(googleOAuthStatePort.sign(any())).thenReturn("signed-state");
         when(googleOAuthPort.buildAuthorizationUrl("signed-state", true)).thenReturn("https://accounts.google.com/auth");
 
@@ -41,6 +41,6 @@ class StartGoogleAccountConnectionServiceTest {
         assertThat(authorizationUrl).isEqualTo("https://accounts.google.com/auth");
         ArgumentCaptor<GoogleOAuthStateClaims> captor = ArgumentCaptor.forClass(GoogleOAuthStateClaims.class);
         verify(googleOAuthStatePort).sign(captor.capture());
-        assertThat(captor.getValue()).isEqualTo(new GoogleOAuthStateClaims(1L, 7L, true));
+        assertThat(captor.getValue()).isEqualTo(new GoogleOAuthStateClaims(7L, true));
     }
 }

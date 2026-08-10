@@ -20,8 +20,8 @@ public record CreateApprovalDocumentRequest(
         LocalDate leaveEndDate
 ) {
 
-    public CreateApprovalDocumentCommand toCommand(Long creatorId, Long academyId) {
+    public CreateApprovalDocumentCommand toCommand(Long creatorId) {
         return new CreateApprovalDocumentCommand(templateId, title, contentType, text, fileIds, creatorId,
-                approverIds, leaveStartDate, leaveEndDate, academyId);
+                approverIds, leaveStartDate, leaveEndDate);
     }
 }

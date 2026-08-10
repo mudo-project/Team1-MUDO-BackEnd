@@ -10,7 +10,6 @@ import com.academy.mudogroupware.attendance.domain.exception.AttendanceException
 public final class AttendanceRecord {
 
     private final Long id;
-    private final Long academyId;
     private final Long userId;
     private final LocalDate workDate;
     private final LocalDateTime clockInAt;
@@ -22,14 +21,13 @@ public final class AttendanceRecord {
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
 
-    private AttendanceRecord(Long id, Long academyId, Long userId, LocalDate workDate,
+    private AttendanceRecord(Long id, Long userId, LocalDate workDate,
                              LocalDateTime clockInAt, String clockInNote,
                              LocalDateTime clockOutAt, String clockOutNote,
                              ClockOutType clockOutType,
                              AttendanceStatus status, LocalDateTime createdAt,
                              LocalDateTime updatedAt) {
         this.id = id;
-        this.academyId = academyId;
         this.userId = userId;
         this.workDate = workDate;
         this.clockInAt = clockInAt;
@@ -42,12 +40,12 @@ public final class AttendanceRecord {
         this.updatedAt = updatedAt;
     }
 
-    public static AttendanceRecord checkIn(Long academyId, Long userId,
+    public static AttendanceRecord checkIn(Long userId,
                                            LocalDateTime clockInAt,
                                            LocalTime workStartTime,
                                            int lateGraceMinutes,
                                            String clockInNote) {
-        if (academyId == null || userId == null || clockInAt == null
+        if (userId == null || clockInAt == null
                 || workStartTime == null || lateGraceMinutes < 0) {
             throw new AttendanceException(AttendanceErrorCode.INVALID_ATTENDANCE_RECORD);
         }
@@ -64,18 +62,18 @@ public final class AttendanceRecord {
         if (status == AttendanceStatus.LATE && normalizedNote == null) {
             throw new AttendanceException(AttendanceErrorCode.LATE_NOTE_REQUIRED);
         }
-        return new AttendanceRecord(null, academyId, userId, workDate,
+        return new AttendanceRecord(null, userId, workDate,
                 clockInAt, normalizedNote, null, null, null,
                 status, clockInAt, clockInAt);
     }
 
-    public static AttendanceRecord restore(Long id, Long academyId, Long userId,
+    public static AttendanceRecord restore(Long id, Long userId,
                                            LocalDate workDate, LocalDateTime clockInAt,
                                            String clockInNote, LocalDateTime clockOutAt,
                                            String clockOutNote, ClockOutType clockOutType,
                                            AttendanceStatus status,
                                            LocalDateTime createdAt, LocalDateTime updatedAt) {
-        return new AttendanceRecord(id, academyId, userId, workDate, clockInAt,
+        return new AttendanceRecord(id, userId, workDate, clockInAt,
                 clockInNote, clockOutAt, clockOutNote, clockOutType,
                 status, createdAt, updatedAt);
     }
@@ -98,12 +96,12 @@ public final class AttendanceRecord {
         if (type == ClockOutType.OVERTIME && normalizedNote == null) {
             throw new AttendanceException(AttendanceErrorCode.OVERTIME_NOTE_REQUIRED);
         }
-        return new AttendanceRecord(id, academyId, userId, workDate,
+        return new AttendanceRecord(id, userId, workDate,
                 clockInAt, clockInNote, checkedOutAt, normalizedNote,
                 type, status, createdAt, checkedOutAt);
     }
 
-    public static AttendanceRecord createFromCorrection(Long academyId, Long userId,
+    public static AttendanceRecord createFromCorrection(Long userId,
                                                          LocalDate workDate,
                                                          LocalDateTime clockInAt,
                                                          String clockInNote,
@@ -111,7 +109,7 @@ public final class AttendanceRecord {
                                                          String clockOutNote,
                                                          AttendanceStatus status,
                                                          LocalDateTime now) {
-        return new AttendanceRecord(null, academyId, userId, workDate, clockInAt, clockInNote,
+        return new AttendanceRecord(null, userId, workDate, clockInAt, clockInNote,
                 clockOutAt, clockOutNote,
                 clockOutAt == null ? null : ClockOutType.NORMAL, status, now, now);
     }
@@ -126,7 +124,7 @@ public final class AttendanceRecord {
                 || correctedClockOutAt != null && correctedClockOutAt.isBefore(correctedClockInAt)) {
             throw new AttendanceException(AttendanceErrorCode.INVALID_ATTENDANCE_RECORD);
         }
-        return new AttendanceRecord(id, academyId, userId, workDate, correctedClockInAt,
+        return new AttendanceRecord(id, userId, workDate, correctedClockInAt,
                 correctedClockInNote, correctedClockOutAt, correctedClockOutNote,
                 correctedClockOutAt == null ? null
                         : (clockOutType == null ? ClockOutType.NORMAL : clockOutType),
@@ -142,7 +140,6 @@ public final class AttendanceRecord {
     }
 
     public Long getId() { return id; }
-    public Long getAcademyId() { return academyId; }
     public Long getUserId() { return userId; }
     public LocalDate getWorkDate() { return workDate; }
     public LocalDateTime getClockInAt() { return clockInAt; }

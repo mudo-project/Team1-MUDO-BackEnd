@@ -17,16 +17,16 @@ public interface LeaveRequestRepository {
      * 오늘 팀 근태 조회에서 직원별로 Port/쿼리를 반복 호출하지 않도록, 해당 학원·날짜에
      * APPROVED 상태인 휴가의 userId를 한 번에 모아서 반환한다.
      */
-    Set<Long> findApprovedUserIds(Long academyId, LocalDate date);
+    Set<Long> findApprovedUserIds(LocalDate date);
 
-    boolean existsOverlapping(Long academyId, Long userId, LocalDate startDate, LocalDate endDate);
+    boolean existsOverlapping(Long userId, LocalDate startDate, LocalDate endDate);
 
-    int sumReservedDays(Long academyId, Long userId, LocalDate periodStart, LocalDate periodEnd);
+    int sumReservedDays(Long userId, LocalDate periodStart, LocalDate periodEnd);
 
     List<LeaveRequest> findApprovedOverlapping(
-            Long academyId, Long userId, LocalDate startDate, LocalDate endDate);
+            Long userId, LocalDate startDate, LocalDate endDate);
 
     int sumUsedDaysByStatus(
-            Long academyId, Long userId, LocalDate periodStart, LocalDate periodEnd,
+            Long userId, LocalDate periodStart, LocalDate periodEnd,
             com.academy.mudogroupware.attendance.domain.model.LeaveRequestStatus status);
 }

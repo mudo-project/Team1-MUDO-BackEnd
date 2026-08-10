@@ -9,7 +9,7 @@ import java.util.Set;
 import com.academy.mudogroupware.timetable.domain.model.TimetableClassroom;
 
 public record UpdateTimetableSetCommand(
-        Long academyId, Long timetableSetId, String name, LocalDate startDate, LocalDate endDate,
+        Long timetableSetId, String name, LocalDate startDate, LocalDate endDate,
         LocalTime operatingStartTime, LocalTime operatingEndTime, Set<DayOfWeek> operatingDays,
         int slotUnitMinutes, List<TimetableClassroom> classrooms) {
 }

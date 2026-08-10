@@ -60,7 +60,7 @@ class AttendanceWifiIpControllerTest {
         LocalDateTime createdAt = LocalDateTime.of(2026, 8, 5, 10, 30);
         when(getWifiIpsUseCase.getAll(10L)).thenReturn(List.of(
                 AcademyWifiIp.restore(
-                        5L, 1L, "203.0.113.10", "본관 와이파이", createdAt, createdAt)));
+                        5L, "203.0.113.10", "본관 와이파이", createdAt, createdAt)));
 
         GlobalApiResponse<List<AcademyWifiIpResponse>> response = controller.getAll(authUser);
 

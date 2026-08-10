@@ -36,11 +36,11 @@ class CreateTimetableSetServiceTest {
     @Test
     void createTimetableSetSavesAndReturnsId() {
         CreateTimetableSetCommand command = new CreateTimetableSetCommand(
-                1L, "2026 여름특강", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16),
+                "2026 여름특강", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16),
                 LocalTime.of(8, 30), LocalTime.of(22, 0), Set.of(DayOfWeek.MONDAY), 30,
                 List.of(new TimetableClassroom("6층", "601")));
         TimetableSet saved = TimetableSet.restore(
-                10L, 1L, "2026 여름특강", command.startDate(), command.endDate(),
+                10L, "2026 여름특강", command.startDate(), command.endDate(),
                 command.operatingStartTime(), command.operatingEndTime(), command.operatingDays(),
                 30, command.classrooms(), null, null);
         when(timetableSetRepository.save(any(TimetableSet.class))).thenReturn(saved);

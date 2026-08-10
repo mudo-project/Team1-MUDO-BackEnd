@@ -14,6 +14,6 @@ public interface CardExpenseJpaRepository extends JpaRepository<CardExpenseJpaEn
     java.util.List<CardExpenseJpaEntity> findAllByTransaction_IdIn(java.util.List<Long> transactionIds);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select e from CardExpenseJpaEntity e join fetch e.transaction t join fetch t.card c where t.id = :transactionId and c.academyId = :academyId")
-    Optional<CardExpenseJpaEntity> findForUpdate(@Param("transactionId") Long transactionId, @Param("academyId") Long academyId);
+    @Query("select e from CardExpenseJpaEntity e join fetch e.transaction t join fetch t.card where t.id = :transactionId")
+    Optional<CardExpenseJpaEntity> findForUpdate(@Param("transactionId") Long transactionId);
 }
