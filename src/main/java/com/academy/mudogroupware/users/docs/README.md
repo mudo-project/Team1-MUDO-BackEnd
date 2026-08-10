@@ -55,8 +55,9 @@
 - `account_type=ADMIN`+`admin_scope=PLATFORM` 계정은 역할 없이도 모든 권한 카탈로그를 authority로 부여받는다(`PLATFORM:SUPER_ADMIN` 합성 authority도 추가로 받음).
 - `admin_scope=ACADEMY`(학원 관리자)는 학원 신청 승인 시점에 실제로 발급된다. 승인 시점에 `AccountType.ADMIN`+`AdminScope.ACADEMY`로 생성되며, 세부 권한은 여전히 기존 역할/권한 카탈로그로 체크한다.
 - 학원 신청 목록/상세 조회·승인·반려(`/api/academy-applications`의 GET·approve·reject)는 이 코드베이스에서 처음으로 `@PreAuthorize` 대신 `SecurityConfig` 필터체인의 URL 매칭(`PLATFORM:SUPER_ADMIN` authority)으로 막는다 — SUPER ADMIN인지 아닌지 하나만 갈리고 그 안에서 세분화된 권한 차이가 없기 때문.
-- 계정 발급 체계 3단계(학원 관리자의 직원 계정 발급, `POST /api/users`)까지 완료됐다. 원장 계정 발급(`ApproveAcademyApplicationService`)과 임시 비밀번호 생성 로직을 공유하는 `AccountIssuer` 협력 객체가 `application/service/support`에 있다. 이메일 발송, `mustChangePw` 로그인 흐름 연동, 원장 신청 시 username 중복 확인, 사업자등록증 검증(OCR·국세청 진위확인 API)·악의적 공격 방어(rate limit)는 아직 없다(후속 작업, 상세 배경은 `REVISION.md` 참고).
+- 계정 발급 체계 3단계(학원 관리자의 직원 계정 발급, `POST /api/users`)까지 완료됐다. 원장 계정 발급(`ApproveAcademyApplicationService`)과 임시 비밀번호 생성 로직을 공유하는 `AccountIssuer` 협력 객체가 `application/service/support`에 있다. 이메일 발송, `mustChangePw` 로그인 흐름 연동, 사업자등록증 검증(OCR·국세청 진위확인 API)·악의적 공격 방어(rate limit)는 아직 없다(후속 작업, 상세 배경은 `REVISION.md` 참고).
 - `POST /api/academy-applications`(신청 접수)는 계정 없는 학원이 호출하므로 `SecurityConfig`에서 `permitAll`이다 — 같은 리소스의 나머지 4개 엔드포인트(GET 목록/상세·approve·reject)는 여전히 `PLATFORM:SUPER_ADMIN` 필요.
+- 학원 신청 접수는 `requestedLoginId`를 접수 시점에 중복확인한다(발급된 계정 + 대기중/승인된 다른 신청서 대상, 반려된 신청서는 제외). DB에는 상태별 조건부 유니크 제약(생성 컬럼 `requested_login_id_active` + `uk_academy_application_requested_login_id_active`)을 함께 걸어 동시 접수 레이스를 막는다.
 
 ## 문서
 

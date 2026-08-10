@@ -1,9 +1,33 @@
 > 작성일: 2026-08-04
-> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청/승인 워크플로우(PR 1·2·3/3, "계정 발급 체계" 2단계) 완료, 역할 관리 API 7개(생성/목록/상세/수정/삭제/권한 조립/권한 카탈로그 조회) 완료, 사용자 역할 변경 API 완료, 학원 구성원 검색 API 완료, 역할 색상/인원수 완료, CodeRabbit 피드백 반영 + 로깅 컨벤션 전체 도메인(Service 17개) 적용 완료, 직원 계정 발급 API 완료("계정 발급 체계" 3단계 완료), 학원 신청 접수 API 완료(최소 스코프, "계정 발급 체계" 2단계 최종 완결) · 후속 작업: 이메일 발송, mustChangePw 로그인 흐름 연동, 원장 신청 시 username 중복 확인, 사업자등록증 검증(OCR·국세청 API)
+> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청/승인 워크플로우(PR 1·2·3/3, "계정 발급 체계" 2단계) 완료, 역할 관리 API 7개(생성/목록/상세/수정/삭제/권한 조립/권한 카탈로그 조회) 완료, 사용자 역할 변경 API 완료, 학원 구성원 검색 API 완료, 역할 색상/인원수 완료, CodeRabbit 피드백 반영 + 로깅 컨벤션 전체 도메인(Service 17개) 적용 완료, 직원 계정 발급 API 완료("계정 발급 체계" 3단계 완료), 학원 신청 접수 API 완료(최소 스코프, "계정 발급 체계" 2단계 최종 완결), 학원 신청 접수 시점 requestedLoginId 중복확인 완료 · 후속 작업: 이메일 발송, mustChangePw 로그인 흐름 연동, 사업자등록증 검증(OCR·국세청 API)
 
 ## 🎯 변경 목적
 
 계정·권한(users) 도메인을 신설하고, 로그인과 액세스 토큰 재발급을 구현한다. 초기세팅 때 approval 도메인이 참조용으로 임시로 만들어둔 `users` 테이블을 팀이 확정한 ERD에 맞게 정합화하고, 그 위에서 인증 흐름을 짠다.
+
+---
+
+## ✅ 2026-08-10 · 학원 신청 접수 시점 requestedLoginId 중복확인 (`V4.1.6`)
+
+### 배경
+
+`ApproveAcademyApplicationService`는 승인 시점에만 `requestedLoginId` 중복을 체크했다(2026-08-10 CodeRabbit 리뷰 반영분). 접수 시점(`SubmitAcademyApplicationService`)에는 체크가 없어 신청자가 승인 시점에야 아이디 중복을 알게 됐고, `academy_application.requested_login_id`에 유니크 제약이 없어 두 신청서가 동시에 같은 아이디로 접수될 수 있었다.
+
+### 확정된 정책
+
+- 접수 시점에 이미 발급된 계정(`users.username`) + 현재 `PENDING`/`APPROVED` 상태인 다른 신청서와 겹치는지 확인한다. `REJECTED` 신청서는 대상에서 제외해 반려된 아이디로 재신청을 허용한다.
+- 애플리케이션 사전 체크만으로는 동시 요청 레이스를 완전히 막을 수 없어, MySQL 생성 컬럼(`requested_login_id_active`, `status`가 `PENDING`/`APPROVED`일 때만 값을 갖고 그 외엔 `NULL`) + 부분 유니크 제약(`uk_academy_application_requested_login_id_active`)을 함께 걸었다. `markApproved`/`markRejected`가 `status`를 바꾸면 이 생성 컬럼이 자동 재계산되므로 애플리케이션 코드는 손대지 않았다.
+- 제약 위반은 `AcademyApplicationRepositoryImpl.save()`에서 `DataIntegrityViolationException`을 캐치해 기존 `UsernameDuplicateException`(`409 USER_409_6`)으로 변환한다 — `RoleRepositoryImpl`의 역할 이름 중복 방어(`uk_role_academy_name`)와 동일한 패턴을 그대로 포팅했다.
+- 승인 시점(2026-08-10 CodeRabbit 리뷰 반영분에서 추가된 체크)의 중복 확인은 그대로 유지한다 — 접수와 승인 사이의 시간차 동안 상황이 바뀔 수 있어(다른 경로로 같은 아이디의 계정이 먼저 생성되는 등) 최종 안전장치로 남겨둔다.
+
+### 완료 기준
+
+- [x] `V4.1.6__academy_application_requested_login_id_unique.sql` 마이그레이션
+- [x] `AcademyApplicationRepository.existsActiveRequestedLoginId()` + 구현(TDD, `PENDING`/`APPROVED`/`REJECTED` 3케이스)
+- [x] `AcademyApplicationRepositoryImpl.save()` 유니크 제약 위반 → `UsernameDuplicateException` 변환(TDD)
+- [x] `SubmitAcademyApplicationService` 사전 중복 체크(TDD: 계정 중복/대기중 신청서 중복/정상 2케이스)
+- [x] 로컬 curl e2e(정상 접수 → 같은 아이디 재접수 409 → 기존 계정 아이디 접수 409 → 반려 후 같은 아이디 재신청 정상) + Swagger(OpenAPI) 스키마 확인
+- [x] `./gradlew build` 통과
 
 ---
 
