@@ -86,6 +86,28 @@ class UserRepositoryImplDataJpaTest {
         assertThat(result).isEmpty();
     }
 
+    @Test
+    void completePasswordSetupReplacesPasswordAndClearsMustChangePw() {
+        insertUserWithPasswordAndMustChangePw(1L, 1L, "pending", "old-hash", true);
+
+        userRepository.completePasswordSetup(1L, "new-hash");
+
+        User found = userRepository.findById(1L).orElseThrow();
+        assertThat(found.getPassword()).isEqualTo("new-hash");
+        assertThat(found.isMustChangePw()).isFalse();
+    }
+
+    private void insertUserWithPasswordAndMustChangePw(long id, long academyId, String suffix, String password,
+                                                         boolean mustChangePw) {
+        jdbcTemplate.update("""
+                insert into users (
+                    id, academy_id, role_id, username, password, name, phone_number, email, status,
+                    must_change_pw, account_type, admin_scope, created_at, updated_at
+                ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, current_timestamp, current_timestamp)
+                """, id, academyId, null, "user-" + suffix, password, "사용자-" + suffix,
+                "010-0000-0000", suffix + "@example.com", UserStatus.ACTIVE.name(), mustChangePw, "MEMBER", null);
+    }
+
     private void insertUser(long id, long academyId, String suffix, UserStatus status) {
         insertUserWithRole(id, academyId, suffix, status, null);
     }

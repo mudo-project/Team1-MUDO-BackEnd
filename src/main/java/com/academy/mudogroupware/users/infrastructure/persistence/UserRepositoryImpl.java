@@ -60,6 +60,14 @@ public class UserRepositoryImpl implements UserRepository {
     }
 
     @Override
+    public void completePasswordSetup(Long userId, String newPasswordHash) {
+        UserEntity entity = userJpaRepository.findById(userId)
+                .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+        entity.completePasswordSetup(newPasswordHash);
+        userJpaRepository.flush();
+    }
+
+    @Override
     public List<User> searchByAcademyId(Long academyId, String keyword) {
         String normalizedKeyword = keyword == null ? "" : keyword.trim();
         List<UserEntity> entities = normalizedKeyword.isEmpty()

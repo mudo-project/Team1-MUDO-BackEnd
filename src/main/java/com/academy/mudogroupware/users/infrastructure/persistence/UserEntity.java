@@ -99,4 +99,9 @@ public class UserEntity {
     void changeRole(Long roleId) {
         this.roleId = roleId;
     }
+
+    void completePasswordSetup(String newPasswordHash) {
+        this.password = newPasswordHash;
+        this.mustChangePw = false;
+    }
 }
