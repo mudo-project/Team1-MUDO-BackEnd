@@ -23,8 +23,8 @@ class ChatMessageJpaRepositoryTest {
     @Test
     void unreadCountExcludesMessagesSentByRequester() {
         jdbcTemplate.update("""
-                insert into chat_room (chat_room_id, academy_id, type, created_by, created_at)
-                values (1, 10, 'DM', 1, current_timestamp)
+                insert into chat_room (chat_room_id, type, created_by, created_at)
+                values (1, 'DM', 1, current_timestamp)
                 """);
         jdbcTemplate.update("""
                 insert into chat_room_member (chat_room_id, user_id, last_read_at)
@@ -51,8 +51,8 @@ class ChatMessageJpaRepositoryTest {
     @Test
     void countsUnreadMembersForEachMessage() {
         jdbcTemplate.update("""
-                insert into chat_room (chat_room_id, academy_id, type, created_by, created_at)
-                values (1, 10, 'GROUP', 1, timestamp '2026-08-05 09:00:00')
+                insert into chat_room (chat_room_id, type, created_by, created_at)
+                values (1, 'GROUP', 1, timestamp '2026-08-05 09:00:00')
                 """);
         jdbcTemplate.update("""
                 insert into chat_room_member (chat_room_id, user_id, last_read_at)
