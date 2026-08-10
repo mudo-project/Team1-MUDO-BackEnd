@@ -25,7 +25,7 @@ POST /api/workspaces
 
 ## 1. 인증 정보 추출
 
-`Security Filter`가 Access Token을 검증하고 `AuthUser`를 만든다. `WorkspaceController`는 `AuthUser`에서 `academyId`와 `userId`를 받아 요청 본문에는 없는 학원·생성자 정보를 결정한다.
+`Security Filter`가 Access Token을 검증하고 `AuthUser`를 만든다. `WorkspaceController`는 `AuthUser`에서 `academyId`와 `userId`를 받는다. `academyId`는 워크스페이스 자체에는 더 이상 저장되지 않고(2026-08-10, `academy_id` 컬럼 삭제), 참여자가 같은 학원의 활성 사용자인지 확인하는 `users` 도메인 조회에만 쓰인다. `userId`는 요청 본문에는 없는 생성자 정보를 결정한다.
 
 ## 2. 요청 검증과 Command 변환
 
@@ -43,14 +43,14 @@ POST /api/workspaces
 
 `WorkspaceService`는 하나의 트랜잭션에서 활성 이름 사용 여부를 조회한다.
 
-- 같은 학원에 이미 존재하는 활성 이름이면 `WorkspaceNameConflictException`을 발생시켜 `WORKSPACE_409_1`을 반환한다.
+- 이미 존재하는 활성 이름이면 `WorkspaceNameConflictException`을 발생시켜 `WORKSPACE_409_1`을 반환한다.
 - 사용 가능한 이름이면 앞뒤 공백을 제거한 이름과 참여자 ID로 `Workspace` Domain Model을 만들고 `WorkspaceRepository`에 전달한다.
 
 ## 5. 영속화
 
 `WorkspacePersistenceAdapter`는 MapStruct로 Domain Model을 `WorkspaceJpaEntity`로 변환하고, 각 참여자 ID를 `workspace_member` 엔티티로 추가한다. `saveAndFlush` 후 생성된 워크스페이스 ID를 포함한 Domain Model을 반환한다.
 
-`workspace` 테이블의 `(academy_id, active_name)` unique 제약이 충돌하면 Adapter가 `WorkspaceNameConflictException`으로 변환한다.
+`workspace` 테이블의 `active_name` unique 제약이 충돌하면 Adapter가 `WorkspaceNameConflictException`으로 변환한다.
 
 ## 6. 응답
 
@@ -74,7 +74,7 @@ GET /api/workspaces?scope=MINE|ALL
 
 ### 1. 인증과 ALL 범위 권한 검사
 
-`WorkspaceController`는 `AuthUser`의 `academyId`, `userId`를 사용한다. `scope`를 생략하면 `MINE`으로 바인딩된다.
+`WorkspaceController`는 `AuthUser`의 `userId`를 사용한다(`academyId` 검증은 하지 않는다 — 2026-08-10 정정). `scope`를 생략하면 `MINE`으로 바인딩된다.
 
 Spring Method Security의 `@PreAuthorize`가 `scope=ALL` 요청 시 `WORKSPACE:READ_ALL` Authority를 확인한다(연동 완료, 2026-08-10) — 없으면 UseCase 호출 전에 `403`으로 차단된다.
 
@@ -82,8 +82,8 @@ Spring Method Security의 `@PreAuthorize`가 `scope=ALL` 요청 시 `WORKSPACE:R
 
 `WorkspaceQueryService`는 `scope`에 따라 조회 Port를 선택한다.
 
-- `MINE`: 같은 학원의 활성 워크스페이스 중 요청 사용자가 참여한 목록 조회
-- `ALL`: 같은 학원의 전체 활성 워크스페이스 목록 조회
+- `MINE`: 활성 워크스페이스 중 요청 사용자가 참여한 목록 조회
+- `ALL`: 전체 활성 워크스페이스 목록 조회
 
 두 조회 모두 요청 사용자의 최근 접속 시각 내림차순으로 정렬한다. 최근 접속 기록이 없는 항목은 워크스페이스 생성 시각 내림차순으로 뒤에 배치한다.
 
@@ -109,14 +109,14 @@ PUT /api/workspaces/{workspaceId}/recent-access
 
 ### 1. 인증 정보와 조회 권한 전달
 
-Controller는 `AuthUser`에서 `academyId`, `userId`를 추출한다. 인증 객체의 Authority에 `WORKSPACE:READ_ALL`이 있으면 `canReadAll=true`, 없으면 `false`로 계산해 UseCase에 전달한다.
+Controller는 `AuthUser`에서 `userId`를 추출한다. 인증 객체의 Authority에 `WORKSPACE:READ_ALL`이 있으면 `canReadAll=true`, 없으면 `false`로 계산해 UseCase에 전달한다.
 
 ### 2. 접근 가능 여부 확인
 
-`WorkspaceRecentAccessService`는 같은 학원의 삭제되지 않은 워크스페이스인지 확인한다.
+`WorkspaceRecentAccessService`는 삭제되지 않은 워크스페이스인지 확인한다. `academyId` 검증은 하지 않는다(2026-08-10 정정 — 실제 배포는 학원마다 별도 EC2·DB 스키마를 쓰는 구조라 앱 레벨의 academyId 검증이 불필요하다).
 
 - `canReadAll=false`: 요청 사용자가 참여한 워크스페이스만 허용
-- `canReadAll=true`: 같은 학원의 활성 워크스페이스면 허용
+- `canReadAll=true`: 활성 워크스페이스면 허용
 
 접근할 수 없으면 최근 접속 저장 없이 `COMMON_403_1`로 응답한다.
 
@@ -145,13 +145,13 @@ GET /api/workspaces/{workspaceId}?date=yyyy-MM-dd
 
 ### 1. 인증 정보와 기준일 결정
 
-Controller는 `AuthUser`에서 `academyId`, `userId`를 추출하고, 인증 객체의 Authority에 `WORKSPACE:READ_ALL`이 있으면 `canReadAll=true`로 계산한다. `date` 쿼리 파라미터가 없으면 서버의 `Clock` 기준 오늘 날짜를 기준일로 사용한다.
+Controller는 `AuthUser`에서 `userId`를 추출하고, 인증 객체의 Authority에 `WORKSPACE:READ_ALL`이 있으면 `canReadAll=true`로 계산한다. `date` 쿼리 파라미터가 없으면 서버의 `Clock` 기준 오늘 날짜를 기준일로 사용한다.
 
 ### 2. 존재 확인과 접근 제어
 
 `WorkspaceDetailQueryService`는 `findActiveWorkspaceName`으로 삭제되지 않은 워크스페이스인지 먼저 확인한다. 없으면 `WorkspaceNotFoundException`을 발생시켜 `WORKSPACE_404_1`로 응답한다.
 
-존재하면 `WorkspaceListQueryPort.existsAccessible`로 접근 가능 여부를 확인한다. `canReadAll=false`면 요청 사용자가 참여한 워크스페이스만, `true`면 같은 학원의 활성 워크스페이스면 허용한다. 접근할 수 없으면 `WorkspaceAccessDeniedException`을 발생시켜 `WORKSPACE_403_1`로 응답한다.
+존재하면 `WorkspaceListQueryPort.existsAccessible`로 접근 가능 여부를 확인한다. `canReadAll=false`면 요청 사용자가 참여한 워크스페이스만, `true`면 활성 워크스페이스면 허용한다(`academyId` 검증은 하지 않는다 — 2026-08-10 정정). 접근할 수 없으면 `WorkspaceAccessDeniedException`을 발생시켜 `WORKSPACE_403_1`로 응답한다.
 
 ### 3. 참여자·업무 후보 조회
 
@@ -207,7 +207,7 @@ PATCH /api/workspaces/{workspaceId}
 
 ### 3. 이름 반영과 저장
 
-`Workspace.rename(newName)` 도메인 메서드가 새 이름을 반영한 새 인스턴스를 반환한다. `WorkspaceRepository.rename`이 실제 저장을 담당하며, DB의 `(academy_id, active_name)` unique 제약이 충돌하면 Adapter가 `WorkspaceNameConflictException`으로 변환해 `WORKSPACE_409_1`로 응답한다. 사전 중복 조회 없이 이 예외 변환에만 의존하므로, 동시에 같은 이름으로 변경을 시도해도 정확히 하나만 성공한다.
+`Workspace.rename(newName)` 도메인 메서드가 새 이름을 반영한 새 인스턴스를 반환한다. `WorkspaceRepository.rename`이 실제 저장을 담당하며, DB의 `active_name` unique 제약이 충돌하면 Adapter가 `WorkspaceNameConflictException`으로 변환해 `WORKSPACE_409_1`로 응답한다. 사전 중복 조회 없이 이 예외 변환에만 의존하므로, 동시에 같은 이름으로 변경을 시도해도 정확히 하나만 성공한다.
 
 ### 4. 응답
 
