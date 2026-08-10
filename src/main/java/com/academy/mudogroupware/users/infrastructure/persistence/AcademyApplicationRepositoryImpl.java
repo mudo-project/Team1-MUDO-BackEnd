@@ -7,6 +7,7 @@ import java.util.Optional;
 import org.springframework.stereotype.Repository;
 
 import com.academy.mudogroupware.users.domain.model.AcademyApplication;
+import com.academy.mudogroupware.users.domain.model.AcademyApplicationStatus;
 import com.academy.mudogroupware.users.domain.repository.AcademyApplicationRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -41,6 +42,12 @@ public class AcademyApplicationRepositoryImpl implements AcademyApplicationRepos
     @Override
     public Optional<AcademyApplication> findById(Long id) {
         return academyApplicationJpaRepository.findById(id).map(this::toDomain);
+    }
+
+    @Override
+    public boolean existsActiveRequestedLoginId(String requestedLoginId) {
+        return academyApplicationJpaRepository.existsByRequestedLoginIdAndStatusIn(
+                requestedLoginId, List.of(AcademyApplicationStatus.PENDING, AcademyApplicationStatus.APPROVED));
     }
 
     @Override
