@@ -31,6 +31,28 @@
 
 PDF, 이미지, OCR, 장기 파일 저장은 이번 범위에서 제외한다.
 
+## 프론트 연동 샘플
+
+아래 CSV는 Swagger 또는 프론트 업로드 화면에서 그대로 사용할 수 있다.
+
+| 파일 | 업로드 Part |
+| --- | --- |
+| [students.csv](./samples/students.csv) | `studentFile` |
+| [lectures.csv](./samples/lectures.csv) | `lectureFile` |
+| [enrollments.csv](./samples/enrollments.csv) | `enrollmentFile` |
+
+샘플의 `teacherId`는 로컬 DB 상황에 맞게 초안 수정 화면에서 실제 담당자 ID로 바꿔서 확정하는 것을 권장한다. 현재 강의 생성 로직은 `teacherId` 존재 여부를 강제 검증하지 않지만, 실제 사용 화면에서 `teacherName`을 안정적으로 보여주려면 users에 존재하는 담당자 ID를 써야 한다.
+
+## Swagger 검증
+
+Swagger에서 프론트 연동 전 백엔드 흐름을 확인할 때는 [SWAGGER_TEST.md](./SWAGGER_TEST.md)를 따른다.
+
+검증 전제:
+
+- 로그인 가능한 로컬 계정이 필요하다.
+- 해당 계정은 `STUDENT:MANAGE`와 `LECTURE:MANAGE` 권한을 모두 가져야 한다.
+- 저장까지 확인하려면 강의 후보의 `teacherId`를 실제 담당자 ID로 맞추는 것이 좋다.
+
 ## AI 분석
 
 - 기본 동작은 deterministic parser이다. API 키가 없어도 CSV/XLSX 헤더 alias 기반으로 초안을 만든다.
@@ -38,6 +60,28 @@ PDF, 이미지, OCR, 장기 파일 저장은 이번 범위에서 제외한다.
 - Gemini에는 전체 파일이 아니라 헤더와 최대 5개 샘플 행만 전달한다.
 - Gemini 호출 실패, 빈 응답, 파싱 실패가 발생하면 기존 parser 결과만 사용한다.
 - AI 결과도 서버의 필수값/상태/수강 관계 검증을 반드시 다시 통과해야 한다.
+
+로컬 환경 변수:
+
+```text
+GEMINI_API_KEY=구글 AI Studio에서 발급한 키
+GEMINI_MODEL=gemini-2.0-flash
+```
+
+`GEMINI_MODEL`은 생략하면 `gemini-2.0-flash`를 사용한다. API 키가 없으면 AI 보정 없이 기존 parser로 동작한다.
+
+## FastAPI 연동 판단
+
+1차 구현은 Spring Boot 내부에서 CSV/XLSX 파싱과 Gemini 헤더 매핑 보정을 처리한다. 따라서 현재 Swagger 검증과 프론트 연동에는 별도 FastAPI 서버가 필요하지 않다.
+
+FastAPI는 아래 범위로 확장할 때 별도 AI 서비스로 분리하는 것이 적절하다.
+
+- PDF, 이미지, OCR 기반 데이터 추출
+- 자유 형식 문서 전체 해석
+- 대용량 파일 비동기 분석
+- Python 전용 라이브러리가 필요한 정교한 정제/추천 로직
+
+분리할 경우에도 프론트는 Spring API만 호출하고, Spring이 `dataimport` Port 뒤에서 FastAPI를 호출하는 구조를 유지한다.
 
 ## 행 상태
 

@@ -39,6 +39,16 @@ Request Part
 
 파일은 최소 1개 이상 업로드해야 한다. 지원 확장자는 `.csv`, `.xlsx`이다. 서버에 `GEMINI_API_KEY`가 있으면 헤더와 샘플 행을 이용해 컬럼 매핑을 보정하고, 호출 실패 시에는 기존 parser 결과로 초안을 생성한다.
 
+프론트 연동 샘플:
+
+| **업로드 Part** | **샘플 파일** |
+| --- | --- |
+| `studentFile` | `dataimport/docs/samples/students.csv` |
+| `lectureFile` | `dataimport/docs/samples/lectures.csv` |
+| `enrollmentFile` | `dataimport/docs/samples/enrollments.csv` |
+
+샘플의 `teacherId`는 로컬 DB 상황에 맞게 초안 수정 단계에서 실제 담당자 사용자 ID로 바꿔서 확정하는 것을 권장한다.
+
 # **[response]**
 
 ### **성공코드**
