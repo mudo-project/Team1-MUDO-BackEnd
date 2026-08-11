@@ -22,6 +22,7 @@ import com.academy.mudogroupware.global.presentation.security.AuthUser;
 import com.academy.mudogroupware.users.application.result.CreateAccountResult;
 import com.academy.mudogroupware.users.application.usecase.ChangeUserRoleUseCase;
 import com.academy.mudogroupware.users.application.usecase.CreateAccountUseCase;
+import com.academy.mudogroupware.users.application.usecase.GetMyProfileUseCase;
 import com.academy.mudogroupware.users.application.usecase.ListMembersUseCase;
 import com.academy.mudogroupware.users.application.usecase.PasswordSetupUseCase;
 import com.academy.mudogroupware.users.application.usecase.SearchUsersUseCase;
@@ -31,6 +32,7 @@ import com.academy.mudogroupware.users.presentation.api.request.CreateAccountReq
 import com.academy.mudogroupware.users.presentation.api.request.PasswordSetupRequest;
 import com.academy.mudogroupware.users.presentation.api.response.AccountCreateResponse;
 import com.academy.mudogroupware.users.presentation.api.response.MemberListResponse;
+import com.academy.mudogroupware.users.presentation.api.response.UserDetailResponse;
 import com.academy.mudogroupware.users.presentation.api.response.UserSearchResponse;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -53,6 +55,7 @@ public class UserController {
     private final CreateAccountUseCase createAccountUseCase;
     private final PasswordSetupUseCase passwordSetupUseCase;
     private final ListMembersUseCase listMembersUseCase;
+    private final GetMyProfileUseCase getMyProfileUseCase;
 
     @PreAuthorize("hasAuthority('ACCOUNT:MANAGE')")
     @PostMapping
@@ -113,6 +116,14 @@ public class UserController {
                 listMembersUseCase.list(authUser.academyId(), keyword, roleId, page, size),
                 MemberListResponse::from);
         return ResponseEntity.ok(GlobalApiResponse.ok(UserResponseCode.MEMBERS_LISTED, data));
+    }
+
+    @Operation(summary = "내 정보 조회", description = "로그인한 사용자 본인의 기본 정보를 조회합니다.")
+    @GetMapping("/me")
+    public ResponseEntity<GlobalApiResponse<UserDetailResponse>> getMyProfile(
+            @AuthenticationPrincipal AuthUser authUser) {
+        UserDetailResponse data = UserDetailResponse.from(getMyProfileUseCase.getMyProfile(authUser.userId()));
+        return ResponseEntity.ok(GlobalApiResponse.ok(UserResponseCode.MY_PROFILE_RETRIEVED, data));
     }
 
     @Operation(

@@ -50,6 +50,7 @@
 - `admin_scope=ACADEMY`(학원 관리자) 계정을 만드는 API는 없다. 학원 신청/승인 플로우가 폐기됐고, `POST /api/users`(`CreateAccountService`)는 `AccountType.MEMBER`만 발급하며 그 호출 자체에도 `ACCOUNT:MANAGE` 권한(이미 관리자 계정이 있어야 함)이 필요하다. 따라서 새로 배포한 서버의 최초 학원 관리자 계정은 앱 API를 거치지 않고 DB에 직접 계정·역할·권한을 심는 수동 SQL 작업으로 만든다(배경은 `REVISION.md` 참고).
 - 계정 발급 체계 3단계(학원 관리자의 직원 계정 발급, `POST /api/users`)까지 완료됐다. 임시 비밀번호 생성 로직을 담당하는 `AccountIssuer` 협력 객체가 `application/service/support`에 있다. `AccountIssuer`는 임시 비밀번호를 응답에 직접 노출하지 않고 `PasswordSetupLinkBuilder`로 만든 비밀번호 설정 링크(`POST /api/users/password-setup`)를 반환한다 — `mustChangePw`는 로그인 흐름에서 다른 API를 막는 강제 로직으로 쓰지 않고, 이 최초 설정 완료 여부만 나타내는 플래그로 쓴다(강제 로직을 안 만들기로 한 배경은 `REVISION.md` 참고). 이메일 발송 등은 아직 없다(후속 작업, 상세 배경은 `REVISION.md` 참고).
 - `GET /api/users/members`(관리자용 구성원 목록 조회)는 기존 `GET /api/users`(학원 구성원 검색)와 완전히 별개의 엔드포인트다 — 후자는 워크스페이스/채팅방 멤버 선택용으로 권한 없이 호출 가능하도록 의도적으로 최소 필드만 반환하므로, 여기에 연락처·이메일 등을 추가하지 않는다. 오늘 근태 상태(`attendanceStatus`)는 `users`가 정의한 `TodayAttendanceStatusPort`를 `attendance` 도메인이 구현해 내려준다 — 주간/월간 근태 이력이 필요하면 여전히 `GET /api/attendance/employees/weekly`를 별도 호출해야 한다.
+- `GET /api/users/me`는 로그인만 되어 있으면 누구나 자기 자신에 대해 호출 가능하다(권한 코드 불필요). 상세조회 응답을 만드는 `GetUserDetailService`는 이후 관리자용 구성원 상세조회에서도 재사용할 예정이다.
 
 ## 문서
 
