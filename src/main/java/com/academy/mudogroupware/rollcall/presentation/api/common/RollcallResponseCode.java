@@ -13,6 +13,7 @@ public enum RollcallResponseCode implements ResponseCode {
     ATTENDANCE_SAVED("ROLLCALL_200_2", "출결 저장에 성공했습니다."),
     MESSAGE_CANDIDATES_RETRIEVED("ROLLCALL_200_3", "발송 대상 조회에 성공했습니다."),
     TEMPLATE_LIST_RETRIEVED("ROLLCALL_200_4", "문자 템플릿 목록 조회에 성공했습니다."),
+    MESSAGES_SENT("ROLLCALL_200_5", "문자 발송을 완료했습니다."),
     TEMPLATE_CREATED("ROLLCALL_201_1", "문자 템플릿 생성에 성공했습니다.");
 
     private final String code;
