@@ -3,6 +3,7 @@ package com.academy.mudogroupware.sharedfile.application.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -20,6 +21,7 @@ import com.academy.mudogroupware.sharedfile.application.port.GoogleWorkspaceExpo
 import com.academy.mudogroupware.sharedfile.application.port.SharedFileDrivePort;
 import com.academy.mudogroupware.sharedfile.application.query.ExportTargetFormat;
 import com.academy.mudogroupware.sharedfile.domain.exception.SharedFileInvalidExportFormatException;
+import com.academy.mudogroupware.sharedfile.domain.exception.SharedFileOutOfRootException;
 import com.academy.mudogroupware.sharedfile.domain.exception.SharedFileRootUnavailableException;
 import com.academy.mudogroupware.sharedfile.domain.model.SharedFileRoot;
 import com.academy.mudogroupware.sharedfile.domain.repository.SharedFileRootRepository;
@@ -40,6 +42,20 @@ class DownloadSharedFileServiceTest {
 
         assertThatThrownBy(() -> service.download("item-id", null))
                 .isInstanceOf(SharedFileRootUnavailableException.class);
+    }
+
+    @Test
+    void throwsWhenItemIsOutsideRoot() {
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
+        doThrow(new SharedFileOutOfRootException("outside-id"))
+                .when(rootGuard).requireDescendant("access-token", "root-id", "outside-id");
+
+        assertThatThrownBy(() -> service.download("outside-id", null))
+                .isInstanceOf(SharedFileOutOfRootException.class);
+
+        verify(drivePort, never()).downloadOriginal(any(), any());
+        verify(drivePort, never()).export(any(), any(), any());
     }
 
     @Test

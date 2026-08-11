@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
@@ -23,10 +24,11 @@ import com.academy.mudogroupware.sharedfile.domain.exception.SharedFileRootUnava
 import com.academy.mudogroupware.sharedfile.domain.exception.SharedFileUploadTooLargeException;
 import com.academy.mudogroupware.sharedfile.domain.model.SharedFileRoot;
 import com.academy.mudogroupware.sharedfile.domain.repository.SharedFileRootRepository;
+import com.academy.mudogroupware.global.domain.common.exception.BadRequestException;
 
 class UploadSharedFileServiceTest {
 
-    private static final long ONE_HUNDRED_MB = 100L * 1024 * 1024;
+    private static final int ONE_HUNDRED_MB = 100 * 1024 * 1024;
     private static final byte[] CONTENT = "content".getBytes();
 
     private final SharedFileRootRepository rootRepository = mock(SharedFileRootRepository.class);
@@ -37,38 +39,49 @@ class UploadSharedFileServiceTest {
     private final UploadSharedFileService service =
             new UploadSharedFileService(rootRepository, rootGuard, drivePort, getGoogleAccessTokenUseCase);
 
+    // size 파라미터로 우회할 수 없어야 한다 — 실제 content 길이 기준으로 검사한다.
     @Test
-    void throwsWhenFileExceeds100Mb() {
-        assertThatThrownBy(() -> service.upload(
-                "parent-id", "big.zip", "application/zip", ONE_HUNDRED_MB + 1, CONTENT))
+    void throwsWhenActualContentExceeds100Mb() {
+        byte[] oversized = new byte[ONE_HUNDRED_MB + 1];
+
+        assertThatThrownBy(() -> service.upload("parent-id", "big.zip", "application/zip", oversized))
                 .isInstanceOf(SharedFileUploadTooLargeException.class);
 
-        verify100MbNeverCalledDrive();
+        verify(drivePort, never()).upload(any(), any(), any(), any(), any());
     }
 
     @Test
     void allowsExactly100Mb() {
+        byte[] exact = new byte[ONE_HUNDRED_MB];
         when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
-        when(drivePort.upload("access-token", "root-id", "exact.zip", "application/zip", CONTENT))
+        when(drivePort.upload("access-token", "root-id", "exact.zip", "application/zip", exact))
                 .thenReturn(driveItem("uploaded-id"));
 
-        SharedFileItemView view = service.upload("root-id", "exact.zip", "application/zip", ONE_HUNDRED_MB, CONTENT);
+        SharedFileItemView view = service.upload("root-id", "exact.zip", "application/zip", exact);
 
         assertThat(view.id()).isEqualTo("uploaded-id");
     }
 
     @Test
     void throwsWhenFilenameIsBlank() {
-        assertThatThrownBy(() -> service.upload("parent-id", " ", "application/zip", 1L, CONTENT))
+        assertThatThrownBy(() -> service.upload("parent-id", " ", "application/zip", CONTENT))
                 .isInstanceOf(SharedFileInvalidNameException.class);
+    }
+
+    @Test
+    void throwsWhenParentIdIsNull() {
+        assertThatThrownBy(() -> service.upload(null, "a.txt", "text/plain", CONTENT))
+                .isInstanceOf(BadRequestException.class);
+
+        verify(drivePort, never()).upload(any(), any(), any(), any(), any());
     }
 
     @Test
     void throwsWhenRootIsNotReady() {
         when(rootRepository.find()).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.upload("parent-id", "a.txt", "text/plain", 1L, CONTENT))
+        assertThatThrownBy(() -> service.upload("parent-id", "a.txt", "text/plain", CONTENT))
                 .isInstanceOf(SharedFileRootUnavailableException.class);
     }
 
@@ -79,12 +92,8 @@ class UploadSharedFileServiceTest {
         doThrow(new SharedFileOutOfRootException("outside-id"))
                 .when(rootGuard).requireDescendant("access-token", "root-id", "outside-id");
 
-        assertThatThrownBy(() -> service.upload("outside-id", "a.txt", "text/plain", 1L, CONTENT))
+        assertThatThrownBy(() -> service.upload("outside-id", "a.txt", "text/plain", CONTENT))
                 .isInstanceOf(SharedFileOutOfRootException.class);
-    }
-
-    private void verify100MbNeverCalledDrive() {
-        org.mockito.Mockito.verify(drivePort, never()).upload(any(), any(), any(), any(), any());
     }
 
     private DriveItem driveItem(String id) {

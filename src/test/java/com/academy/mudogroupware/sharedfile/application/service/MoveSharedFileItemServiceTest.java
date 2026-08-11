@@ -58,7 +58,6 @@ class MoveSharedFileItemServiceTest {
     void throwsWhenDestinationIsOutsideRoot() {
         when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
-        when(drivePort.getItem("access-token", "item-id")).thenReturn(Optional.of(item("item-id", "root-id")));
         doThrow(new SharedFileOutOfRootException("outside-parent-id"))
                 .when(rootGuard).requireDescendant("access-token", "root-id", "outside-parent-id");
 
@@ -69,12 +68,54 @@ class MoveSharedFileItemServiceTest {
     }
 
     @Test
+    void throwsWhenNewParentIsTheItemItself() {
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
+
+        assertThatThrownBy(() -> service.move("item-id", "item-id"))
+                .isInstanceOf(SharedFileOutOfRootException.class);
+
+        verify(drivePort, never()).getItem(any(), any());
+        verify(drivePort, never()).move(any(), any(), any(), any());
+    }
+
+    @Test
+    void throwsWhenDestinationIsARegularFileNotAFolder() {
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
+        when(drivePort.getItem("access-token", "file-id")).thenReturn(Optional.of(
+                regularFile("file-id", "root-id")));
+
+        assertThatThrownBy(() -> service.move("item-id", "file-id"))
+                .isInstanceOf(SharedFileOutOfRootException.class);
+
+        verify(drivePort, never()).move(any(), any(), any(), any());
+    }
+
+    @Test
+    void throwsWhenDestinationIsADescendantOfTheItemBeingMoved() {
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
+        // child-id의 부모가 곧 item-id다 — item-id를 그 자신의 하위(child-id)로 옮기면 순환이 생긴다.
+        when(drivePort.getItem("access-token", "child-id")).thenReturn(Optional.of(
+                folder("child-id", "item-id")));
+
+        assertThatThrownBy(() -> service.move("item-id", "child-id"))
+                .isInstanceOf(SharedFileOutOfRootException.class);
+
+        verify(drivePort, never()).move(any(), any(), any(), any());
+    }
+
+    @Test
     void movesItemToDestinationFolderUnderRoot() {
         when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
-        when(drivePort.getItem("access-token", "item-id")).thenReturn(Optional.of(item("item-id", "old-parent-id")));
+        when(drivePort.getItem("access-token", "new-parent-id")).thenReturn(Optional.of(
+                folder("new-parent-id", "root-id")));
+        when(drivePort.getItem("access-token", "item-id")).thenReturn(Optional.of(
+                regularFile("item-id", "old-parent-id")));
         when(drivePort.move("access-token", "item-id", "old-parent-id", "new-parent-id"))
-                .thenReturn(item("item-id", "new-parent-id"));
+                .thenReturn(regularFile("item-id", "new-parent-id"));
 
         SharedFileItemView view = service.move("item-id", "new-parent-id");
 
@@ -82,19 +123,25 @@ class MoveSharedFileItemServiceTest {
     }
 
     @Test
-    void movesItemToRootItselfWithoutGuardingDestination() {
+    void movesItemToRootItselfWithoutGuardingOrCheckingDestination() {
         when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
-        when(drivePort.getItem("access-token", "item-id")).thenReturn(Optional.of(item("item-id", "old-parent-id")));
+        when(drivePort.getItem("access-token", "item-id")).thenReturn(Optional.of(
+                regularFile("item-id", "old-parent-id")));
         when(drivePort.move("access-token", "item-id", "old-parent-id", "root-id"))
-                .thenReturn(item("item-id", "root-id"));
+                .thenReturn(regularFile("item-id", "root-id"));
 
         service.move("item-id", "root-id");
 
         verify(rootGuard, never()).requireDescendant("access-token", "root-id", "root-id");
+        verify(drivePort, never()).getItem("access-token", "root-id");
     }
 
-    private DriveItem item(String id, String parentId) {
+    private DriveItem regularFile(String id, String parentId) {
         return new DriveItem(id, "name", "application/pdf", List.of(parentId), null, true, null, false);
+    }
+
+    private DriveItem folder(String id, String parentId) {
+        return new DriveItem(id, "name", "application/vnd.google-apps.folder", List.of(parentId), null, false, null, false);
     }
 }

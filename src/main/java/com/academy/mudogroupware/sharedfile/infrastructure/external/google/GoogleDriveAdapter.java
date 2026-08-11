@@ -39,7 +39,6 @@ public class GoogleDriveAdapter implements SharedFileDrivePort {
     // Drive 응답에서 항상 요청하는 필드 목록. capabilities(canDownload)는 미리보기 미지원 파일 안내에 쓰인다.
     private static final String FILE_FIELDS =
             "id,name,mimeType,parents,webViewLink,modifiedTime,trashed,capabilities(canDownload)";
-    private static final String MULTIPART_BOUNDARY = "shared_file_upload_boundary";
 
     private final RestClient googleDriveRestClient;
     private final ObjectMapper objectMapper;
@@ -93,18 +92,21 @@ public class GoogleDriveAdapter implements SharedFileDrivePort {
     }
 
     // uploadType=multipart. RestClient는 multipart/related를 직접 지원하지 않아 본문을 수동으로 구성한다:
-    // 메타데이터(JSON) 파트 + 파일 내용 파트를 하나의 boundary로 감싼다.
+    // 메타데이터(JSON) 파트 + 파일 내용 파트를 하나의 boundary로 감싼다. boundary는 요청마다 새로 발급해
+    // 파일 내용에 고정 문자열이 우연히 포함돼 파트 경계가 깨지는 것을 막고, contentType은 실제 media type으로
+    // 파싱·정규화해 CRLF가 포함된 값이 헤더 인젝션으로 이어지지 않게 한다.
     @Override
     public DriveItem upload(String accessToken, String parentId, String name, String contentType, byte[] content) {
         try {
+            String boundary = "shared_file_upload_" + java.util.UUID.randomUUID();
             String metadataJson = objectMapper.writeValueAsString(
                     new GoogleDriveCreateFileRequest(name, null, List.of(parentId)));
-            byte[] body = buildMultipartRelatedBody(metadataJson, contentType, content);
+            byte[] body = buildMultipartRelatedBody(boundary, metadataJson, contentType, content);
 
             GoogleDriveFileResponse response = googleDriveRestClient.post()
                     .uri(UPLOAD_ENDPOINT + "?uploadType=multipart&fields=" + FILE_FIELDS)
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
-                    .contentType(MediaType.parseMediaType("multipart/related; boundary=" + MULTIPART_BOUNDARY))
+                    .contentType(MediaType.parseMediaType("multipart/related; boundary=" + boundary))
                     .body(body)
                     .retrieve()
                     .body(GoogleDriveFileResponse.class);
@@ -116,13 +118,13 @@ public class GoogleDriveAdapter implements SharedFileDrivePort {
         }
     }
 
-    private byte[] buildMultipartRelatedBody(String metadataJson, String contentType, byte[] content) {
-        String header = "--" + MULTIPART_BOUNDARY + "\r\n"
+    private byte[] buildMultipartRelatedBody(String boundary, String metadataJson, String contentType, byte[] content) {
+        String header = "--" + boundary + "\r\n"
                 + "Content-Type: application/json; charset=UTF-8\r\n\r\n"
                 + metadataJson + "\r\n"
-                + "--" + MULTIPART_BOUNDARY + "\r\n"
-                + "Content-Type: " + contentType + "\r\n\r\n";
-        String footer = "\r\n--" + MULTIPART_BOUNDARY + "--";
+                + "--" + boundary + "\r\n"
+                + "Content-Type: " + sanitizeContentType(contentType) + "\r\n\r\n";
+        String footer = "\r\n--" + boundary + "--";
 
         byte[] headerBytes = header.getBytes(java.nio.charset.StandardCharsets.UTF_8);
         byte[] footerBytes = footer.getBytes(java.nio.charset.StandardCharsets.UTF_8);
@@ -131,6 +133,16 @@ public class GoogleDriveAdapter implements SharedFileDrivePort {
         System.arraycopy(content, 0, body, headerBytes.length, content.length);
         System.arraycopy(footerBytes, 0, body, headerBytes.length + content.length, footerBytes.length);
         return body;
+    }
+
+    // 신뢰할 수 없는 contentType(예: CRLF가 섞인 값)이 그대로 헤더에 들어가는 것을 막는다.
+    // 정상적인 media type으로 파싱되지 않으면 기본값으로 대체한다.
+    private String sanitizeContentType(String contentType) {
+        try {
+            return MediaType.parseMediaType(contentType).toString();
+        } catch (Exception e) {
+            return MediaType.APPLICATION_OCTET_STREAM_VALUE;
+        }
     }
 
     // files.create. Docs/Sheets/Slides 빈 파일 생성(Task4). Google MIME type 매핑은 이 클래스 안에 가둔다.

@@ -24,6 +24,7 @@ import com.academy.mudogroupware.sharedfile.domain.exception.SharedFileOutOfRoot
 import com.academy.mudogroupware.sharedfile.domain.exception.SharedFileRootUnavailableException;
 import com.academy.mudogroupware.sharedfile.domain.model.SharedFileRoot;
 import com.academy.mudogroupware.sharedfile.domain.repository.SharedFileRootRepository;
+import com.academy.mudogroupware.global.domain.common.exception.BadRequestException;
 
 class CreateGoogleWorkspaceFileServiceTest {
 
@@ -49,6 +50,24 @@ class CreateGoogleWorkspaceFileServiceTest {
 
         assertThatThrownBy(() -> service.create("parent-id", " ", GoogleWorkspaceFileType.DOCS))
                 .isInstanceOf(SharedFileInvalidNameException.class);
+
+        verify(drivePort, never()).createWorkspaceFile(any(), any(), any(), any());
+    }
+
+    @Test
+    void throwsWhenParentIdIsNull() {
+        assertThatThrownBy(() -> service.create(null, "새 문서", GoogleWorkspaceFileType.DOCS))
+                .isInstanceOf(BadRequestException.class);
+
+        verify(drivePort, never()).createWorkspaceFile(any(), any(), any(), any());
+    }
+
+    @Test
+    void throwsWhenTypeIsNull() {
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+
+        assertThatThrownBy(() -> service.create("parent-id", "새 문서", null))
+                .isInstanceOf(BadRequestException.class);
 
         verify(drivePort, never()).createWorkspaceFile(any(), any(), any(), any());
     }

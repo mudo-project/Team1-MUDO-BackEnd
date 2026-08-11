@@ -1,6 +1,7 @@
 package com.academy.mudogroupware.sharedfile.application.service;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.academy.mudogroupware.google.application.usecase.GetGoogleAccessTokenUseCase;
 import com.academy.mudogroupware.sharedfile.application.port.DrivePage;
@@ -16,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class ListSharedFileItemsService implements ListSharedFileItemsUseCase {
 
     private final SharedFileRootRepository sharedFileRootRepository;

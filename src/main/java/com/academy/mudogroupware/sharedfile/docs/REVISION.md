@@ -1,5 +1,30 @@
 # 🔄 공유파일 도메인 변경 이력
 
+## ✅ 2026-08-11 · PR #391 CodeRabbit 리뷰 반영
+
+### 변경 목적
+
+PR #391(Task4+5)에 대한 CodeRabbit 리뷰 11건을 반영한다.
+
+### 구현 변경
+
+- **null 입력 방어**: `CreateSharedFolderService`/`UploadSharedFileService`/`CreateGoogleWorkspaceFileService`의 `parentId`, `CreateGoogleWorkspaceFileService`의 `type`이 null이면 어댑터까지 전달돼 NPE가 나던 문제를 `BadRequestException`으로 막았다.
+- **업로드 크기 검증**: 호출자가 선언한 `size` 값 대신 실제 `content.length`로만 100MB를 검사하도록 바꿨다. 선언 크기를 속이는 방식의 우회가 불가능해졌다. `UploadSharedFileUseCase`에서 `size` 파라미터 자체를 제거했다(어차피 항상 `content.length`와 같아야 하므로 별도로 신뢰할 이유가 없음).
+- **조회 전용 트랜잭션 경계**: `GetSharedFileRootService`/`GetSharedFileItemService`/`ListSharedFileItemsService`/`SearchSharedFileItemsService`에 `@Transactional(readOnly = true)`를 추가했다(다른 도메인 조회 서비스 컨벤션과 통일).
+- **Move 목적지 검증**: `MoveSharedFileItemService`가 목적지가 폴더인지, 이동 대상 자신을 목적지로 지정했는지, 이동 대상의 자손을 목적지로 지정해 순환이 생기는지까지 검증한다.
+- **Search 페이지네이션**: 원본 Drive 페이지를 필터링(type·루트 하위)한 결과가 요청한 `size`보다 적으면, 원본 페이지가 남아있는 동안 계속 더 가져오도록 바꿨다. 이전에는 필터링 전 크기만 보고 실제로는 결과가 더 있는데도 적게(심지어 0건) 응답할 수 있었다. 마지막으로 처리한 페이지 안에서 `size`를 넘겨 남는 매칭은 원본 커서가 페이지 단위라 다시 가져올 수 없어 버리고 `hasNext=true`만 알린다(알려진 한계).
+- **업로드 멀티파트 보안**: `GoogleDriveAdapter.upload()`의 boundary를 고정 문자열에서 요청마다 발급하는 랜덤 값(UUID)으로 바꿔 파일 내용에 같은 문자열이 있을 때 파트 경계가 깨지는 문제를 막았다. `contentType`도 `MediaType.parseMediaType()`으로 파싱·정규화해 CRLF가 섞인 값이 헤더에 그대로 삽입되는 인젝션을 막았다(파싱 실패 시 `application/octet-stream`으로 대체).
+- `SHAREDFILE_API_FLOW.md`의 "10개 API" 표기를 11개로 정정.
+
+### 반영하지 않은 항목
+
+- **멀티파트 본문 스트리밍**: 100MB까지 메모리에 전부 올리는 현재 방식을 스트리밍으로 바꾸자는 제안은, Port/UseCase 시그니처까지 바꿔야 하는 아키텍처 변경이라 이번 라운드에는 반영하지 않았다. 100MB 캡이 있고 동시 업로드가 잦지 않은 내부 도구라 우선순위를 낮게 봤다.
+
+### 검증
+
+- 신규·수정 테스트 12개(null 검증 4, 업로드 크기 2, Move 목적지 검증 3, Search 페이지네이션 2, 업로드 보안 1).
+- 전체 `./gradlew clean compileJava compileTestJava test --tests "com.academy.mudogroupware.sharedfile.*"` 통과(96개).
+
 ## ✅ 2026-08-11 · 이름변경·이동·삭제·다운로드 UseCase 구현 (Task5)
 
 ### 변경 목적

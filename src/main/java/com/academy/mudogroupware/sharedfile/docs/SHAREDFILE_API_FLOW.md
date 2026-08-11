@@ -2,7 +2,7 @@
 
 ## 목적
 
-공유파일 10개 API 각각의 `Controller → UseCase → Service → Domain → Port/Adapter` 호출 흐름을 정리한다. `AGENTS.md`가 정한 표준 호출 흐름 설명 방식을 그대로 따른다.
+공유파일 11개 API 각각의 `Controller → UseCase → Service → Domain → Port/Adapter` 호출 흐름을 정리한다. `AGENTS.md`가 정한 표준 호출 흐름 설명 방식을 그대로 따른다.
 
 - 이 문서는 **구현 진행 중 계속 갱신**한다. Task4/5/6이 끝날 때마다 해당 API 행의 구현 상태와 클래스명을 실제 코드에 맞춰 고친다.
 - 요청·응답 DTO, HTTP 상태 코드 같은 API 계약 상세는 다루지 않는다. 그건 Task6 완료 후 `SHAREDFILE_API.md`(신규)가 담당한다.

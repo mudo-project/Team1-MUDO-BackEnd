@@ -209,6 +209,32 @@ class GoogleDriveAdapterTest {
     }
 
     @Test
+    void uploadDoesNotUseAFixedBoundary() {
+        // 고정 boundary였다면 파일 내용에 그 값이 섞여 있을 때 파트 경계가 깨질 수 있다.
+        server.expect(requestTo(containsString("/upload/drive/v3/files")))
+                .andExpect(header("Content-Type",
+                        org.hamcrest.Matchers.not(containsString("boundary=shared_file_upload_boundary"))))
+                .andRespond(withSuccess("""
+                        {"id": "uploaded-id", "name": "a.txt", "mimeType": "text/plain", "trashed": false}
+                        """, MediaType.APPLICATION_JSON));
+
+        adapter.upload("access-token", "parent-id", "a.txt", "text/plain", "content".getBytes());
+    }
+
+    @Test
+    void uploadFallsBackToOctetStreamWhenContentTypeIsInvalid() {
+        server.expect(requestTo(containsString("/upload/drive/v3/files")))
+                .andExpect(content().string(containsString("Content-Type: application/octet-stream")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(containsString("X-Injected"))))
+                .andRespond(withSuccess("""
+                        {"id": "uploaded-id", "name": "a.txt", "mimeType": "application/octet-stream", "trashed": false}
+                        """, MediaType.APPLICATION_JSON));
+
+        adapter.upload("access-token", "parent-id", "a.txt",
+                "text/plain\r\nX-Injected: evil", "content".getBytes());
+    }
+
+    @Test
     void renameSendsPatchWithNewName() {
         server.expect(requestTo(containsString("/files/item-id")))
                 .andExpect(method(HttpMethod.PATCH))

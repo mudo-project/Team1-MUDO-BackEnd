@@ -4,5 +4,5 @@ import com.academy.mudogroupware.sharedfile.application.query.SharedFileItemView
 
 public interface UploadSharedFileUseCase {
 
-    SharedFileItemView upload(String parentId, String filename, String contentType, long size, byte[] content);
+    SharedFileItemView upload(String parentId, String filename, String contentType, byte[] content);
 }

@@ -23,6 +23,7 @@ import com.academy.mudogroupware.sharedfile.domain.exception.SharedFileOutOfRoot
 import com.academy.mudogroupware.sharedfile.domain.exception.SharedFileRootUnavailableException;
 import com.academy.mudogroupware.sharedfile.domain.model.SharedFileRoot;
 import com.academy.mudogroupware.sharedfile.domain.repository.SharedFileRootRepository;
+import com.academy.mudogroupware.global.domain.common.exception.BadRequestException;
 
 class CreateSharedFolderServiceTest {
 
@@ -48,6 +49,14 @@ class CreateSharedFolderServiceTest {
 
         assertThatThrownBy(() -> service.create("parent-id", "  "))
                 .isInstanceOf(SharedFileInvalidNameException.class);
+
+        verify(drivePort, never()).createFolder(any(), any(), any());
+    }
+
+    @Test
+    void throwsWhenParentIdIsNull() {
+        assertThatThrownBy(() -> service.create(null, "새 폴더"))
+                .isInstanceOf(BadRequestException.class);
 
         verify(drivePort, never()).createFolder(any(), any(), any());
     }

@@ -92,6 +92,40 @@ class SearchSharedFileItemsServiceTest {
         assertThat(view.items()).extracting("id").containsExactly("file-id");
     }
 
+    @Test
+    void continuesFetchingRawPagesUntilEnoughMatchesOrExhausted() {
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
+        // 첫 페이지는 전부 루트 밖이라 필터링 후 0건이 되지만, hasNext가 있으니 다음 페이지를 더 가져와야 한다.
+        when(drivePort.searchByName("access-token", "keyword", null, 2)).thenReturn(
+                new DrivePage(List.of(file("outside-1"), file("outside-2")), "cursor-2"));
+        doThrow(new SharedFileOutOfRootException("outside-1"))
+                .when(rootGuard).requireDescendant("access-token", "root-id", "outside-1");
+        doThrow(new SharedFileOutOfRootException("outside-2"))
+                .when(rootGuard).requireDescendant("access-token", "root-id", "outside-2");
+        when(drivePort.searchByName("access-token", "keyword", "cursor-2", 2)).thenReturn(
+                new DrivePage(List.of(file("inside-1"), file("inside-2")), null));
+
+        SharedFileItemsView view = service.search("keyword", null, null, 2);
+
+        assertThat(view.items()).extracting("id").containsExactly("inside-1", "inside-2");
+        assertThat(view.hasNext()).isFalse();
+    }
+
+    @Test
+    void reportsHasNextWhenRawPageHasMoreAfterReachingRequestedSize() {
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
+        when(drivePort.searchByName("access-token", "keyword", null, 1)).thenReturn(
+                new DrivePage(List.of(file("inside-1")), "cursor-2"));
+
+        SharedFileItemsView view = service.search("keyword", null, null, 1);
+
+        assertThat(view.items()).extracting("id").containsExactly("inside-1");
+        assertThat(view.hasNext()).isTrue();
+        assertThat(view.nextCursor()).isEqualTo("cursor-2");
+    }
+
     private DriveItem file(String id) {
         return new DriveItem(id, "name-" + id, "application/octet-stream", List.of(), null, true, null, false);
     }
