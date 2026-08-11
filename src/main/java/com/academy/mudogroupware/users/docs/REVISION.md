@@ -16,7 +16,7 @@
 ### 확정된 정책
 
 - 학원 신청/승인 관련 도메인·애플리케이션·인프라·프레젠테이션 계층 클래스와 테스트를 전부 삭제했다. `SubmitAcademyApplicationRequest`/`AcademyApplicationController` 등 5계층 전체가 대상이다.
-- `academy`/`academy_application` DB 테이블은 이번 작업에서 DROP하지 않았다 — 코드가 더 이상 참조하지 않는 상태로만 남기고, 안전하다고 판단되면 별도 후속 작업으로 DROP한다.
+- `academy_application` 테이블은 이번 작업으로 코드가 더 이상 참조하지 않는다. `academy` 테이블은 아직 `users.academy_id`/`role.academy_id`(Phase 2 전까지 유지)와 `file`/`messenger` 도메인의 `academy_id` 참조가 남아있어 활성 스키마 계약의 일부다 — Phase 2와 file/messenger 정리가 끝나기 전까지 `academy` 테이블을 DROP하면 안 된다. 두 테이블 모두 이번 작업에서 DROP하지 않았고, 각자의 잔여 참조가 모두 정리된 뒤 별도 후속 작업으로 DROP한다.
 - `PLATFORM:SUPER_ADMIN` 권한 매커니즘(`AdminScope.PLATFORM`, `JwtAuthenticationConverter`의 authority 부여 로직) 자체는 건드리지 않았다 — 다른 팀원이 이 권한 체계를 쓰는 별도 기능(슈퍼 어드민 대시보드 등)을 개발 중이기 때문에, `SecurityConfig`에서 `/api/academy-applications*` 경로 매처 3개만 제거했다.
 - 최초 학원 관리자(원장) 계정은 이제 학원 신청/승인이라는 별도 플로우 없이, 서버·스키마를 새로 배포한 뒤 그 배포 안에서 일반 계정 생성 절차로 수동 생성한다.
 
