@@ -14,10 +14,12 @@ public record MemberListResponse(
         @Schema(description = "배정된 역할 ID. 없으면 null", example = "8") Long roleId,
         @Schema(description = "배정된 역할 이름. roleId가 없으면 null", example = "강사") String roleName,
         @Schema(description = "입사일", example = "2023-03-02T00:00:00") LocalDateTime joinedAt,
-        @Schema(description = "계정 상태: ACTIVE/RESIGNED/INACTIVE", example = "ACTIVE") String status) {
+        @Schema(description = "계정 상태: ACTIVE/RESIGNED/INACTIVE", example = "ACTIVE") String status,
+        @Schema(description = "오늘 근태 상태: PRESENT/ABSENT/OFF/LEAVE. 재직 중(ACTIVE)이 아니면 null",
+                example = "PRESENT") String attendanceStatus) {
 
     public static MemberListResponse from(MemberListItem item) {
         return new MemberListResponse(item.userId(), item.name(), item.email(), item.phone(), item.roleId(),
-                item.roleName(), item.joinedAt(), item.status().name());
+                item.roleName(), item.joinedAt(), item.status().name(), item.attendanceStatus());
     }
 }
