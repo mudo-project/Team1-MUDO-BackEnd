@@ -464,8 +464,8 @@ Query Parameter
 | --- | --- | --- | --- |
 | `username` | String | true | 로그인 아이디, 최대 50자, 전역 유니크 |
 | `name` | String | true | 이름, 최대 50자 |
-| `phone` | String | true | 전화번호, 최대 20자 |
-| `email` | String | true | 이메일, 최대 100자 |
+| `phone` | String | false | 전화번호, 최대 20자. 비워두면 본인이 나중에 `PATCH /api/users/me`(15-1번 항목)로 채워 넣을 수 있다(`V4.1.7`) |
+| `email` | String | false | 이메일, 최대 100자. 비워두면 본인이 나중에 채워 넣을 수 있다(`V4.1.7`) |
 | `roleId` | Long | true | 배정할 역할 ID (같은 학원 소속 역할만 가능) |
 
 ### Response · `201 Created`
@@ -489,6 +489,7 @@ Query Parameter
 - `username`이 이미 존재하면 `409 USER_409_6`으로 거절합니다(사전 체크 + DB 유니크 제약 이중 방어).
 - `roleId`가 존재하지 않거나 다른 학원 소속이면 `404 USER_404_2`로 응답합니다.
 - 계정은 `accountType=MEMBER`, 임시 비밀번호로 발급되며 `mustChangePw`가 `true`로 저장됩니다.
+- `phone`/`email`은 선택 입력이다(`V4.1.7`). 원장이 직원 전체의 연락처를 일일이 입력하지 않아도 되고, 비워두면 본인이 나중에 `PATCH /api/users/me`(15-1번 항목)로 채워 넣을 수 있습니다.
 - 응답의 `passwordSetupLink`는 이 호출 한 번에만 내려가며, 링크 안의 임시 비밀번호는 서버에 별도로 저장되지 않습니다. 학원 관리자가 직원에게 직접 전달해야 합니다(카카오톡/문자 등) — 이메일 등 자동 발송은 아직 없습니다(후속 작업). 이 링크로 `POST /api/users/password-setup`(14번 항목)을 호출하면 최초 비밀번호 설정이 끝납니다.
 
 ---
@@ -559,6 +560,37 @@ Query Parameter
 
 - `roleId`가 없는 계정(예: 역할 미배정)은 `roleId`/`roleName` 모두 `null`로 내려갑니다.
 - 인증 실패는 401. 토큰 발급 이후 계정이 삭제되는 등 JWT의 `userId`에 해당하는 계정을 찾을 수 없으면 `404 USER_404_1`로 응답합니다.
+
+---
+
+## 15-1. 내 정보 수정
+
+`PATCH /api/users/me`
+권한: 없음 (로그인만 되면 호출 가능, 본인 정보만 수정)
+
+### Request
+
+```json
+{
+  "phone": "010-1234-5678",
+  "email": "me@academy.kr"
+}
+```
+
+| name | type | required | 설명 |
+| --- | --- | --- | --- |
+| `phone` | String | false | 전화번호, 최대 20자. 보내지 않으면 기존 값 유지 |
+| `email` | String | false | 이메일, 최대 100자. 보내지 않으면 기존 값 유지 |
+
+### Response · `204 No Content`
+
+본문 없음.
+
+### 검증 및 정책
+
+- `phone`/`email`만 수정 가능합니다 — 이름·역할·입사일은 본인이 바꿀 수 없고 관리자만 바꿀 수 있습니다(관리자용 구성원 정보 수정은 별도 PR에서 이어집니다).
+- 값을 보내지 않은 필드는 기존 값을 그대로 유지하는 부분 수정(partial update)입니다 — PATCH를 보낼 때마다 전체 필드를 다시 채울 필요가 없습니다.
+- 실패 케이스 없음(인증 실패만 401).
 
 ---
 

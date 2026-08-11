@@ -99,4 +99,11 @@ public class UserEntity {
     void changeRole(Long roleId) {
         this.roleId = roleId;
     }
+
+    void updateProfile(String name, String phone, String email, LocalDateTime joinedAt) {
+        this.name = name;
+        this.phone = phone;
+        this.email = email;
+        this.joinedAt = joinedAt;
+    }
 }

@@ -146,6 +146,20 @@ class UserRepositoryImplDataJpaTest {
         assertThat(saved.getEmail()).isNull();
     }
 
+    @Test
+    void updateProfileReplacesNameContactAndJoinedAt() {
+        insertUserWithRole(1L, 1L, "before", UserStatus.ACTIVE, null);
+        java.time.LocalDateTime newJoinedAt = java.time.LocalDateTime.of(2026, 1, 1, 0, 0);
+
+        userRepository.updateProfile(1L, "새이름", "010-9999-0000", "new@example.com", newJoinedAt);
+
+        User found = userRepository.findById(1L).orElseThrow();
+        assertThat(found.getName()).isEqualTo("새이름");
+        assertThat(found.getPhone()).isEqualTo("010-9999-0000");
+        assertThat(found.getEmail()).isEqualTo("new@example.com");
+        assertThat(found.getJoinedAt()).isEqualTo(newJoinedAt);
+    }
+
     private void insertUserWithPasswordAndMustChangePw(long id, long academyId, String suffix, String password,
                                                          boolean mustChangePw) {
         jdbcTemplate.update("""

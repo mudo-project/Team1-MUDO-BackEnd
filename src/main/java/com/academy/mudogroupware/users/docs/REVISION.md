@@ -7,6 +7,34 @@
 
 ---
 
+## ✅ 2026-08-11 · 내 정보 수정 + 계정생성 필드 선택화
+
+### 배경
+
+#361(내 정보 조회)에 이어지는 작업(#362). 본인의 연락처/이메일을 수정하는 API가 없었고, 계정 생성 시 phone/email이 필수라 원장이 직원 전체의 연락처를 일일이 입력해야 하는 문제가 있었다.
+
+### 확정된 정책
+
+- `PATCH /api/users/me`는 `phone`/`email`만 수정 가능하다 — 이름·역할·입사일은 관리자용 구성원 정보 수정(별도 PR)에서 다룬다.
+- 값을 보내지 않은 필드는 기존 값을 유지하는 부분 수정(partial update)으로 구현했다.
+- 계정 생성 시 `phone`/`email`을 선택 입력으로 바꿨다(`V4.1.7` 마이그레이션).
+- `email` UNIQUE 제약 위반은 `EmailDuplicateException`(409)으로 변환한다 — phone/email이 선택값이 되면서 이메일 중복 케이스가 실제로 발생 가능해졌고, 기존 `UsernameDuplicateException`과 동일한 패턴을 따랐다.
+- `UserRepositoryImplDataJpaTest`에 신규 저장(`save`) 테스트를 추가하는 과정에서, notice/messenger의 `users` 테이블 shim이 `@DataJpaTest` 전체 엔티티 스캔과 충돌해 `id` 컬럼의 IDENTITY 속성이 사라지는 문제를 발견했다. users 도메인 엔티티/리포지토리만 스캔하도록 테스트를 좁혀서 해결했다(다른 도메인 코드는 건드리지 않음).
+
+### 완료 기준
+
+- [x] `V4.1.7` 마이그레이션 + `CreateAccountRequest` 필수값 제거(TDD)
+- [x] `UserRepository.updateProfile` + 이메일 중복 예외 변환(TDD)
+- [x] `UpdateMyProfileUseCase`/`UpdateUserProfileService` 구현(TDD)
+- [x] `UserController`에 `PATCH /api/users/me` 반영
+- [x] `./gradlew build` 통과
+
+### 범위 밖 (명시적으로 미룸)
+
+- 비밀번호 변경, 관리자용 상세조회/수정/재직상태변경 — 각각 별도 PR(#363~#366)에서 이어간다.
+
+---
+
 ## ✅ 2026-08-11 · 내 정보 조회 추가
 
 ### 배경

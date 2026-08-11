@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.users.infrastructure.persistence;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -10,6 +11,7 @@ import java.util.stream.Collectors;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Repository;
 
+import com.academy.mudogroupware.users.domain.exception.EmailDuplicateException;
 import com.academy.mudogroupware.users.domain.exception.RoleNotFoundException;
 import com.academy.mudogroupware.users.domain.exception.UserErrorCode;
 import com.academy.mudogroupware.users.domain.exception.UserException;
@@ -26,6 +28,7 @@ public class UserRepositoryImpl implements UserRepository {
 
     private static final String USERS_ROLE_FK_CONSTRAINT = "fk_users_role";
     private static final String USERNAME_UNIQUE_CONSTRAINT = "uk_users_username";
+    private static final String EMAIL_UNIQUE_CONSTRAINT = "uk_users_email";
 
     private final UserJpaRepository userJpaRepository;
 
@@ -54,6 +57,21 @@ public class UserRepositoryImpl implements UserRepository {
         } catch (DataIntegrityViolationException exception) {
             if (containsConstraint(exception, USERS_ROLE_FK_CONSTRAINT)) {
                 throw new RoleNotFoundException(exception);
+            }
+            throw exception;
+        }
+    }
+
+    @Override
+    public void updateProfile(Long userId, String name, String phone, String email, LocalDateTime joinedAt) {
+        UserEntity entity = userJpaRepository.findById(userId)
+                .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+        entity.updateProfile(name, phone, email, joinedAt);
+        try {
+            userJpaRepository.flush();
+        } catch (DataIntegrityViolationException exception) {
+            if (containsConstraint(exception, EMAIL_UNIQUE_CONSTRAINT)) {
+                throw new EmailDuplicateException(exception);
             }
             throw exception;
         }
