@@ -6,9 +6,11 @@ import java.util.List;
 import com.academy.mudogroupware.rollcall.application.command.SendAttendanceMessagesCommand;
 
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 
 public record SendAttendanceMessagesRequest(
-        @NotEmpty List<Long> studentIds
+        @NotEmpty List<@NotNull @Positive Long> studentIds
 ) {
 
     public SendAttendanceMessagesCommand toCommand(Long lectureId, LocalDate date) {

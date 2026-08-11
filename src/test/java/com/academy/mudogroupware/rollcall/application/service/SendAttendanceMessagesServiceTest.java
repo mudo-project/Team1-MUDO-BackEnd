@@ -111,6 +111,39 @@ class SendAttendanceMessagesServiceTest {
     }
 
     @Test
+    void continuesToNextStudentAfterOneSmsFailure() {
+        MessageTemplate template = MessageTemplate.restore(
+                7L, "결석 안내", AttendanceStatus.ABSENT, "결석했습니다", 1L, NOW, NOW);
+        MessageSendCandidateView firstCandidate = new MessageSendCandidateView(
+                10L, "이준호", AttendanceStatus.ABSENT, "010-1111-1111", 7L, "결석 안내", true);
+        MessageSendCandidateView secondCandidate = new MessageSendCandidateView(
+                11L, "김서윤", AttendanceStatus.ABSENT, "010-2222-2222", 7L, "결석 안내", true);
+        when(getMessageSendCandidatesUseCase.getCandidates(LECTURE_ID, DATE))
+                .thenReturn(List.of(firstCandidate, secondCandidate));
+        when(messageTemplateRepository.findById(7L)).thenReturn(Optional.of(template));
+        when(smsSenderPort.send("010-1111-1111", "결석했습니다"))
+                .thenReturn(SmsSendResult.failed("인증오류입니다"));
+        when(smsSenderPort.send("010-2222-2222", "결석했습니다")).thenReturn(SmsSendResult.succeeded());
+
+        List<MessageSendResultView> results = service.send(
+                new SendAttendanceMessagesCommand(LECTURE_ID, DATE, List.of(10L, 11L)));
+
+        assertThat(results).hasSize(2);
+        assertThat(results).filteredOn(result -> result.studentId().equals(10L))
+                .allSatisfy(result -> {
+                    assertThat(result.sent()).isFalse();
+                    assertThat(result.failureReason()).isEqualTo("인증오류입니다");
+                });
+        assertThat(results).filteredOn(result -> result.studentId().equals(11L))
+                .allSatisfy(result -> {
+                    assertThat(result.sent()).isTrue();
+                    assertThat(result.failureReason()).isNull();
+                });
+        verify(smsSenderPort).send("010-1111-1111", "결석했습니다");
+        verify(smsSenderPort).send("010-2222-2222", "결석했습니다");
+    }
+
+    @Test
     void marksRequestedStudentNotInCandidateListAsNotEligible() {
         when(getMessageSendCandidatesUseCase.getCandidates(LECTURE_ID, DATE))
                 .thenReturn(List.of());
