@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.users.application.service;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -8,6 +9,7 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.academy.mudogroupware.global.domain.common.page.PageResult;
 import com.academy.mudogroupware.users.application.port.MemberTodayAttendanceStatus;
 import com.academy.mudogroupware.users.application.port.TodayAttendanceStatusPort;
 import com.academy.mudogroupware.users.application.result.MemberListItem;
@@ -32,36 +34,53 @@ public class ListMembersService implements ListMembersUseCase {
     private final TodayAttendanceStatusPort todayAttendanceStatusPort;
 
     @Override
-    public List<MemberListItem> list(Long academyId, String keyword) {
-        log.info("event=member_list_시작 academyId={}, keywordPresent={}", academyId,
-                keyword != null && !keyword.isBlank());
+    public PageResult<MemberListItem> list(Long academyId, String keyword, Long roleId, int page, int size) {
+        log.info("event=member_list_시작 academyId={}, keywordPresent={}, roleId={}, page={}, size={}", academyId,
+                keyword != null && !keyword.isBlank(), roleId, page, size);
 
         List<User> users = userRepository.findAllByAcademyId(academyId);
 
         Map<Long, String> roleNamesById = roleRepository.findAllByAcademyId(academyId).stream()
                 .collect(Collectors.toMap(Role::getId, Role::getName));
 
-        Map<Long, String> attendanceStatusByUserId = todayAttendanceStatusPort
-                .findTodayStatusByUserIds(users.stream().map(User::getId).toList()).stream()
-                .collect(Collectors.toMap(MemberTodayAttendanceStatus::userId, MemberTodayAttendanceStatus::status));
-
         String normalizedKeyword = keyword == null ? "" : keyword.trim().toLowerCase(Locale.ROOT);
 
-        List<MemberListItem> result = users.stream()
-                .map(user -> toItem(user, roleNamesById.get(user.getRoleId()), attendanceStatusByUserId))
+        List<MemberListItem> filtered = users.stream()
+                .map(user -> toItem(user, roleNamesById.get(user.getRoleId())))
                 .filter(item -> matchesKeyword(item, normalizedKeyword))
+                .filter(item -> matchesRole(item, roleId))
+                .sorted(Comparator
+                        .comparing(MemberListItem::roleName, Comparator.nullsLast(String::compareTo))
+                        .thenComparing(MemberListItem::name))
+                .toList();
+
+        int from = Math.min(page * size, filtered.size());
+        int to = Math.min(from + size, filtered.size());
+        List<MemberListItem> paged = filtered.subList(from, to);
+
+        Map<Long, String> attendanceStatusByUserId = todayAttendanceStatusPort
+                .findTodayStatusByUserIds(paged.stream().map(MemberListItem::userId).toList()).stream()
+                .collect(Collectors.toMap(MemberTodayAttendanceStatus::userId, MemberTodayAttendanceStatus::status));
+
+        List<MemberListItem> result = paged.stream()
+                .map(item -> withAttendanceStatus(item, attendanceStatusByUserId))
                 .toList();
 
         log.info("event=member_list_완료 academyId={}, count={}", academyId, result.size());
-        return result;
+        return PageResult.of(result, page, size, to < filtered.size());
     }
 
-    private MemberListItem toItem(User user, String roleName, Map<Long, String> attendanceStatusByUserId) {
-        String attendanceStatus = user.getStatus() == UserStatus.ACTIVE
-                ? attendanceStatusByUserId.get(user.getId())
-                : null;
+    private MemberListItem toItem(User user, String roleName) {
         return new MemberListItem(user.getId(), user.getName(), user.getEmail(), user.getPhone(),
-                user.getRoleId(), roleName, user.getJoinedAt(), user.getStatus(), attendanceStatus);
+                user.getRoleId(), roleName, user.getJoinedAt(), user.getStatus(), null);
+    }
+
+    private MemberListItem withAttendanceStatus(MemberListItem item, Map<Long, String> attendanceStatusByUserId) {
+        String attendanceStatus = item.status() == UserStatus.ACTIVE
+                ? attendanceStatusByUserId.get(item.userId())
+                : null;
+        return new MemberListItem(item.userId(), item.name(), item.email(), item.phone(), item.roleId(),
+                item.roleName(), item.joinedAt(), item.status(), attendanceStatus);
     }
 
     private boolean matchesKeyword(MemberListItem item, String normalizedKeyword) {
@@ -72,5 +91,9 @@ public class ListMembersService implements ListMembersUseCase {
         boolean roleMatches = item.roleName() != null
                 && item.roleName().toLowerCase(Locale.ROOT).contains(normalizedKeyword);
         return nameMatches || roleMatches;
+    }
+
+    private boolean matchesRole(MemberListItem item, Long roleId) {
+        return roleId == null || roleId.equals(item.roleId());
     }
 }
