@@ -7,6 +7,30 @@
 
 ---
 
+## ✅ 2026-08-11 · 구성원 재직 상태 변경 추가
+
+### 배경
+
+#361(내 정보 조회, #367)·#362(내 정보 수정, #371)·#363(내 비밀번호 변경, #372)·#364(구성원 상세 조회, #373)·#365(구성원 정보 수정, #374)에 이어지는 마지막 세부 작업(#366). 구성원의 퇴사/복직 처리를 API로 할 수 없었다.
+
+### 확정된 정책
+
+- `ACTIVE`/`RESIGNED`/`INACTIVE` 양방향 전환을 지원한다 — 퇴사 처리(`RESIGNED`) 이후 복직 시 다시 `ACTIVE`로 되돌리는 것도 같은 API로 가능하다. 단방향 상태 머신으로 제한할 이유가 없다고 판단했다.
+- 대상 검증은 구성원 상세조회/정보수정과 동일한 `findById → academyId 필터 → accountType == MEMBER 필터` 패턴을 따랐다.
+
+### 완료 기준
+
+- [x] `UserRepository.changeStatus` + `UserEntity.changeStatus` 뮤테이터(TDD)
+- [x] `ChangeUserStatusUseCase`/`ChangeUserStatusService` 구현(TDD)
+- [x] `UserController`에 `PATCH /api/users/{userId}/status` 반영
+- [x] `./gradlew build` 통과
+
+### 범위 밖 (명시적으로 미룸)
+
+- 없음 — #353(구성원 상세조회/수정/재직상태변경/비밀번호변경)의 마지막 세부 작업으로 이 PR을 끝으로 6개 API 분할이 모두 완료된다.
+
+---
+
 ## ✅ 2026-08-11 · 구성원 정보 수정 추가
 
 ### 배경

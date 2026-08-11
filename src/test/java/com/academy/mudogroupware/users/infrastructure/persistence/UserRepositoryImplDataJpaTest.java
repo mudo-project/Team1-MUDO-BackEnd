@@ -169,6 +169,17 @@ class UserRepositoryImplDataJpaTest {
         assertThat(userRepository.findById(1L).orElseThrow().getPassword()).isEqualTo("new-encoded-hash");
     }
 
+    @Test
+    void changesStatusBidirectionally() {
+        insertUserWithRole(1L, 1L, "before", UserStatus.ACTIVE, null);
+
+        userRepository.changeStatus(1L, UserStatus.RESIGNED);
+        assertThat(userRepository.findById(1L).orElseThrow().getStatus()).isEqualTo(UserStatus.RESIGNED);
+
+        userRepository.changeStatus(1L, UserStatus.ACTIVE);
+        assertThat(userRepository.findById(1L).orElseThrow().getStatus()).isEqualTo(UserStatus.ACTIVE);
+    }
+
     private void insertUserWithPasswordAndMustChangePw(long id, long academyId, String suffix, String password,
                                                          boolean mustChangePw) {
         jdbcTemplate.update("""
