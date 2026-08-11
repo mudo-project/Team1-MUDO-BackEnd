@@ -31,6 +31,8 @@ public enum MessengerErrorCode implements ErrorCode {
             "cursorCreatedAt과 cursorCardId는 함께 전달하거나 함께 생략해야 합니다."),
     INVALID_TASK_CARD_PAGE_SIZE(HttpStatus.BAD_REQUEST, "MESSENGER_400_18",
             "업무지시 카드 조회 size는 1 이상 100 이하여야 합니다."),
+    TASK_CARD_HAS_COMPLETION(HttpStatus.BAD_REQUEST, "MESSENGER_400_19",
+            "완료 처리된 담당자가 있어 수정/삭제할 수 없습니다."),
 
     NOT_ROOM_MEMBER(HttpStatus.FORBIDDEN, "MESSENGER_403_1", "채팅방 참여자가 아닙니다."),
     NOT_TASK_ASSIGNEE(HttpStatus.FORBIDDEN, "MESSENGER_403_2", "해당 업무지시의 담당자가 아닙니다."),

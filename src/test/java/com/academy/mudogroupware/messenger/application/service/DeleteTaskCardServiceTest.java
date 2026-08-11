@@ -71,6 +71,21 @@ class DeleteTaskCardServiceTest {
     }
 
     @Test
+    void throwsAndWritesNothingWhenAnyAssigneeAlreadyCompleted() {
+        ChatTaskCard chatTaskCard = ChatTaskCard.restore(7L, 1L, 2L, "과제 제출", null,
+                List.of(ChatTaskAssignee.restore(3L, CARD_CREATED_AT)), CARD_CREATED_AT);
+        when(chatTaskCardRepository.findById(7L)).thenReturn(Optional.of(chatTaskCard));
+
+        assertThatThrownBy(() -> service.delete(new DeleteTaskCardCommand(1L, 7L, 2L)))
+                .isInstanceOf(MessengerException.class)
+                .extracting(exception -> ((MessengerException) exception).getErrorCode())
+                .isEqualTo(MessengerErrorCode.TASK_CARD_HAS_COMPLETION);
+
+        verify(chatTaskCardRepository, never()).markDeleted(any(), any());
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
     void reDeleteByOwnerSucceedsSilentlyWithoutDuplicateWriteOrEvent() {
         LocalDateTime firstDeletedAt = LocalDateTime.of(2026, 8, 5, 12, 0);
         ChatTaskCard chatTaskCard = ChatTaskCard.restore(7L, 1L, 2L, "과제 제출", null,

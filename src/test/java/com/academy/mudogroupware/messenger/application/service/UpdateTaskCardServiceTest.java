@@ -50,7 +50,7 @@ class UpdateTaskCardServiceTest {
     void replacesContentAndDiffsAssigneesThenPublishesUpdatedEvent() {
         ChatRoom chatRoom = roomWithMembers(2L, 3L, 4L, 5L);
         ChatTaskCard chatTaskCard = ChatTaskCard.restore(7L, 1L, 2L, "old", LocalDate.of(2026, 8, 10),
-                List.of(ChatTaskAssignee.restore(3L, CARD_CREATED_AT), ChatTaskAssignee.restore(4L, null)),
+                List.of(ChatTaskAssignee.restore(3L, null), ChatTaskAssignee.restore(4L, null)),
                 CARD_CREATED_AT);
         when(chatRoomRepository.findById(1L)).thenReturn(Optional.of(chatRoom));
         when(chatTaskCardRepository.findById(7L)).thenReturn(Optional.of(chatTaskCard));
@@ -84,6 +84,26 @@ class UpdateTaskCardServiceTest {
                 .isInstanceOf(MessengerException.class)
                 .extracting(exception -> ((MessengerException) exception).getErrorCode())
                 .isEqualTo(MessengerErrorCode.NOT_TASK_CARD_OWNER);
+
+        verify(chatTaskCardRepository, never()).updateContent(any(), any(), any());
+        verify(chatTaskCardRepository, never()).replaceAssignees(any(), any(), any());
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void throwsAndWritesNothingWhenAnyAssigneeAlreadyCompleted() {
+        ChatRoom chatRoom = roomWithMembers(2L, 3L, 4L);
+        ChatTaskCard chatTaskCard = ChatTaskCard.restore(7L, 1L, 2L, "old", null,
+                List.of(ChatTaskAssignee.restore(3L, CARD_CREATED_AT), ChatTaskAssignee.restore(4L, null)),
+                CARD_CREATED_AT);
+        when(chatRoomRepository.findById(1L)).thenReturn(Optional.of(chatRoom));
+        when(chatTaskCardRepository.findById(7L)).thenReturn(Optional.of(chatTaskCard));
+
+        assertThatThrownBy(() -> service.update(
+                new UpdateTaskCardCommand(1L, 7L, 2L, "new", null, List.of(3L, 4L))))
+                .isInstanceOf(MessengerException.class)
+                .extracting(exception -> ((MessengerException) exception).getErrorCode())
+                .isEqualTo(MessengerErrorCode.TASK_CARD_HAS_COMPLETION);
 
         verify(chatTaskCardRepository, never()).updateContent(any(), any(), any());
         verify(chatTaskCardRepository, never()).replaceAssignees(any(), any(), any());
