@@ -114,7 +114,7 @@ jobs:
             --instance-ids "$INSTANCE_ID" \
             --document-name "AWS-RunShellScript" \
             --comment "mudo-monitoring-deploy-${{ github.sha }}" \
-            --parameters "commands=[$(jq -Rs '. as $s | ($s | split("\n") | map(select(length > 0)))' <<< "$REMOTE_COMMANDS")]" \
+            --parameters "commands=$(jq -Rs '. as $s | ($s | split("\n") | map(select(length > 0)))' <<< "$REMOTE_COMMANDS")" \
             --query 'Command.CommandId' --output text)
 
           echo "SSM Command ID: $COMMAND_ID"
