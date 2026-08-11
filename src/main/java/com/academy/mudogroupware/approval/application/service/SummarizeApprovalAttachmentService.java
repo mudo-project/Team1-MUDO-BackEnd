@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.academy.mudogroupware.approval.application.command.SummarizeApprovalAttachmentCommand;
+import com.academy.mudogroupware.approval.application.port.AttachmentContent;
 import com.academy.mudogroupware.approval.application.port.AttachmentContentPort;
 import com.academy.mudogroupware.approval.application.port.AttachmentContentUnavailableException;
 import com.academy.mudogroupware.approval.application.port.AttachmentSummarizationException;
@@ -49,7 +50,7 @@ public class SummarizeApprovalAttachmentService implements SummarizeApprovalAtta
 
         LocalDateTime now = LocalDateTime.now(clock);
 
-        String attachmentContent;
+        AttachmentContent attachmentContent;
         try {
             attachmentContent = attachmentContentPort.loadContent(attachment.getFileId());
         } catch (AttachmentContentUnavailableException e) {

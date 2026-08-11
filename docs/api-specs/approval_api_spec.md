@@ -935,9 +935,10 @@ Response Body
 | `403 Forbidden` | `APPROVAL_403_1` | 해당 결재를 조회할 권한이 없습니다. | 신청자 본인도, 결재선 포함자도 아님 |
 | `404 Not Found` | `APPROVAL_404_2` | 결재 문서를 찾을 수 없습니다. | 존재하지 않는 `documentId` |
 | `404 Not Found` | `APPROVAL_404_4` | 첨부파일을 찾을 수 없습니다. | 문서에 속하지 않거나 존재하지 않는 `fileId` |
+| `409 Conflict` | `APPROVAL_409_7` | 첨부파일 원문 조회 기능이 없어 요약할 수 없습니다. | 지원하지 않는 형식(hwp 등)이거나, PDF/이미지 용량이 15MB를 초과하거나, docx 텍스트 추출에 실패한 경우 |
 | `502 Bad Gateway` | `APPROVAL_502_1` | 첨부파일 요약 생성에 실패했습니다. | Gemini API 호출 실패 |
 
-> ⚠️ 알려진 제한사항: 아직 `file` 모듈과의 실제 파일 내용 조회 연동이 없어, 실제 파일 내용이 아니라 placeholder 텍스트로 Gemini API를 호출합니다. 실제 파일 내용 기반 요약은 후속 작업입니다.
+지원 형식: UTF-8 텍스트, PDF(`application/pdf`), 이미지(`image/jpeg`, `image/png`, `image/webp`, `image/heic`, `image/heif`), Word 문서(`.docx`). PDF/이미지는 Gemini 멀티모달 입력으로 직접 전달되고, docx는 서버에서 텍스트를 추출해 전달된다. PDF/이미지는 15MB를 초과하면 요약할 수 없다. hwp 등 위 목록에 없는 형식은 지원하지 않는다.
 
 ---
 

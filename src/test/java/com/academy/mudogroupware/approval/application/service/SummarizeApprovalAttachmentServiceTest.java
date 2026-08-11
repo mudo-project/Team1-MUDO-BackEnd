@@ -15,6 +15,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.academy.mudogroupware.approval.application.command.SummarizeApprovalAttachmentCommand;
+import com.academy.mudogroupware.approval.application.port.AttachmentContent;
 import com.academy.mudogroupware.approval.application.port.AttachmentContentPort;
 import com.academy.mudogroupware.approval.application.port.AttachmentContentUnavailableException;
 import com.academy.mudogroupware.approval.application.port.AttachmentSummarizationException;
@@ -90,9 +91,10 @@ class SummarizeApprovalAttachmentServiceTest {
     @Test
     void appliesSummaryAndSavesDocumentOnSuccess() {
         ApprovalDocument document = newDocument();
+        AttachmentContent content = AttachmentContent.text("실제 첨부파일 본문");
         when(approvalDocumentRepository.findById(1L)).thenReturn(Optional.of(document));
-        when(attachmentContentPort.loadContent(FILE_ID)).thenReturn("실제 첨부파일 본문");
-        when(attachmentSummarizerPort.summarize(anyString())).thenReturn("생성된 요약");
+        when(attachmentContentPort.loadContent(FILE_ID)).thenReturn(content);
+        when(attachmentSummarizerPort.summarize(content)).thenReturn("생성된 요약");
         when(approvalDocumentRepository.save(document)).thenReturn(document);
 
         ApprovalAttachmentSummaryView view = service.summarize(
@@ -102,7 +104,7 @@ class SummarizeApprovalAttachmentServiceTest {
         assertThat(view.aiSummary()).isEqualTo("생성된 요약");
         assertThat(view.summaryStatus()).isEqualTo(AttachmentSummaryStatus.COMPLETED);
         assertThat(view.summarizedAt()).isEqualTo(NOW);
-        verify(attachmentSummarizerPort).summarize("실제 첨부파일 본문");
+        verify(attachmentSummarizerPort).summarize(content);
         verify(approvalDocumentRepository).save(document);
     }
 
@@ -131,8 +133,8 @@ class SummarizeApprovalAttachmentServiceTest {
     void marksFailedAndStillSavesWhenSummarizerFails() {
         ApprovalDocument document = newDocument();
         when(approvalDocumentRepository.findById(1L)).thenReturn(Optional.of(document));
-        when(attachmentContentPort.loadContent(FILE_ID)).thenReturn("실제 첨부파일 본문");
-        when(attachmentSummarizerPort.summarize(anyString()))
+        when(attachmentContentPort.loadContent(FILE_ID)).thenReturn(AttachmentContent.text("실제 첨부파일 본문"));
+        when(attachmentSummarizerPort.summarize(any(AttachmentContent.class)))
                 .thenThrow(new AttachmentSummarizationException("Gemini API 호출에 실패했습니다."));
 
         assertThatThrownBy(() -> service.summarize(new SummarizeApprovalAttachmentCommand(1L, FILE_ID, CREATOR_ID)))

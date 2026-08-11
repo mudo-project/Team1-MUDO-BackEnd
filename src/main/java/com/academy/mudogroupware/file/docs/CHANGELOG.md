@@ -1,5 +1,12 @@
 # file 모듈 Changelog
 
+## 2026-08-11 - approval 첨부파일 요약용 원문 조회에 PDF/이미지/docx 지원 추가
+
+- `ApprovalAttachmentContentAdapter`가 텍스트뿐 아니라 PDF/이미지(jpeg/png/webp/heic/heif)/docx도 읽어서 반환하도록 확장했다. 반환 타입이 `String`에서 `AttachmentContent`(TEXT/BINARY)로 바뀌었다(`AttachmentContentPort` 계약 변경, approval 도메인 소유 타입).
+- PDF/이미지는 바이너리 그대로(`AttachmentContent.binary`) 반환한다 — approval의 `GeminiSummarizerAdapter`가 Gemini 멀티모달 입력으로 직접 전달한다. 원본 15MB 초과 시 실패 처리한다.
+- docx는 Apache POI(`XWPFDocument`/`XWPFWordExtractor`)로 텍스트를 추출해 기존 텍스트 경로(`AttachmentContent.text`)로 반환한다.
+- hwp 등 나머지 형식은 계속 미지원이며 `AttachmentContentUnavailableException`으로 실패한다.
+
 ## 2026-08-10 - CodeRabbit 리뷰 반영: academy 스코프 검증 + 배치 입력 상한
 
 - **[보안]** `file_metadata`에 `academy_id`를 추가하고(`V1.5.6`), 등록 시 요청자 학원으로 저장한다. 다운로드 URL 단건/배치 조회 모두 `academyId`가 일치하는 파일만 찾도록 `findByIdAndAcademyId`/`findAllByIdInAndAcademyId`로 변경했다. 이전엔 fileId만 알면(추측/유출) 다른 학원 사용자도 다운로드 URL을 받을 수 있었다(IDOR).

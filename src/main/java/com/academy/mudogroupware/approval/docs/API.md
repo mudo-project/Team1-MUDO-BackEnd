@@ -689,6 +689,17 @@ Response Body
 
 Gemini API를 호출해 첨부파일 요약을 생성한다. 신청자 또는 결재선 참여자만 가능하다.
 
+지원하는 첨부파일 형식은 다음과 같다.
+
+| 구분 | contentType | 처리 방식 |
+| --- | --- | --- |
+| 텍스트 | `text/plain` 등 UTF-8 텍스트 계열 | 원문 텍스트를 그대로 프롬프트에 포함 |
+| PDF | `application/pdf` | Gemini 멀티모달 입력(inline base64)으로 전달 |
+| 이미지 | `image/jpeg`, `image/png`, `image/webp`, `image/heic`, `image/heif` | Gemini 멀티모달 입력(inline base64)으로 전달 |
+| Word 문서 | `application/vnd.openxmlformats-officedocument.wordprocessingml.document` (docx) | Apache POI로 텍스트를 추출한 뒤 프롬프트에 포함 |
+
+PDF/이미지는 원본 용량이 15MB를 초과하면 요약할 수 없다(`APPROVAL_409_7`). 위 표에 없는 형식(예: hwp, ppt, xlsx 등)도 지원하지 않는다.
+
 # **[request]**
 
 Request Header
@@ -739,7 +750,7 @@ Response Body
 | `403 Forbidden` | `APPROVAL_403_1` | 해당 결재를 조회할 권한이 없습니다. | 신청자/결재선 참여자가 아닌 경우 |
 | `404 Not Found` | `APPROVAL_404_2` | 결재 문서를 찾을 수 없습니다. | `documentId`에 해당하는 결재 문서가 없는 경우 |
 | `404 Not Found` | `APPROVAL_404_4` | 첨부파일을 찾을 수 없습니다. | `fileId`가 해당 문서의 첨부파일이 아닌 경우 |
-| `409 Conflict` | `APPROVAL_409_7` | 첨부파일 원문 조회 기능이 없어 요약할 수 없습니다. | 텍스트로 변환할 수 없는 첨부파일(PDF/이미지 등)인 경우 |
+| `409 Conflict` | `APPROVAL_409_7` | 첨부파일 원문 조회 기능이 없어 요약할 수 없습니다. | 지원하지 않는 형식(hwp 등)이거나, PDF/이미지 용량이 15MB를 초과하거나, docx 텍스트 추출에 실패한 경우 |
 | `502 Bad Gateway` | `APPROVAL_502_1` | 첨부파일 요약 생성에 실패했습니다. | Gemini API 호출이 실패한 경우 |
 
 ---

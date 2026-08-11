@@ -36,18 +36,18 @@ approval SummarizeApprovalAttachmentService
 -> file ApprovalAttachmentContentAdapter
 -> file_metadata 조회
 -> S3 objectKey 다운로드
--> UTF-8 텍스트 반환
+-> contentType에 따라 AttachmentContent.text(...) 또는 AttachmentContent.binary(...) 반환
 ```
 
-현재 지원 contentType:
+contentType별 처리 (2026-08-11 확장):
 
-- `text/*`
-- `application/json`
-- `application/xml`
-- `application/csv`
-- `application/x-www-form-urlencoded`
+| 구분 | contentType | 처리 |
+| --- | --- | --- |
+| 텍스트 | `text/*`, `application/json`, `application/xml`, `application/csv`, `application/x-www-form-urlencoded` | UTF-8 디코딩 후 `AttachmentContent.text` |
+| docx | `application/vnd.openxmlformats-officedocument.wordprocessingml.document` | Apache POI(`XWPFDocument`)로 텍스트 추출 후 `AttachmentContent.text` |
+| PDF/이미지 | `application/pdf`, `image/jpeg`, `image/png`, `image/webp`, `image/heic`, `image/heif` | 바이너리 그대로 `AttachmentContent.binary`(15MB 초과 시 실패) |
 
-미지원 파일(PDF 등), 메타데이터 없음, S3 다운로드 실패는 `AttachmentContentUnavailableException`으로 변환되어 approval에서 `APPROVAL_409_7`로 처리된다.
+미지원 contentType(hwp 등), 메타데이터 없음, S3 다운로드 실패, PDF/이미지 15MB 초과, docx 텍스트 추출 실패는 모두 `AttachmentContentUnavailableException`으로 변환되어 approval에서 `APPROVAL_409_7`로 처리된다. `AttachmentContent.binary`로 반환된 바이너리는 approval의 `GeminiSummarizerAdapter`가 Gemini 멀티모달 입력(inline base64)으로 그대로 전달한다.
 
 ## notice 연동
 
