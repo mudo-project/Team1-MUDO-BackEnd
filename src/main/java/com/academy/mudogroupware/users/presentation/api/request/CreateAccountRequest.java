@@ -9,8 +9,8 @@ import jakarta.validation.constraints.Size;
 public record CreateAccountRequest(
         @NotBlank @Size(max = 50) String username,
         @NotBlank @Size(max = 50) String name,
-        @NotBlank @Size(max = 20) String phone,
-        @NotBlank @Size(max = 100) String email,
+        @Size(max = 20) String phone,
+        @Size(max = 100) String email,
         @NotNull Long roleId
 ) {
 

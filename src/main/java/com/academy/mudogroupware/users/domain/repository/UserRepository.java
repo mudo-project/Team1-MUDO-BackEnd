@@ -15,6 +15,8 @@ public interface UserRepository {
 
     void changeRole(Long userId, Long roleId);
 
+    void updateProfile(Long userId, String name, String phone, String email, java.time.LocalDateTime joinedAt);
+
     List<User> searchByAcademyId(Long academyId, String keyword);
 
     List<User> findAllByAcademyId(Long academyId);

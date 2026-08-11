@@ -19,6 +19,7 @@ public enum UserErrorCode implements ErrorCode {
     INVALID_PERMISSION_CODE(HttpStatus.BAD_REQUEST, "USER_400_1", "존재하지 않는 권한 코드입니다."),
     ROLE_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_404_2", "역할을 찾을 수 없습니다."),
     USERNAME_DUPLICATE(HttpStatus.CONFLICT, "USER_409_6", "이미 사용 중인 아이디입니다."),
+    EMAIL_DUPLICATE(HttpStatus.CONFLICT, "USER_409_7", "이미 사용 중인 이메일입니다."),
     PASSWORD_SETUP_FAILED(HttpStatus.BAD_REQUEST, "USER_400_2", "비밀번호 설정에 실패했습니다.");
 
     private final HttpStatus httpStatus;

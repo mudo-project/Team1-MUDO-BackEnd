@@ -105,6 +105,34 @@ class UserRepositoryImplTest {
         assertThatThrownBy(() -> adapter.save(newUser)).isSameAs(violation);
     }
 
+    @Test
+    void convertsEmailUniqueConstraintViolationOnUpdateProfileToEmailDuplicateException() {
+        UserJpaRepository jpaRepository = mock(UserJpaRepository.class);
+        UserRepositoryImpl adapter = new UserRepositoryImpl(jpaRepository);
+        when(jpaRepository.findById(1L)).thenReturn(Optional.of(userEntity()));
+        DataIntegrityViolationException violation = new DataIntegrityViolationException(
+                "Duplicate entry 'taken@example.com' for key 'users.uk_users_email'");
+        doThrow(violation).when(jpaRepository).flush();
+
+        assertThatThrownBy(() -> adapter.updateProfile(
+                1L, "이름", "010-0000-0000", "taken@example.com", LocalDateTime.now()))
+                .isInstanceOf(com.academy.mudogroupware.users.domain.exception.EmailDuplicateException.class)
+                .hasCause(violation);
+    }
+
+    @Test
+    void preservesUnrelatedDataIntegrityViolationOnUpdateProfile() {
+        UserJpaRepository jpaRepository = mock(UserJpaRepository.class);
+        UserRepositoryImpl adapter = new UserRepositoryImpl(jpaRepository);
+        when(jpaRepository.findById(1L)).thenReturn(Optional.of(userEntity()));
+        DataIntegrityViolationException violation = new DataIntegrityViolationException("some unrelated constraint");
+        doThrow(violation).when(jpaRepository).flush();
+
+        assertThatThrownBy(() -> adapter.updateProfile(
+                1L, "이름", "010-0000-0000", "new@example.com", LocalDateTime.now()))
+                .isSameAs(violation);
+    }
+
     private UserEntity userEntity() {
         return UserEntity.builder()
                 .id(1L).academyId(10L).username("member01").password("hashed").name("구성원")

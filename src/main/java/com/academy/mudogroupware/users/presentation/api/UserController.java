@@ -26,10 +26,12 @@ import com.academy.mudogroupware.users.application.usecase.GetMyProfileUseCase;
 import com.academy.mudogroupware.users.application.usecase.ListMembersUseCase;
 import com.academy.mudogroupware.users.application.usecase.PasswordSetupUseCase;
 import com.academy.mudogroupware.users.application.usecase.SearchUsersUseCase;
+import com.academy.mudogroupware.users.application.usecase.UpdateMyProfileUseCase;
 import com.academy.mudogroupware.users.presentation.api.common.UserResponseCode;
 import com.academy.mudogroupware.users.presentation.api.request.ChangeUserRoleRequest;
 import com.academy.mudogroupware.users.presentation.api.request.CreateAccountRequest;
 import com.academy.mudogroupware.users.presentation.api.request.PasswordSetupRequest;
+import com.academy.mudogroupware.users.presentation.api.request.UpdateMyProfileRequest;
 import com.academy.mudogroupware.users.presentation.api.response.AccountCreateResponse;
 import com.academy.mudogroupware.users.presentation.api.response.MemberListResponse;
 import com.academy.mudogroupware.users.presentation.api.response.UserDetailResponse;
@@ -56,6 +58,7 @@ public class UserController {
     private final PasswordSetupUseCase passwordSetupUseCase;
     private final ListMembersUseCase listMembersUseCase;
     private final GetMyProfileUseCase getMyProfileUseCase;
+    private final UpdateMyProfileUseCase updateMyProfileUseCase;
 
     @PreAuthorize("hasAuthority('ACCOUNT:MANAGE')")
     @PostMapping
@@ -124,6 +127,18 @@ public class UserController {
             @AuthenticationPrincipal AuthUser authUser) {
         UserDetailResponse data = UserDetailResponse.from(getMyProfileUseCase.getMyProfile(authUser.userId()));
         return ResponseEntity.ok(GlobalApiResponse.ok(UserResponseCode.MY_PROFILE_RETRIEVED, data));
+    }
+
+    @Operation(
+            summary = "내 정보 수정",
+            description = "본인의 연락처/이메일을 수정합니다. 값을 보내지 않은 필드는 기존 값을 유지합니다. "
+                    + "이름·역할·입사일은 관리자만 바꿀 수 있습니다.")
+    @PatchMapping("/me")
+    public ResponseEntity<Void> updateMyProfile(
+            @AuthenticationPrincipal AuthUser authUser,
+            @Valid @RequestBody UpdateMyProfileRequest request) {
+        updateMyProfileUseCase.updateMyProfile(authUser.userId(), request.phone(), request.email());
+        return ResponseEntity.noContent().build();
     }
 
     @Operation(
