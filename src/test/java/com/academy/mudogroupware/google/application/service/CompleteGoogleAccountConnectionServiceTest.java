@@ -24,6 +24,7 @@ import org.springframework.context.ApplicationEventPublisher;
 
 import com.academy.mudogroupware.google.application.command.CompleteGoogleConnectionCommand;
 import com.academy.mudogroupware.google.application.event.GoogleAccountConnectedEvent;
+import com.academy.mudogroupware.google.application.event.OldGoogleRefreshTokenRevocationRequestedEvent;
 import com.academy.mudogroupware.google.application.port.GoogleOAuthCallException;
 import com.academy.mudogroupware.google.application.port.GoogleOAuthPort;
 import com.academy.mudogroupware.google.application.port.GoogleOAuthStateClaims;
@@ -76,7 +77,7 @@ class CompleteGoogleAccountConnectionServiceTest {
     }
 
     @Test
-    void completeRevokesAndReplacesExistingConnection() {
+    void completePublishesRevocationEventAndReplacesExistingConnection() {
         CompleteGoogleConnectionCommand command = new CompleteGoogleConnectionCommand("auth-code", "state");
         when(googleOAuthStatePort.verify("state")).thenReturn(new GoogleOAuthStateClaims(7L,true));
         when(googleOAuthPort.exchangeAuthorizationCode("auth-code"))
@@ -91,9 +92,13 @@ class CompleteGoogleAccountConnectionServiceTest {
 
         service.complete(command);
 
-        verify(googleOAuthPort).revoke("old-refresh-token");
+        verify(googleOAuthPort, never()).revoke(any());
         verify(googleAccountConnectionRepository).deleteAll();
         verify(googleAccountConnectionRepository).save(any(GoogleAccountConnection.class));
+        ArgumentCaptor<OldGoogleRefreshTokenRevocationRequestedEvent> captor =
+                ArgumentCaptor.forClass(OldGoogleRefreshTokenRevocationRequestedEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        assertThat(captor.getValue().oldRefreshToken()).isEqualTo("old-refresh-token");
     }
 
     @Test
