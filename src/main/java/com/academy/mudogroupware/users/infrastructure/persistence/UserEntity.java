@@ -107,6 +107,10 @@ public class UserEntity {
         this.joinedAt = joinedAt;
     }
 
+    void changeStatus(UserStatus status) {
+        this.status = status;
+    }
+
     void changePassword(String password) {
         this.password = password;
     }

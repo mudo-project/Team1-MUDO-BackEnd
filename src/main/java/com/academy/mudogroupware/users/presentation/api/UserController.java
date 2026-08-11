@@ -22,6 +22,7 @@ import com.academy.mudogroupware.global.presentation.security.AuthUser;
 import com.academy.mudogroupware.users.application.result.CreateAccountResult;
 import com.academy.mudogroupware.users.application.usecase.ChangeMyPasswordUseCase;
 import com.academy.mudogroupware.users.application.usecase.ChangeUserRoleUseCase;
+import com.academy.mudogroupware.users.application.usecase.ChangeUserStatusUseCase;
 import com.academy.mudogroupware.users.application.usecase.CreateAccountUseCase;
 import com.academy.mudogroupware.users.application.usecase.GetMemberDetailUseCase;
 import com.academy.mudogroupware.users.application.usecase.GetMyProfileUseCase;
@@ -33,6 +34,7 @@ import com.academy.mudogroupware.users.application.usecase.UpdateMyProfileUseCas
 import com.academy.mudogroupware.users.presentation.api.common.UserResponseCode;
 import com.academy.mudogroupware.users.presentation.api.request.ChangeMyPasswordRequest;
 import com.academy.mudogroupware.users.presentation.api.request.ChangeUserRoleRequest;
+import com.academy.mudogroupware.users.presentation.api.request.ChangeUserStatusRequest;
 import com.academy.mudogroupware.users.presentation.api.request.CreateAccountRequest;
 import com.academy.mudogroupware.users.presentation.api.request.PasswordSetupRequest;
 import com.academy.mudogroupware.users.presentation.api.request.UpdateMemberProfileRequest;
@@ -67,6 +69,7 @@ public class UserController {
     private final ChangeMyPasswordUseCase changeMyPasswordUseCase;
     private final GetMemberDetailUseCase getMemberDetailUseCase;
     private final UpdateMemberProfileUseCase updateMemberProfileUseCase;
+    private final ChangeUserStatusUseCase changeUserStatusUseCase;
 
     @PreAuthorize("hasAuthority('ACCOUNT:MANAGE')")
     @PostMapping
@@ -186,6 +189,20 @@ public class UserController {
             @Valid @RequestBody UpdateMemberProfileRequest request) {
         updateMemberProfileUseCase.updateMemberProfile(authUser.academyId(), userId, request.name(),
                 request.phone(), request.email(), request.joinedAt());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PreAuthorize("hasAuthority('ACCOUNT:MANAGE')")
+    @Operation(
+            summary = "구성원 재직 상태 변경(관리자)",
+            description = "일반 직원 계정(accountType=MEMBER)의 재직 상태를 ACTIVE/RESIGNED/INACTIVE 중 하나로 바꿉니다. "
+                    + "양방향 전환(예: 휴직 복귀)을 지원합니다.")
+    @PatchMapping("/{userId}/status")
+    public ResponseEntity<Void> changeUserStatus(
+            @AuthenticationPrincipal AuthUser authUser,
+            @Parameter(description = "대상 구성원의 사용자 ID") @PathVariable Long userId,
+            @Valid @RequestBody ChangeUserStatusRequest request) {
+        changeUserStatusUseCase.changeStatus(authUser.academyId(), userId, request.status());
         return ResponseEntity.noContent().build();
     }
 

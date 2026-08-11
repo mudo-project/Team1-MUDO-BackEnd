@@ -78,6 +78,13 @@ public class UserRepositoryImpl implements UserRepository {
     }
 
     @Override
+    public void changeStatus(Long userId, UserStatus status) {
+        UserEntity entity = userJpaRepository.findById(userId)
+                .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+        entity.changeStatus(status);
+    }
+
+    @Override
     public void changePassword(Long userId, String encodedPassword) {
         UserEntity entity = userJpaRepository.findById(userId)
                 .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
