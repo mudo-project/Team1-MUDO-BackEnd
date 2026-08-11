@@ -4,6 +4,7 @@ import java.time.DayOfWeek;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
@@ -32,15 +33,20 @@ public class LectureCatalogPortAdapter implements LectureCatalogPort {
     @Override
     public Map<Long, LectureCatalogInfo> findByIds(List<Long> lectureIds) {
         List<Lecture> lectures = lectureRepository.findAllById(lectureIds);
-        Map<Long, TeacherInfo> teachers = teacherDirectoryPort.findTeachers(
-                lectures.stream().map(Lecture::getTeacherId).distinct().toList());
+        List<Long> teacherIds = lectures.stream()
+                .filter(lecture -> !hasText(lecture.getTeacherName()))
+                .map(Lecture::getTeacherId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        Map<Long, TeacherInfo> teachers = teacherIds.isEmpty() ? Map.of() : teacherDirectoryPort.findTeachers(teacherIds);
 
         Map<Long, LectureCatalogInfo> result = new HashMap<>();
         for (Lecture lecture : lectures) {
             result.put(lecture.getId(), new LectureCatalogInfo(
                     lecture.getId(),
                     lecture.getName(),
-                    teacherName(teachers, lecture.getTeacherId()),
+                    teacherName(lecture, teachers),
                     formatSchedule(lecture.getSchedules()),
                     lecture.getFeeType() != null ? lecture.getFeeType().name() : null,
                     lecture.getFeeAmount()));
@@ -66,8 +72,15 @@ public class LectureCatalogPortAdapter implements LectureCatalogPort {
         };
     }
 
-    private String teacherName(Map<Long, TeacherInfo> teachers, Long teacherId) {
-        TeacherInfo teacher = teachers.get(teacherId);
+    private String teacherName(Lecture lecture, Map<Long, TeacherInfo> teachers) {
+        if (hasText(lecture.getTeacherName())) {
+            return lecture.getTeacherName();
+        }
+        TeacherInfo teacher = lecture.getTeacherId() != null ? teachers.get(lecture.getTeacherId()) : null;
         return teacher != null ? teacher.name() : null;
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 }

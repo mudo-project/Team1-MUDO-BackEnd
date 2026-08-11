@@ -12,36 +12,31 @@ public final class Lecture {
 
     private final Long id;
     private final String name;
+    private final ClassType classType;
+    private final String classroomCode;
     private final Grade grade;
     private final Long termId;
     private final Long subjectId;
     private final Long teacherId;
     private final Long classroomId;
+    private final String teacherName;
+    private final String subjectName;
     private final FeeType feeType;
     private final Integer feeAmount;
     private final List<LectureSchedule> schedules;
     private final LocalDateTime createdAt;
 
-    private Lecture(Long id, String name, Grade grade, Long termId, Long subjectId, Long teacherId,
-                     Long classroomId, FeeType feeType, Integer feeAmount, List<LectureSchedule> schedules,
-                     LocalDateTime createdAt) {
+    private Lecture(Long id, String name, ClassType classType, String classroomCode, Grade grade, Long termId,
+                     Long subjectId, Long teacherId, Long classroomId, String teacherName, String subjectName,
+                     FeeType feeType, Integer feeAmount, List<LectureSchedule> schedules, LocalDateTime createdAt) {
         if (name == null || name.isBlank()) {
             throw new LectureNameRequiredException();
         }
-        if (grade == null) {
-            throw new IllegalArgumentException("grade must not be null");
+        if (classType == null) {
+            throw new IllegalArgumentException("classType must not be null");
         }
-        if (termId == null) {
-            throw new IllegalArgumentException("termId must not be null");
-        }
-        if (subjectId == null) {
-            throw new IllegalArgumentException("subjectId must not be null");
-        }
-        if (teacherId == null) {
-            throw new IllegalArgumentException("teacherId must not be null");
-        }
-        if (classroomId == null) {
-            throw new IllegalArgumentException("classroomId must not be null");
+        if (classroomCode == null || classroomCode.isBlank()) {
+            throw new IllegalArgumentException("classroomCode must not be blank");
         }
         if (schedules == null || schedules.isEmpty()) {
             throw new LectureScheduleRequiredException();
@@ -51,29 +46,49 @@ public final class Lecture {
         }
         this.id = id;
         this.name = name;
+        this.classType = classType;
+        this.classroomCode = classroomCode;
         this.grade = grade;
         this.termId = termId;
         this.subjectId = subjectId;
         this.teacherId = teacherId;
         this.classroomId = classroomId;
+        this.teacherName = teacherName;
+        this.subjectName = subjectName;
         this.feeType = feeType;
         this.feeAmount = feeAmount;
         this.schedules = new ArrayList<>(schedules);
         this.createdAt = createdAt;
     }
 
+    public static Lecture create(String name, ClassType classType, String classroomCode, Grade grade, Long termId,
+                                  Long subjectId, Long teacherId, Long classroomId, String teacherName,
+                                  String subjectName, FeeType feeType, Integer feeAmount,
+                                  List<LectureSchedule> schedules, LocalDateTime now) {
+        return new Lecture(null, name, classType, classroomCode, grade, termId, subjectId, teacherId, classroomId,
+                teacherName, subjectName, feeType, feeAmount, schedules, now);
+    }
+
     public static Lecture create(String name, Grade grade, Long termId, Long subjectId,
                                   Long teacherId, Long classroomId, FeeType feeType, Integer feeAmount,
                                   List<LectureSchedule> schedules, LocalDateTime now) {
-        return new Lecture(null, name, grade, termId, subjectId, teacherId, classroomId, feeType,
-                feeAmount, schedules, now);
+        return create(name, ClassType.CLASS, String.valueOf(classroomId), grade, termId, subjectId, teacherId,
+                classroomId, null, null, feeType, feeAmount, schedules, now);
+    }
+
+    public static Lecture restore(Long id, String name, ClassType classType, String classroomCode, Grade grade,
+                                   Long termId, Long subjectId, Long teacherId, Long classroomId, String teacherName,
+                                   String subjectName, FeeType feeType, Integer feeAmount,
+                                   List<LectureSchedule> schedules, LocalDateTime createdAt) {
+        return new Lecture(id, name, classType, classroomCode, grade, termId, subjectId, teacherId, classroomId,
+                teacherName, subjectName, feeType, feeAmount, schedules, createdAt);
     }
 
     public static Lecture restore(Long id, String name, Grade grade, Long termId, Long subjectId,
                                    Long teacherId, Long classroomId, FeeType feeType, Integer feeAmount,
                                    List<LectureSchedule> schedules, LocalDateTime createdAt) {
-        return new Lecture(id, name, grade, termId, subjectId, teacherId, classroomId, feeType,
-                feeAmount, schedules, createdAt);
+        return restore(id, name, ClassType.CLASS, String.valueOf(classroomId), grade, termId, subjectId, teacherId,
+                classroomId, null, null, feeType, feeAmount, schedules, createdAt);
     }
 
     public boolean conflictsWith(LectureSchedule candidate) {
@@ -86,6 +101,14 @@ public final class Lecture {
 
     public String getName() {
         return name;
+    }
+
+    public ClassType getClassType() {
+        return classType;
+    }
+
+    public String getClassroomCode() {
+        return classroomCode;
     }
 
     public Grade getGrade() {
@@ -106,6 +129,14 @@ public final class Lecture {
 
     public Long getClassroomId() {
         return classroomId;
+    }
+
+    public String getTeacherName() {
+        return teacherName;
+    }
+
+    public String getSubjectName() {
+        return subjectName;
     }
 
     public FeeType getFeeType() {

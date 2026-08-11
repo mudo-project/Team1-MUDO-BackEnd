@@ -38,29 +38,34 @@ public class CreateLectureService implements CreateLectureUseCase {
     public Long createLecture(CreateLectureCommand command) {
         LocalDateTime now = LocalDateTime.now(clock);
 
-        Long termId = findOrCreateTerm(command.termName(), now);
-        Long subjectId = findOrCreateSubject(command.subjectName(), now);
-        Long classroomId = findOrCreateClassroom(command.classroomName(), now);
+        Long termId = hasText(command.termName()) ? findOrCreateTerm(command.termName(), now) : null;
+        Long subjectId = hasText(command.subjectName()) ? findOrCreateSubject(command.subjectName(), now) : null;
+        Long classroomId = findOrCreateClassroom(command.classroomCode(), now);
 
         List<LectureSchedule> schedules = command.schedules().stream()
                 .map(this::toSchedule)
                 .toList();
 
         for (LectureSchedule schedule : schedules) {
-            if (lectureRepository.existsOverlap(classroomId, schedule.getDayOfWeek(), schedule.getStartTime(),
-                    schedule.getEndTime())) {
+            if (lectureRepository.existsOverlap(command.classroomCode(), schedule.getDayOfWeek(),
+                    schedule.getStartTime(), schedule.getEndTime())) {
                 throw new ClassroomTimeConflictException();
             }
         }
 
-        Lecture lecture = Lecture.create(command.name(), command.grade(), termId, subjectId,
-                command.teacherId(), classroomId, command.feeType(), command.feeAmount(), schedules, now);
+        Lecture lecture = Lecture.create(command.name(), command.classType(), command.classroomCode(),
+                command.grade(), termId, subjectId, command.teacherId(), classroomId, command.teacherName(),
+                command.subjectName(), command.feeType(), command.feeAmount(), schedules, now);
 
         return lectureRepository.save(lecture).getId();
     }
 
     private LectureSchedule toSchedule(ScheduleInput input) {
         return LectureSchedule.create(input.dayOfWeek(), input.startTime(), input.endTime());
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 
     private Long findOrCreateTerm(String name, LocalDateTime now) {

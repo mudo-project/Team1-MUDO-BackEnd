@@ -32,6 +32,32 @@ class LectureTest {
     }
 
     @Test
+    void createsLectureWithTimetableFieldsAndNullableOptionalFields() {
+        Lecture lecture = Lecture.create(
+                "고1 수학 정규반",
+                ClassType.CLASS,
+                "601",
+                null,
+                null,
+                null,
+                null,
+                null,
+                "김선생",
+                null,
+                null,
+                null,
+                List.of(schedule(DayOfWeek.MONDAY, 19, 21)),
+                NOW);
+
+        assertThat(lecture.getClassType()).isEqualTo(ClassType.CLASS);
+        assertThat(lecture.getClassroomCode()).isEqualTo("601");
+        assertThat(lecture.getGrade()).isNull();
+        assertThat(lecture.getTeacherId()).isNull();
+        assertThat(lecture.getTeacherName()).isEqualTo("김선생");
+        assertThat(lecture.getSubjectName()).isNull();
+    }
+
+    @Test
     void throwsWhenNameIsBlank() {
         assertThatThrownBy(() -> Lecture.create("  ", Grade.MIDDLE_3, 10L, 20L, 30L, 40L, null, null,
                 List.of(schedule(DayOfWeek.MONDAY, 15, 17)), NOW))

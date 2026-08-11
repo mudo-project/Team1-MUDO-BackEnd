@@ -27,10 +27,14 @@ public class LectureRepositoryImpl implements LectureRepository {
     public Lecture save(Lecture lecture) {
         LectureEntity entity = LectureEntity.builder()
                 .name(lecture.getName())
+                .classType(lecture.getClassType())
+                .classroomCode(lecture.getClassroomCode())
                 .grade(lecture.getGrade())
                 .termId(lecture.getTermId())
                 .subjectId(lecture.getSubjectId())
+                .subjectName(lecture.getSubjectName())
                 .teacherId(lecture.getTeacherId())
+                .teacherName(lecture.getTeacherName())
                 .classroomId(lecture.getClassroomId())
                 .feeType(lecture.getFeeType())
                 .feeAmount(lecture.getFeeAmount())
@@ -59,8 +63,8 @@ public class LectureRepositoryImpl implements LectureRepository {
     }
 
     @Override
-    public boolean existsOverlap(Long classroomId, DayOfWeek dayOfWeek, LocalTime startTime, LocalTime endTime) {
-        return lectureJpaRepository.existsOverlap(classroomId, dayOfWeek, startTime, endTime);
+    public boolean existsOverlap(String classroomCode, DayOfWeek dayOfWeek, LocalTime startTime, LocalTime endTime) {
+        return lectureJpaRepository.existsOverlap(classroomCode, dayOfWeek, startTime, endTime);
     }
 
     private LectureScheduleEntity toScheduleEntity(LectureSchedule schedule) {
@@ -75,8 +79,9 @@ public class LectureRepositoryImpl implements LectureRepository {
         List<LectureSchedule> schedules = entity.getSchedules().stream()
                 .map(s -> LectureSchedule.restore(s.getId(), s.getDayOfWeek(), s.getStartTime(), s.getEndTime()))
                 .toList();
-        return Lecture.restore(entity.getId(), entity.getName(), entity.getGrade(),
-                entity.getTermId(), entity.getSubjectId(), entity.getTeacherId(), entity.getClassroomId(),
-                entity.getFeeType(), entity.getFeeAmount(), schedules, entity.getCreatedAt());
+        return Lecture.restore(entity.getId(), entity.getName(), entity.getClassType(), entity.getClassroomCode(),
+                entity.getGrade(), entity.getTermId(), entity.getSubjectId(), entity.getTeacherId(),
+                entity.getClassroomId(), entity.getTeacherName(), entity.getSubjectName(), entity.getFeeType(),
+                entity.getFeeAmount(), schedules, entity.getCreatedAt());
     }
 }
