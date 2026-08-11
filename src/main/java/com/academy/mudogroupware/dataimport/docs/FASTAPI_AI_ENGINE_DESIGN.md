@@ -71,8 +71,10 @@ Spring은 FastAPI에 이미 파싱한 sheet 목록을 JSON으로 보낸다.
 
 ```text
 POST {DATA_IMPORT_AI_BASE_URL}{DATA_IMPORT_AI_PATH}
-Header: X-Data-Import-Ai-Key: {DATA_IMPORT_AI_API_KEY} // 설정된 경우만
+Header: X-Data-Import-Ai-Key: {DATA_IMPORT_AI_API_KEY} // 운영 필수, localhost 개발은 선택
 ```
+
+요청 행에는 학생 연락처와 보호자 연락처 같은 개인정보가 포함될 수 있다. 로컬 개발에서는 `http://localhost:8000`을 허용하지만, 운영 FastAPI URL은 HTTPS여야 하며 `X-Data-Import-Ai-Key` 인증 값을 반드시 검증해야 한다.
 
 기본 path:
 

@@ -2,6 +2,7 @@ package com.academy.mudogroupware.approval.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -10,7 +11,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.SimpleTransactionStatus;
 
 import com.academy.mudogroupware.approval.application.port.AttachmentContent;
 import com.academy.mudogroupware.approval.application.port.AttachmentContentPort;
@@ -34,11 +38,17 @@ class ExtractApprovalAttachmentFieldsServiceTest {
     private static final LocalDateTime CREATED_AT = LocalDateTime.of(2026, 8, 4, 9, 0);
 
     private final ApprovalDocumentRepository approvalDocumentRepository = mock(ApprovalDocumentRepository.class);
+    private final PlatformTransactionManager transactionManager = mock(PlatformTransactionManager.class);
     private final AttachmentContentPort attachmentContentPort = mock(AttachmentContentPort.class);
     private final AttachmentFieldExtractorPort attachmentFieldExtractorPort = mock(AttachmentFieldExtractorPort.class);
 
     private final ExtractApprovalAttachmentFieldsService service = new ExtractApprovalAttachmentFieldsService(
-            approvalDocumentRepository, attachmentContentPort, attachmentFieldExtractorPort);
+            approvalDocumentRepository, transactionManager, attachmentContentPort, attachmentFieldExtractorPort);
+
+    @BeforeEach
+    void setUp() {
+        when(transactionManager.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
+    }
 
     private ApprovalDocument newDocument() {
         return ApprovalDocument.create(1L, "제목", ApprovalContent.create(ApprovalContentType.TEXT, "내용"),
@@ -71,12 +81,13 @@ class ExtractApprovalAttachmentFieldsServiceTest {
     @Test
     void throwsWhenAttachmentContentIsUnavailable() {
         ApprovalDocument document = newDocument();
+        AttachmentContentUnavailableException cause = new AttachmentContentUnavailableException(FILE_ID);
         when(approvalDocumentRepository.findById(1L)).thenReturn(Optional.of(document));
-        when(attachmentContentPort.loadContent(FILE_ID))
-                .thenThrow(new AttachmentContentUnavailableException(FILE_ID));
+        when(attachmentContentPort.loadContent(FILE_ID)).thenThrow(cause);
 
         assertThatThrownBy(() -> service.extractFields(1L))
                 .isInstanceOf(ApprovalException.class)
+                .hasCause(cause)
                 .extracting(e -> ((ApprovalException) e).getErrorCode())
                 .isEqualTo(ApprovalErrorCode.ATTACHMENT_CONTENT_UNAVAILABLE);
     }

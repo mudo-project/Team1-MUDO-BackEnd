@@ -4,7 +4,8 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.academy.mudogroupware.approval.application.command.SummarizeApprovalAttachmentCommand;
 import com.academy.mudogroupware.approval.application.port.AttachmentContent;
@@ -22,55 +23,91 @@ import com.academy.mudogroupware.approval.domain.repository.ApprovalDocumentRepo
 
 import lombok.RequiredArgsConstructor;
 
-// noRollbackFor: 실패 시 markSummaryFailed()를 save()한 뒤 ApprovalException을 던지는데,
-// 기본 롤백 규칙(RuntimeException 전체 롤백)이면 그 save()까지 함께 롤백돼 FAILED 상태가
-// 유실된다. 이 예외로는 롤백하지 않아야 실패 상태가 실제로 저장된다.
 @Service
 @RequiredArgsConstructor
-@Transactional(noRollbackFor = ApprovalException.class)
 public class SummarizeApprovalAttachmentService implements SummarizeApprovalAttachmentUseCase {
 
     private final ApprovalDocumentRepository approvalDocumentRepository;
+    private final PlatformTransactionManager transactionManager;
     private final AttachmentContentPort attachmentContentPort;
     private final AttachmentSummarizerPort attachmentSummarizerPort;
     private final Clock clock;
 
     @Override
     public ApprovalAttachmentSummaryView summarize(SummarizeApprovalAttachmentCommand command) {
-        ApprovalDocument approvalDocument = approvalDocumentRepository.findById(command.documentId())
-                .orElseThrow(() -> new ApprovalException(ApprovalErrorCode.DOCUMENT_NOT_FOUND));
-
-        if (!approvalDocument.isApprover(command.requesterId())
-                && !approvalDocument.getCreatorId().equals(command.requesterId())) {
-            throw new ApprovalException(ApprovalErrorCode.DOCUMENT_ACCESS_DENIED);
-        }
-
-        ApprovalAttachment attachment = approvalDocument.findAttachmentByFileId(command.fileId())
-                .orElseThrow(() -> new ApprovalException(ApprovalErrorCode.ATTACHMENT_NOT_FOUND));
-
+        Long fileId = findAuthorizedAttachmentFileId(command);
         LocalDateTime now = LocalDateTime.now(clock);
 
         AttachmentContent attachmentContent;
         try {
-            attachmentContent = attachmentContentPort.loadContent(attachment.getFileId());
+            attachmentContent = attachmentContentPort.loadContent(fileId);
         } catch (AttachmentContentUnavailableException e) {
-            attachment.markSummaryFailed(now);
-            approvalDocumentRepository.save(approvalDocument);
-            throw new ApprovalException(ApprovalErrorCode.ATTACHMENT_CONTENT_UNAVAILABLE);
+            markSummaryFailed(command.documentId(), fileId, now);
+            throw new ApprovalException(ApprovalErrorCode.ATTACHMENT_CONTENT_UNAVAILABLE, e);
         }
 
+        String summary;
         try {
-            String summary = attachmentSummarizerPort.summarize(attachmentContent);
-            attachment.applySummary(summary, now);
+            summary = attachmentSummarizerPort.summarize(attachmentContent);
         } catch (AttachmentSummarizationException e) {
-            attachment.markSummaryFailed(now);
-            approvalDocumentRepository.save(approvalDocument);
-            throw new ApprovalException(ApprovalErrorCode.SUMMARY_GENERATION_FAILED);
+            markSummaryFailed(command.documentId(), fileId, now);
+            throw new ApprovalException(ApprovalErrorCode.SUMMARY_GENERATION_FAILED, e);
         }
 
-        approvalDocumentRepository.save(approvalDocument);
+        return applySummary(command.documentId(), fileId, summary, now);
+    }
 
-        return new ApprovalAttachmentSummaryView(attachment.getFileId(), attachment.getAiSummary(),
-                attachment.getSummaryStatus(), attachment.getSummarizedAt());
+    private Long findAuthorizedAttachmentFileId(SummarizeApprovalAttachmentCommand command) {
+        return readOnlyTransaction().execute(status -> {
+            ApprovalDocument approvalDocument = findDocument(command.documentId());
+
+            if (!approvalDocument.isApprover(command.requesterId())
+                    && !approvalDocument.getCreatorId().equals(command.requesterId())) {
+                throw new ApprovalException(ApprovalErrorCode.DOCUMENT_ACCESS_DENIED);
+            }
+
+            return findAttachment(approvalDocument, command.fileId()).getFileId();
+        });
+    }
+
+    private void markSummaryFailed(Long documentId, Long fileId, LocalDateTime now) {
+        writeTransaction().executeWithoutResult(status -> {
+            ApprovalDocument approvalDocument = findDocument(documentId);
+            findAttachment(approvalDocument, fileId).markSummaryFailed(now);
+            approvalDocumentRepository.save(approvalDocument);
+        });
+    }
+
+    private ApprovalAttachmentSummaryView applySummary(Long documentId, Long fileId, String summary,
+                                                       LocalDateTime summarizedAt) {
+        return writeTransaction().execute(status -> {
+            ApprovalDocument approvalDocument = findDocument(documentId);
+            ApprovalAttachment attachment = findAttachment(approvalDocument, fileId);
+            attachment.applySummary(summary, summarizedAt);
+            approvalDocumentRepository.save(approvalDocument);
+
+            return new ApprovalAttachmentSummaryView(attachment.getFileId(), attachment.getAiSummary(),
+                    attachment.getSummaryStatus(), attachment.getSummarizedAt());
+        });
+    }
+
+    private ApprovalDocument findDocument(Long documentId) {
+        return approvalDocumentRepository.findById(documentId)
+                .orElseThrow(() -> new ApprovalException(ApprovalErrorCode.DOCUMENT_NOT_FOUND));
+    }
+
+    private ApprovalAttachment findAttachment(ApprovalDocument approvalDocument, Long fileId) {
+        return approvalDocument.findAttachmentByFileId(fileId)
+                .orElseThrow(() -> new ApprovalException(ApprovalErrorCode.ATTACHMENT_NOT_FOUND));
+    }
+
+    private TransactionTemplate readOnlyTransaction() {
+        TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
+        transactionTemplate.setReadOnly(true);
+        return transactionTemplate;
+    }
+
+    private TransactionTemplate writeTransaction() {
+        return new TransactionTemplate(transactionManager);
     }
 }

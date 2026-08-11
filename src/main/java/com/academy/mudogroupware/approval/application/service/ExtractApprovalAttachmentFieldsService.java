@@ -1,7 +1,8 @@
 package com.academy.mudogroupware.approval.application.service;
 
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.academy.mudogroupware.approval.application.port.AttachmentContent;
 import com.academy.mudogroupware.approval.application.port.AttachmentContentPort;
@@ -21,34 +22,43 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class ExtractApprovalAttachmentFieldsService implements ExtractApprovalAttachmentFieldsUseCase {
 
     private final ApprovalDocumentRepository approvalDocumentRepository;
+    private final PlatformTransactionManager transactionManager;
     private final AttachmentContentPort attachmentContentPort;
     private final AttachmentFieldExtractorPort attachmentFieldExtractorPort;
 
     @Override
     public ApprovalAttachmentFieldsView extractFields(Long documentId) {
-        ApprovalDocument approvalDocument = approvalDocumentRepository.findById(documentId)
-                .orElseThrow(() -> new ApprovalException(ApprovalErrorCode.DOCUMENT_NOT_FOUND));
-
-        ApprovalAttachment attachment = approvalDocument.getAttachments().stream().findFirst()
-                .orElseThrow(() -> new ApprovalException(ApprovalErrorCode.ATTACHMENT_NOT_FOUND));
+        Long fileId = findFirstAttachmentFileId(documentId);
 
         AttachmentContent content;
         try {
-            content = attachmentContentPort.loadContent(attachment.getFileId());
+            content = attachmentContentPort.loadContent(fileId);
         } catch (AttachmentContentUnavailableException e) {
-            throw new ApprovalException(ApprovalErrorCode.ATTACHMENT_CONTENT_UNAVAILABLE);
+            throw new ApprovalException(ApprovalErrorCode.ATTACHMENT_CONTENT_UNAVAILABLE, e);
         }
 
         try {
             ExtractedReceiptFields fields = attachmentFieldExtractorPort.extract(content);
-            return new ApprovalAttachmentFieldsView(attachment.getFileId(), fields.amount(), fields.date(),
+            return new ApprovalAttachmentFieldsView(fileId, fields.amount(), fields.date(),
                     fields.merchant());
         } catch (AttachmentFieldExtractionException e) {
-            throw new ApprovalException(ApprovalErrorCode.FIELD_EXTRACTION_FAILED);
+            throw new ApprovalException(ApprovalErrorCode.FIELD_EXTRACTION_FAILED, e);
         }
+    }
+
+    private Long findFirstAttachmentFileId(Long documentId) {
+        TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
+        transactionTemplate.setReadOnly(true);
+        return transactionTemplate.execute(status -> {
+            ApprovalDocument approvalDocument = approvalDocumentRepository.findById(documentId)
+                    .orElseThrow(() -> new ApprovalException(ApprovalErrorCode.DOCUMENT_NOT_FOUND));
+
+            ApprovalAttachment attachment = approvalDocument.getAttachments().stream().findFirst()
+                    .orElseThrow(() -> new ApprovalException(ApprovalErrorCode.ATTACHMENT_NOT_FOUND));
+            return attachment.getFileId();
+        });
     }
 }

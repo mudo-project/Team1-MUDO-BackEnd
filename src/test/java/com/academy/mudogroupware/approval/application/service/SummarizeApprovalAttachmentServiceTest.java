@@ -13,6 +13,8 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.SimpleTransactionStatus;
 
 import com.academy.mudogroupware.approval.application.command.SummarizeApprovalAttachmentCommand;
 import com.academy.mudogroupware.approval.application.port.AttachmentContent;
@@ -38,6 +40,7 @@ class SummarizeApprovalAttachmentServiceTest {
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 4, 15, 0);
 
     private final ApprovalDocumentRepository approvalDocumentRepository = mock(ApprovalDocumentRepository.class);
+    private final PlatformTransactionManager transactionManager = mock(PlatformTransactionManager.class);
     private final AttachmentContentPort attachmentContentPort = mock(AttachmentContentPort.class);
     private final AttachmentSummarizerPort attachmentSummarizerPort = mock(AttachmentSummarizerPort.class);
     private final Clock clock = Clock.fixed(
@@ -47,8 +50,9 @@ class SummarizeApprovalAttachmentServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new SummarizeApprovalAttachmentService(approvalDocumentRepository, attachmentContentPort,
-                attachmentSummarizerPort, clock);
+        when(transactionManager.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
+        service = new SummarizeApprovalAttachmentService(approvalDocumentRepository, transactionManager,
+                attachmentContentPort, attachmentSummarizerPort, clock);
     }
 
     private ApprovalDocument newDocument() {

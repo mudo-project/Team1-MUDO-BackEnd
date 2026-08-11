@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.dataimport.infrastructure.external.fastapi;
 
+import java.net.URI;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -71,8 +72,11 @@ public class FastApiImportAnalysisClient {
             return safeSheets;
         }
 
+        URI analyzeUri = properties.analyzeUri();
+        properties.validateCredentialFor(analyzeUri);
+
         RestClient.RequestBodySpec request = restClient.post()
-                .uri(properties.analyzeUri())
+                .uri(analyzeUri)
                 .contentType(MediaType.APPLICATION_JSON)
                 .accept(MediaType.APPLICATION_JSON);
         if (!properties.apiKey().isBlank()) {

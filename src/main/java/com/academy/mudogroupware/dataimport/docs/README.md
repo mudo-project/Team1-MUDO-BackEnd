@@ -64,6 +64,8 @@ FastAPI AI 분석 엔진의 1차 판단 근거와 Spring-FastAPI 연동 계약�
 - `GEMINI_API_KEY`가 있으면 Spring 내부 Gemini adapter가 파일 헤더와 최대 5개 샘플 행을 보고 표준 컬럼명 매핑을 제안한다.
 - FastAPI와 Gemini가 모두 실패해도 기존 parser 결과만 사용해 초안을 만든다.
 - AI 결과도 서버의 필수값/상태/수강 관계 검증을 반드시 다시 통과해야 한다.
+- FastAPI 요청에는 학생 연락처와 보호자 연락처 같은 개인정보가 포함될 수 있다.
+- `http://localhost:8000` 설정은 로컬 개발 전용이다. 운영 FastAPI URL은 HTTPS여야 하며 `DATA_IMPORT_AI_API_KEY`가 필수다.
 
 로컬 환경 변수:
 
@@ -75,6 +77,16 @@ DATA_IMPORT_AI_CONNECT_TIMEOUT_MS=2000
 DATA_IMPORT_AI_READ_TIMEOUT_MS=8000
 GEMINI_API_KEY=구글 AI Studio에서 발급한 키
 GEMINI_MODEL=gemini-2.0-flash
+```
+
+운영 환경 변수:
+
+```text
+DATA_IMPORT_AI_BASE_URL=https://ai.example.com
+DATA_IMPORT_AI_PATH=/api/import/analyze
+DATA_IMPORT_AI_API_KEY=필수 공유 키
+DATA_IMPORT_AI_CONNECT_TIMEOUT_MS=2000
+DATA_IMPORT_AI_READ_TIMEOUT_MS=8000
 ```
 
 `DATA_IMPORT_AI_BASE_URL`이 없으면 FastAPI 호출은 비활성화된다. `GEMINI_MODEL`은 생략하면 `gemini-2.0-flash`를 사용한다. FastAPI와 Gemini 설정이 모두 없으면 AI 보정 없이 기존 parser로 동작한다.
@@ -89,7 +101,7 @@ Spring -> FastAPI 계약:
 
 ```text
 POST {DATA_IMPORT_AI_BASE_URL}{DATA_IMPORT_AI_PATH}
-Header: X-Data-Import-Ai-Key: {DATA_IMPORT_AI_API_KEY} // 설정된 경우만
+Header: X-Data-Import-Ai-Key: {DATA_IMPORT_AI_API_KEY} // 운영 필수, localhost 개발은 선택
 ```
 
 요청 요약:

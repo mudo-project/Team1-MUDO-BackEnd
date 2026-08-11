@@ -1,6 +1,7 @@
 package com.academy.mudogroupware.dataimport.infrastructure.external.fastapi;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
@@ -30,6 +31,28 @@ class FastApiImportAnalysisClientTest {
         List<ParsedImportSheet> result = client.analyze(List.of(sheet));
 
         assertThat(result).containsExactly(sheet);
+    }
+
+    @Test
+    void rejectsNonLocalHttpEndpoint() {
+        FastApiImportAnalysisClient client = new FastApiImportAnalysisClient(RestClient.builder().build(),
+                new DataImportAiEngineProperties("http://ai.example.com", "/api/import/analyze",
+                        "secret", 2000, 8000));
+
+        assertThatThrownBy(() -> client.analyze(List.of(studentSheet())))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("HTTPS");
+    }
+
+    @Test
+    void rejectsNonLocalEndpointWithoutApiKey() {
+        FastApiImportAnalysisClient client = new FastApiImportAnalysisClient(RestClient.builder().build(),
+                new DataImportAiEngineProperties("https://ai.example.com", "/api/import/analyze",
+                        "", 2000, 8000));
+
+        assertThatThrownBy(() -> client.analyze(List.of(studentSheet())))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("DATA_IMPORT_AI_API_KEY");
     }
 
     @Test

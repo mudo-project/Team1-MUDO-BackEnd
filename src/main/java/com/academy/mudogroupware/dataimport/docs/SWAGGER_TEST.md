@@ -45,6 +45,8 @@ GEMINI_API_KEY=구글 AI Studio에서 발급한 키
 GEMINI_MODEL=gemini-2.0-flash
 ```
 
+위 `http://localhost:8000` FastAPI 설정은 로컬 Swagger 테스트 전용이다. 운영 배포에서는 FastAPI URL을 HTTPS로 설정하고 `DATA_IMPORT_AI_API_KEY`를 반드시 넣어야 한다. 업로드 데이터에는 학생/보호자 연락처 등 개인정보가 포함될 수 있으므로 운영에서 평문 HTTP FastAPI 호출은 허용하지 않는다.
+
 `DATA_IMPORT_AI_BASE_URL`이 있으면 Spring이 FastAPI AI 분석 엔진을 먼저 호출한다. FastAPI가 꺼져 있거나 실패하면 Spring 내부 Gemini 보정으로 넘어가고, `GEMINI_API_KEY`도 없으면 CSV/XLSX 헤더 alias 기반 parser로 초안을 만든다.
 
 ## 3. 로그인 계정 준비

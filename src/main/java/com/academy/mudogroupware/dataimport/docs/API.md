@@ -37,6 +37,8 @@ Request Part
 | `lectureFile` | `MultipartFile` | `false` | 강의 정보 파일입니다. 강의명, 학년, 학기, 과목, 강사 ID, 교실, 요일, 시간, 수강료 등을 포함합니다. |
 | `enrollmentFile` | `MultipartFile` | `false` | 수강 관계 파일입니다. 어떤 학생이 어떤 강의를 듣는지 연결 정보를 포함합니다. |
 
+업로드 파일에는 학생 연락처와 보호자 연락처 같은 개인정보가 포함될 수 있다. FastAPI AI 분석 엔진은 프론트가 직접 호출하지 않고 Spring 서버만 호출한다. 로컬 개발에서는 `http://localhost:8000`을 허용하지만, 운영 FastAPI URL은 HTTPS여야 하며 `X-Data-Import-Ai-Key` 인증 값이 필수다.
+
 파일은 최소 1개 이상 업로드해야 한다. 지원 확장자는 `.csv`, `.xlsx`이다. 서버에 `DATA_IMPORT_AI_BASE_URL`이 있으면 FastAPI AI 분석 엔진을 먼저 호출하고, 실패 시 Spring 내부 Gemini 보정 또는 기존 parser 결과로 초안을 생성한다. 프론트는 FastAPI를 직접 호출하지 않는다.
 
 프론트 연동 샘플:
