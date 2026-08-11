@@ -11,11 +11,13 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Propagation;
 
 import com.academy.mudogroupware.corporatecard.application.command.SubmitCardExpenseCommand;
+import com.academy.mudogroupware.corporatecard.application.port.ApprovalAttachmentFieldsPort;
 import com.academy.mudogroupware.corporatecard.application.port.ApprovalSubmissionPort;
 import com.academy.mudogroupware.corporatecard.application.port.CardExpensePort;
 import com.academy.mudogroupware.corporatecard.application.port.CorporateCardTransactionPort;
 import com.academy.mudogroupware.corporatecard.application.query.CardExpenseView;
 import com.academy.mudogroupware.corporatecard.application.query.CardExpensePage;
+import com.academy.mudogroupware.corporatecard.application.query.ReceiptReconciliationView;
 import com.academy.mudogroupware.corporatecard.domain.model.ExpenseCategory;
 
 import lombok.RequiredArgsConstructor;
@@ -31,6 +33,7 @@ public class CorporateCardExpenseService {
     private final CorporateCardTransactionPort transactionPort;
     private final CardExpensePort expensePort;
     private final ApprovalSubmissionPort approvalSubmissionPort;
+    private final ApprovalAttachmentFieldsPort approvalAttachmentFieldsPort;
 
     @Transactional(readOnly = true)
     public CardExpensePage getTransactions(int page, int size) {
@@ -66,6 +69,31 @@ public class CorporateCardExpenseService {
         return result;
         } catch (RuntimeException e) {
             log.warn("event=corporate_card_transaction_detail_read_실패 transactionId={}, reason={}", transactionId, e.getMessage());
+            throw e;
+        }
+    }
+
+    // 대조 결과는 저장하지 않는다 — 요청마다 실제 거래값과 영수증 AI 추출값을 다시 계산해서 보여준다.
+    // 필요해지면(예: "불일치 건 목록") 그때 결과 컬럼/테이블을 붙인다.
+    @Transactional(readOnly = true)
+    public ReceiptReconciliationView reconcileReceipt(Long transactionId) {
+        log.info("event=corporate_card_receipt_reconcile_시작 transactionId={}", transactionId);
+        try {
+            var transaction = transactionPort.find(transactionId)
+                    .orElseThrow(() -> new IllegalArgumentException("카드 사용내역을 찾을 수 없습니다."));
+            var expense = expensePort.findByTransactionId(transactionId)
+                    .orElseThrow(() -> new IllegalStateException("아직 정산 상신되지 않은 사용내역입니다."));
+            if (expense.approvalDocumentId() == null) {
+                throw new IllegalStateException("아직 정산 상신되지 않은 사용내역입니다.");
+            }
+            var extracted = approvalAttachmentFieldsPort.extractFields(expense.approvalDocumentId());
+            ReceiptReconciliationView result = ReceiptReconciliationView.of(transaction, extracted);
+            log.info("event=corporate_card_receipt_reconcile_완료 transactionId={}, overallStatus={}",
+                    transactionId, result.overallStatus());
+            return result;
+        } catch (RuntimeException e) {
+            log.warn("event=corporate_card_receipt_reconcile_실패 transactionId={}, reason={}",
+                    transactionId, e.getMessage());
             throw e;
         }
     }
