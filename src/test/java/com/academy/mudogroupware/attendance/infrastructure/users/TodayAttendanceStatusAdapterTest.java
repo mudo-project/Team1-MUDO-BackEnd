@@ -2,6 +2,7 @@ package com.academy.mudogroupware.attendance.infrastructure.users;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.Clock;
@@ -104,6 +105,7 @@ class TodayAttendanceStatusAdapterTest {
         List<MemberTodayAttendanceStatus> result = adapter.findTodayStatusByUserIds(List.of(4L));
 
         assertThat(result).containsExactly(new MemberTodayAttendanceStatus(4L, "OFF"));
+        verifyNoInteractions(leaveRequestRepository, attendanceRecordRepository);
     }
 
     @Test
@@ -115,9 +117,19 @@ class TodayAttendanceStatusAdapterTest {
     }
 
     @Test
-    void returnsEmptyListWhenNoUserIdsRequested() {
+    void returnsEmptyListWhenNoUserIdsRequestedAndPolicyExists() {
+        when(attendancePolicyRepository.findCurrent()).thenReturn(Optional.of(workdayPolicy()));
+
         List<MemberTodayAttendanceStatus> result = adapter.findTodayStatusByUserIds(List.of());
 
         assertThat(result).isEmpty();
+    }
+
+    @Test
+    void throwsWhenPolicyNotFoundEvenForEmptyUserIds() {
+        when(attendancePolicyRepository.findCurrent()).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> adapter.findTodayStatusByUserIds(List.of()))
+                .isInstanceOf(AttendanceException.class);
     }
 }

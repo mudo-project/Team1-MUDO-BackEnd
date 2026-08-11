@@ -37,13 +37,13 @@ public class TodayAttendanceStatusAdapter implements TodayAttendanceStatusPort {
 
     @Override
     public List<MemberTodayAttendanceStatus> findTodayStatusByUserIds(List<Long> userIds) {
-        if (userIds.isEmpty()) {
-            return List.of();
-        }
-
         LocalDate today = LocalDate.now(clock);
         AttendancePolicy policy = attendancePolicyRepository.findCurrent()
                 .orElseThrow(() -> new AttendanceException(AttendanceErrorCode.ATTENDANCE_POLICY_NOT_FOUND));
+
+        if (userIds.isEmpty()) {
+            return List.of();
+        }
 
         if (!policy.isWorkday(today.getDayOfWeek().getValue())) {
             return userIds.stream()
