@@ -23,6 +23,7 @@ import com.academy.mudogroupware.users.application.result.CreateAccountResult;
 import com.academy.mudogroupware.users.application.usecase.ChangeMyPasswordUseCase;
 import com.academy.mudogroupware.users.application.usecase.ChangeUserRoleUseCase;
 import com.academy.mudogroupware.users.application.usecase.CreateAccountUseCase;
+import com.academy.mudogroupware.users.application.usecase.GetMemberDetailUseCase;
 import com.academy.mudogroupware.users.application.usecase.GetMyProfileUseCase;
 import com.academy.mudogroupware.users.application.usecase.ListMembersUseCase;
 import com.academy.mudogroupware.users.application.usecase.PasswordSetupUseCase;
@@ -62,6 +63,7 @@ public class UserController {
     private final GetMyProfileUseCase getMyProfileUseCase;
     private final UpdateMyProfileUseCase updateMyProfileUseCase;
     private final ChangeMyPasswordUseCase changeMyPasswordUseCase;
+    private final GetMemberDetailUseCase getMemberDetailUseCase;
 
     @PreAuthorize("hasAuthority('ACCOUNT:MANAGE')")
     @PostMapping
@@ -153,6 +155,20 @@ public class UserController {
             @Valid @RequestBody ChangeMyPasswordRequest request) {
         changeMyPasswordUseCase.changePassword(authUser.userId(), request.currentPassword(), request.newPassword());
         return ResponseEntity.noContent().build();
+    }
+
+    @PreAuthorize("hasAuthority('ACCOUNT:MANAGE')")
+    @Operation(
+            summary = "구성원 상세 조회(관리자)",
+            description = "같은 학원 소속 일반 직원 계정(accountType=MEMBER)의 상세 정보를 조회합니다. "
+                    + "대상이 존재하지 않거나 다른 학원 소속이거나 학원 관리자 계정이면 동일하게 404로 응답합니다.")
+    @GetMapping("/{userId}")
+    public ResponseEntity<GlobalApiResponse<UserDetailResponse>> getMemberDetail(
+            @AuthenticationPrincipal AuthUser authUser,
+            @Parameter(description = "조회할 구성원의 사용자 ID") @PathVariable Long userId) {
+        UserDetailResponse data = UserDetailResponse.from(
+                getMemberDetailUseCase.getMemberDetail(authUser.academyId(), userId));
+        return ResponseEntity.ok(GlobalApiResponse.ok(UserResponseCode.MEMBER_DETAIL_RETRIEVED, data));
     }
 
     @Operation(

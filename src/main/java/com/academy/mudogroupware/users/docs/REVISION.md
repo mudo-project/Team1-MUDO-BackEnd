@@ -7,6 +7,30 @@
 
 ---
 
+## ✅ 2026-08-11 · 구성원 상세 조회 추가
+
+### 배경
+
+#361(내 정보 조회, #367)·#362(내 정보 수정, #371)·#363(내 비밀번호 변경, #372)에 이어지는 작업(#364). 관리자가 구성원 목록(`GET /api/users/members`)에서 요약 정보만 볼 수 있었고, 개별 구성원의 상세 정보를 별도로 조회하는 API가 없었다.
+
+### 확정된 정책
+
+- `GetUserDetailService`가 `GetMyProfileUseCase`에 이어 `GetMemberDetailUseCase`도 구현하도록 확장했다 — 내 정보 조회와 동일한 `UserDetailResult`/`UserDetailResponse`를 그대로 재사용한다.
+- 대상 검증은 `ChangeUserRoleService`의 `findById → academyId 필터 → accountType == MEMBER 필터` 패턴을 그대로 따랐다 — 대상이 없거나 다른 학원 소속이거나 학원 관리자 계정이면 전부 동일하게 `404 USER_404_1`로 응답해 존재 여부를 숨긴다.
+
+### 완료 기준
+
+- [x] `GetMemberDetailUseCase` 추가 + `GetUserDetailService` 확장(TDD)
+- [x] `UserResponseCode.MEMBER_DETAIL_RETRIEVED`("USER_200_6") 추가
+- [x] `UserController`에 `GET /api/users/{userId}` 반영
+- [x] `./gradlew build` 통과
+
+### 범위 밖 (명시적으로 미룸)
+
+- 관리자용 구성원 정보 수정/재직상태변경 — 각각 별도 PR(#365~#366)에서 이어간다.
+
+---
+
 ## ✅ 2026-08-11 · 내 비밀번호 변경 추가
 
 ### 배경
