@@ -1954,6 +1954,28 @@ Session Manager에서 Docker Engine과 Docker Compose Plugin을 설치하고 Doc
 
 `docker-compose.monitoring.yml`의 기본 구조:
 
+### 21-5-1. 운영 반영: 데이터 볼륨 권한과 502 복구
+
+모니터링 서버는 호스트 디렉터리를 컨테이너에 바인드 마운트한다. 따라서 최초 생성자 또는 이전 컨테이너가 `root` 소유로 남긴 파일 때문에 Grafana, Prometheus, Loki, Alertmanager가 시작 직후 종료될 수 있다. 이 경우 ALB 대상이 비정상이 되어 `https://monitoring.ieum.store`에서 `502 Bad Gateway`가 발생한다.
+
+`deploy-monitoring-stack.sh`는 배포 전에 아래 데이터 디렉터리의 소유권을 매번 보정한다. 기존에 잘못 생성된 파일도 다음 재배포에서 함께 복구된다.
+
+| 디렉터리 | 컨테이너 | 소유권 |
+| --- | --- | --- |
+| `data/grafana` | Grafana | `472:472` |
+| `data/prometheus` | Prometheus | `65534:65534` |
+| `data/loki` | Loki | `10001:10001` |
+| `data/alertmanager` | Alertmanager | `65534:65534` |
+
+복구 시에는 다음 순서로 확인한다.
+
+1. ALB 대상 그룹 `mudo-prod-tg-monitoring`의 대상 상태가 `Healthy`인지 확인한다.
+2. 모니터링 EC2에서 `docker ps -a`와 각 컨테이너 로그를 확인한다. `not writable`, `permission denied`가 보이면 볼륨 소유권 문제다.
+3. 수정된 배포 스크립트가 main에 반영된 뒤 모니터링 GitHub Actions를 다시 실행한다.
+4. Grafana, Prometheus, Loki, Alertmanager가 모두 `Up`인 것과 `https://monitoring.ieum.store` 응답을 확인한다.
+
+`chmod 777`로 우회하지 않는다. 이미지 버전을 변경할 때는 각 이미지의 실행 UID/GID를 다시 확인해 위 소유권 값을 함께 검토한다.
+
 ```yaml
 name: mudo-observability
 
@@ -2031,11 +2053,13 @@ networks:
 `.env.monitoring`은 서버에서 SSM 값을 받아 생성하고 권한을 `600`으로 제한한다. Git에는 올리지 않는다.
 
 ```text
-MONITORING_DOMAIN=monitoring.groupware.example.com
+MONITORING_DOMAIN=monitoring.ieum.store
 GRAFANA_ADMIN_USER=<SSM에서 받은 값>
 GRAFANA_ADMIN_PASSWORD=<SSM에서 받은 값>
 PROMETHEUS_RETENTION=15d
 ```
+
+`MONITORING_DOMAIN`은 Grafana의 실제 외부 주소다. 모니터링 EC2의 사설 IP(`10.40.10.33`)는 VPC 내부 통신용이므로 브라우저 접속 주소로 사용하지 않는다.
 
 Alertmanager의 실제 `alertmanager.yml`도 SSM의 Slack Webhook을 주입해 서버에서 렌더링한다. Webhook이 포함된 결과 파일은 Git에 올리지 않고 권한을 `600`으로 제한한다.
 
