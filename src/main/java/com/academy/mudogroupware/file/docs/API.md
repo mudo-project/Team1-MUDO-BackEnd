@@ -54,7 +54,7 @@ Request Body
 Response Body
 
 ```json
-{"status":200,"code":"FILE_200_1","message":"업로드용 URL 발급에 성공했습니다.","data":{"objectKey":"uploads/1/3f2c1a2e-휴가원.pdf","uploadUrl":"https://academy-files.s3.ap-northeast-2.amazonaws.com/..."}}
+{"status":200,"code":"FILE_200_1","message":"업로드용 URL 발급에 성공했습니다.","data":{"objectKey":"tenants/academy-a/files/3f2c1a2e-휴가원.pdf","uploadUrl":"https://academy-files.s3.ap-northeast-2.amazonaws.com/..."}}
 ```
 
 ### **Response Field**
@@ -91,7 +91,7 @@ Request Body
 
 ```json
 {
-  "objectKey": "uploads/1/3f2c1a2e-휴가원.pdf",
+  "objectKey": "tenants/academy-a/files/3f2c1a2e-휴가원.pdf",
   "contentType": "application/pdf"
 }
 ```

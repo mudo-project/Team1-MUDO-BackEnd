@@ -1,5 +1,15 @@
 # file 모듈 Changelog
 
+## 2026-08-11 (2) - objectKey를 운영 IAM Prefix(tenants/{tenantId}/*)에 맞춤
+
+- **[긴급 수정]** academyId 제거 직후의 objectKey(`uploads/{UUID}-{파일명}`)가 운영 ECS Task Role의
+  IAM 정책(`tenants/{tenantId}/*` 경로에만 `s3:PutObject` 허용)과 맞지 않아, presigned URL
+  발급은 성공해도 실제 S3 PUT에서 AccessDenied가 날 수 있는 상태였다.
+- `GeneratePresignedUploadUrlService`가 `InstanceMetadataProperties`(`TENANT_ID` 환경변수,
+  `global.infrastructure.observability`)를 주입받아 objectKey를 `tenants/{tenantId}/files/{UUID}-{파일명}`
+  형태로 생성하도록 바꿨다. tenantId는 클라이언트 입력이 아니라 서버 설정에서만 읽는다.
+- DB 스키마 변경이나 마이그레이션은 필요 없다.
+
 ## 2026-08-11 - 단일 학원 전환: file_metadata academy_id 제거
 
 - **[변경]** `file_metadata`에서 `academy_id` 컬럼을 제거했다(`V1.5.14`). `FileMetadataEntity.create/restore`, `RegisterFileCommand`, `GeneratePresignedUploadUrlCommand`, `GetFileDownloadUrlUseCase.getDownloadUrl(s)`에서 academyId 파라미터를 뺐다. objectKey도 `uploads/{academyId}/...` → `uploads/...`로 바뀌었다.
