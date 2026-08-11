@@ -10,7 +10,7 @@ state 일회성(재사용 방지) 처리는 이번 범위에서 제외했다 —
 
 ### 구현 변경
 
-- `OldGoogleRefreshTokenRevocationRequestedEvent` 신규 추가. `CompleteGoogleAccountConnectionService`(계정 교체)와 `DisconnectGoogleAccountService`(연동 해제) 둘 다 DB 쓰기 직후 이 이벤트를 발행하고, `GoogleTokenRevocationListener`가 `@TransactionalEventListener(phase = AFTER_COMMIT)`로 받아 그제서야 `googleOAuthPort.revoke()`를 호출한다. 커밋이 실패해 롤백되면 이벤트 자체가 발행되지 않아 revoke 요청도 나가지 않는다.
+- `OldGoogleRefreshTokenRevocationRequestedEvent` 신규 추가. `CompleteGoogleAccountConnectionService`(계정 교체)와 `DisconnectGoogleAccountService`(연동 해제) 둘 다 DB 쓰기 직후 이 이벤트를 발행하고, `GoogleTokenRevocationListener`가 `@TransactionalEventListener(phase = AFTER_COMMIT)`로 받아 그제서야 `googleOAuthPort.revoke()`를 호출한다. `publishEvent()` 호출 자체는 커밋 전(트랜잭션 내부)에 실행되지만, 리스너 메서드 실행은 커밋이 확정될 때까지 미뤄진다. 트랜잭션이 롤백되면 리스너가 아예 호출되지 않아 revoke 요청도 나가지 않는다.
 - `GoogleAccountConnectionController.completeConnection()`에 실패 원인 로그 3갈래를 추가했다: Google이 `error` 파라미터를 보낸 경우, `code`/`state`가 누락된 경우, 연동 처리 중 예외가 발생한 경우(예외 타입+메시지). `code`·`state`(토큰·인가코드가 실린 값)는 로그에 남기지 않는다.
 
 ### 검증

@@ -78,23 +78,29 @@ public class GoogleAccountConnectionController {
             @RequestParam(required = false) String error) {
         String redirectUri;
         if (error != null) {
-            log.warn("event=google_oauth_callback_google_error error={}", error);
+            log.warn("event=google_oauth_callback_google_error error={}", sanitizeForLog(error));
             redirectUri = frontendRedirectUri + "?googleConnection=failed";
-        } else if (code == null || state == null) {
+        } else if (code == null || code.isBlank() || state == null || state.isBlank()) {
             log.warn("event=google_oauth_callback_missing_params codePresent={} statePresent={}",
-                    code != null, state != null);
+                    code != null && !code.isBlank(), state != null && !state.isBlank());
             redirectUri = frontendRedirectUri + "?googleConnection=failed";
         } else {
             try {
                 completeGoogleAccountConnectionUseCase.complete(new CompleteGoogleConnectionCommand(code, state));
                 redirectUri = frontendRedirectUri + "?googleConnection=success";
             } catch (RuntimeException e) {
-                log.warn("event=google_oauth_callback_failed exceptionType={} message={}",
-                        e.getClass().getSimpleName(), e.getMessage());
+                log.warn("event=google_oauth_callback_failed exceptionType={}", e.getClass().getSimpleName());
                 redirectUri = frontendRedirectUri + "?googleConnection=failed";
             }
         }
         return ResponseEntity.status(HttpStatus.FOUND).location(URI.create(redirectUri)).build();
+    }
+
+    // 로그 위조(CR/LF 삽입)와 과도한 길이의 로그를 막기 위해 요청 제어값(error)을 제어 문자 제거 +
+    // 길이 제한 후에만 로그에 남긴다. error는 permitAll 엔드포인트라 공격자가 값을 완전히 통제할 수 있다.
+    private static String sanitizeForLog(String value) {
+        String sanitized = value.replaceAll("[\\r\\n\\t]", "_");
+        return sanitized.length() > 100 ? sanitized.substring(0, 100) : sanitized;
     }
 
     @Operation(summary = "구글 연동 상태 조회", description = "현재 학원의 구글 계정 연동 상태를 조회합니다. 연동된 계정이 없으면 data가 null입니다.")
