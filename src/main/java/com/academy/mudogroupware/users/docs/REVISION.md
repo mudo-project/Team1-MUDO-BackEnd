@@ -1,9 +1,152 @@
 > 작성일: 2026-08-04
-> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청/승인 워크플로우(PR 1·2·3/3, "계정 발급 체계" 2단계) 완료, 역할 관리 API 7개(생성/목록/상세/수정/삭제/권한 조립/권한 카탈로그 조회) 완료, 사용자 역할 변경 API 완료, 학원 구성원 검색 API 완료, 역할 색상/인원수 완료, CodeRabbit 피드백 반영 + 로깅 컨벤션 전체 도메인(Service 17개) 적용 완료, 직원 계정 발급 API 완료("계정 발급 체계" 3단계 완료), 학원 신청 접수 API 완료(최소 스코프, "계정 발급 체계" 2단계 최종 완결) · 후속 작업: 이메일 발송, mustChangePw 로그인 흐름 연동, 원장 신청 시 username 중복 확인, 사업자등록증 검증(OCR·국세청 API)
+> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청/승인 워크플로우(PR 1·2·3/3, "계정 발급 체계" 2단계) 완료, 역할 관리 API 7개(생성/목록/상세/수정/삭제/권한 조립/권한 카탈로그 조회) 완료, 사용자 역할 변경 API 완료, 학원 구성원 검색 API 완료, 역할 색상/인원수 완료, CodeRabbit 피드백 반영 + 로깅 컨벤션 전체 도메인(Service 17개) 적용 완료, 직원 계정 발급 API 완료("계정 발급 체계" 3단계 완료), 학원 신청 접수 API 완료(최소 스코프, "계정 발급 체계" 2단계 최종 완결), 학원 신청 접수 시점 requestedLoginId 중복확인 완료, 비밀번호 설정 링크 + 계정 발급 흐름 통합 완료(원장 역할 자동 생성·전체 권한 배정 포함), 관리자용 구성원 목록 조회 API 완료(오늘 근태 상태·페이지네이션·역할 필터 포함) · 후속 작업: 이메일 발송, 사업자등록증 검증(OCR·국세청 API), 비밀번호 설정 링크 재발급 흐름
 
 ## 🎯 변경 목적
 
 계정·권한(users) 도메인을 신설하고, 로그인과 액세스 토큰 재발급을 구현한다. 초기세팅 때 approval 도메인이 참조용으로 임시로 만들어둔 `users` 테이블을 팀이 확정한 ERD에 맞게 정합화하고, 그 위에서 인증 흐름을 짠다.
+
+---
+
+## ✅ 2026-08-11 · 구성원 목록 조회 페이지네이션·역할 필터
+
+### 배경
+
+관리자용 구성원 목록은 "학원당 구성원 규모가 작다"는 전제로 페이지네이션 없이 설계했다. 그런데 직원 수가 많은 학원도 서비스를 쓸 수 있어야 한다는 요구사항이 생겼고, 동시에 화면 목표였던 "역할별로 묶어 보여주는 조직도 뷰"를 어떻게 유지할지가 쟁점이 됐다 — 페이지네이션을 걸면 프론트가 전체 목록을 한 번에 못 받아서 클라이언트 사이드 그룹핑이 불가능해지기 때문이다.
+
+### 확정된 정책
+
+- `roleId` 쿼리 파라미터를 추가해서, 프론트가 역할 탭마다 독립적으로 페이지네이션된 목록을 요청하는 방식으로 해결했다. 중첩(nested) 그룹 응답 구조는 만들지 않았다.
+- 페이지네이션은 기존 `GetWeeklyEmployeeAttendanceUseCase`/`WeeklyEmployeeAttendanceQueryService`가 쓰던 것과 동일한 인메모리 방식(`PageResult`/`SliceResponse`, DB 레벨 Pageable 아님)을 그대로 재사용했다 — 새 패턴을 도입하지 않았다.
+- 근태 상태(`attendanceStatus`) 조회는 전체 구성원이 아니라 페이지에 포함된 구성원만 대상으로 축소했다 — 페이지네이션의 목적(불필요한 데이터 전송 감소)에 맞춘 것이다.
+- 응답을 `List<MemberListResponse>`에서 `SliceResponse<MemberListResponse>`로 바꿨다 — 이 API가 아직 develop에 병합 전이라 하위 호환성 문제가 없다.
+
+### 완료 기준
+
+- [x] `ListMembersUseCase`/`ListMembersService`에 `roleId`/`page`/`size` 반영(TDD: 역할 필터/페이지네이션/정렬/근태 조회 범위 축소)
+- [x] `UserController`에 `@Validated`·`page`/`size` 파라미터 검증 반영
+- [x] 로컬 curl e2e(전체/역할 필터/페이지네이션/잘못된 파라미터 400)
+- [x] `./gradlew build` 통과
+
+### 범위 밖 (명시적으로 미룸)
+
+- DB 레벨 페이지네이션(Pageable/LIMIT-OFFSET) — CodeRabbit 리뷰에서도 같은 지적(전체 구성원을 로드한 뒤 인메모리로 필터·정렬·페이지 자르기를 하므로 학원 규모에 비례해 DB 조회량·메모리 사용량이 늘어남)이 나왔다. 지금은 목업 기준 학원당 구성원 규모가 작아 실익이 없다고 판단해 보류한다. **구성원 수가 실제로 커지거나 성능 지표에 문제가 확인되면 재검토한다.**
+- `TodayAttendanceStatusAdapter`의 `leaveRequestRepository.findApprovedUserIds(today)`가 페이지에 포함된 userId가 아니라 학원 전체 승인 휴가자를 조회하는 것도 같은 이유로 지금은 보류한다.
+- 중첩 그룹 응답 구조 — roleId 필터로 프론트가 탭 단위로 해결.
+
+---
+
+## ✅ 2026-08-11 · 구성원 목록에 오늘 근태 상태 포함 (`attendanceStatus`)
+
+### 배경
+
+관리자용 구성원 목록(`GET /api/users/members`)은 처음엔 근태 상태를 스코프 밖으로 두고, 프론트가 `GET /api/attendance/team/today`나 `GET /api/attendance/employees/weekly`를 별도 호출해 합치도록 했다. 그런데 이 두 API는 정책 시간·전체 요약·요일별 상세 배열까지 포함해 목록 화면이 실제로 쓸 값(오늘 상태 하나)에 비해 너무 무겁다는 문제가 제기됐다.
+
+### 확정된 정책
+
+- `users`가 `TodayAttendanceStatusPort`/`MemberTodayAttendanceStatus`를 정의하고, `attendance`가 이를 구현하는 방향으로 진행했다 — 이 프로젝트에서 `users`가 다른 도메인의 Port를 소비하는 첫 사례다(기존엔 항상 반대 방향이었다).
+- Adapter(`TodayAttendanceStatusAdapter`)는 attendance의 기존 서비스(`TodayTeamAttendanceQueryService`)를 호출하지 않고, `AttendancePolicyRepository`/`LeaveRequestRepository`를 재사용하면서 `AttendanceRecordRepository`에 조회 메서드 하나(`findAllByUserIdsAndWorkDate`)만 추가해 독립적으로 상태를 계산한다 — 기존 서비스 로직은 전혀 수정하지 않았다.
+- 근태 정책이 없어 상태 계산이 실패하면(`ATTENDANCE_POLICY_NOT_FOUND`), 그 오류를 감추지 않고 `GET /api/users/members` 전체를 `404 ATTENDANCE_404_1`로 실패시키기로 했다 — 부분 성공(근태만 null)보다 명확한 실패를 택했다.
+- `attendanceStatus`는 `ACTIVE` 구성원에게만 채우고 `RESIGNED`/`INACTIVE`는 항상 `null`이다 — Adapter 자체는 이 필터링을 하지 않으므로 `ListMembersService`가 매핑 시점에 강제한다.
+
+### 완료 기준
+
+- [x] `AttendanceRecordRepository.findAllByUserIdsAndWorkDate` + 구현(TDD)
+- [x] `TodayAttendanceStatusPort`/`MemberTodayAttendanceStatus` 정의, `TodayAttendanceStatusAdapter` 구현(TDD)
+- [x] `ListMembersService`/`MemberListItem`/`MemberListResponse`에 `attendanceStatus` 통합(TDD)
+- [x] 로컬 curl/Swagger e2e(전체 조회 시 필드 확인, 정책 없을 때 404)
+- [x] `./gradlew build` 통과
+
+### 범위 밖 (명시적으로 미룸)
+
+- 근태 이력(주간/월간) 연동 — 필요 시 별도 브레인스토밍.
+- attendance 기존 API(`/today`, `/weekly`) 응답 축소.
+
+---
+
+## ✅ 2026-08-10 · 관리자용 구성원 목록 조회 (`GET /api/users/members`)
+
+### 배경
+
+Figma 목업(구성원 관리 화면) 확인 중, 기존 "학원 구성원 검색"(`GET /api/users?keyword=`)으로는 화면(이름/이메일/역할명/연락처/입사일/상태)을 채울 수 없다는 게 확인됐다. 그 API는 워크스페이스/채팅방 멤버 선택용으로, 권한 없이 로그인만 하면 누구나 호출 가능하도록 의도적으로 `{userId, name, username}`만 반환하게 설계돼 있어 필드를 추가할 수 없었다(개인정보 노출).
+
+### 확정된 정책
+
+- 완전히 별도의 관리자 전용 엔드포인트(`GET /api/users/members`, `ACCOUNT:MANAGE` 권한)로 새로 만들었다.
+- `status`는 `users` 도메인의 계정 상태(`ACTIVE`/`RESIGNED`/`INACTIVE`)만 원본 값으로 내려주고, "재직/비활성" 탭 분류(비활성 = RESIGNED+INACTIVE 묶음)는 프론트 책임으로 뒀다 — 백엔드는 단순 목록만 담당한다.
+- 역할명은 `RoleRepository.findAllByAcademyId()`(기존 "역할 목록 조회"가 이미 쓰던 메서드)로 한 번에 조회해 애플리케이션 레벨에서 맵으로 합쳤다 — JPA 레벨 조인이나 새 프로젝션 쿼리를 만들지 않고 기존 리포지토리 메서드 재사용만으로 해결했다.
+- 페이지네이션과 서버 사이드 키워드/상태 필터링(SQL WHERE 절)은 만들지 않고 애플리케이션 레벨에서 인메모리로 처리했다 — 학원당 구성원 규모가 작고(목업 기준 한 자릿수~두 자릿수), 기존 역할 목록 조회도 페이지네이션이 없는 전례를 따랐다.
+- 근태 상태 통합은 처음엔 스코프 밖으로 뒀으나, 이후 별도 작업(위 2026-08-11 항목)으로 추가됐다.
+
+### 완료 기준
+
+- [x] `UserRepository.findAllByAcademyId()` + 구현(TDD)
+- [x] `ListMembersUseCase`/`ListMembersService`(TDD: 키워드 없음/이름 검색/역할명 검색/빈 결과/roleId null 케이스)
+- [x] `GET /api/users/members` 컨트롤러 핸들러 + `ACCOUNT:MANAGE` 권한
+- [x] 로컬 curl e2e(전체 조회/이름 검색/역할명 검색/권한 없음 403)
+- [x] `./gradlew build` 통과
+
+### 범위 밖 (명시적으로 미룸)
+
+- 구성원 정보 수정(이름/연락처/이메일/입사일 변경) API — 별도 브레인스토밍 예정.
+- 계정 활성/비활성 전환 API — 별도 브레인스토밍 예정.
+
+---
+
+## ✅ 2026-08-10 · 학원 신청 접수 시점 requestedLoginId 중복확인 (`V4.1.6`)
+
+### 배경
+
+`ApproveAcademyApplicationService`는 승인 시점에만 `requestedLoginId` 중복을 체크했다(2026-08-10 CodeRabbit 리뷰 반영분). 접수 시점(`SubmitAcademyApplicationService`)에는 체크가 없어 신청자가 승인 시점에야 아이디 중복을 알게 됐고, `academy_application.requested_login_id`에 유니크 제약이 없어 두 신청서가 동시에 같은 아이디로 접수될 수 있었다.
+
+### 확정된 정책
+
+- 접수 시점에 이미 발급된 계정(`users.username`) + 현재 `PENDING`/`APPROVED` 상태인 다른 신청서와 겹치는지 확인한다. `REJECTED` 신청서는 대상에서 제외해 반려된 아이디로 재신청을 허용한다.
+- 애플리케이션 사전 체크만으로는 동시 요청 레이스를 완전히 막을 수 없어, MySQL 생성 컬럼(`requested_login_id_active`, `status`가 `PENDING`/`APPROVED`일 때만 값을 갖고 그 외엔 `NULL`) + 부분 유니크 제약(`uk_academy_application_requested_login_id_active`)을 함께 걸었다. `markApproved`/`markRejected`가 `status`를 바꾸면 이 생성 컬럼이 자동 재계산되므로 애플리케이션 코드는 손대지 않았다.
+- 제약 위반은 `AcademyApplicationRepositoryImpl.save()`에서 `DataIntegrityViolationException`을 캐치해 기존 `UsernameDuplicateException`(`409 USER_409_6`)으로 변환한다 — `RoleRepositoryImpl`의 역할 이름 중복 방어(`uk_role_academy_name`)와 동일한 패턴을 그대로 포팅했다.
+- 승인 시점(2026-08-10 CodeRabbit 리뷰 반영분에서 추가된 체크)의 중복 확인은 그대로 유지한다 — 접수와 승인 사이의 시간차 동안 상황이 바뀔 수 있어(다른 경로로 같은 아이디의 계정이 먼저 생성되는 등) 최종 안전장치로 남겨둔다.
+
+### 완료 기준
+
+- [x] `V4.1.6__academy_application_requested_login_id_unique.sql` 마이그레이션
+- [x] `AcademyApplicationRepository.existsActiveRequestedLoginId()` + 구현(TDD, `PENDING`/`APPROVED`/`REJECTED` 3케이스)
+- [x] `AcademyApplicationRepositoryImpl.save()` 유니크 제약 위반 → `UsernameDuplicateException` 변환(TDD)
+- [x] `SubmitAcademyApplicationService` 사전 중복 체크(TDD: 계정 중복/대기중 신청서 중복/정상 2케이스)
+- [x] 로컬 curl e2e(정상 접수 → 같은 아이디 재접수 409 → 기존 계정 아이디 접수 409 → 반려 후 같은 아이디 재신청 정상) + Swagger(OpenAPI) 스키마 확인
+- [x] `./gradlew build` 통과
+
+---
+
+## ✅ 2026-08-10 · 비밀번호 설정 링크 + 계정 발급 흐름 통합
+
+### 배경
+
+"슈퍼어드민인데 권한이 없다고 뜬다"는 버그 리포트를 조사하는 과정에서(원인은 결국 Wi-Fi IP 등록 정책과 academy_id 시딩 실수 두 가지로, 둘 다 코드 버그는 아니었다) 별개로 실제 설계 공백 하나를 발견했다: 학원 신청이 승인되면 원장 계정(`account_type=ADMIN`, `admin_scope=ACADEMY`)이 생성되지만 이 계정에 배정할 역할이 없어서, 원장이 로그인해도 아무 기능도 쓸 수 없었다. 이 문제를 계기로 계정 발급 체계 전반(원장 승인 발급 + 직원 계정 발급이 공유하는 `AccountIssuer`)의 임시 비밀번호 전달 방식도 함께 재검토했다 — 지금까지는 응답 바디에 임시 비밀번호를 평문으로 담아 관리자가 수동으로 전달하는 방식이었는데, 평문 비밀번호가 API 응답과 로그에 남는 게 계속 마음에 걸리던 부분이었다.
+
+### 확정된 정책
+
+- **별도 토큰 테이블을 만들지 않고 기존 `users.password`/`users.must_change_pw` 컬럼을 재사용한다.** 계정 발급 시 임시 비밀번호를 해싱해 `users.password`에 그대로 저장하고 `must_change_pw=true`로 세팅한다. 비밀번호 설정 API(`POST /api/users/password-setup`)는 아이디+임시 비밀번호로 `PasswordEncoder.matches()` 검증 후 새 비밀번호로 교체한다 — 이 임시 비밀번호 자체가 "토큰" 역할을 겸한다. 만료 시간은 별도로 두지 않았다: 설정에 성공하면 비밀번호가 즉시 바뀌어 링크가 자기 자신을 무효화하고(self-invalidating), `must_change_pw=true`라는 명시적 가드가 이미 설정을 마친 계정의 재사용(또는 실제 비밀번호가 유출된 경우의 오남용)을 막는다. 별도 테이블·만료 로직 없이 두 가지 방어가 이미 확보되는 구조라 추가 복잡도를 들이지 않기로 했다.
+- **`must_change_pw`는 로그인 흐름을 막는 강제 로직으로 쓰지 않는다.** 원래 컬럼 의도는 "다음 로그인 시 비밀번호 변경을 강제"였지만, 이번엔 "최초 설정을 아직 안 마쳤음"을 나타내는 1회성 플래그로만 쓴다 — 비밀번호 설정 API가 성공하면 `false`로 바뀌고, 이 값을 이유로 다른 API 호출을 막는 필터나 체크는 추가하지 않았다. 로그인 자체를 막을지, 막는다면 어떤 API까지 막을지는 프론트 UX와 맞물린 별도 논의가 필요해 이번 스코프에서 제외했다.
+- **원장 역할은 승인 시점의 권한 카탈로그 스냅샷으로 자동 생성한다.** `ApproveAcademyApplicationService`가 승인 시 `academy_id` 범위의 "원장" 역할을 새로 만들고(`Role.create`), 그 시점에 `PermissionRepository.findAll()`로 조회되는 모든 권한 코드를 그 역할에 배정한다(`RoleRepository.updatePermissions`). PLATFORM 관리자(`PlatformAdminPermissionPort`)처럼 "역할 없이 동적으로 전체 권한 부여"하는 방식은 채택하지 않았다 — `admin_scope=ACADEMY`에 그런 동적 바이패스를 추가하려면 `JwtAuthenticationConverter`의 분기 로직을 건드려야 하는데, 이는 이번 버그 수정 스코프를 넘어서는 별도 서브프로젝트로 판단해 미뤘다(아래 "범위 밖" 참고). 스냅샷 방식의 트레이드오프: 승인 이후 새 기능이 추가돼 권한 카탈로그가 늘어나도 기존 원장 역할엔 자동으로 반영되지 않는다 — 기존 역할 권한 조립 API(`PUT /api/roles/{roleId}/permissions`)로 수동 갱신해야 한다.
+- **`AccountIssuer.issue()`가 임시 비밀번호 대신 비밀번호 설정 링크를 반환하도록 통일했다.** 원장 승인(`ApproveAcademyApplicationService`)과 직원 계정 발급(`CreateAccountService`)이 공유하는 `AccountIssuer`에 `PasswordSetupLinkBuilder`(신규, `app.frontend-url` 설정값 기반으로 `UriComponentsBuilder`가 링크를 조립)를 추가해, 두 흐름 모두 응답 필드명을 `passwordSetupLink`로 통일했다(`temporaryPassword`에서 변경). 프론트 URL은 `${APP_FRONTEND_URL:http://localhost:3000}`로 환경별 오버라이드 가능하게 뒀다.
+
+### 범위 밖 (명시적으로 미룸)
+
+- `admin_scope` 컬럼 구조 자체를 단순화하는 스키마 변경 — 별도 스펙으로 분리하기로 함(이번 조사 중 블라스트 반경을 확인했으나 착수하지 않음).
+- 학원별 별도 스키마 도입으로 `academy` 테이블을 제거하는 테넌트 분리 마이그레이션 — 방향은 확정됐으나 사용자가 명시적으로 요청하기 전까지는 건드리지 않기로 함.
+- 비밀번호 설정 링크가 만료되거나 분실됐을 때의 재발급(resend) 흐름 — 이번엔 다루지 않음.
+- 이메일 자동 발송, 사업자등록증 검증(OCR·국세청 진위확인 API) — 기존부터 이어져 온 후속 작업, 이번에도 미룸(원장 신청 시 username 중복 확인은 같은 날 별도 작업으로 완료됨 — 위 "학원 신청 접수 시점 requestedLoginId 중복확인" 섹션 참고).
+
+### 완료 기준
+
+- [x] `UserRepository.completePasswordSetup(userId, newPasswordHash)` + `UserEntity.completePasswordSetup()` mutator + `DataJpaTest`
+- [x] `PasswordSetupCommand`/`PasswordSetupUseCase`/`PasswordSetupService`(TDD: 아이디 없음/이미 설정 완료/임시 비밀번호 불일치/성공 4케이스)
+- [x] `POST /api/users/password-setup` 컨트롤러 핸들러 + `SecurityConfig` `permitAll`
+- [x] `PasswordSetupLinkBuilder`(`.encode()` 포함 — 특수문자 포함 임시 비밀번호가 쿼리 파라미터에서 깨지지 않도록)
+- [x] `AccountIssuer`/`IssuedAccount`/`CreateAccountResult`/`ApproveAcademyApplicationResult` 및 대응 응답 DTO `temporaryPassword` → `passwordSetupLink` 필드 전환
+- [x] `ApproveAcademyApplicationService`에 `RoleRepository`/`PermissionRepository` 의존성 추가, 원장 역할 자동 생성 + 전체 권한 배정 로직(TDD)
+- [x] 로컬 curl e2e(학원 신청 승인 → 원장 역할·권한 자동 배정 확인 → 비밀번호 설정 링크로 최초 설정 → 새 비밀번호로 로그인 → 원장 권한으로 기능 호출 성공 확인)
+- [x] Swagger(OpenAPI) 문서로 신규/변경 엔드포인트 응답 스키마 재검증
+- [x] `./gradlew build` 통과(신규 `app.frontend-url` 설정값을 `src/test/resources/application.yaml`에도 반영해 무관한 도메인 통합 테스트 36건 컨텍스트 로딩 실패 해결)
 
 ---
 

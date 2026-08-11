@@ -26,32 +26,32 @@ public class EnrollmentRepositoryImpl implements EnrollmentRepository {
     }
 
     @Override
-    public Optional<Enrollment> findByStudentIdAndLectureId(Long academyId, Long studentId, Long lectureId) {
-        return enrollmentJpaRepository.findByAcademyIdAndStudentIdAndLectureId(academyId, studentId, lectureId)
+    public Optional<Enrollment> findByStudentIdAndLectureId(Long studentId, Long lectureId) {
+        return enrollmentJpaRepository.findByStudentIdAndLectureId(studentId, lectureId)
                 .map(this::toDomain);
     }
 
     @Override
-    public Optional<Enrollment> findById(Long academyId, Long studentId, Long enrollmentId) {
-        return enrollmentJpaRepository.findByAcademyIdAndStudentIdAndId(academyId, studentId, enrollmentId)
+    public Optional<Enrollment> findById(Long studentId, Long enrollmentId) {
+        return enrollmentJpaRepository.findByStudentIdAndId(studentId, enrollmentId)
                 .map(this::toDomain);
     }
 
     @Override
-    public List<Enrollment> findActiveByStudentId(Long academyId, Long studentId) {
-        return enrollmentJpaRepository.findAllByAcademyIdAndStudentIdAndStatusOrderByEnrolledAtDesc(
-                        academyId, studentId, EnrollmentStatus.ACTIVE)
+    public List<Enrollment> findActiveByStudentId(Long studentId) {
+        return enrollmentJpaRepository.findAllByStudentIdAndStatusOrderByEnrolledAtDesc(
+                        studentId, EnrollmentStatus.ACTIVE)
                 .stream()
                 .map(this::toDomain)
                 .toList();
     }
 
     @Override
-    public Map<Long, Long> countActiveByStudentIds(Long academyId, List<Long> studentIds) {
+    public Map<Long, Long> countActiveByStudentIds(List<Long> studentIds) {
         if (studentIds == null || studentIds.isEmpty()) {
             return Map.of();
         }
-        return enrollmentJpaRepository.countByStudentIdsAndStatus(academyId, studentIds, EnrollmentStatus.ACTIVE)
+        return enrollmentJpaRepository.countByStudentIdsAndStatus(studentIds, EnrollmentStatus.ACTIVE)
                 .stream()
                 .collect(Collectors.toMap(
                         EnrollmentJpaRepository.StudentEnrollmentCount::getStudentId,
@@ -60,20 +60,20 @@ public class EnrollmentRepositoryImpl implements EnrollmentRepository {
     }
 
     @Override
-    public List<Enrollment> findActiveByLectureId(Long academyId, Long lectureId) {
-        return enrollmentJpaRepository.findAllByAcademyIdAndLectureIdAndStatus(
-                        academyId, lectureId, EnrollmentStatus.ACTIVE)
+    public List<Enrollment> findActiveByLectureId(Long lectureId) {
+        return enrollmentJpaRepository.findAllByLectureIdAndStatus(
+                        lectureId, EnrollmentStatus.ACTIVE)
                 .stream()
                 .map(this::toDomain)
                 .toList();
     }
 
     @Override
-    public Map<Long, Long> countActiveByLectureIds(Long academyId, List<Long> lectureIds) {
+    public Map<Long, Long> countActiveByLectureIds(List<Long> lectureIds) {
         if (lectureIds == null || lectureIds.isEmpty()) {
             return Map.of();
         }
-        return enrollmentJpaRepository.countByLectureIdsAndStatus(academyId, lectureIds, EnrollmentStatus.ACTIVE)
+        return enrollmentJpaRepository.countByLectureIdsAndStatus(lectureIds, EnrollmentStatus.ACTIVE)
                 .stream()
                 .collect(Collectors.toMap(
                         EnrollmentJpaRepository.LectureEnrollmentCount::getLectureId,
@@ -83,7 +83,6 @@ public class EnrollmentRepositoryImpl implements EnrollmentRepository {
 
     private EnrollmentEntity toNewEntity(Enrollment enrollment) {
         return EnrollmentEntity.builder()
-                .academyId(enrollment.getAcademyId())
                 .studentId(enrollment.getStudentId())
                 .lectureId(enrollment.getLectureId())
                 .status(enrollment.getStatus())
@@ -101,7 +100,7 @@ public class EnrollmentRepositoryImpl implements EnrollmentRepository {
     }
 
     private Enrollment toDomain(EnrollmentEntity entity) {
-        return Enrollment.restore(entity.getId(), entity.getAcademyId(), entity.getStudentId(), entity.getLectureId(),
+        return Enrollment.restore(entity.getId(), entity.getStudentId(), entity.getLectureId(),
                 entity.getStatus(), entity.getEnrolledAt(), entity.getEndedAt());
     }
 }

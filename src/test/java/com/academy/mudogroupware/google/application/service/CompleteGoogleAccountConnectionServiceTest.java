@@ -16,10 +16,15 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import com.academy.mudogroupware.google.application.command.CompleteGoogleConnectionCommand;
+import com.academy.mudogroupware.google.application.event.GoogleAccountConnectedEvent;
+import com.academy.mudogroupware.google.application.event.OldGoogleRefreshTokenRevocationRequestedEvent;
 import com.academy.mudogroupware.google.application.port.GoogleOAuthCallException;
 import com.academy.mudogroupware.google.application.port.GoogleOAuthPort;
 import com.academy.mudogroupware.google.application.port.GoogleOAuthStateClaims;
@@ -37,6 +42,7 @@ class CompleteGoogleAccountConnectionServiceTest {
     @Mock private GoogleOAuthStatePort googleOAuthStatePort;
     @Mock private GoogleOAuthPort googleOAuthPort;
     @Mock private GoogleAccountConnectionRepository googleAccountConnectionRepository;
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     private CompleteGoogleAccountConnectionService service;
 
@@ -44,7 +50,7 @@ class CompleteGoogleAccountConnectionServiceTest {
     void setUp() {
         Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
         service = new CompleteGoogleAccountConnectionService(
-                googleOAuthStatePort, googleOAuthPort, googleAccountConnectionRepository, clock);
+                googleOAuthStatePort, googleOAuthPort, googleAccountConnectionRepository, clock, eventPublisher);
     }
 
     @Test
@@ -53,7 +59,7 @@ class CompleteGoogleAccountConnectionServiceTest {
         GoogleOAuthStateClaims claims = new GoogleOAuthStateClaims(7L,false);
         when(googleOAuthStatePort.verify("state")).thenReturn(claims);
         when(googleOAuthPort.exchangeAuthorizationCode("auth-code"))
-                .thenReturn(new GoogleTokenExchangeResult("access-token", "refresh-token", "scope"));
+                .thenReturn(new GoogleTokenExchangeResult("access-token", "refresh-token", "scope", 3600L));
         when(googleOAuthPort.fetchAccountEmail("access-token")).thenReturn("academy@mudo.co.kr");
         when(googleAccountConnectionRepository.find()).thenReturn(Optional.empty());
 
@@ -66,10 +72,12 @@ class CompleteGoogleAccountConnectionServiceTest {
         assertThat(saved.getGoogleEmail()).isEqualTo("academy@mudo.co.kr");
         assertThat(saved.getConnectedByUserId()).isEqualTo(7L);
         assertThat(saved.getRefreshToken()).isEqualTo("refresh-token");
+        assertThat(saved.getRefreshTokenExpiresAt())
+                .isEqualTo(NOW.atZone(ZoneOffset.UTC).toLocalDateTime().plusHours(1));
     }
 
     @Test
-    void completeRevokesAndReplacesExistingConnection() {
+    void completePublishesRevocationEventAndReplacesExistingConnection() {
         CompleteGoogleConnectionCommand command = new CompleteGoogleConnectionCommand("auth-code", "state");
         when(googleOAuthStatePort.verify("state")).thenReturn(new GoogleOAuthStateClaims(7L,true));
         when(googleOAuthPort.exchangeAuthorizationCode("auth-code"))
@@ -84,9 +92,13 @@ class CompleteGoogleAccountConnectionServiceTest {
 
         service.complete(command);
 
-        verify(googleOAuthPort).revoke("old-refresh-token");
+        verify(googleOAuthPort, never()).revoke(any());
         verify(googleAccountConnectionRepository).deleteAll();
         verify(googleAccountConnectionRepository).save(any(GoogleAccountConnection.class));
+        ArgumentCaptor<OldGoogleRefreshTokenRevocationRequestedEvent> captor =
+                ArgumentCaptor.forClass(OldGoogleRefreshTokenRevocationRequestedEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        assertThat(captor.getValue().oldRefreshToken()).isEqualTo("old-refresh-token");
     }
 
     @Test
@@ -123,5 +135,81 @@ class CompleteGoogleAccountConnectionServiceTest {
         assertThatThrownBy(() -> service.complete(command))
                 .isInstanceOf(GoogleOAuthFailedException.class);
         verify(googleAccountConnectionRepository, never()).save(any());
+    }
+
+    @Test
+    void completePublishesUnchangedEventOnFirstConnection() {
+        CompleteGoogleConnectionCommand command = new CompleteGoogleConnectionCommand("auth-code", "state");
+        when(googleOAuthStatePort.verify("state")).thenReturn(new GoogleOAuthStateClaims(7L, false));
+        when(googleOAuthPort.exchangeAuthorizationCode("auth-code"))
+                .thenReturn(new GoogleTokenExchangeResult("access-token", "refresh-token", "scope"));
+        when(googleOAuthPort.fetchAccountEmail("access-token")).thenReturn("academy@mudo.co.kr");
+        when(googleAccountConnectionRepository.find()).thenReturn(Optional.empty());
+
+        service.complete(command);
+
+        ArgumentCaptor<GoogleAccountConnectedEvent> captor = ArgumentCaptor.forClass(GoogleAccountConnectedEvent.class);
+        InOrder inOrder = Mockito.inOrder(googleAccountConnectionRepository, eventPublisher);
+        inOrder.verify(googleAccountConnectionRepository).save(any(GoogleAccountConnection.class));
+        inOrder.verify(eventPublisher).publishEvent(captor.capture());
+        assertThat(captor.getValue().accountChanged()).isFalse();
+    }
+
+    @Test
+    void completeDoesNotPublishEventWhenSaveFails() {
+        CompleteGoogleConnectionCommand command = new CompleteGoogleConnectionCommand("auth-code", "state");
+        when(googleOAuthStatePort.verify("state")).thenReturn(new GoogleOAuthStateClaims(7L, false));
+        when(googleOAuthPort.exchangeAuthorizationCode("auth-code"))
+                .thenReturn(new GoogleTokenExchangeResult("access-token", "refresh-token", "scope"));
+        when(googleOAuthPort.fetchAccountEmail("access-token")).thenReturn("academy@mudo.co.kr");
+        when(googleAccountConnectionRepository.find()).thenReturn(Optional.empty());
+        when(googleAccountConnectionRepository.save(any(GoogleAccountConnection.class)))
+                .thenThrow(new RuntimeException("db failure"));
+
+        assertThatThrownBy(() -> service.complete(command)).isInstanceOf(RuntimeException.class);
+
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void completePublishesUnchangedEventOnSameAccountReconnection() {
+        CompleteGoogleConnectionCommand command = new CompleteGoogleConnectionCommand("auth-code", "state");
+        when(googleOAuthStatePort.verify("state")).thenReturn(new GoogleOAuthStateClaims(7L, false));
+        when(googleOAuthPort.exchangeAuthorizationCode("auth-code"))
+                .thenReturn(new GoogleTokenExchangeResult("access-token", "new-refresh-token", "scope"));
+        when(googleOAuthPort.fetchAccountEmail("access-token")).thenReturn("same@mudo.co.kr");
+        GoogleAccountConnection existing = GoogleAccountConnection.restore(
+                10L, "same@mudo.co.kr", 5L, "scope", "old-refresh-token",
+                NOW.atZone(ZoneOffset.UTC).toLocalDateTime().minusDays(30),
+                NOW.atZone(ZoneOffset.UTC).toLocalDateTime().plusDays(30),
+                NOW.atZone(ZoneOffset.UTC).toLocalDateTime().minusDays(30), false);
+        when(googleAccountConnectionRepository.find()).thenReturn(Optional.of(existing));
+
+        service.complete(command);
+
+        ArgumentCaptor<GoogleAccountConnectedEvent> captor = ArgumentCaptor.forClass(GoogleAccountConnectedEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        assertThat(captor.getValue().accountChanged()).isFalse();
+    }
+
+    @Test
+    void completePublishesChangedEventOnAccountReplacement() {
+        CompleteGoogleConnectionCommand command = new CompleteGoogleConnectionCommand("auth-code", "state");
+        when(googleOAuthStatePort.verify("state")).thenReturn(new GoogleOAuthStateClaims(7L, true));
+        when(googleOAuthPort.exchangeAuthorizationCode("auth-code"))
+                .thenReturn(new GoogleTokenExchangeResult("access-token", "new-refresh-token", "scope"));
+        when(googleOAuthPort.fetchAccountEmail("access-token")).thenReturn("new@mudo.co.kr");
+        GoogleAccountConnection existing = GoogleAccountConnection.restore(
+                10L, "old@mudo.co.kr", 5L, "scope", "old-refresh-token",
+                NOW.atZone(ZoneOffset.UTC).toLocalDateTime().minusDays(30),
+                NOW.atZone(ZoneOffset.UTC).toLocalDateTime().plusDays(30),
+                NOW.atZone(ZoneOffset.UTC).toLocalDateTime().minusDays(30), false);
+        when(googleAccountConnectionRepository.find()).thenReturn(Optional.of(existing));
+
+        service.complete(command);
+
+        ArgumentCaptor<GoogleAccountConnectedEvent> captor = ArgumentCaptor.forClass(GoogleAccountConnectedEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        assertThat(captor.getValue().accountChanged()).isTrue();
     }
 }

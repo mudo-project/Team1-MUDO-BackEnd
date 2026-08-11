@@ -1,6 +1,98 @@
 # 업무(Task) API 명세
 
-> `WORKSPACE_API_FLOW.md`/`TASK_API_FLOW.md`가 워크스페이스와 업무의 호출 흐름을 분리해 문서화하듯, 이 문서는 업무(Task) API 명세만 모은다. 업무 생성·상세 조회·수정·삭제 네 API를 모두 문서화한다.
+> `WORKSPACE_API_FLOW.md`/`TASK_API_FLOW.md`가 워크스페이스와 업무의 호출 흐름을 분리해 문서화하듯, 이 문서는 업무(Task) API 명세만 모은다. 업무 생성·상세 조회·수정·삭제·내 업무 모아보기 다섯 API를 모두 문서화한다.
+
+---
+
+## 내 업무 모아보기
+
+다른 업무 API와 달리 특정 워크스페이스에 종속되지 않는다 — 내가 참여자로 속한 **모든 워크스페이스**를 가로질러 업무를 모아 반환한다.
+
+### Endpoint
+
+`GET /api/tasks/me`
+
+# **[request]**
+
+### Request Header
+
+| name | description |
+| --- | --- |
+| `Authorization` | `Bearer {accessToken}` |
+
+### Request Parameter
+
+| name | description |
+| --- | --- |
+| `status` | 선택. `WAITING`/`IN_PROGRESS`/`DELAYED` 중 하나. 생략하거나 `COMPLETED`를 보내면 3개 상태 전체가 조회된다. `COMPLETED` 업무는 이 API에서 절대 노출되지 않는다. |
+| `workspaceId` | 선택. 특정 워크스페이스로 필터링한다. 내가 속하지 않은 워크스페이스 번호를 보내면 에러 없이 빈 목록이 반환된다. |
+| `page` | 선택. 페이지 번호, 0부터 시작. 기본값 `0`. |
+| `size` | 선택. 페이지 크기. 기본값 `20`, 최소 1, 최대 100. |
+
+Request Body
+
+없음
+
+# **[response]**
+
+### 성공코드
+
+| HTTP 상태 | 설명 |
+| --- | --- |
+| `200 OK` | 내 업무 목록 조회 성공 |
+
+Response Body
+
+```json
+{
+  "status": 200,
+  "code": "WORKSPACE_200_18",
+  "message": "내 업무 목록 조회에 성공했습니다.",
+  "data": {
+    "content": [
+      {
+        "taskId": 101,
+        "workspaceId": 1,
+        "workspaceName": "8월 학사 운영",
+        "title": "9월 시간표 초안 작성",
+        "dueAt": "2026-08-10",
+        "status": "WAITING"
+      }
+    ],
+    "page": 0,
+    "size": 20,
+    "hasNext": false
+  }
+}
+```
+
+| name | 설명 |
+| --- | --- |
+| `status` | HTTP 상태 코드 |
+| `code` | 서비스 응답 코드 |
+| `message` | 응답 메시지 |
+| `data.content` | 업무 목록. 기한(`dueAt`) 오름차순으로 정렬된다. |
+| `data.content[].taskId` | 업무 번호. 워크스페이스 업무 상세 조회(`GET /api/workspaces/{workspaceId}/tasks/{taskId}`)로 이동할 때 사용 |
+| `data.content[].workspaceId` | 업무가 속한 워크스페이스 번호. 위와 함께 상세 조회 경로에 사용 |
+| `data.content[].workspaceName` | 업무가 속한 워크스페이스 이름 |
+| `data.content[].title` | 업무 제목 |
+| `data.content[].dueAt` | 업무 기한. 반복 업무(회차)는 원래 마감일이 없어, 발생일(`scheduledFor`)의 날짜가 대신 채워진다. |
+| `data.content[].status` | 업무 상태. `WAITING`/`IN_PROGRESS`/`DELAYED` 중 하나만 나온다. |
+| `data.page` | 현재 페이지 번호 |
+| `data.size` | 요청한 페이지 크기 |
+| `data.hasNext` | 다음 페이지 존재 여부. 전체 개수(`totalElements`)는 제공하지 않는다. |
+
+> 조회 결과가 없으면(내가 속한 워크스페이스가 없거나, 조건에 맞는 업무가 없는 경우) `content`는 빈 배열로 반환되며 에러가 아니다. 등록자 정보는 이 API 응답에 포함되지 않는다. 소프트 삭제된 워크스페이스의 업무는 제외된다.
+
+### 실패 코드
+
+| HTTP 상태 | code | message | 설명 |
+| --- | --- | --- | --- |
+| `400 Bad Request` | `COMMON_400_1` | 입력값이 올바르지 않습니다. | `page`가 음수, `size`가 1 미만/100 초과, `status`에 유효하지 않은 값을 전달한 경우 |
+| `401 Unauthorized` | `COMMON_401_1` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않은 경우 |
+
+> 워크스페이스 멤버십만으로 접근을 제어한다 — `WORKSPACE:READ_ALL` 같은 별도 권한 체크가 없고, `academyId` 검증도 하지 않는다(실제 배포가 학원별 DB 스키마 분리 구조라 애플리케이션 레벨의 academyId 필터링이 불필요하다).
+> 무한스크롤용 offset 페이지네이션(page/size, 기본 20개)은 댓글 목록 조회와 동일한 컨벤션이다.
 
 ---
 

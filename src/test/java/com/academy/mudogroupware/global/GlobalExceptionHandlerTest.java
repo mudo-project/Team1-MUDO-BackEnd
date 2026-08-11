@@ -51,4 +51,32 @@ class GlobalExceptionHandlerTest {
     assertThat(response.getBody().traceId()).isEqualTo("trace456");
     assertThat(response.getBody().details()).containsKey("errors");
   }
+
+  @Test
+  void illegalArgumentReturns400WithExceptionMessage() {
+    MDC.put("traceId", "trace789");
+    IllegalArgumentException exception = new IllegalArgumentException("카드 사용내역을 찾을 수 없습니다.");
+
+    ResponseEntity<GlobalApiErrorResponse> response = handler.illegalArgument(exception);
+
+    assertThat(response.getStatusCode().value()).isEqualTo(400);
+    assertThat(response.getBody()).isNotNull();
+    assertThat(response.getBody().code()).isEqualTo(CommonErrorCode.INVALID_ARGUMENT.getCode());
+    assertThat(response.getBody().message()).isEqualTo("카드 사용내역을 찾을 수 없습니다.");
+    assertThat(response.getBody().traceId()).isEqualTo("trace789");
+  }
+
+  @Test
+  void illegalStateReturns409WithExceptionMessage() {
+    MDC.put("traceId", "trace999");
+    IllegalStateException exception = new IllegalStateException("아직 정산 상신되지 않은 사용내역입니다.");
+
+    ResponseEntity<GlobalApiErrorResponse> response = handler.illegalState(exception);
+
+    assertThat(response.getStatusCode().value()).isEqualTo(409);
+    assertThat(response.getBody()).isNotNull();
+    assertThat(response.getBody().code()).isEqualTo(CommonErrorCode.CONFLICT.getCode());
+    assertThat(response.getBody().message()).isEqualTo("아직 정산 상신되지 않은 사용내역입니다.");
+    assertThat(response.getBody().traceId()).isEqualTo("trace999");
+  }
 }

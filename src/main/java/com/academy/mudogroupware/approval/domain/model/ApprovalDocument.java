@@ -12,7 +12,6 @@ import com.academy.mudogroupware.approval.domain.exception.ApprovalException;
 public final class ApprovalDocument {
 
     private final Long id;
-    private final Long academyId;
     private final Long templateId;
     private final ApprovalDocumentSourceType sourceType;
     private final String title;
@@ -24,13 +23,10 @@ public final class ApprovalDocument {
     private final LocalDateTime createdAt;
     private LocalDateTime resubmittedAt;
 
-    private ApprovalDocument(Long id, Long academyId, Long templateId, ApprovalDocumentSourceType sourceType,
+    private ApprovalDocument(Long id, Long templateId, ApprovalDocumentSourceType sourceType,
                               String title, ApprovalContent content,
                               Long creatorId, List<ApprovalDocumentLine> lines, List<ApprovalAttachment> attachments,
                               ApprovalStatus status, LocalDateTime createdAt, LocalDateTime resubmittedAt) {
-        if (academyId == null) {
-            throw new IllegalArgumentException("academyId must not be null");
-        }
         if (title == null || title.isBlank()) {
             throw new ApprovalException(ApprovalErrorCode.TITLE_REQUIRED);
         }
@@ -47,7 +43,6 @@ public final class ApprovalDocument {
             throw new IllegalArgumentException("createdAt must not be null");
         }
         this.id = id;
-        this.academyId = academyId;
         this.templateId = templateId;
         this.sourceType = sourceType == null ? ApprovalDocumentSourceType.GENERAL : sourceType;
         this.title = title;
@@ -60,38 +55,38 @@ public final class ApprovalDocument {
         this.resubmittedAt = resubmittedAt;
     }
 
-    public static ApprovalDocument create(Long academyId, Long templateId, String title, ApprovalContent content,
+    public static ApprovalDocument create(Long templateId, String title, ApprovalContent content,
                                            Long creatorId, List<Long> approverIds, List<Long> fileIds,
                                            LocalDateTime now) {
-        return create(academyId, templateId, ApprovalDocumentSourceType.GENERAL, title, content,
+        return create(templateId, ApprovalDocumentSourceType.GENERAL, title, content,
                 creatorId, approverIds, fileIds, now);
     }
 
-    public static ApprovalDocument create(Long academyId, Long templateId, ApprovalDocumentSourceType sourceType,
+    public static ApprovalDocument create(Long templateId, ApprovalDocumentSourceType sourceType,
                                            String title, ApprovalContent content, Long creatorId,
                                            List<Long> approverIds, List<Long> fileIds, LocalDateTime now) {
         List<ApprovalAttachment> attachments = fileIds != null
                 ? fileIds.stream().map(ApprovalAttachment::create).toList()
                 : List.of();
-        return new ApprovalDocument(null, academyId, templateId, sourceType, title, content, creatorId, buildLines(approverIds),
+        return new ApprovalDocument(null, templateId, sourceType, title, content, creatorId, buildLines(approverIds),
                 attachments, ApprovalStatus.IN_PROGRESS, now, null);
     }
 
-    public static ApprovalDocument restore(Long id, Long academyId, Long templateId, String title,
+    public static ApprovalDocument restore(Long id, Long templateId, String title,
                                             ApprovalContent content, Long creatorId, List<ApprovalDocumentLine> lines,
                                             List<ApprovalAttachment> attachments, ApprovalStatus status,
                                             LocalDateTime createdAt, LocalDateTime resubmittedAt) {
-        return restore(id, academyId, templateId, ApprovalDocumentSourceType.GENERAL, title, content,
+        return restore(id, templateId, ApprovalDocumentSourceType.GENERAL, title, content,
                 creatorId, lines, attachments, status, createdAt, resubmittedAt);
     }
 
-    public static ApprovalDocument restore(Long id, Long academyId, Long templateId,
+    public static ApprovalDocument restore(Long id, Long templateId,
                                             ApprovalDocumentSourceType sourceType, String title,
                                             ApprovalContent content, Long creatorId,
                                             List<ApprovalDocumentLine> lines, List<ApprovalAttachment> attachments,
                                             ApprovalStatus status, LocalDateTime createdAt,
                                             LocalDateTime resubmittedAt) {
-        return new ApprovalDocument(id, academyId, templateId, sourceType, title, content, creatorId, lines, attachments,
+        return new ApprovalDocument(id, templateId, sourceType, title, content, creatorId, lines, attachments,
                 status, createdAt, resubmittedAt);
     }
 
@@ -214,10 +209,6 @@ public final class ApprovalDocument {
 
     public Long getId() {
         return id;
-    }
-
-    public Long getAcademyId() {
-        return academyId;
     }
 
     public Long getTemplateId() {

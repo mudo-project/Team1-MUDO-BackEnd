@@ -50,7 +50,7 @@ public class MessageTemplateController {
             @AuthenticationPrincipal AuthUser authUser,
             @Valid @RequestBody CreateMessageTemplateRequest request) {
         Long templateId = createMessageTemplateUseCase.createTemplate(
-                request.toCommand(authUser.academyId(), authUser.userId()));
+                request.toCommand(authUser.userId()));
         MessageTemplateCreateResponse data = MessageTemplateCreateResponse.from(templateId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(GlobalApiResponse.created(RollcallResponseCode.TEMPLATE_CREATED, data));
@@ -59,9 +59,8 @@ public class MessageTemplateController {
     @Operation(summary = "문자 템플릿 목록 조회", description = "요청자 소속 학원의 문자 템플릿을 전부 조회한다.")
     @PreAuthorize("hasAnyAuthority('ROLLCALL:MANAGE', 'ROLLCALL:TEMPLATE_MANAGE')")
     @GetMapping
-    public ResponseEntity<GlobalApiResponse<List<MessageTemplateResponse>>> getTemplates(
-            @AuthenticationPrincipal AuthUser authUser) {
-        List<MessageTemplateResponse> responses = messageTemplateQueryUseCase.getTemplates(authUser.academyId())
+    public ResponseEntity<GlobalApiResponse<List<MessageTemplateResponse>>> getTemplates() {
+        List<MessageTemplateResponse> responses = messageTemplateQueryUseCase.getTemplates()
                 .stream()
                 .map(MessageTemplateResponse::from)
                 .toList();
@@ -72,10 +71,9 @@ public class MessageTemplateController {
     @PreAuthorize("hasAuthority('ROLLCALL:TEMPLATE_MANAGE')")
     @PatchMapping("/{templateId}")
     public ResponseEntity<Void> updateTemplate(
-            @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long templateId,
             @Valid @RequestBody UpdateMessageTemplateRequest request) {
-        updateMessageTemplateUseCase.updateTemplate(request.toCommand(templateId, authUser.academyId()));
+        updateMessageTemplateUseCase.updateTemplate(request.toCommand(templateId));
         return ResponseEntity.noContent().build();
     }
 
@@ -83,9 +81,8 @@ public class MessageTemplateController {
     @PreAuthorize("hasAuthority('ROLLCALL:TEMPLATE_MANAGE')")
     @DeleteMapping("/{templateId}")
     public ResponseEntity<Void> deleteTemplate(
-            @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long templateId) {
-        deleteMessageTemplateUseCase.deleteTemplate(templateId, authUser.academyId());
+        deleteMessageTemplateUseCase.deleteTemplate(templateId);
         return ResponseEntity.noContent().build();
     }
 }

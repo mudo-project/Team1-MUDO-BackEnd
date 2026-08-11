@@ -122,6 +122,72 @@ class GoogleAccountConnectionControllerTest {
     }
 
     @Test
+    void callbackRedirectsWithFailedWhenCodeIsBlank() throws Exception {
+        mockMvc.perform(get("/api/google/connections/callback")
+                        .with(authentication(authenticatedUser()))
+                        .param("code", "")
+                        .param("state", "signed-state"))
+                .andExpect(status().isFound());
+
+        verifyNoInteractions(completeGoogleAccountConnectionUseCase);
+    }
+
+    @Test
+    void callbackSanitizesErrorAndNeverLogsRawNewline() throws Exception {
+        ch.qos.logback.classic.Logger logger =
+                (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(GoogleAccountConnectionController.class);
+        ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent> appender =
+                new ch.qos.logback.core.read.ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            mockMvc.perform(get("/api/google/connections/callback")
+                            .with(authentication(authenticatedUser()))
+                            .param("error", "access_denied\nFAKE LOG LINE"))
+                    .andExpect(status().isFound());
+
+            String logged = appender.list.stream()
+                    .map(ch.qos.logback.classic.spi.ILoggingEvent::getFormattedMessage)
+                    .collect(java.util.stream.Collectors.joining("\n"));
+            org.assertj.core.api.Assertions.assertThat(logged).doesNotContain("\naccess_denied\nFAKE LOG LINE");
+            org.assertj.core.api.Assertions.assertThat(logged).contains("access_denied_FAKE LOG LINE");
+        } finally {
+            logger.detachAppender(appender);
+        }
+    }
+
+    @Test
+    void callbackNeverLogsCodeStateOrExceptionMessage() throws Exception {
+        doThrow(new RuntimeException("SENSITIVE_DB_DETAIL_12345"))
+                .when(completeGoogleAccountConnectionUseCase)
+                .complete(any(CompleteGoogleConnectionCommand.class));
+
+        ch.qos.logback.classic.Logger logger =
+                (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(GoogleAccountConnectionController.class);
+        ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent> appender =
+                new ch.qos.logback.core.read.ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            mockMvc.perform(get("/api/google/connections/callback")
+                            .with(authentication(authenticatedUser()))
+                            .param("code", "super-secret-auth-code")
+                            .param("state", "super-secret-state"))
+                    .andExpect(status().isFound());
+
+            String logged = appender.list.stream()
+                    .map(ch.qos.logback.classic.spi.ILoggingEvent::getFormattedMessage)
+                    .collect(java.util.stream.Collectors.joining("\n"));
+            org.assertj.core.api.Assertions.assertThat(logged)
+                    .doesNotContain("super-secret-auth-code")
+                    .doesNotContain("super-secret-state")
+                    .doesNotContain("SENSITIVE_DB_DETAIL_12345");
+        } finally {
+            logger.detachAppender(appender);
+        }
+    }
+
+    @Test
     void getConnectionReturns200WithNullDataWhenNotConnected() throws Exception {
         when(getGoogleAccountConnectionUseCase.getConnection()).thenReturn(Optional.empty());
 
@@ -135,13 +201,14 @@ class GoogleAccountConnectionControllerTest {
     void getConnectionReturns200WithConnectionDataWhenConnected() throws Exception {
         LocalDateTime connectedAt = LocalDateTime.of(2026, 7, 1, 14, 22);
         GoogleAccountConnectionView view = new GoogleAccountConnectionView(
-                "academy@mudo.co.kr", 7L, "drive.file", connectedAt, connectedAt.plusDays(60), connectedAt,
+                "academy@mudo.co.kr", 7L, "drive.file", connectedAt, null, connectedAt,
                 GoogleConnectionStatus.CONNECTED);
         when(getGoogleAccountConnectionUseCase.getConnection()).thenReturn(Optional.of(view));
 
         mockMvc.perform(get("/api/google/connections").with(authentication(authenticatedUser("ACADEMY:OWNER"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.googleEmail").value("academy@mudo.co.kr"))
+                .andExpect(jsonPath("$.data.refreshTokenExpiresAt").value(org.hamcrest.Matchers.nullValue()))
                 .andExpect(jsonPath("$.data.status").value("CONNECTED"));
     }
 

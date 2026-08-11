@@ -3,7 +3,6 @@ package com.academy.mudogroupware.student.presentation.api;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,7 +16,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.academy.mudogroupware.global.presentation.api.common.GlobalApiResponse;
 import com.academy.mudogroupware.global.presentation.api.common.SliceResponse;
-import com.academy.mudogroupware.global.presentation.security.AuthUser;
 import com.academy.mudogroupware.student.application.command.DeleteStudentCommand;
 import com.academy.mudogroupware.student.application.command.EndEnrollmentCommand;
 import com.academy.mudogroupware.student.application.usecase.CreateStudentUseCase;
@@ -65,9 +63,8 @@ public class StudentController {
     @PreAuthorize("hasAuthority('STUDENT:MANAGE')")
     @PostMapping
     public ResponseEntity<GlobalApiResponse<StudentCreateResponse>> createStudent(
-            @AuthenticationPrincipal AuthUser authUser,
             @Valid @RequestBody CreateStudentRequest request) {
-        Long studentId = createStudentUseCase.createStudent(request.toCommand(authUser.academyId()));
+        Long studentId = createStudentUseCase.createStudent(request.toCommand());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(GlobalApiResponse.created(StudentResponseCode.STUDENT_CREATED,
                         StudentCreateResponse.from(studentId)));
@@ -80,12 +77,11 @@ public class StudentController {
     @PreAuthorize("hasAuthority('STUDENT:MANAGE')")
     @GetMapping
     public ResponseEntity<GlobalApiResponse<SliceResponse<StudentSummaryResponse>>> getStudents(
-            @AuthenticationPrincipal AuthUser authUser,
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "30") @Min(1) @Max(100) int size) {
         SliceResponse<StudentSummaryResponse> response = SliceResponse.from(
-                studentQueryUseCase.getStudents(authUser.academyId(), keyword, page, size),
+                studentQueryUseCase.getStudents(keyword, page, size),
                 StudentSummaryResponse::from);
         return ResponseEntity.ok(GlobalApiResponse.ok(StudentResponseCode.STUDENT_LIST_RETRIEVED, response));
     }
@@ -97,10 +93,9 @@ public class StudentController {
     @PreAuthorize("hasAuthority('STUDENT:MANAGE')")
     @GetMapping("/{studentId}")
     public ResponseEntity<GlobalApiResponse<StudentDetailResponse>> getStudentDetail(
-            @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long studentId) {
         StudentDetailResponse response = StudentDetailResponse.from(
-                studentQueryUseCase.getStudentDetail(authUser.academyId(), studentId));
+                studentQueryUseCase.getStudentDetail(studentId));
         return ResponseEntity.ok(GlobalApiResponse.ok(StudentResponseCode.STUDENT_DETAIL_RETRIEVED, response));
     }
 
@@ -111,10 +106,9 @@ public class StudentController {
     @PreAuthorize("hasAuthority('STUDENT:MANAGE')")
     @PatchMapping("/{studentId}")
     public ResponseEntity<Void> updateStudent(
-            @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long studentId,
             @Valid @RequestBody UpdateStudentRequest request) {
-        updateStudentUseCase.updateStudent(request.toCommand(authUser.academyId(), studentId));
+        updateStudentUseCase.updateStudent(request.toCommand(studentId));
         return ResponseEntity.noContent().build();
     }
 
@@ -125,9 +119,8 @@ public class StudentController {
     @PreAuthorize("hasAuthority('STUDENT:MANAGE')")
     @DeleteMapping("/{studentId}")
     public ResponseEntity<Void> deleteStudent(
-            @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long studentId) {
-        deleteStudentUseCase.deleteStudent(new DeleteStudentCommand(authUser.academyId(), studentId));
+        deleteStudentUseCase.deleteStudent(new DeleteStudentCommand(studentId));
         return ResponseEntity.noContent().build();
     }
 
@@ -138,10 +131,9 @@ public class StudentController {
     @PreAuthorize("hasAuthority('STUDENT:MANAGE')")
     @PostMapping("/{studentId}/enrollments")
     public ResponseEntity<GlobalApiResponse<EnrollmentCreateResponse>> enroll(
-            @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long studentId,
             @Valid @RequestBody EnrollStudentRequest request) {
-        Long enrollmentId = enrollStudentUseCase.enroll(request.toCommand(authUser.academyId(), studentId));
+        Long enrollmentId = enrollStudentUseCase.enroll(request.toCommand(studentId));
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(GlobalApiResponse.created(StudentResponseCode.ENROLLMENT_CREATED,
                         EnrollmentCreateResponse.from(enrollmentId)));
@@ -154,10 +146,9 @@ public class StudentController {
     @PreAuthorize("hasAuthority('STUDENT:MANAGE')")
     @PatchMapping("/{studentId}/enrollments/{enrollmentId}/end")
     public ResponseEntity<Void> endEnrollment(
-            @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long studentId,
             @PathVariable Long enrollmentId) {
-        endEnrollmentUseCase.end(new EndEnrollmentCommand(authUser.academyId(), studentId, enrollmentId));
+        endEnrollmentUseCase.end(new EndEnrollmentCommand(studentId, enrollmentId));
         return ResponseEntity.noContent().build();
     }
 }

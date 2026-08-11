@@ -19,9 +19,9 @@ class RegisterFileServiceTest {
     @Test
     void registersFileMetadataAndReturnsGeneratedId() {
         when(fileMetadataJpaRepository.save(any(FileMetadataEntity.class)))
-                .thenReturn(FileMetadataEntity.restore(5L, 10L, "uploads/10/abc-file.pdf", "application/pdf"));
+                .thenReturn(FileMetadataEntity.restore(5L, "uploads/abc-file.pdf", "application/pdf"));
 
-        Long fileId = service.register(new RegisterFileCommand(10L, "uploads/10/abc-file.pdf", "application/pdf"));
+        Long fileId = service.register(new RegisterFileCommand("uploads/abc-file.pdf", "application/pdf"));
 
         assertThat(fileId).isEqualTo(5L);
     }

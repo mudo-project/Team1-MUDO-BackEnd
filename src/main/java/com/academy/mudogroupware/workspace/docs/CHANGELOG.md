@@ -1,5 +1,21 @@
 # 📚 Workspace Changelog
 
+## 2026-08-10 (workspace BC academyId 제거)
+
+- workspace BC 전체에서 "같은 학원인지" 검증 코드를 제거했습니다 — 실제 배포가 학원별 DB 스키마 분리 구조라 애플리케이션 레벨 검증이 애초에 불필요했습니다. `WorkspaceDetailQueryService`/`TaskDetailQueryService`/`TaskCommentListQueryService`/`GetRecurringTaskTemplatesService`/`WorkspaceListQueryPort`/`WorkspaceRecentAccessService`에서 academyId 비교·필터를 걷어냈습니다.
+- `workspace.academy_id` DB 컬럼을 마이그레이션(`V3.1.7`)으로 삭제했습니다. 유니크 제약이 `(academy_id, active_name)`에서 `active_name` 단일 컬럼으로 바뀌었습니다. `Workspace` 도메인 모델·`WorkspaceJpaEntity`에서도 `academyId` 필드를 제거했습니다.
+- 워크스페이스 생성 시 이름 중복 검사(`existsByAcademyIdAndName` → `existsByName`)도 학원 필터 없이 전체 스키마 기준으로 확인하도록 단순화했습니다. `RecoverWorkspaceService`의 복구 시 이름 충돌 검사도 동일하게 바뀌었습니다.
+- `AddWorkspaceMembersService`/`AddWorkspaceMembersCommand`, `CreateWorkspaceCommand.academyId`는 이번 정리에서 제외했습니다 — `users` 도메인 조회(참여자가 활성 상태인지 확인)에 계속 필요한 크로스-BC 파라미터입니다.
+
+## 2026-08-10 (내 업무 모아보기)
+
+- 내 업무 모아보기 API(`GET /api/tasks/me`)를 추가했습니다. 내가 참여자로 속한 모든 워크스페이스를 가로질러 대기·진행중·지연 상태 업무만 모아 기한 오름차순으로 반환합니다. 완료된 업무는 필터로도 조회할 수 없습니다. 무한스크롤을 위해 댓글 목록 조회와 동일한 offset 페이지네이션(기본 20개)을 씁니다.
+- 여러 워크스페이스를 가로지르는 조회 전용 포트 `MyTaskListQueryPort`(`application/port/`)를 신규 추가했습니다 — 기존 `WorkspaceListQueryPort`와 동일한 위치·역할이며, 단일 워크스페이스 범위인 `TaskRepository`에는 얹지 않았습니다.
+- `TaskJpaRepository.findMine(...)`은 워크스페이스 멤버십 `exists` 서브쿼리로 접근을 제어합니다 — `academyId` 검증은 하지 않습니다. 실제 배포가 학원별 DB 스키마 분리 구조라(학원마다 별도 RDS 스키마) 애플리케이션 레벨의 academyId 필터링이 애초에 불필요하다는 점을 이번에 확인했습니다.
+- 반복 업무 회차는 `dueAt`이 없어 `scheduledFor`의 날짜로 대체해 정렬·표시합니다(`coalesce(t.dueAt, cast(t.scheduledFor as date))`).
+- 코드 리뷰에서 소프트 삭제된 워크스페이스의 업무가 걸러지지 않는 문제가 발견돼(`t.workspace.deletedAt is null` 조건 누락), 병합 전 수정했습니다.
+- 이전 워크스페이스 권한 PR(#295)에서 팀 논의 후 반영하기로 보류했던 `V3.1.6__seed_workspace_permissions.sql`(`WORKSPACE:CREATE`/`WORKSPACE:READ_ALL` 권한 시드)도 이번에 함께 반영했습니다.
+
 ## 2026-08-10 (워크스페이스 권한 적용)
 
 - 워크스페이스 생성(`POST /api/workspaces`)에 `WORKSPACE:CREATE` 권한 체크를 추가했습니다. 이 권한이 없으면 `403`입니다.

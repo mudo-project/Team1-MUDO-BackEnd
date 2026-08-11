@@ -13,7 +13,7 @@ class MessageTemplateTest {
 
     @Test
     void createsTemplateWithValidData() {
-        MessageTemplate template = MessageTemplate.create(1L, "결석 안내", AttendanceStatus.ABSENT,
+        MessageTemplate template = MessageTemplate.create( "결석 안내", AttendanceStatus.ABSENT,
                 "오늘 {학생명} 학생이 결석하였습니다.", 99L, NOW);
 
         assertThat(template.getName()).isEqualTo("결석 안내");
@@ -22,13 +22,13 @@ class MessageTemplateTest {
 
     @Test
     void throwsWhenContentIsBlank() {
-        assertThatThrownBy(() -> MessageTemplate.create(1L, "결석 안내", AttendanceStatus.ABSENT, " ", 99L, NOW))
+        assertThatThrownBy(() -> MessageTemplate.create( "결석 안내", AttendanceStatus.ABSENT, " ", 99L, NOW))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void updateChangesNameAndContentButKeepsStatus() {
-        MessageTemplate template = MessageTemplate.create(1L, "결석 안내", AttendanceStatus.ABSENT,
+        MessageTemplate template = MessageTemplate.create( "결석 안내", AttendanceStatus.ABSENT,
                 "오늘 {학생명} 학생이 결석하였습니다.", 99L, NOW);
         LocalDateTime later = NOW.plusHours(1);
 

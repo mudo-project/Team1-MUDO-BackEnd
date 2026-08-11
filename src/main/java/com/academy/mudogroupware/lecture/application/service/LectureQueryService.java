@@ -18,7 +18,6 @@ import com.academy.mudogroupware.lecture.application.query.LectureSummaryView;
 import com.academy.mudogroupware.lecture.application.query.ScheduleView;
 import com.academy.mudogroupware.lecture.application.query.StudentSummaryView;
 import com.academy.mudogroupware.lecture.application.usecase.LectureQueryUseCase;
-import com.academy.mudogroupware.lecture.domain.exception.LectureAccessDeniedException;
 import com.academy.mudogroupware.lecture.domain.exception.LectureNotFoundException;
 import com.academy.mudogroupware.lecture.domain.model.Classroom;
 import com.academy.mudogroupware.lecture.domain.model.Lecture;
@@ -45,8 +44,8 @@ public class LectureQueryService implements LectureQueryUseCase {
     private final TeacherDirectoryPort teacherDirectoryPort;
 
     @Override
-    public PageResult<LectureSummaryView> getLectures(Long academyId, LectureFilter filter, int page, int size) {
-        PageResult<Lecture> result = lectureRepository.findAll(academyId, filter, page, size);
+    public PageResult<LectureSummaryView> getLectures(LectureFilter filter, int page, int size) {
+        PageResult<Lecture> result = lectureRepository.findAll(filter, page, size);
         List<Lecture> lectures = result.content();
 
         Map<Long, String> termNames = idToName(
@@ -59,9 +58,9 @@ public class LectureQueryService implements LectureQueryUseCase {
                 classroomRepository.findAllById(distinctIds(lectures, Lecture::getClassroomId)),
                 Classroom::getId, Classroom::getName);
         Map<Long, TeacherInfo> teachers = teacherDirectoryPort.findTeachers(
-                academyId, distinctIds(lectures, Lecture::getTeacherId));
+                distinctIds(lectures, Lecture::getTeacherId));
         Map<Long, Long> studentCounts = enrolledStudentsPort.countByLectureIds(
-                academyId, distinctIds(lectures, Lecture::getId));
+                distinctIds(lectures, Lecture::getId));
 
         return result.map(lecture -> new LectureSummaryView(
                 lecture.getId(),
@@ -77,20 +76,17 @@ public class LectureQueryService implements LectureQueryUseCase {
     }
 
     @Override
-    public LectureDetailView getLectureDetail(Long lectureId, Long academyId) {
+    public LectureDetailView getLectureDetail(Long lectureId) {
         Lecture lecture = lectureRepository.findById(lectureId).orElseThrow(LectureNotFoundException::new);
-        if (!lecture.getAcademyId().equals(academyId)) {
-            throw new LectureAccessDeniedException();
-        }
 
         String termName = singleName(termRepository.findAllById(List.of(lecture.getTermId())), Term::getName);
         String subjectName = singleName(subjectRepository.findAllById(List.of(lecture.getSubjectId())),
                 Subject::getName);
         String classroomName = singleName(classroomRepository.findAllById(List.of(lecture.getClassroomId())),
                 Classroom::getName);
-        Map<Long, TeacherInfo> teachers = teacherDirectoryPort.findTeachers(academyId, List.of(lecture.getTeacherId()));
+        Map<Long, TeacherInfo> teachers = teacherDirectoryPort.findTeachers(List.of(lecture.getTeacherId()));
 
-        List<EnrolledStudentInfo> enrolledStudents = enrolledStudentsPort.findByLectureId(academyId, lectureId);
+        List<EnrolledStudentInfo> enrolledStudents = enrolledStudentsPort.findByLectureId(lectureId);
         List<StudentSummaryView> studentViews = enrolledStudents.stream()
                 .map(s -> new StudentSummaryView(s.studentId(), s.name(), s.grade()))
                 .toList();

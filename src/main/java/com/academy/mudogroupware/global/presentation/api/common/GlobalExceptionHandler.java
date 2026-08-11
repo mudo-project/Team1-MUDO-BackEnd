@@ -122,6 +122,32 @@ public class GlobalExceptionHandler {
         .body(GlobalApiErrorResponse.of(CommonErrorCode.INVALID_INPUT, traceId));
   }
 
+  // 서비스 계층에서 흔히 쓰는 범용 JDK 예외를 ApplicationException처럼 도메인 ErrorCode로 감싸지
+  // 않고 바로 던지는 곳들이 있다(예: corporatecard). 이 핸들러가 없으면 밑의 Exception.class
+  // 캐치올로 떨어져 400/409여야 할 응답이 전부 500으로 나갔다. 메시지는 예외가 들고 있는
+  // 구체적인 한글 메시지를 그대로 쓰고, code/httpStatus만 CommonErrorCode에서 가져온다.
+  @ExceptionHandler(IllegalArgumentException.class)
+  public ResponseEntity<GlobalApiErrorResponse> illegalArgument(IllegalArgumentException e) {
+    String traceId = trace();
+    log.warn(
+        "event=exception_handled reason=illegal_argument message={} traceId={}",
+        e.getMessage(),
+        traceId);
+    return ResponseEntity.status(CommonErrorCode.INVALID_ARGUMENT.getHttpStatus())
+        .body(GlobalApiErrorResponse.of(CommonErrorCode.INVALID_ARGUMENT, e.getMessage(), traceId, Map.of()));
+  }
+
+  @ExceptionHandler(IllegalStateException.class)
+  public ResponseEntity<GlobalApiErrorResponse> illegalState(IllegalStateException e) {
+    String traceId = trace();
+    log.warn(
+        "event=exception_handled reason=illegal_state message={} traceId={}",
+        e.getMessage(),
+        traceId);
+    return ResponseEntity.status(CommonErrorCode.CONFLICT.getHttpStatus())
+        .body(GlobalApiErrorResponse.of(CommonErrorCode.CONFLICT, e.getMessage(), traceId, Map.of()));
+  }
+
   @ExceptionHandler(DataIntegrityViolationException.class)
   public ResponseEntity<GlobalApiErrorResponse> conflict(DataIntegrityViolationException e) {
     String traceId = trace();

@@ -31,8 +31,7 @@ public class ApprovalTemplateQueryService implements ApprovalTemplateQueryUseCas
 
     @Override
     public PageResult<ApprovalTemplateSummaryView> getTemplates(Long requesterId, int page, int size) {
-        ApproverInfo requester = approverDirectoryPort.getApprover(requesterId);
-        PageResult<ApprovalTemplate> result = approvalTemplateRepository.findAll(requester.academyId(), page, size);
+        PageResult<ApprovalTemplate> result = approvalTemplateRepository.findAll(page, size);
         List<Long> approverIds = result.content().stream()
                 .flatMap(template -> template.getLines().stream())
                 .map(ApprovalTemplateLine::getApproverId)
@@ -58,11 +57,6 @@ public class ApprovalTemplateQueryService implements ApprovalTemplateQueryUseCas
     public ApprovalTemplateDetailView getTemplateDetail(Long templateId, Long requesterId) {
         ApprovalTemplate approvalTemplate = approvalTemplateRepository.findById(templateId)
                 .orElseThrow(() -> new ApprovalException(ApprovalErrorCode.TEMPLATE_NOT_FOUND));
-
-        ApproverInfo requester = approverDirectoryPort.getApprover(requesterId);
-        if (!approvalTemplate.getAcademyId().equals(requester.academyId())) {
-            throw new ApprovalException(ApprovalErrorCode.TEMPLATE_ACCESS_DENIED);
-        }
 
         List<Long> approverIds = approvalTemplate.getLines().stream()
                 .map(ApprovalTemplateLine::getApproverId)

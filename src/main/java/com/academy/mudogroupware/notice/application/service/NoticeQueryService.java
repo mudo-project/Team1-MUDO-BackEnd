@@ -40,9 +40,9 @@ public class NoticeQueryService implements NoticeQueryUseCase {
     public PageResult<NoticeSummaryView> getNotices(Long requesterId, String keyword, int page, int size) {
         log.info("event=notice_list_시작 requesterId={}, keyword={}, page={}, size={}", requesterId, keyword, page,
                 size);
-        AuthorInfo requester = noticeAuthorDirectoryPort.getAuthor(requesterId);
+        noticeAuthorDirectoryPort.getAuthor(requesterId);
 
-        PageResult<Notice> result = noticeRepository.findAll(requester.academyId(), keyword, page, size);
+        PageResult<Notice> result = noticeRepository.findAll(keyword, page, size);
         List<Notice> notices = result.content();
         List<Long> authorIds = notices.stream().map(Notice::getAuthorUserId).distinct().toList();
         List<Long> noticeIds = notices.stream().map(Notice::getId).toList();
@@ -62,10 +62,7 @@ public class NoticeQueryService implements NoticeQueryUseCase {
         Notice notice = noticeRepository.findById(noticeId)
                 .orElseThrow(() -> new NoticeException(NoticeErrorCode.NOTICE_NOT_FOUND));
 
-        AuthorInfo requester = noticeAuthorDirectoryPort.getAuthor(requesterId);
-        if (!notice.getAcademyId().equals(requester.academyId())) {
-            throw new NoticeException(NoticeErrorCode.NOTICE_ACCESS_DENIED);
-        }
+        noticeAuthorDirectoryPort.getAuthor(requesterId);
 
         notice.recordView();
         noticeReadRepository.markRead(noticeId, requesterId);
@@ -76,7 +73,7 @@ public class NoticeQueryService implements NoticeQueryUseCase {
                 .map(this::toAttachmentView)
                 .toList();
         long readerCount = noticeReadRepository.countReaders(noticeId);
-        long totalRecipientCount = noticeAuthorDirectoryPort.countActiveUsers(notice.getAcademyId());
+        long totalRecipientCount = noticeAuthorDirectoryPort.countActiveUsers();
 
         log.info("event=notice_detail_완료 noticeId={}, requesterId={}, viewCount={}", noticeId, requesterId,
                 notice.getViewCount());
@@ -103,10 +100,7 @@ public class NoticeQueryService implements NoticeQueryUseCase {
         Notice notice = noticeRepository.findById(noticeId)
                 .orElseThrow(() -> new NoticeException(NoticeErrorCode.NOTICE_NOT_FOUND));
 
-        AuthorInfo requester = noticeAuthorDirectoryPort.getAuthor(requesterId);
-        if (!notice.getAcademyId().equals(requester.academyId())) {
-            throw new NoticeException(NoticeErrorCode.NOTICE_ACCESS_DENIED);
-        }
+        noticeAuthorDirectoryPort.getAuthor(requesterId);
 
         Map<Long, LocalDateTime> readTimestamps = noticeReadRepository.findReadTimestamps(noticeId);
         Map<Long, AuthorInfo> readers = noticeAuthorDirectoryPort.getAuthors(

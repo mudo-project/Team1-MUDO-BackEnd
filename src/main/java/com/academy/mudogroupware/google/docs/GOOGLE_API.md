@@ -73,7 +73,9 @@ HTTP `302 Found`, `Location: {GOOGLE_OAUTH_FRONTEND_REDIRECT_URI}?googleConnecti
 
 - 인가 코드를 구글 토큰 엔드포인트에서 액세스·리프레시 토큰으로 교환하고, 액세스 토큰으로 구글 사용자 이메일을 조회한다.
 - 리프레시 토큰이 응답에 없으면(구글이 `access_type=offline`+`prompt=consent`를 지켰다면 발생하지 않아야 함) 실패로 처리한다.
-- 같은 학원에 이미 연동이 있으면, 기존 리프레시 토큰을 구글에 폐기(revoke) 요청한 뒤 기존 행을 삭제하고 새 연동으로 교체한다.
+- 같은 학원에 이미 연동이 있으면 기존 행을 삭제하고 새 연동으로 교체한다. 기존 리프레시 토큰의 구글 측 폐기(revoke)는 DB 트랜잭션 커밋이 확정된 뒤에만 요청한다 — DB 저장이 실패해 롤백돼도 이미 폐기된 토큰이 남는 불일치를 막기 위함이다.
+- 연결 성공 시 `GoogleAccountConnectedEvent`를 발행한다(현재 구독자 없음).
+- 실패 원인(Google 오류/파라미터 누락/연동 처리 예외)은 서버 로그에 남긴다. `code`·`state`(토큰·인가코드가 실린 값)는 로그에 남기지 않는다.
 
 ## 구글 연동 상태 조회
 
@@ -98,18 +100,30 @@ HTTP `200 OK`
   "data": {
     "googleEmail": "academy@mudo.co.kr",
     "connectedByUserId": 7,
-    "scope": "openid https://www.googleapis.com/auth/userinfo.email",
+    "scope": "openid https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/drive.file",
     "connectedAt": "2026-07-01T14:22:00",
-    "tokenExpiresAt": "2026-08-30T14:22:00",
+    "refreshTokenExpiresAt": null,
     "lastCheckedAt": "2026-08-03T09:00:00",
     "status": "CONNECTED"
   }
 }
 ```
 
-연동된 계정이 없으면 `data`가 `null`이다(별도 404를 두지 않는다 — "연동 안 됨"은 정상적으로 있을 수 있는 상태다).
+연동된 계정이 없으면 `data`가 `null`이다(별도 404를 두지 않는다 — "연동 안 됨"은 정상적으로 있을 수 있는 상태다). 이 경우는 `NOT_CONNECTED` 상태에 해당하며, 응답 본문에는 별도 `status` 값을 넣지 않는다.
 
-`status`는 `CONNECTED` / `EXPIRING`(만료 3일 전부터) / `EXPIRED` / `FAILED` 중 하나다. `FAILED`는 `/check` 확인 실패뿐 아니라, 연동 당시 동의받은 scope가 현재 요구되는 scope(`GOOGLE_OAUTH_SCOPE`)를 다 포함하지 못하는 경우에도 반환된다 — 이 경우 "재연결"(`authorize-url` 재호출)로 해소한다.
+| 응답 필드 | 규칙 |
+| --- | --- |
+| `refreshTokenExpiresAt` | Google 토큰 응답에 `refresh_token_expires_in`이 실제로 있을 때만 만료 시각을 반환한다. 없으면 `null`이며, 이는 만료가 아니라 만료 시각을 알 수 없음을 뜻한다. |
+| `scope` | 동의받은 scope의 공백 구분 문자열이다. 공유파일에 필요한 `drive.file`이 없을 수 있으므로, 프론트는 이 값을 자체 권한 상태로 해석하지 않는다. |
+| `status` | 연결·토큰 건강 상태다. scope 부족만으로 `FAILED`가 되지 않는다. |
+
+`status`는 `NOT_CONNECTED` / `CONNECTED` / `EXPIRING` / `EXPIRED` / `FAILED` 중 하나다. 실제 리프레시 토큰 만료 시각이 구글 응답에 있을 때만 만료 여부를 계산하며, 만료 7일 전부터 `EXPIRING`으로 표시한다. `FAILED`는 구글이 리프레시 토큰이 폐기·만료됐다고 명시적으로 응답한 경우(`invalid_grant`)에만 반환한다 — 네트워크 오류·429·5xx 같은 일시적 장애는 `FAILED`로 확정하지 않고 다음 시도에서 다시 정상 판정될 수 있다. `drive.file` scope가 없는 기존 연결은 상태 조회에서는 `CONNECTED`를 유지할 수 있으며, 공유파일이 실제 접근 토큰을 요청할 때 `GOOGLE_409_1`로 재연결을 안내한다.
+
+### 응답 호환성 변경
+
+- 기존 `tokenExpiresAt` 필드는 `refreshTokenExpiresAt`으로 변경됐다.
+- `V5.1.9__align_google_refresh_token_expiration.sql`은 기존에 임의로 저장된 만료일을 모두 `NULL`로 초기화한다. 배포 직후 기존 연결의 `refreshTokenExpiresAt`은 `null`로 응답될 수 있다.
+- 이전 `tokenExpiresAt` 별칭은 제공하지 않는다. 프론트는 `refreshTokenExpiresAt`만 사용해야 한다.
 
 ### Error Response
 
@@ -146,7 +160,7 @@ HTTP `204 No Content` (응답 본문 없음)
 ### Business Rules
 
 - 저장된 리프레시 토큰으로 실제 액세스 토큰 재발급을 시도해 유효성을 확인한다(구글이 재발급을 거부하면, 예: 관리자가 구글 계정 설정에서 앱 권한을 취소한 경우, 실패로 판정한다).
-- 확인 결과에 따라 `lastCheckedAt`을 갱신하고 실패 여부(`failed`)를 반영한다. 성공/실패와 무관하게 `연결 일시`·`토큰 만료 예정 일시`는 바뀌지 않는다.
+- 성공 또는 영구 실패(`invalid_grant`)일 때만 `failed` 값을 갱신한다. 일시적 오류(네트워크·429·5xx)는 `failed` 값을 바꾸지 않고 `lastCheckedAt`만 갱신한다 — 일시 장애 한 번으로 연동 전체가 영구 차단되는 것을 막기 위함이다. 성공/실패와 무관하게 `connectedAt`과 구글이 실제로 반환한 리프레시 토큰 만료 시각은 바뀌지 않는다.
 
 ## 구글 연동 해제
 
@@ -174,4 +188,4 @@ HTTP `204 No Content` (응답 본문 없음)
 
 ### Business Rules
 
-- 저장된 리프레시 토큰을 구글에 폐기(revoke) 요청한 뒤 연동 행을 삭제한다. 구글 드라이브에 저장된 파일 자체는 삭제하지 않는다(이번 범위에는 템플릿 관리가 포함되지 않는다).
+- 연동 행을 먼저 삭제하고, 저장돼 있던 리프레시 토큰의 구글 측 폐기(revoke)는 DB 트랜잭션 커밋이 확정된 뒤에 요청한다. 구글 드라이브에 저장된 파일 자체는 삭제하지 않는다(이번 범위에는 템플릿 관리가 포함되지 않는다).

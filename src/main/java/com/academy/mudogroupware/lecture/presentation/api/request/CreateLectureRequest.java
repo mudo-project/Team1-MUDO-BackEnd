@@ -24,9 +24,9 @@ public record CreateLectureRequest(
         @NotEmpty List<@Valid ScheduleRequest> schedules
 ) {
 
-    public CreateLectureCommand toCommand(Long academyId, Long requesterId) {
+    public CreateLectureCommand toCommand(Long requesterId) {
         List<ScheduleInput> inputs = schedules.stream().map(ScheduleRequest::toInput).toList();
-        return new CreateLectureCommand(academyId, name, grade, termName, subjectName, teacherId, classroomName,
+        return new CreateLectureCommand(name, grade, termName, subjectName, teacherId, classroomName,
                 feeType, feeAmount, inputs, requesterId);
     }
 }

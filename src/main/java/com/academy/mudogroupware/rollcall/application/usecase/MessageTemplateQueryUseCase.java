@@ -6,5 +6,5 @@ import com.academy.mudogroupware.rollcall.application.query.MessageTemplateView;
 
 public interface MessageTemplateQueryUseCase {
 
-    List<MessageTemplateView> getTemplates(Long academyId);
+    List<MessageTemplateView> getTemplates();
 }

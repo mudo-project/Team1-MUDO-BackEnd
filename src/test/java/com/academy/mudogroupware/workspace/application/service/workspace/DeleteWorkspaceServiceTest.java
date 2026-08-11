@@ -40,7 +40,7 @@ class DeleteWorkspaceServiceTest {
   @Test
   void deletesWorkspaceWhenRequesterIsCurrentMember() {
     when(workspaceRepository.findByIdForUpdate(100L))
-        .thenReturn(Optional.of(Workspace.restore(100L, 1L, "개발팀", 10L, Set.of(10L, 20L))));
+        .thenReturn(Optional.of(Workspace.restore(100L, "개발팀", 10L, Set.of(10L, 20L))));
 
     deleteWorkspaceService.delete(new DeleteWorkspaceCommand(10L, 100L));
 
@@ -50,7 +50,7 @@ class DeleteWorkspaceServiceTest {
   @Test
   void deletesWorkspaceWhenRequesterIsTheOnlyRemainingMember() {
     when(workspaceRepository.findByIdForUpdate(100L))
-        .thenReturn(Optional.of(Workspace.restore(100L, 1L, "개발팀", 10L, Set.of(10L))));
+        .thenReturn(Optional.of(Workspace.restore(100L, "개발팀", 10L, Set.of(10L))));
 
     deleteWorkspaceService.delete(new DeleteWorkspaceCommand(10L, 100L));
 
@@ -60,7 +60,7 @@ class DeleteWorkspaceServiceTest {
   @Test
   void rejectsDeleteWhenRequesterIsNotCurrentMember() {
     when(workspaceRepository.findByIdForUpdate(100L))
-        .thenReturn(Optional.of(Workspace.restore(100L, 1L, "개발팀", 10L, Set.of(10L))));
+        .thenReturn(Optional.of(Workspace.restore(100L, "개발팀", 10L, Set.of(10L))));
 
     assertThatThrownBy(() -> deleteWorkspaceService.delete(new DeleteWorkspaceCommand(99L, 100L)))
         .isInstanceOf(WorkspaceAccessDeniedException.class);

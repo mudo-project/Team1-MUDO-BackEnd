@@ -249,7 +249,7 @@
 ### 검증 및 정책
 
 - 사업자등록번호·사업자등록증 파일은 이번 스코프에서 받지 않습니다(`businessNo`/`businessLicenseFileId`는 항상 `null`로 생성됨). 접수 시점에는 신청자가 실제 사업자 소유주인지 자동으로 확인할 자료가 없으므로, SUPER ADMIN이 승인 전에 별도 채널(서류 대조·전화 확인 등)로 소유권을 수동 검증하는 것을 전제로 합니다 — 이 수동 검증은 시스템이 강제하지 않고 운영 절차로만 존재합니다.
-- 접수 시점에는 `requestedLoginId` 중복 확인을 하지 않아 같은 아이디로 여러 건이 `PENDING` 상태로 쌓일 수 있습니다. 승인 시점에 해당 아이디가 이미 사용 중이면(먼저 접수된 다른 신청이 이미 승인됐거나, 다른 경로로 같은 아이디의 계정이 생성된 경우) `409 USER_409_6`으로 거절되고 승인이 이루어지지 않습니다.
+- `requestedLoginId`가 이미 발급된 계정이거나(`users.username`), 현재 대기중(`PENDING`) 또는 승인된(`APPROVED`) 다른 신청서와 겹치면 `409 USER_409_6`으로 거절합니다. 반려된(`REJECTED`) 신청서의 아이디로는 재신청할 수 있습니다. 동시 접수 레이스는 DB의 상태별 조건부 유니크 제약으로 한 번 더 방어됩니다.
 - rate limit 등 악의적 공격 방어 로직은 이번 스코프에 포함되지 않습니다 — 인증 없이 대표자 이름·이메일·전화번호를 저장하므로, 운영 공개 전에는 게이트웨이 또는 애플리케이션 레벨 rate limit과 모니터링 도입이 필요합니다(현재는 팀이 위험을 수용하고 별도 후속 작업으로 미룬 상태).
 - `plan`은 `FREE`/`PAID` 중 하나를 선택해야 하며, 실제 기능 제한이나 결제 처리는 이번 스코프에 포함되지 않습니다(선택값만 저장).
 
@@ -349,7 +349,7 @@
 
 ### Response · `200 OK`
 
-승인 시 academy와 최초 관리자 계정을 같은 트랜잭션에서 함께 생성합니다. 이메일 발송 인프라가 아직 없어, 생성된 임시 비밀번호를 응답에 평문으로 1회 담아 SUPER ADMIN이 신청자에게 수동으로 전달합니다.
+승인 시 academy, "원장" 역할(그 시점 권한 카탈로그 전체 보유), 최초 관리자 계정을 같은 트랜잭션에서 함께 생성합니다. 이메일 발송 인프라가 아직 없어, 비밀번호 설정 링크를 응답에 담아 SUPER ADMIN이 신청자에게 수동으로 전달합니다.
 
 ```json
 {
@@ -359,7 +359,7 @@
   "data": {
     "academyId": 10,
     "userId": 20,
-    "temporaryPassword": "Xk9#mQ2pRt7$"
+    "passwordSetupLink": "http://localhost:3000/password-setup?username=academy01&tempPassword=Xk9%23mQ2pRt7"
   }
 }
 ```
@@ -367,8 +367,8 @@
 ### 검증 및 정책
 
 - `applicationId`가 존재하지 않으면 `USER_404_3`, 이미 승인/반려된 신청서면 `USER_409_5`로 응답합니다.
-- `requestedLoginId`가 이미 사용 중인 아이디면(다른 신청 승인 등으로 먼저 선점된 경우) `409 USER_409_6`으로 거절하고 계정을 만들지 않습니다 — 접수 시점에는 중복 확인을 하지 않으므로 승인 시점에 최종 확인합니다.
-- 새로 발급되는 계정은 `account_type=ADMIN`, `admin_scope=ACADEMY`, `must_change_pw=true`로 생성되어 최초 로그인 시 비밀번호 변경이 강제됩니다.
+- `requestedLoginId`가 이미 사용 중인 아이디면(접수 이후 다른 경로로 계정이 생성된 경우 등) `409 USER_409_6`으로 거절하고 계정을 만들지 않습니다 — 접수 시점(7번 항목)에도 같은 검증을 하지만, 접수와 승인 사이의 시간차 동안 상황이 바뀔 수 있어 승인 시점에도 한 번 더 최종 확인합니다.
+- 새로 발급되는 계정은 `account_type=ADMIN`, `admin_scope=ACADEMY`, `role_id`는 자동 생성된 "원장" 역할, `must_change_pw=true`로 생성됩니다. 로그인 흐름에서 이 값으로 다른 API를 강제로 막지는 않고, `POST /api/users/password-setup`(19번 항목)으로 최초 설정을 완료하면 `false`로 바뀝니다.
 
 ---
 
@@ -582,6 +582,60 @@
 
 ---
 
+## 17-1. 구성원 목록 조회(관리자)
+
+`GET /api/users/members`
+권한: `ACCOUNT:MANAGE` 필요
+
+### Request
+
+Query Parameter
+
+| name | type | required | 설명 |
+| --- | --- | --- | --- |
+| `keyword` | String | false | 이름 또는 역할명 부분 일치 검색어(대소문자 무관). 없으면 전체 반환 |
+| `roleId` | Long | false | 특정 역할의 구성원만 조회. 없으면 전체 역할 포함 |
+| `page` | int | false | 페이지 번호(0부터 시작). 기본값 0 |
+| `size` | int | false | 페이지 크기(1~100). 기본값 20 |
+
+### Response · `200 OK`
+
+```json
+{
+  "status": 200,
+  "code": "USER_200_4",
+  "message": "구성원 목록 조회에 성공했습니다.",
+  "data": {
+    "content": [
+      {
+        "userId": 10,
+        "name": "최현우",
+        "email": "hwchoi@academy.kr",
+        "phone": "010-4567-8901",
+        "roleId": 8,
+        "roleName": "강사",
+        "joinedAt": "2023-03-02T00:00:00",
+        "status": "ACTIVE",
+        "attendanceStatus": "PRESENT"
+      }
+    ],
+    "page": 0,
+    "size": 20,
+    "hasNext": false
+  }
+}
+```
+
+### 검증 및 정책
+
+- 기존 "학원 구성원 검색"(17번 항목)과 달리 `ACTIVE`뿐 아니라 `RESIGNED`/`INACTIVE`도 포함한 전체 구성원을 반환합니다 — 관리자 전용 관리 화면 API이기 때문입니다. "재직/비활성" 탭 분류(비활성 = RESIGNED+INACTIVE)는 프론트에서 처리합니다.
+- `roleId`가 없는 계정(예: 역할 미배정)은 `roleId`/`roleName` 모두 `null`로 내려갑니다.
+- 결과는 `roleName`, `name` 순으로 정렬됩니다 — 역할별로 묶어 보여주는 조직도 화면에서, `roleId`를 지정해 역할 탭마다 별도로 호출하는 방식을 전제로 합니다.
+- `page`/`size` 범위를 벗어나면(`page<0`, `size`가 1~100 밖) `400`으로 실패합니다.
+- `attendanceStatus`는 `ACTIVE` 구성원만 `PRESENT`/`ABSENT`/`OFF`/`LEAVE` 중 하나로 채워지고, `RESIGNED`/`INACTIVE` 구성원은 `null`입니다. 근태 정책(`AttendancePolicy`)이 등록되어 있지 않으면 이 API 전체가 `404 ATTENDANCE_404_1`로 실패합니다. 근태 조회는 현재 페이지에 포함된 구성원만 대상으로 합니다.
+
+---
+
 ## 18. 직원 계정 발급
 
 `POST /api/users`
@@ -617,7 +671,7 @@
   "data": {
     "userId": 8,
     "username": "teacher01",
-    "temporaryPassword": "USb8MGQYrq!p"
+    "passwordSetupLink": "http://localhost:3000/password-setup?username=teacher01&tempPassword=USb8MGQYrq%21p"
   }
 }
 ```
@@ -627,8 +681,41 @@
 - `academyId`는 요청으로 받지 않고 인증된 관리자 기준으로 서버가 결정합니다 — 다른 학원에 계정을 만들 수 없습니다.
 - `username`이 이미 존재하면 `409 USER_409_6`으로 거절합니다(사전 체크 + DB 유니크 제약 이중 방어).
 - `roleId`가 존재하지 않거나 다른 학원 소속이면 `404 USER_404_2`로 응답합니다.
-- 계정은 `accountType=MEMBER`, 임시 비밀번호로 발급되며 `mustChangePw`가 `true`로 저장됩니다. 단, 로그인 흐름에서 이 값을 읽어 비밀번호 변경을 강제하는 로직은 아직 없습니다(후속 작업).
-- 응답의 `temporaryPassword`는 이 호출 한 번에만 평문으로 내려가며 서버에 별도로 저장되지 않습니다. 학원 관리자가 직원에게 직접 전달해야 합니다 — 이메일 등 자동 발송은 아직 없습니다(후속 작업).
+- 계정은 `accountType=MEMBER`, 임시 비밀번호로 발급되며 `mustChangePw`가 `true`로 저장됩니다.
+- 응답의 `passwordSetupLink`는 이 호출 한 번에만 내려가며, 링크 안의 임시 비밀번호는 서버에 별도로 저장되지 않습니다. 학원 관리자가 직원에게 직접 전달해야 합니다(카카오톡/문자 등) — 이메일 등 자동 발송은 아직 없습니다(후속 작업). 이 링크로 `POST /api/users/password-setup`(19번 항목)을 호출하면 최초 비밀번호 설정이 끝납니다.
+
+---
+
+## 19. 최초 비밀번호 설정
+
+`POST /api/users/password-setup`
+권한: 없음 (공개 엔드포인트)
+
+### Request
+
+```json
+{
+  "username": "teacher01",
+  "tempPassword": "USb8MGQYrq!p",
+  "newPassword": "MyOwnPassword1!"
+}
+```
+
+| name | type | required | 설명 |
+| --- | --- | --- | --- |
+| `username` | String | true | 계정 아이디 |
+| `tempPassword` | String | true | 비밀번호 설정 링크에 담겨온 임시 비밀번호 원문 |
+| `newPassword` | String | true | 새로 정할 비밀번호, 8~100자 |
+
+### Response · `204 No Content`
+
+본문 없음.
+
+### 검증 및 정책
+
+- 검증 순서: `username`으로 계정 조회 → `must_change_pw == true`인지 확인 → `tempPassword`가 저장된 해시와 일치하는지 확인. 셋 중 하나라도 실패하면 전부 동일하게 `400 USER_400_2`로 응답합니다(계정 존재·상태 비노출).
+- 성공하면 `password`가 새 값으로 교체되고 `must_change_pw`가 `false`로 바뀝니다. 그 순간부터 같은 링크(옛 임시 비밀번호)는 해시가 안 맞아 자동으로 무효화되고, `must_change_pw`가 이미 `false`라 이 계정에 대해 이 엔드포인트 자체가 다시는 통과하지 않습니다(1회성 보장에 별도 만료시간을 두지 않음).
+- 원장(학원 신청 승인, 10번 항목)과 직원(계정 발급, 18번 항목) 두 경로 모두 이 API로 최초 설정을 완료합니다.
 
 ---
 
@@ -643,6 +730,7 @@
 | `409` | `USER_409_1` | 같은 학원 내에 이미 존재하는 역할 이름 |
 | `409` | `USER_409_2` | 배정된 구성원이 있는 역할을 삭제하려 시도 |
 | `400` | `USER_400_1` | 존재하지 않는 권한 코드로 역할 권한 조립 시도 |
+| `400` | `USER_400_2` | 비밀번호 설정 실패(아이디 없음/이미 설정 완료/임시비밀번호 불일치 공통) |
 | `404` | `USER_404_2` | 역할이 존재하지 않거나 다른 학원 소속 |
 | `404` | `USER_404_3` | 학원 신청서가 존재하지 않음 |
 | `409` | `USER_409_5` | 이미 검토된(승인/반려) 신청서를 다시 승인/반려 시도 |

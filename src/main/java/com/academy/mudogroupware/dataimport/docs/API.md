@@ -37,7 +37,19 @@ Request Part
 | `lectureFile` | `MultipartFile` | `false` | 강의 정보 파일입니다. 강의명, 학년, 학기, 과목, 강사 ID, 교실, 요일, 시간, 수강료 등을 포함합니다. |
 | `enrollmentFile` | `MultipartFile` | `false` | 수강 관계 파일입니다. 어떤 학생이 어떤 강의를 듣는지 연결 정보를 포함합니다. |
 
-파일은 최소 1개 이상 업로드해야 한다. 지원 확장자는 `.csv`, `.xlsx`이다.
+업로드 파일에는 학생 연락처와 보호자 연락처 같은 개인정보가 포함될 수 있다. FastAPI AI 분석 엔진은 프론트가 직접 호출하지 않고 Spring 서버만 호출한다. 로컬 개발에서는 `http://localhost:8000`을 허용하지만, 운영 FastAPI URL은 HTTPS여야 하며 `X-Data-Import-Ai-Key` 인증 값이 필수다.
+
+파일은 최소 1개 이상 업로드해야 한다. 지원 확장자는 `.csv`, `.xlsx`이다. 서버에 `DATA_IMPORT_AI_BASE_URL`이 있으면 FastAPI AI 분석 엔진을 먼저 호출하고, 실패 시 Spring 내부 Gemini 보정 또는 기존 parser 결과로 초안을 생성한다. 프론트는 FastAPI를 직접 호출하지 않는다.
+
+프론트 연동 샘플:
+
+| **업로드 Part** | **샘플 파일** |
+| --- | --- |
+| `studentFile` | `dataimport/docs/samples/students.csv` |
+| `lectureFile` | `dataimport/docs/samples/lectures.csv` |
+| `enrollmentFile` | `dataimport/docs/samples/enrollments.csv` |
+
+샘플의 `teacherId`는 로컬 DB 상황에 맞게 초안 수정 단계에서 실제 담당자 사용자 ID로 바꿔서 확정하는 것을 권장한다.
 
 # **[response]**
 
@@ -168,6 +180,7 @@ Response Body
 `PATCH /api/data-imports/onboarding/{importId}/draft`
 
 검토 화면에서 사용자가 수정/제외한 초안을 전체 교체한다. 프론트는 조회한 초안과 같은 구조로 수정된 전체 초안을 전송한다.
+서버는 요청으로 받은 `status`, `messages`, `studentRowId`, `lectureRowId`를 그대로 신뢰하지 않고 필수값과 수강 관계 연결을 다시 계산해 저장한다.
 
 # **[request]**
 
@@ -224,6 +237,7 @@ Response Body
 `POST /api/data-imports/onboarding/{importId}/confirm`
 
 선택된 `READY` 후보만 실제 학생/강의/수강 데이터로 저장한다.
+확정 직전에도 서버가 초안을 다시 검증한다. 선택되어 있던 행이 재검증 결과 `READY`가 아니면 전체 확정이 거절된다.
 
 # **[request]**
 

@@ -23,4 +23,4 @@ COPY --from=dependency-build \
 COPY src/main/resources/db/migration /flyway/sql
 
 ENTRYPOINT ["flyway"]
-CMD ["-locations=filesystem:/flyway/sql", "-baselineOnMigrate=true", "-outOfOrder=false", "-connectRetries=30", "migrate"]
+CMD ["-locations=filesystem:/flyway/sql", "-baselineOnMigrate=true", "-outOfOrder=true", "-connectRetries=30", "migrate"]

@@ -65,7 +65,6 @@ public class OnboardingDataImportController {
             @RequestPart(required = false) MultipartFile lectureFile,
             @RequestPart(required = false) MultipartFile enrollmentFile) throws IOException {
         Long importId = createOnboardingImportUseCase.create(new CreateOnboardingImportCommand(
-                authUser.academyId(),
                 authUser.userId(),
                 toImportFiles(studentFile, lectureFile, enrollmentFile)));
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -79,7 +78,7 @@ public class OnboardingDataImportController {
     public ResponseEntity<GlobalApiResponse<ImportDraftResponse>> getDraft(
             @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long importId) {
-        ImportDraft draft = getImportDraftUseCase.getDraft(authUser.academyId(), importId);
+        ImportDraft draft = getImportDraftUseCase.getDraft(authUser.userId(), importId);
         return ResponseEntity.ok(GlobalApiResponse.ok(DataImportResponseCode.DRAFT_RETRIEVED,
                 ImportDraftResponse.from(draft)));
     }
@@ -91,7 +90,7 @@ public class OnboardingDataImportController {
             @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long importId,
             @Valid @RequestBody UpdateImportDraftRequest request) {
-        updateImportDraftUseCase.updateDraft(request.toCommand(authUser.academyId(), importId));
+        updateImportDraftUseCase.updateDraft(request.toCommand(authUser.userId(), importId));
         return ResponseEntity.noContent().build();
     }
 
@@ -101,8 +100,7 @@ public class OnboardingDataImportController {
     public ResponseEntity<GlobalApiResponse<ImportResultResponse>> confirm(
             @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long importId) {
-        ImportResult result = confirmOnboardingImportUseCase.confirm(authUser.academyId(), importId,
-                authUser.userId());
+        ImportResult result = confirmOnboardingImportUseCase.confirm(importId, authUser.userId());
         return ResponseEntity.ok(GlobalApiResponse.ok(DataImportResponseCode.IMPORT_CONFIRMED,
                 ImportResultResponse.from(result)));
     }
@@ -113,7 +111,7 @@ public class OnboardingDataImportController {
     public ResponseEntity<GlobalApiResponse<ImportResultResponse>> getResult(
             @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long importId) {
-        ImportResult result = getImportResultUseCase.getResult(authUser.academyId(), importId);
+        ImportResult result = getImportResultUseCase.getResult(authUser.userId(), importId);
         return ResponseEntity.ok(GlobalApiResponse.ok(DataImportResponseCode.RESULT_RETRIEVED,
                 ImportResultResponse.from(result)));
     }

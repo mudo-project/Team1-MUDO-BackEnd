@@ -24,4 +24,7 @@ public interface AttendanceRecordRepository {
 
     List<AttendanceRecord> findByUserIdAndWorkDateBetween(
             Long userId, LocalDate startDate, LocalDate endDate);
+
+    List<AttendanceRecord> findAllByUserIdsAndWorkDate(
+            List<Long> userIds, LocalDate workDate);
 }

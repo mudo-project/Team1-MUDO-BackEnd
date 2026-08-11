@@ -31,7 +31,6 @@ import com.academy.mudogroupware.rollcall.domain.repository.AttendanceEntryRepos
 class SaveAttendanceEntriesServiceTest {
 
     private static final Long LECTURE_ID = 1L;
-    private static final Long ACADEMY_ID = 100L;
     private static final LocalDate DATE = LocalDate.of(2026, 8, 5);
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 5, 9, 0);
 
@@ -47,7 +46,7 @@ class SaveAttendanceEntriesServiceTest {
     }
 
     private SaveAttendanceEntriesCommand command(List<AttendanceEntryInput> entries) {
-        return new SaveAttendanceEntriesCommand(LECTURE_ID, ACADEMY_ID, DATE, entries);
+        return new SaveAttendanceEntriesCommand(LECTURE_ID, DATE, entries);
     }
 
     @Test
@@ -59,18 +58,9 @@ class SaveAttendanceEntriesServiceTest {
     }
 
     @Test
-    void throwsWhenLectureBelongsToDifferentAcademy() {
-        when(lectureEnrollmentPort.findLecture(LECTURE_ID))
-                .thenReturn(Optional.of(new LectureRef(LECTURE_ID, "수학 기초반", 999L)));
-
-        assertThatThrownBy(() -> service.saveEntries(command(List.of())))
-                .isInstanceOf(RollcallLectureNotFoundException.class);
-    }
-
-    @Test
     void createsNewEntryWhenNoneExists() {
         when(lectureEnrollmentPort.findLecture(LECTURE_ID))
-                .thenReturn(Optional.of(new LectureRef(LECTURE_ID, "수학 기초반", ACADEMY_ID)));
+                .thenReturn(Optional.of(new LectureRef(LECTURE_ID, "수학 기초반")));
         when(attendanceEntryRepository.findByLectureIdAndDate(LECTURE_ID, DATE)).thenReturn(List.of());
         when(attendanceEntryRepository.findByLectureIdAndStudentIdAndDate(LECTURE_ID, 5L, DATE))
                 .thenReturn(Optional.empty());
@@ -85,8 +75,8 @@ class SaveAttendanceEntriesServiceTest {
     @Test
     void updatesExistingEntryWhenPresent() {
         when(lectureEnrollmentPort.findLecture(LECTURE_ID))
-                .thenReturn(Optional.of(new LectureRef(LECTURE_ID, "수학 기초반", ACADEMY_ID)));
-        AttendanceEntry existing = AttendanceEntry.create(ACADEMY_ID, LECTURE_ID, 5L, DATE, AttendanceStatus.PRESENT,
+                .thenReturn(Optional.of(new LectureRef(LECTURE_ID, "수학 기초반")));
+        AttendanceEntry existing = AttendanceEntry.create(LECTURE_ID, 5L, DATE, AttendanceStatus.PRESENT,
                 null, NOW.minusDays(1));
         when(attendanceEntryRepository.findByLectureIdAndDate(LECTURE_ID, DATE)).thenReturn(List.of(existing));
         when(attendanceEntryRepository.findByLectureIdAndStudentIdAndDate(LECTURE_ID, 5L, DATE))

@@ -4,10 +4,13 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.academy.mudogroupware.google.application.command.CompleteGoogleConnectionCommand;
+import com.academy.mudogroupware.google.application.event.GoogleAccountConnectedEvent;
+import com.academy.mudogroupware.google.application.event.OldGoogleRefreshTokenRevocationRequestedEvent;
 import com.academy.mudogroupware.google.application.port.GoogleOAuthCallException;
 import com.academy.mudogroupware.google.application.port.GoogleOAuthPort;
 import com.academy.mudogroupware.google.application.port.GoogleOAuthStateClaims;
@@ -29,7 +32,9 @@ public class CompleteGoogleAccountConnectionService implements CompleteGoogleAcc
     private final GoogleOAuthPort googleOAuthPort;
     private final GoogleAccountConnectionRepository googleAccountConnectionRepository;
     private final Clock clock;
+    private final ApplicationEventPublisher eventPublisher;
 
+    // 인가 코드를 토큰으로 교환해 구글 계정 연동을 저장하고, 기존 토큰 폐기·연동 성공 통지를 커밋 이후로 미룬다.
     @Override
     public void complete(CompleteGoogleConnectionCommand command) {
         GoogleOAuthStateClaims claims = googleOAuthStatePort.verify(command.state());
@@ -49,12 +54,22 @@ public class CompleteGoogleAccountConnectionService implements CompleteGoogleAcc
         }
 
         Optional<GoogleAccountConnection> existing = googleAccountConnectionRepository.find();
-        existing.ifPresent(connection -> googleOAuthPort.revoke(connection.getRefreshToken()));
+        Optional<String> previousEmail = existing.map(GoogleAccountConnection::getGoogleEmail);
+        Optional<String> previousRefreshToken = existing.map(GoogleAccountConnection::getRefreshToken);
         googleAccountConnectionRepository.deleteAll();
 
+        LocalDateTime connectedAt = LocalDateTime.now(clock);
+        LocalDateTime refreshTokenExpiresAt = tokens.refreshTokenExpiresInSeconds() == null
+                ? null
+                : connectedAt.plusSeconds(tokens.refreshTokenExpiresInSeconds());
         GoogleAccountConnection connection = GoogleAccountConnection.connect(
                 googleEmail, claims.userId(), tokens.scope(), tokens.refreshToken(),
-                LocalDateTime.now(clock));
+                connectedAt, refreshTokenExpiresAt);
         googleAccountConnectionRepository.save(connection);
+
+        previousRefreshToken.ifPresent(
+                token -> eventPublisher.publishEvent(new OldGoogleRefreshTokenRevocationRequestedEvent(token)));
+        boolean accountChanged = previousEmail.isPresent() && !previousEmail.get().equals(googleEmail);
+        eventPublisher.publishEvent(new GoogleAccountConnectedEvent(accountChanged));
     }
 }

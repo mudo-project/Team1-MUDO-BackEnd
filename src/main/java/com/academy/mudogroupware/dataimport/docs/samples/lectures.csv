@@ -1,0 +1,3 @@
+name,grade,termName,subjectName,teacherId,teacherName,classroomName,feeType,feeAmount,day,startTime,endTime
+고1 수학,HIGH_1,2026 여름,수학,1,박선생,A101,PER_MONTH,300000,MONDAY,19:00,21:00
+고1 영어,HIGH_1,2026 여름,영어,2,김선생,B201,PER_MONTH,280000,WEDNESDAY,18:00,20:00

@@ -49,11 +49,11 @@ public class NoticeAuthorDirectoryPortAdapter implements NoticeAuthorDirectoryPo
     }
 
     @Override
-    public long countActiveUsers(Long academyId) {
-        return userInfoJpaRepository.countByAcademyIdAndStatus(academyId, ACTIVE_STATUS);
+    public long countActiveUsers() {
+        return userInfoJpaRepository.countByStatus(ACTIVE_STATUS);
     }
 
     private AuthorInfo toAuthorInfo(UserInfoEntity entity, String roleName) {
-        return new AuthorInfo(entity.getId(), entity.getName(), roleName, entity.getAcademyId());
+        return new AuthorInfo(entity.getId(), entity.getName(), roleName);
     }
 }

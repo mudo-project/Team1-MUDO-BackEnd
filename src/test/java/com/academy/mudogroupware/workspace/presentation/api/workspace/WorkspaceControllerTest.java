@@ -114,7 +114,7 @@ class WorkspaceControllerTest {
 
   @Test
   void defaultsToMineAndMapsAuthenticatedUsersWorkspaceList() throws Exception {
-    when(workspaceQueryUseCase.getWorkspaces(1L, 10L, WorkspaceListScope.MINE))
+    when(workspaceQueryUseCase.getWorkspaces(10L, WorkspaceListScope.MINE))
         .thenReturn(List.of(new WorkspaceListItem(100L, "8월 학사 운영", 3L)));
 
     mockMvc
@@ -127,12 +127,12 @@ class WorkspaceControllerTest {
         .andExpect(jsonPath("$.data[0].name").value("8월 학사 운영"))
         .andExpect(jsonPath("$.data[0].memberCount").value(3));
 
-    verify(workspaceQueryUseCase).getWorkspaces(1L, 10L, WorkspaceListScope.MINE);
+    verify(workspaceQueryUseCase).getWorkspaces(10L, WorkspaceListScope.MINE);
   }
 
   @Test
   void returnsEmptyDataListWhenMineHasNoWorkspaces() throws Exception {
-    when(workspaceQueryUseCase.getWorkspaces(1L, 10L, WorkspaceListScope.MINE))
+    when(workspaceQueryUseCase.getWorkspaces(10L, WorkspaceListScope.MINE))
         .thenReturn(List.of());
 
     mockMvc
@@ -178,7 +178,7 @@ class WorkspaceControllerTest {
         .andExpect(status().isNoContent())
         .andExpect(content().string(""));
 
-    verify(recordWorkspaceRecentAccessUseCase).recordRecentAccess(1L, 10L, 100L, false);
+    verify(recordWorkspaceRecentAccessUseCase).recordRecentAccess(10L, 100L, false);
   }
 
   @Test
@@ -190,13 +190,13 @@ class WorkspaceControllerTest {
                 .with(csrf()))
         .andExpect(status().isNoContent());
 
-    verify(recordWorkspaceRecentAccessUseCase).recordRecentAccess(1L, 10L, 100L, true);
+    verify(recordWorkspaceRecentAccessUseCase).recordRecentAccess(10L, 100L, true);
   }
 
   @Test
   void returns404WhenWorkspaceDoesNotExist() throws Exception {
     when(workspaceDetailQueryUseCase.getWorkspaceDetail(
-            eq(1L), eq(10L), eq(100L), any(LocalDate.class), eq(false)))
+            eq(10L), eq(100L), any(LocalDate.class), eq(false)))
         .thenThrow(new WorkspaceNotFoundException());
 
     mockMvc
@@ -213,7 +213,7 @@ class WorkspaceControllerTest {
   void returns200WithDetailWhenAccessible() throws Exception {
     WorkspaceDetail detail = new WorkspaceDetail(100L, "1월 학사 운영", List.of(), List.of());
     when(workspaceDetailQueryUseCase.getWorkspaceDetail(
-            eq(1L), eq(10L), eq(100L), eq(LocalDate.of(2026, 8, 5)), eq(false)))
+            eq(10L), eq(100L), eq(LocalDate.of(2026, 8, 5)), eq(false)))
         .thenReturn(detail);
 
     mockMvc
@@ -236,7 +236,7 @@ class WorkspaceControllerTest {
     when(clock.getZone()).thenReturn(fixedClock.getZone());
     WorkspaceDetail detail = new WorkspaceDetail(100L, "1월 학사 운영", List.of(), List.of());
     when(workspaceDetailQueryUseCase.getWorkspaceDetail(
-            eq(1L), eq(10L), eq(100L), eq(LocalDate.of(2026, 8, 5)), eq(false)))
+            eq(10L), eq(100L), eq(LocalDate.of(2026, 8, 5)), eq(false)))
         .thenReturn(detail);
 
     mockMvc
@@ -245,14 +245,14 @@ class WorkspaceControllerTest {
         .andExpect(status().isOk());
 
     verify(workspaceDetailQueryUseCase)
-        .getWorkspaceDetail(1L, 10L, 100L, LocalDate.of(2026, 8, 5), false);
+        .getWorkspaceDetail(10L, 100L, LocalDate.of(2026, 8, 5), false);
   }
 
   @Test
   void forwardsReadAllAuthorityWhenRequestingWorkspaceDetail() throws Exception {
     WorkspaceDetail detail = new WorkspaceDetail(100L, "1월 학사 운영", List.of(), List.of());
     when(workspaceDetailQueryUseCase.getWorkspaceDetail(
-            eq(1L), eq(10L), eq(100L), eq(LocalDate.of(2026, 8, 5)), eq(true)))
+            eq(10L), eq(100L), eq(LocalDate.of(2026, 8, 5)), eq(true)))
         .thenReturn(detail);
 
     mockMvc
@@ -263,13 +263,13 @@ class WorkspaceControllerTest {
         .andExpect(status().isOk());
 
     verify(workspaceDetailQueryUseCase)
-        .getWorkspaceDetail(1L, 10L, 100L, LocalDate.of(2026, 8, 5), true);
+        .getWorkspaceDetail(10L, 100L, LocalDate.of(2026, 8, 5), true);
   }
 
   @Test
   void returns403WhenRequesterCannotAccessWorkspace() throws Exception {
     when(workspaceDetailQueryUseCase.getWorkspaceDetail(
-            eq(1L), eq(10L), eq(100L), any(LocalDate.class), eq(false)))
+            eq(10L), eq(100L), any(LocalDate.class), eq(false)))
         .thenThrow(new WorkspaceAccessDeniedException());
 
     mockMvc

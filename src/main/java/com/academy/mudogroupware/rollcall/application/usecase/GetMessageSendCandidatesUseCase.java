@@ -7,5 +7,5 @@ import com.academy.mudogroupware.rollcall.application.query.MessageSendCandidate
 
 public interface GetMessageSendCandidatesUseCase {
 
-    List<MessageSendCandidateView> getCandidates(Long lectureId, Long academyId, LocalDate date);
+    List<MessageSendCandidateView> getCandidates(Long lectureId, LocalDate date);
 }

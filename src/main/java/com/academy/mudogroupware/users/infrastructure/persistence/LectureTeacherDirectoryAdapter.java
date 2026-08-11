@@ -26,12 +26,11 @@ public class LectureTeacherDirectoryAdapter implements TeacherDirectoryPort {
      * Purpose: Resolve teacher names for lecture list/detail responses.
      */
     @Override
-    public Map<Long, TeacherInfo> findTeachers(Long academyId, List<Long> teacherIds) {
+    public Map<Long, TeacherInfo> findTeachers(List<Long> teacherIds) {
         if (teacherIds == null || teacherIds.isEmpty()) {
             return Map.of();
         }
         return userRepository.findAllById(new LinkedHashSet<>(teacherIds)).stream()
-                .filter(user -> academyId.equals(user.getAcademyId()))
                 .map(this::toTeacherInfo)
                 .collect(Collectors.toMap(TeacherInfo::userId, Function.identity(), (left, right) -> left));
     }

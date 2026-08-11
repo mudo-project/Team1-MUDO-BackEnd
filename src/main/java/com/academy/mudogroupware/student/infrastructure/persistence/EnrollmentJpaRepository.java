@@ -12,27 +12,23 @@ import com.academy.mudogroupware.student.domain.model.EnrollmentStatus;
 
 public interface EnrollmentJpaRepository extends JpaRepository<EnrollmentEntity, Long> {
 
-    Optional<EnrollmentEntity> findByAcademyIdAndStudentIdAndLectureId(
-            Long academyId, Long studentId, Long lectureId);
+    Optional<EnrollmentEntity> findByStudentIdAndLectureId(Long studentId, Long lectureId);
 
-    Optional<EnrollmentEntity> findByAcademyIdAndStudentIdAndId(Long academyId, Long studentId, Long id);
+    Optional<EnrollmentEntity> findByStudentIdAndId(Long studentId, Long id);
 
-    List<EnrollmentEntity> findAllByAcademyIdAndStudentIdAndStatusOrderByEnrolledAtDesc(
-            Long academyId, Long studentId, EnrollmentStatus status);
+    List<EnrollmentEntity> findAllByStudentIdAndStatusOrderByEnrolledAtDesc(
+            Long studentId, EnrollmentStatus status);
 
-    List<EnrollmentEntity> findAllByAcademyIdAndLectureIdAndStatus(
-            Long academyId, Long lectureId, EnrollmentStatus status);
+    List<EnrollmentEntity> findAllByLectureIdAndStatus(Long lectureId, EnrollmentStatus status);
 
     @Query("""
             select e.studentId as studentId, count(e) as count
             from EnrollmentEntity e
-            where e.academyId = :academyId
-              and e.status = :status
+            where e.status = :status
               and e.studentId in :studentIds
             group by e.studentId
             """)
     List<StudentEnrollmentCount> countByStudentIdsAndStatus(
-            @Param("academyId") Long academyId,
             @Param("studentIds") List<Long> studentIds,
             @Param("status") EnrollmentStatus status
     );
@@ -40,13 +36,11 @@ public interface EnrollmentJpaRepository extends JpaRepository<EnrollmentEntity,
     @Query("""
             select e.lectureId as lectureId, count(e) as count
             from EnrollmentEntity e
-            where e.academyId = :academyId
-              and e.status = :status
+            where e.status = :status
               and e.lectureId in :lectureIds
             group by e.lectureId
             """)
     List<LectureEnrollmentCount> countByLectureIdsAndStatus(
-            @Param("academyId") Long academyId,
             @Param("lectureIds") List<Long> lectureIds,
             @Param("status") EnrollmentStatus status
     );

@@ -28,4 +28,7 @@ public interface AttendanceRecordJpaRepository
 
     List<AttendanceRecordJpaEntity> findAllByUserIdAndWorkDateBetweenOrderByWorkDate(
             Long userId, LocalDate startDate, LocalDate endDate);
+
+    List<AttendanceRecordJpaEntity> findAllByUserIdInAndWorkDate(
+            List<Long> userIds, LocalDate workDate);
 }

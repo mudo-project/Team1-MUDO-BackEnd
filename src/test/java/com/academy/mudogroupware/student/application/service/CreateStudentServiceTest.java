@@ -27,9 +27,8 @@ class CreateStudentServiceTest {
     private final CreateStudentService service = new CreateStudentService(studentRepository, clock);
 
     @Test
-    void createsStudentWithAcademyScopeAndClockBasedTimestamp() {
+    void createsStudentWithClockBasedTimestamp() {
         Long studentId = service.createStudent(new CreateStudentCommand(
-                10L,
                 "김민수",
                 StudentGrade.HIGH_1,
                 "무도고",
@@ -39,7 +38,6 @@ class CreateStudentServiceTest {
         ));
 
         Student saved = studentRepository.findById(studentId).orElseThrow();
-        assertThat(saved.getAcademyId()).isEqualTo(10L);
         assertThat(saved.getName()).isEqualTo("김민수");
         assertThat(saved.getGrade()).isEqualTo(StudentGrade.HIGH_1);
         assertThat(saved.getCreatedAt()).isEqualTo(NOW);
@@ -52,7 +50,7 @@ class CreateStudentServiceTest {
 
         @Override
         public Student save(Student student) {
-            Student saved = Student.restore(sequence++, student.getAcademyId(), student.getName(),
+            Student saved = Student.restore(sequence++, student.getName(),
                     student.getGrade(), student.getSchool(), student.getPhone(), student.getParentPhone(),
                     student.getNote(), student.getCreatedAt(), student.getUpdatedAt());
             students.add(saved);
@@ -70,7 +68,7 @@ class CreateStudentServiceTest {
         }
 
         @Override
-        public PageResult<Student> findAll(Long academyId, String keyword, int page, int size) {
+        public PageResult<Student> findAll(String keyword, int page, int size) {
             return PageResult.of(List.of(), page, size, false);
         }
 

@@ -1,5 +1,17 @@
 # approval Changelog
 
+## 2026-08-11 (2)
+
+- file 모듈의 `file_metadata` academyId 제거에 맞춰, `GetApprovalAttachmentDownloadUrlCommand`/`GetApprovalAttachmentDownloadUrlService`/`ApprovalController`에서 academyId 전달을 뺐다. 방어 로직 자체(신청자/결재선 참여자 검증 + fileId 문서 소속 검증)는 academyId와 무관하게 그대로 유지된다.
+
+## 2026-08-11
+
+- 첨부파일 AI 요약이 PDF/이미지/docx까지 지원하도록 확장됐다. `AttachmentContentPort`가 텍스트 대신 `AttachmentContent`(TEXT/BINARY)를 반환하도록 바뀌었다.
+- PDF·이미지(jpeg/png/webp/heic/heif)는 Gemini 멀티모달 입력(inline base64)으로 직접 전달한다. 원본 15MB를 초과하면 `APPROVAL_409_7`로 실패한다.
+- docx는 Apache POI(`XWPFDocument`)로 텍스트를 추출한 뒤 기존 텍스트 요약 경로로 전달한다.
+- hwp 등 나머지 형식은 여전히 미지원이며 `APPROVAL_409_7`로 실패한다.
+- Gemini 요청에 요약 지시문(SUMMARY_INSTRUCTION)이 빠져 있던 문제를 함께 고쳤다 — 이전에는 원문만 그대로 전달했다.
+
 ## 2026-08-10
 
 - `GET /api/approvals/{documentId}/attachments/{fileId}/download-url` 결재 첨부파일 전용 다운로드 URL 조회 API를 추가했다.

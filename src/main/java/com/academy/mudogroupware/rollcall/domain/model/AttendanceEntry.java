@@ -8,7 +8,6 @@ import com.academy.mudogroupware.rollcall.domain.exception.EtcNoteRequiredExcept
 public final class AttendanceEntry {
 
     private final Long id;
-    private final Long academyId;
     private final Long lectureId;
     private final Long studentId;
     private final LocalDate date;
@@ -17,11 +16,8 @@ public final class AttendanceEntry {
     private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    private AttendanceEntry(Long id, Long academyId, Long lectureId, Long studentId, LocalDate date,
+    private AttendanceEntry(Long id, Long lectureId, Long studentId, LocalDate date,
                              AttendanceStatus status, String note, LocalDateTime createdAt, LocalDateTime updatedAt) {
-        if (academyId == null) {
-            throw new IllegalArgumentException("academyId must not be null");
-        }
         if (lectureId == null) {
             throw new IllegalArgumentException("lectureId must not be null");
         }
@@ -44,7 +40,6 @@ public final class AttendanceEntry {
             throw new IllegalArgumentException("updatedAt must not be null");
         }
         this.id = id;
-        this.academyId = academyId;
         this.lectureId = lectureId;
         this.studentId = studentId;
         this.date = date;
@@ -54,15 +49,15 @@ public final class AttendanceEntry {
         this.updatedAt = updatedAt;
     }
 
-    public static AttendanceEntry create(Long academyId, Long lectureId, Long studentId, LocalDate date,
+    public static AttendanceEntry create(Long lectureId, Long studentId, LocalDate date,
                                           AttendanceStatus status, String note, LocalDateTime now) {
-        return new AttendanceEntry(null, academyId, lectureId, studentId, date, status, note, now, now);
+        return new AttendanceEntry(null, lectureId, studentId, date, status, note, now, now);
     }
 
-    public static AttendanceEntry restore(Long id, Long academyId, Long lectureId, Long studentId, LocalDate date,
+    public static AttendanceEntry restore(Long id, Long lectureId, Long studentId, LocalDate date,
                                            AttendanceStatus status, String note, LocalDateTime createdAt,
                                            LocalDateTime updatedAt) {
-        return new AttendanceEntry(id, academyId, lectureId, studentId, date, status, note, createdAt, updatedAt);
+        return new AttendanceEntry(id, lectureId, studentId, date, status, note, createdAt, updatedAt);
     }
 
     public void changeStatus(AttendanceStatus status, String note, LocalDateTime now) {
@@ -82,10 +77,6 @@ public final class AttendanceEntry {
 
     public Long getId() {
         return id;
-    }
-
-    public Long getAcademyId() {
-        return academyId;
     }
 
     public Long getLectureId() {

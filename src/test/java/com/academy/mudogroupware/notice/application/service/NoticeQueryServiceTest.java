@@ -39,16 +39,16 @@ class NoticeQueryServiceTest {
 
     @Test
     void getNoticesResolvesAuthorsAndReadFlagsInBatch() {
-        Notice first = Notice.restore(1L, 100L, 20L, "First", "Content", false, 0L, List.of(), NOW, NOW);
-        Notice second = Notice.restore(2L, 100L, 21L, "Second", "Content", true, 0L, List.of(), NOW, NOW);
+        Notice first = Notice.restore(1L, 20L, "First", "Content", false, 0L, List.of(), NOW, NOW);
+        Notice second = Notice.restore(2L, 21L, "Second", "Content", true, 0L, List.of(), NOW, NOW);
         when(noticeAuthorDirectoryPort.getAuthor(10L))
-                .thenReturn(new AuthorInfo(10L, "Requester", "STAFF", 100L));
-        when(noticeRepository.findAll(100L, null, 0, 20))
+                .thenReturn(new AuthorInfo(10L, "Requester", "STAFF"));
+        when(noticeRepository.findAll(null, 0, 20))
                 .thenReturn(PageResult.of(List.of(first, second), 0, 20, false));
         when(noticeAuthorDirectoryPort.getAuthors(List.of(20L, 21L)))
                 .thenReturn(Map.of(
-                        20L, new AuthorInfo(20L, "Writer A", "STAFF", 100L),
-                        21L, new AuthorInfo(21L, "Writer B", "TEACHER", 100L)));
+                        20L, new AuthorInfo(20L, "Writer A", "STAFF"),
+                        21L, new AuthorInfo(21L, "Writer B", "TEACHER")));
         when(noticeReadRepository.findReadNoticeIds(List.of(1L, 2L), 10L)).thenReturn(Set.of(2L));
 
         PageResult<NoticeSummaryView> result = service.getNotices(10L, null, 0, 20);

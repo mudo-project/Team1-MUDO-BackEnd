@@ -14,6 +14,8 @@ public interface AcademyApplicationRepository {
 
     Optional<AcademyApplication> findById(Long id);
 
+    boolean existsActiveRequestedLoginId(String requestedLoginId);
+
     void markApproved(Long id, Long reviewerId, LocalDateTime reviewedAt);
 
     void markRejected(Long id, Long reviewerId, LocalDateTime reviewedAt, String reason);

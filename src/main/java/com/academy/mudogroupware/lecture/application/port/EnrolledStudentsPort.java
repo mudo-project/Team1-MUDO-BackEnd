@@ -10,7 +10,7 @@ import java.util.Map;
  */
 public interface EnrolledStudentsPort {
 
-    List<EnrolledStudentInfo> findByLectureId(Long academyId, Long lectureId);
+    List<EnrolledStudentInfo> findByLectureId(Long lectureId);
 
-    Map<Long, Long> countByLectureIds(Long academyId, List<Long> lectureIds);
+    Map<Long, Long> countByLectureIds(List<Long> lectureIds);
 }

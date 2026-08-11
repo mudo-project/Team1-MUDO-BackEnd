@@ -60,6 +60,11 @@ public class UserRepositoryImpl implements UserRepository {
     }
 
     @Override
+    public boolean completePasswordSetup(Long userId, String newPasswordHash) {
+        return userJpaRepository.completePasswordSetupIfMustChange(userId, newPasswordHash) > 0;
+    }
+
+    @Override
     public List<User> searchByAcademyId(Long academyId, String keyword) {
         String normalizedKeyword = keyword == null ? "" : keyword.trim();
         List<UserEntity> entities = normalizedKeyword.isEmpty()
@@ -67,6 +72,11 @@ public class UserRepositoryImpl implements UserRepository {
                 : userJpaRepository.findAllByAcademyIdAndStatusAndNameContainingIgnoreCase(
                         academyId, UserStatus.ACTIVE, normalizedKeyword);
         return entities.stream().map(this::toDomain).toList();
+    }
+
+    @Override
+    public List<User> findAllByAcademyId(Long academyId) {
+        return userJpaRepository.findAllByAcademyId(academyId).stream().map(this::toDomain).toList();
     }
 
     @Override
