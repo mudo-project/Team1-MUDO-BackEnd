@@ -1,9 +1,66 @@
 > 작성일: 2026-08-04
-> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청/승인 워크플로우(PR 1·2·3/3, "계정 발급 체계" 2단계) 완료, 역할 관리 API 7개(생성/목록/상세/수정/삭제/권한 조립/권한 카탈로그 조회) 완료, 사용자 역할 변경 API 완료, 학원 구성원 검색 API 완료, 역할 색상/인원수 완료, CodeRabbit 피드백 반영 + 로깅 컨벤션 전체 도메인(Service 17개) 적용 완료, 직원 계정 발급 API 완료("계정 발급 체계" 3단계 완료), 학원 신청 접수 API 완료(최소 스코프, "계정 발급 체계" 2단계 최종 완결), 학원 신청 접수 시점 requestedLoginId 중복확인 완료, 비밀번호 설정 링크 + 계정 발급 흐름 통합 완료(원장 역할 자동 생성·전체 권한 배정 포함) · 후속 작업: 이메일 발송, 사업자등록증 검증(OCR·국세청 API), 비밀번호 설정 링크 재발급 흐름
+> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청/승인 워크플로우(PR 1·2·3/3, "계정 발급 체계" 2단계) 완료, 역할 관리 API 7개(생성/목록/상세/수정/삭제/권한 조립/권한 카탈로그 조회) 완료, 사용자 역할 변경 API 완료, 학원 구성원 검색 API 완료, 역할 색상/인원수 완료, CodeRabbit 피드백 반영 + 로깅 컨벤션 전체 도메인(Service 17개) 적용 완료, 직원 계정 발급 API 완료("계정 발급 체계" 3단계 완료), 학원 신청 접수 API 완료(최소 스코프, "계정 발급 체계" 2단계 최종 완결), 학원 신청 접수 시점 requestedLoginId 중복확인 완료, 비밀번호 설정 링크 + 계정 발급 흐름 통합 완료(원장 역할 자동 생성·전체 권한 배정 포함), 관리자용 구성원 목록 조회 API 완료(오늘 근태 상태 포함) · 후속 작업: 이메일 발송, 사업자등록증 검증(OCR·국세청 API), 비밀번호 설정 링크 재발급 흐름
 
 ## 🎯 변경 목적
 
 계정·권한(users) 도메인을 신설하고, 로그인과 액세스 토큰 재발급을 구현한다. 초기세팅 때 approval 도메인이 참조용으로 임시로 만들어둔 `users` 테이블을 팀이 확정한 ERD에 맞게 정합화하고, 그 위에서 인증 흐름을 짠다.
+
+---
+
+## ✅ 2026-08-11 · 구성원 목록에 오늘 근태 상태 포함 (`attendanceStatus`)
+
+### 배경
+
+관리자용 구성원 목록(`GET /api/users/members`)은 처음엔 근태 상태를 스코프 밖으로 두고, 프론트가 `GET /api/attendance/team/today`나 `GET /api/attendance/employees/weekly`를 별도 호출해 합치도록 했다. 그런데 이 두 API는 정책 시간·전체 요약·요일별 상세 배열까지 포함해 목록 화면이 실제로 쓸 값(오늘 상태 하나)에 비해 너무 무겁다는 문제가 제기됐다.
+
+### 확정된 정책
+
+- `users`가 `TodayAttendanceStatusPort`/`MemberTodayAttendanceStatus`를 정의하고, `attendance`가 이를 구현하는 방향으로 진행했다 — 이 프로젝트에서 `users`가 다른 도메인의 Port를 소비하는 첫 사례다(기존엔 항상 반대 방향이었다).
+- Adapter(`TodayAttendanceStatusAdapter`)는 attendance의 기존 서비스(`TodayTeamAttendanceQueryService`)를 호출하지 않고, `AttendancePolicyRepository`/`LeaveRequestRepository`를 재사용하면서 `AttendanceRecordRepository`에 조회 메서드 하나(`findAllByUserIdsAndWorkDate`)만 추가해 독립적으로 상태를 계산한다 — 기존 서비스 로직은 전혀 수정하지 않았다.
+- 근태 정책이 없어 상태 계산이 실패하면(`ATTENDANCE_POLICY_NOT_FOUND`), 그 오류를 감추지 않고 `GET /api/users/members` 전체를 `404 ATTENDANCE_404_1`로 실패시키기로 했다 — 부분 성공(근태만 null)보다 명확한 실패를 택했다.
+- `attendanceStatus`는 `ACTIVE` 구성원에게만 채우고 `RESIGNED`/`INACTIVE`는 항상 `null`이다 — Adapter 자체는 이 필터링을 하지 않으므로 `ListMembersService`가 매핑 시점에 강제한다.
+
+### 완료 기준
+
+- [x] `AttendanceRecordRepository.findAllByUserIdsAndWorkDate` + 구현(TDD)
+- [x] `TodayAttendanceStatusPort`/`MemberTodayAttendanceStatus` 정의, `TodayAttendanceStatusAdapter` 구현(TDD)
+- [x] `ListMembersService`/`MemberListItem`/`MemberListResponse`에 `attendanceStatus` 통합(TDD)
+- [x] 로컬 curl/Swagger e2e(전체 조회 시 필드 확인, 정책 없을 때 404)
+- [x] `./gradlew build` 통과
+
+### 범위 밖 (명시적으로 미룸)
+
+- 근태 이력(주간/월간) 연동 — 필요 시 별도 브레인스토밍.
+- attendance 기존 API(`/today`, `/weekly`) 응답 축소.
+
+---
+
+## ✅ 2026-08-10 · 관리자용 구성원 목록 조회 (`GET /api/users/members`)
+
+### 배경
+
+Figma 목업(구성원 관리 화면) 확인 중, 기존 "학원 구성원 검색"(`GET /api/users?keyword=`)으로는 화면(이름/이메일/역할명/연락처/입사일/상태)을 채울 수 없다는 게 확인됐다. 그 API는 워크스페이스/채팅방 멤버 선택용으로, 권한 없이 로그인만 하면 누구나 호출 가능하도록 의도적으로 `{userId, name, username}`만 반환하게 설계돼 있어 필드를 추가할 수 없었다(개인정보 노출).
+
+### 확정된 정책
+
+- 완전히 별도의 관리자 전용 엔드포인트(`GET /api/users/members`, `ACCOUNT:MANAGE` 권한)로 새로 만들었다.
+- `status`는 `users` 도메인의 계정 상태(`ACTIVE`/`RESIGNED`/`INACTIVE`)만 원본 값으로 내려주고, "재직/비활성" 탭 분류(비활성 = RESIGNED+INACTIVE 묶음)는 프론트 책임으로 뒀다 — 백엔드는 단순 목록만 담당한다.
+- 역할명은 `RoleRepository.findAllByAcademyId()`(기존 "역할 목록 조회"가 이미 쓰던 메서드)로 한 번에 조회해 애플리케이션 레벨에서 맵으로 합쳤다 — JPA 레벨 조인이나 새 프로젝션 쿼리를 만들지 않고 기존 리포지토리 메서드 재사용만으로 해결했다.
+- 페이지네이션과 서버 사이드 키워드/상태 필터링(SQL WHERE 절)은 만들지 않고 애플리케이션 레벨에서 인메모리로 처리했다 — 학원당 구성원 규모가 작고(목업 기준 한 자릿수~두 자릿수), 기존 역할 목록 조회도 페이지네이션이 없는 전례를 따랐다.
+- 근태 상태 통합은 처음엔 스코프 밖으로 뒀으나, 이후 별도 작업(위 2026-08-11 항목)으로 추가됐다.
+
+### 완료 기준
+
+- [x] `UserRepository.findAllByAcademyId()` + 구현(TDD)
+- [x] `ListMembersUseCase`/`ListMembersService`(TDD: 키워드 없음/이름 검색/역할명 검색/빈 결과/roleId null 케이스)
+- [x] `GET /api/users/members` 컨트롤러 핸들러 + `ACCOUNT:MANAGE` 권한
+- [x] 로컬 curl e2e(전체 조회/이름 검색/역할명 검색/권한 없음 403)
+- [x] `./gradlew build` 통과
+
+### 범위 밖 (명시적으로 미룸)
+
+- 구성원 정보 수정(이름/연락처/이메일/입사일 변경) API — 별도 브레인스토밍 예정.
+- 계정 활성/비활성 전환 API — 별도 브레인스토밍 예정.
 
 ---
 
