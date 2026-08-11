@@ -26,7 +26,7 @@ public interface SharedFileDrivePort {
     DriveItem upload(String accessToken, String parentId, String name, String contentType, byte[] content);
 
     // Docs/Sheets/Slides 중 하나의 빈 파일을 생성한다.
-    DriveItem createWorkspaceFile(String accessToken, String parentId, String name, String workspaceMimeType);
+    DriveItem createWorkspaceFile(String accessToken, String parentId, String name, GoogleWorkspaceFileType type);
 
     // 이름만 변경한다(확장자 유지 여부는 UseCase 책임).
     DriveItem rename(String accessToken, String itemId, String name);

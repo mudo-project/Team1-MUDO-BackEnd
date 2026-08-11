@@ -9,12 +9,15 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 // shared_file_root의 유일한 행(PK=1)에 대한 JPA 매핑. V3.1.8 마이그레이션이 PK를 1로 고정한 CHECK
 // 제약을 두므로, 이 Entity도 항상 SINGLETON_ID로만 생성·조회한다.
+// @Version은 두 트랜잭션이 이 행을 동시에 갱신할 때 낙관적 락 충돌(OptimisticLockingFailureException)로
+// 검출되게 한다 — Google 계정을 짧은 시간에 두 번 연결(더블클릭 등)해도 먼저 성공한 결과가 나중 실패로 덮이지 않게 한다.
 @Entity
 @Table(name = "shared_file_root")
 @Getter
@@ -33,6 +36,10 @@ public class SharedFileRootEntity extends BaseTimeEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     private SharedFileRootStatus status;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
 
     private SharedFileRootEntity(SharedFileRootStatus status, String googleRootFolderId) {
         this.id = SINGLETON_ID;

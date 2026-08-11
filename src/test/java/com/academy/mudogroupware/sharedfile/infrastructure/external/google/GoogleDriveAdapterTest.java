@@ -1,6 +1,7 @@
 package com.academy.mudogroupware.sharedfile.infrastructure.external.google;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.content;
@@ -23,6 +24,7 @@ import com.academy.mudogroupware.sharedfile.application.port.DriveBinary;
 import com.academy.mudogroupware.sharedfile.application.port.DriveItem;
 import com.academy.mudogroupware.sharedfile.application.port.DrivePage;
 import com.academy.mudogroupware.sharedfile.application.port.GoogleWorkspaceExportFormat;
+import com.academy.mudogroupware.sharedfile.application.port.GoogleWorkspaceFileType;
 import com.academy.mudogroupware.sharedfile.domain.exception.SharedFileDriveFailureException;
 
 class GoogleDriveAdapterTest {
@@ -108,6 +110,32 @@ class GoogleDriveAdapterTest {
     }
 
     @Test
+    void searchByNameEncodesAmpersandInsteadOfSplittingTheQueryParam() {
+        server.expect(requestTo(containsString("/files?")))
+                // '&'가 인코딩(%26)되지 않고 그대로 있으면 q 파라미터가 여기서 끊기고 새 파라미터로 오인된다.
+                .andExpect(requestTo(containsString("A%26B")))
+                .andExpect(requestTo(org.hamcrest.Matchers.not(containsString("A&B"))))
+                .andRespond(withSuccess("""
+                        {"files": [], "nextPageToken": null}
+                        """, MediaType.APPLICATION_JSON));
+
+        DrivePage page = adapter.searchByName("access-token", "A&B", null, 20);
+
+        assertThat(page.items()).isEmpty();
+    }
+
+    @Test
+    void searchByNameDoesNotThrowWhenKeywordContainsCurlyBraces() {
+        server.expect(requestTo(containsString("/files?")))
+                .andRespond(withSuccess("""
+                        {"files": [], "nextPageToken": null}
+                        """, MediaType.APPLICATION_JSON));
+
+        assertThatCode(() -> adapter.searchByName("access-token", "A{B}C", null, 20))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
     void createFolderSendsFolderMimeTypeAndParent() {
         server.expect(requestTo(containsString("/files?")))
                 .andExpect(method(HttpMethod.POST))
@@ -140,6 +168,22 @@ class GoogleDriveAdapterTest {
         DriveItem created = adapter.createRootFolder("access-token", "이음 그룹웨어 - 공유파일");
 
         assertThat(created.id()).isEqualTo("root-folder-id");
+    }
+
+    @Test
+    void createWorkspaceFileMapsDocsTypeToGoogleMimeType() {
+        server.expect(requestTo(containsString("/files?")))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(content().string(containsString("\"mimeType\":\"application/vnd.google-apps.document\"")))
+                .andExpect(content().string(containsString("\"parents\":[\"parent-id\"]")))
+                .andRespond(withSuccess("""
+                        {"id": "docs-id", "name": "새 문서", "mimeType": "application/vnd.google-apps.document",
+                         "parents": ["parent-id"], "trashed": false}
+                        """, MediaType.APPLICATION_JSON));
+
+        DriveItem created = adapter.createWorkspaceFile("access-token", "parent-id", "새 문서", GoogleWorkspaceFileType.DOCS);
+
+        assertThat(created.id()).isEqualTo("docs-id");
     }
 
     @Test

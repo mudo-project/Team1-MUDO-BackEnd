@@ -1,5 +1,24 @@
 # 🔄 공유파일 도메인 변경 이력
 
+## ✅ 2026-08-11 · PR #369 CodeRabbit 리뷰 반영
+
+### 변경 목적
+
+PR #369에 대한 CodeRabbit 리뷰 4건을 반영한다.
+
+### 구현 변경
+
+- **동시 초기화 경합**: `SharedFileRootEntity`에 `@Version`을 추가했다. 학원 1개=jar 1개+스키마 1개 구조가 테넌트 *간* 경합은 막아주지만, 같은 학원 안에서 관리자가 연동을 짧은 시간에 두 번 트리거하면(더블클릭 등) `@TransactionalEventListener`가 스레드별로 동기 실행돼 같은 싱글턴 행을 동시에 갱신할 수 있다는 점은 막지 못한다. `SharedFileRootInitializer`를 Drive 호출 결과를 계산하는 `resolveRoot()`와 DB에 반영하는 `persist()`로 분리하고, `persist()`에서 `DataAccessException`(낙관적 락 충돌 또는 PK 충돌)이 나면 "실패로 덮어쓰기"를 재시도하지 않고 로그만 남긴 채 포기한다 — 먼저 커밋한 결과를 신뢰한다.
+- **`DriveItem.parentIds` 방어적 복사**: compact constructor에서 `List.copyOf()`로 불변 스냅샷을 만든다.
+- **`createWorkspaceFile`의 Google MIME type 노출**: `SharedFileDrivePort.createWorkspaceFile()`이 `String workspaceMimeType` 대신 신규 `GoogleWorkspaceFileType`(DOCS/SHEETS/SLIDES) enum을 받는다. Google MIME type 매핑은 `GoogleDriveAdapter` 안으로 옮겼다.
+- **`listFiles`의 URI 문자열 연결**: `UriComponentsBuilder.queryParam()` + `URI` 객체 전달로 바꿨다. 검색어에 `&`가 있으면 `q` 파라미터가 끊기고, `{`/`}`가 있으면 `RestClient`가 URI 템플릿으로 오인해 예외를 던지던 문제를 고쳤다.
+
+### 검증
+
+- `SharedFileRootInitializerTest`에 동시 저장 충돌 시 재덮어쓰기하지 않는 케이스 추가.
+- `GoogleDriveAdapterTest`에 `createWorkspaceFile` MIME 매핑, 검색어 `&`/`{}` 케이스 추가.
+- 전체 `./gradlew clean test --tests "com.academy.mudogroupware.sharedfile.*"` 통과(32개).
+
 ## ✅ 2026-08-11 · 시스템 루트 자동 생성과 Drive 연동 하부구조 구현 (Task2+3)
 
 ### 변경 목적

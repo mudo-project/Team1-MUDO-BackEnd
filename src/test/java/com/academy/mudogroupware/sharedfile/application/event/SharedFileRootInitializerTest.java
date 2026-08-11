@@ -1,9 +1,11 @@
 package com.academy.mudogroupware.sharedfile.application.event;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -11,6 +13,7 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.dao.OptimisticLockingFailureException;
 
 import com.academy.mudogroupware.google.application.event.GoogleAccountConnectedEvent;
 import com.academy.mudogroupware.google.application.usecase.GetGoogleAccessTokenUseCase;
@@ -93,6 +96,21 @@ class SharedFileRootInitializerTest {
         ArgumentCaptor<SharedFileRoot> captor = ArgumentCaptor.forClass(SharedFileRoot.class);
         verify(repository).save(captor.capture());
         assertThat(captor.getValue().isReady()).isFalse();
+    }
+
+    @Test
+    void doesNotOverwriteWithFailedWhenSaveConflictsWithConcurrentWinner() {
+        when(repository.find()).thenReturn(Optional.empty());
+        when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
+        when(drivePort.createRootFolder("access-token", "이음 그룹웨어 - 공유파일"))
+                .thenReturn(driveItem("folder-id"));
+        when(repository.save(any())).thenThrow(new OptimisticLockingFailureException("concurrent update"));
+
+        assertThatCode(() -> initializer.handle(new GoogleAccountConnectedEvent(false)))
+                .doesNotThrowAnyException();
+
+        // 충돌이 났을 때 "실패로 덮어쓰기"를 재시도하지 않는다 — 먼저 커밋한 쪽의 결과를 신뢰하고 포기한다.
+        verify(repository, times(1)).save(any());
     }
 
     private DriveItem driveItem(String id) {

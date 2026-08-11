@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.sharedfile.infrastructure.external.google;
 
+import java.net.URI;
 import java.time.OffsetDateTime;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -12,11 +13,13 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import com.academy.mudogroupware.sharedfile.application.port.DriveBinary;
 import com.academy.mudogroupware.sharedfile.application.port.DriveItem;
 import com.academy.mudogroupware.sharedfile.application.port.DrivePage;
 import com.academy.mudogroupware.sharedfile.application.port.GoogleWorkspaceExportFormat;
+import com.academy.mudogroupware.sharedfile.application.port.GoogleWorkspaceFileType;
 import com.academy.mudogroupware.sharedfile.application.port.SharedFileDrivePort;
 import com.academy.mudogroupware.sharedfile.domain.exception.SharedFileDriveFailureException;
 import com.academy.mudogroupware.sharedfile.domain.exception.SharedFileItemNotFoundException;
@@ -91,10 +94,18 @@ public class GoogleDriveAdapter implements SharedFileDrivePort {
         throw new UnsupportedOperationException("not yet implemented");
     }
 
-    // files.create. Docs/Sheets/Slides 빈 파일 생성(Task4).
+    // files.create. Docs/Sheets/Slides 빈 파일 생성(Task4). Google MIME type 매핑은 이 클래스 안에 가둔다.
     @Override
-    public DriveItem createWorkspaceFile(String accessToken, String parentId, String name, String workspaceMimeType) {
-        return createMetadataOnly(accessToken, parentId, name, workspaceMimeType);
+    public DriveItem createWorkspaceFile(String accessToken, String parentId, String name, GoogleWorkspaceFileType type) {
+        return createMetadataOnly(accessToken, parentId, name, toGoogleMimeType(type));
+    }
+
+    private String toGoogleMimeType(GoogleWorkspaceFileType type) {
+        return switch (type) {
+            case DOCS -> "application/vnd.google-apps.document";
+            case SHEETS -> "application/vnd.google-apps.spreadsheet";
+            case SLIDES -> "application/vnd.google-apps.presentation";
+        };
     }
 
     // files.update(PATCH, name만). 확장자 유지 등 업로드 파일의 이름 규칙은 UseCase 책임이다(Task5).
@@ -202,17 +213,20 @@ public class GoogleDriveAdapter implements SharedFileDrivePort {
     }
 
     // listChildren/searchByName이 공유하는 files.list 호출. cursor는 Drive의 nextPageToken을 그대로 전달한다.
+    // query는 사용자 입력(검색어)을 포함할 수 있어 UriComponentsBuilder로 각 파라미터를 개별 인코딩한다 —
+    // 문자열을 직접 이어붙이면 '&'가 파라미터를 끊고 '{'/'}'는 URI 템플릿으로 오인돼 예외가 난다.
     private DrivePage listFiles(String accessToken, String query, String cursor, int size) {
         try {
-            StringBuilder uri = new StringBuilder(FILES_ENDPOINT)
-                    .append("?q=").append(query)
-                    .append("&pageSize=").append(size)
-                    .append("&fields=nextPageToken,files(").append(FILE_FIELDS).append(")");
+            UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString(FILES_ENDPOINT)
+                    .queryParam("q", query)
+                    .queryParam("pageSize", size)
+                    .queryParam("fields", "nextPageToken,files(" + FILE_FIELDS + ")");
             if (cursor != null && !cursor.isBlank()) {
-                uri.append("&pageToken=").append(cursor);
+                uriBuilder.queryParam("pageToken", cursor);
             }
+            URI uri = uriBuilder.build().encode().toUri();
             GoogleDriveFileListResponse response = googleDriveRestClient.get()
-                    .uri(uri.toString())
+                    .uri(uri)
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                     .retrieve()
                     .body(GoogleDriveFileListResponse.class);

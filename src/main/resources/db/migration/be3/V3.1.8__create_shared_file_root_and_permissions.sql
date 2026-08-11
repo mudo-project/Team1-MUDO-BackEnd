@@ -4,6 +4,7 @@ CREATE TABLE shared_file_root (
     shared_file_root_id TINYINT NOT NULL,
     google_root_folder_id VARCHAR(255) NULL,
     status VARCHAR(20) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
     CONSTRAINT pk_shared_file_root PRIMARY KEY (shared_file_root_id),
