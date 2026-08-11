@@ -31,9 +31,9 @@ public interface LectureJpaRepository extends JpaRepository<LectureEntity, Long>
                                           Pageable pageable);
 
     @Query("select count(s) > 0 from LectureScheduleEntity s "
-            + "where s.lecture.classroomId = :classroomId and s.dayOfWeek = :dayOfWeek "
+            + "where s.lecture.classroomCode = :classroomCode and s.dayOfWeek = :dayOfWeek "
             + "and s.startTime < :endTime and :startTime < s.endTime")
-    boolean existsOverlap(@Param("classroomId") Long classroomId,
+    boolean existsOverlap(@Param("classroomCode") String classroomCode,
                            @Param("dayOfWeek") DayOfWeek dayOfWeek,
                            @Param("startTime") LocalTime startTime,
                            @Param("endTime") LocalTime endTime);
