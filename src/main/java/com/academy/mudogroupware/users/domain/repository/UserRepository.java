@@ -17,6 +17,8 @@ public interface UserRepository {
 
     void updateProfile(Long userId, String name, String phone, String email, java.time.LocalDateTime joinedAt);
 
+    void changePassword(Long userId, String encodedPassword);
+
     List<User> searchByAcademyId(Long academyId, String keyword);
 
     List<User> findAllByAcademyId(Long academyId);
