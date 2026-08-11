@@ -59,6 +59,10 @@ public final class GoogleAccountConnection {
         this.failed = !valid;
     }
 
+    public void markCheckAttempted(LocalDateTime checkedAt) {
+        this.lastCheckedAt = checkedAt;
+    }
+
     public GoogleConnectionStatus deriveStatus(LocalDateTime now) {
         if (failed) {
             return GoogleConnectionStatus.FAILED;
