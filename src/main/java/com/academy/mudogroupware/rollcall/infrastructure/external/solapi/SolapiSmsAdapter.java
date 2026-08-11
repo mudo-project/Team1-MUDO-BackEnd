@@ -53,12 +53,20 @@ public class SolapiSmsAdapter implements SmsSenderPort {
                     .retrieve()
                     .body(String.class);
         } catch (RestClientException e) {
-            log.warn("event=solapi_sms_send_실패 receiver={}, reason={}", receiver, e.getMessage());
+            log.warn("event=solapi_sms_send_실패 receiver={}, reason={}", maskPhone(receiver), e.getMessage());
             return SmsSendResult.failed("SMS 발송 API 호출에 실패했습니다: " + e.getMessage());
         }
 
-        log.info("event=solapi_sms_send_완료 receiver={}, response={}", receiver, responseBody);
+        log.info("event=solapi_sms_send_완료 receiver={}, responseLength={}", maskPhone(receiver),
+                responseBody == null ? 0 : responseBody.length());
         return SmsSendResult.succeeded();
+    }
+
+    private String maskPhone(String phone) {
+        if (phone.length() <= 4) {
+            return "*".repeat(phone.length());
+        }
+        return "*".repeat(phone.length() - 4) + phone.substring(phone.length() - 4);
     }
 
     private String authorizationHeader() {
