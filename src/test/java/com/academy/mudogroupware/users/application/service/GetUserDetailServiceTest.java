@@ -1,6 +1,7 @@
 package com.academy.mudogroupware.users.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -12,6 +13,8 @@ import org.junit.jupiter.api.Test;
 
 import com.academy.mudogroupware.global.domain.auth.AccountType;
 import com.academy.mudogroupware.users.application.result.UserDetailResult;
+import com.academy.mudogroupware.users.domain.exception.UserErrorCode;
+import com.academy.mudogroupware.users.domain.exception.UserException;
 import com.academy.mudogroupware.users.domain.model.Role;
 import com.academy.mudogroupware.users.domain.model.User;
 import com.academy.mudogroupware.users.domain.model.UserStatus;
@@ -49,5 +52,14 @@ class GetUserDetailServiceTest {
         UserDetailResult result = service.getMyProfile(1L);
 
         assertThat(result.roleName()).isNull();
+    }
+
+    @Test
+    void getMyProfileThrowsWhenUserNotFound() {
+        when(userRepository.findById(1L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.getMyProfile(1L))
+                .isInstanceOf(UserException.class)
+                .hasFieldOrPropertyWithValue("errorCode", UserErrorCode.USER_NOT_FOUND);
     }
 }
