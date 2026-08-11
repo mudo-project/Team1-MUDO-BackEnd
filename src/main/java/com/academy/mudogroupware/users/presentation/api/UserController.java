@@ -20,17 +20,24 @@ import com.academy.mudogroupware.global.presentation.api.common.GlobalApiRespons
 import com.academy.mudogroupware.global.presentation.api.common.SliceResponse;
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
 import com.academy.mudogroupware.users.application.result.CreateAccountResult;
+import com.academy.mudogroupware.users.application.usecase.ChangeMyPasswordUseCase;
 import com.academy.mudogroupware.users.application.usecase.ChangeUserRoleUseCase;
 import com.academy.mudogroupware.users.application.usecase.CreateAccountUseCase;
+import com.academy.mudogroupware.users.application.usecase.GetMemberDetailUseCase;
+import com.academy.mudogroupware.users.application.usecase.GetMyProfileUseCase;
 import com.academy.mudogroupware.users.application.usecase.ListMembersUseCase;
 import com.academy.mudogroupware.users.application.usecase.PasswordSetupUseCase;
 import com.academy.mudogroupware.users.application.usecase.SearchUsersUseCase;
+import com.academy.mudogroupware.users.application.usecase.UpdateMyProfileUseCase;
 import com.academy.mudogroupware.users.presentation.api.common.UserResponseCode;
+import com.academy.mudogroupware.users.presentation.api.request.ChangeMyPasswordRequest;
 import com.academy.mudogroupware.users.presentation.api.request.ChangeUserRoleRequest;
 import com.academy.mudogroupware.users.presentation.api.request.CreateAccountRequest;
 import com.academy.mudogroupware.users.presentation.api.request.PasswordSetupRequest;
+import com.academy.mudogroupware.users.presentation.api.request.UpdateMyProfileRequest;
 import com.academy.mudogroupware.users.presentation.api.response.AccountCreateResponse;
 import com.academy.mudogroupware.users.presentation.api.response.MemberListResponse;
+import com.academy.mudogroupware.users.presentation.api.response.UserDetailResponse;
 import com.academy.mudogroupware.users.presentation.api.response.UserSearchResponse;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -53,6 +60,10 @@ public class UserController {
     private final CreateAccountUseCase createAccountUseCase;
     private final PasswordSetupUseCase passwordSetupUseCase;
     private final ListMembersUseCase listMembersUseCase;
+    private final GetMyProfileUseCase getMyProfileUseCase;
+    private final UpdateMyProfileUseCase updateMyProfileUseCase;
+    private final ChangeMyPasswordUseCase changeMyPasswordUseCase;
+    private final GetMemberDetailUseCase getMemberDetailUseCase;
 
     @PreAuthorize("hasAuthority('ACCOUNT:MANAGE')")
     @PostMapping
@@ -113,6 +124,51 @@ public class UserController {
                 listMembersUseCase.list(authUser.academyId(), keyword, roleId, page, size),
                 MemberListResponse::from);
         return ResponseEntity.ok(GlobalApiResponse.ok(UserResponseCode.MEMBERS_LISTED, data));
+    }
+
+    @Operation(summary = "내 정보 조회", description = "로그인한 사용자 본인의 기본 정보를 조회합니다.")
+    @GetMapping("/me")
+    public ResponseEntity<GlobalApiResponse<UserDetailResponse>> getMyProfile(
+            @AuthenticationPrincipal AuthUser authUser) {
+        UserDetailResponse data = UserDetailResponse.from(getMyProfileUseCase.getMyProfile(authUser.userId()));
+        return ResponseEntity.ok(GlobalApiResponse.ok(UserResponseCode.MY_PROFILE_RETRIEVED, data));
+    }
+
+    @Operation(
+            summary = "내 정보 수정",
+            description = "본인의 연락처/이메일을 수정합니다. 값을 보내지 않은 필드는 기존 값을 유지합니다. "
+                    + "이름·역할·입사일은 관리자만 바꿀 수 있습니다.")
+    @PatchMapping("/me")
+    public ResponseEntity<Void> updateMyProfile(
+            @AuthenticationPrincipal AuthUser authUser,
+            @Valid @RequestBody UpdateMyProfileRequest request) {
+        updateMyProfileUseCase.updateMyProfile(authUser.userId(), request.phone(), request.email());
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(
+            summary = "내 비밀번호 변경",
+            description = "현재 비밀번호를 확인한 뒤 새 비밀번호로 교체합니다.")
+    @PatchMapping("/me/password")
+    public ResponseEntity<Void> changeMyPassword(
+            @AuthenticationPrincipal AuthUser authUser,
+            @Valid @RequestBody ChangeMyPasswordRequest request) {
+        changeMyPasswordUseCase.changePassword(authUser.userId(), request.currentPassword(), request.newPassword());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PreAuthorize("hasAuthority('ACCOUNT:MANAGE')")
+    @Operation(
+            summary = "구성원 상세 조회(관리자)",
+            description = "같은 학원 소속 일반 직원 계정(accountType=MEMBER)의 상세 정보를 조회합니다. "
+                    + "대상이 존재하지 않거나 다른 학원 소속이거나 학원 관리자 계정이면 동일하게 404로 응답합니다.")
+    @GetMapping("/{userId}")
+    public ResponseEntity<GlobalApiResponse<UserDetailResponse>> getMemberDetail(
+            @AuthenticationPrincipal AuthUser authUser,
+            @Parameter(description = "조회할 구성원의 사용자 ID") @PathVariable Long userId) {
+        UserDetailResponse data = UserDetailResponse.from(
+                getMemberDetailUseCase.getMemberDetail(authUser.academyId(), userId));
+        return ResponseEntity.ok(GlobalApiResponse.ok(UserResponseCode.MEMBER_DETAIL_RETRIEVED, data));
     }
 
     @Operation(

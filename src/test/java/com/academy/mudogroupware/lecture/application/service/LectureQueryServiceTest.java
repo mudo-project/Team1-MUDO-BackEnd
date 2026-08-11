@@ -24,6 +24,7 @@ import com.academy.mudogroupware.lecture.application.port.TeacherInfo;
 import com.academy.mudogroupware.lecture.application.query.LectureDetailView;
 import com.academy.mudogroupware.lecture.application.query.LectureSummaryView;
 import com.academy.mudogroupware.lecture.domain.exception.LectureNotFoundException;
+import com.academy.mudogroupware.lecture.domain.model.ClassType;
 import com.academy.mudogroupware.lecture.domain.model.Classroom;
 import com.academy.mudogroupware.lecture.domain.model.FeeType;
 import com.academy.mudogroupware.lecture.domain.model.Grade;
@@ -89,6 +90,25 @@ class LectureQueryServiceTest {
         assertThat(view.subjectName()).isEqualTo("Math");
         assertThat(view.teacherName()).isEqualTo("Teacher Kim");
         assertThat(view.classroomName()).isEqualTo("Room 101");
+    }
+
+    @Test
+    void returnsStoredTimetableFieldsBeforeLegacyLookupValues() {
+        LectureSchedule schedule = LectureSchedule.create(DayOfWeek.MONDAY, LocalTime.of(19, 0),
+                LocalTime.of(21, 0));
+        Lecture lecture = Lecture.restore(1L, "Math Basics", ClassType.CLASS, "601", Grade.HIGH_1,
+                null, null, null, null, "Stored Teacher", "Stored Subject", FeeType.PER_MONTH, 300000,
+                List.of(schedule), NOW);
+        when(lectureRepository.findById(1L)).thenReturn(Optional.of(lecture));
+        when(enrolledStudentsPort.findByLectureId(1L)).thenReturn(List.of());
+
+        LectureDetailView view = service.getLectureDetail(1L);
+
+        assertThat(view.classType()).isEqualTo(ClassType.CLASS);
+        assertThat(view.classroomCode()).isEqualTo("601");
+        assertThat(view.classroomName()).isEqualTo("601");
+        assertThat(view.teacherName()).isEqualTo("Stored Teacher");
+        assertThat(view.subjectName()).isEqualTo("Stored Subject");
     }
 
     @Test

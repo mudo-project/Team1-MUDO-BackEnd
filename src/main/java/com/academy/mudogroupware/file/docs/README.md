@@ -23,7 +23,7 @@ S3 기반 파일 저장소 접근, 업로드/등록, 파일 메타데이터 조�
 ```
 
 - 3번 등록 시점에 실제 S3 객체 존재 여부를 검증하지 않는다. 잘못된 objectKey로 등록하면 이후 다운로드/요약 시점에 실패로 드러난다.
-- objectKey는 `uploads/{UUID}-{파일명}` 형태로 서버가 생성한다. 클라이언트가 임의 경로를 지정할 수 없다.
+- objectKey는 `tenants/{tenantId}/files/{UUID}-{파일명}` 형태로 서버가 생성한다. 클라이언트가 임의 경로를 지정할 수 없다. `tenantId`는 클라이언트 입력이 아니라 ECS Task에 주입된 `TENANT_ID`(`app.instance.tenant-id`, `InstanceMetadataProperties`)에서 읽는다 — 운영 Task Role의 IAM 정책이 `tenants/{tenantId}/*` 경로에만 `s3:PutObject`를 허용하도록 구성돼 있어서, 이 prefix 밖으로 objectKey를 만들면 presigned URL 발급은 성공해도 실제 S3 PUT에서 AccessDenied가 난다.
 - 다운로드 URL 조회(단건/배치)는 fileId만으로 조회한다. **인증만 되면 fileId를 아는(추측/유출된) 누구나 다운로드 URL을 받을 수 있다.** approval처럼 리소스 단위 권한 체크가 필요한 도메인은 자체 엔드포인트를 앞단에 둬야 한다(`approval.GetApprovalAttachmentDownloadUrlService` 참고). notice 등 나머지 도메인은 아직 이런 체크가 없다 — 알려진 갭.
 
 ## approval 연동

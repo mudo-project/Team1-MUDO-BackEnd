@@ -1,6 +1,6 @@
 # 강의 관리 API
 
-기준일: 2026-08-06
+기준일: 2026-08-11
 
 ## 1. 강의 등록
 
@@ -13,22 +13,23 @@
 ```json
 {
   "name": "고1 수학 정규반",
+  "classType": "CLASS",
+  "dayOfWeek": "MONDAY",
+  "classroomCode": "A101",
+  "startTime": "19:00:00",
+  "endTime": "21:00:00",
   "grade": "HIGH_1",
-  "termName": "2026 1학기",
+  "teacherName": "김선생",
   "subjectName": "수학",
-  "teacherId": 12,
-  "classroomName": "A101",
+  "termName": "2026 1학기",
   "feeType": "PER_MONTH",
-  "feeAmount": 300000,
-  "schedules": [
-    {
-      "dayOfWeek": "MONDAY",
-      "startTime": "19:00:00",
-      "endTime": "21:00:00"
-    }
-  ]
+  "feeAmount": 300000
 }
 ```
+
+필수 입력은 `name`, `classType`, `dayOfWeek`, `classroomCode`, `startTime`, `endTime`이다.
+`grade`, `teacherName`, `subjectName`, `termName`, `feeType`, `feeAmount`는 선택 입력이며 비워 둘 수 있다.
+강의 등록 요청은 `teacherId` 대신 `teacherName` 중심으로 받는다.
 
 ### Response
 
@@ -61,11 +62,13 @@
       {
         "id": 1,
         "name": "고1 수학 정규반",
+        "classType": "CLASS",
         "grade": "HIGH_1",
         "termName": "2026 1학기",
         "subjectName": "수학",
         "teacherId": 12,
         "teacherName": "김선생",
+        "classroomCode": "A101",
         "classroomName": "A101",
         "schedules": [
           {
@@ -100,11 +103,13 @@
   "data": {
     "id": 1,
     "name": "고1 수학 정규반",
+    "classType": "CLASS",
     "grade": "HIGH_1",
     "termName": "2026 1학기",
     "subjectName": "수학",
     "teacherId": 12,
     "teacherName": "김선생",
+    "classroomCode": "A101",
     "classroomName": "A101",
     "feeType": "PER_MONTH",
     "feeAmount": 300000,

@@ -285,7 +285,10 @@ def render_app_task(
         "GOOGLE_CLIENT_SECRET",
         "GOOGLE_REDIRECT_URI",
         "GOOGLE_OAUTH_FRONTEND_REDIRECT_URI",
-        "APP_FRONTEND_URL",
+        # 결재 첨부파일 AI 요약/구조화 추출(approval.GeminiSummarizerAdapter,
+        # GeminiFieldExtractionAdapter)이 쓰는 Gemini API 키. 없으면 코드 기본값(빈 문자열)으로
+        # 떨어져 Gemini 호출이 계속 실패한다.
+        "GEMINI_API_KEY",
     )
     container["secrets"] = [
         {"name": name, "valueFrom": parameter_arn(region, account_id, code, name)}

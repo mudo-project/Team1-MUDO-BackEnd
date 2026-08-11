@@ -66,7 +66,7 @@ class DeploymentManifestTest(unittest.TestCase):
         self.assertIn("GOOGLE_CLIENT_SECRET", secret_names)
         self.assertIn("GOOGLE_REDIRECT_URI", secret_names)
         self.assertIn("GOOGLE_OAUTH_FRONTEND_REDIRECT_URI", secret_names)
-        self.assertIn("APP_FRONTEND_URL", secret_names)
+        self.assertIn("GEMINI_API_KEY", secret_names)
         self.assertNotIn("DB_PASSWORD", environment)
 
     def test_billing_plan_does_not_change_runtime_resources(self):

@@ -7,6 +7,136 @@
 
 ---
 
+## ✅ 2026-08-11 · 구성원 상세 조회 추가
+
+### 배경
+
+#361(내 정보 조회, #367)·#362(내 정보 수정, #371)·#363(내 비밀번호 변경, #372)에 이어지는 작업(#364). 관리자가 구성원 목록(`GET /api/users/members`)에서 요약 정보만 볼 수 있었고, 개별 구성원의 상세 정보를 별도로 조회하는 API가 없었다.
+
+### 확정된 정책
+
+- `GetUserDetailService`가 `GetMyProfileUseCase`에 이어 `GetMemberDetailUseCase`도 구현하도록 확장했다 — 내 정보 조회와 동일한 `UserDetailResult`/`UserDetailResponse`를 그대로 재사용한다.
+- 대상 검증은 `ChangeUserRoleService`의 `findById → academyId 필터 → accountType == MEMBER 필터` 패턴을 그대로 따랐다 — 대상이 없거나 다른 학원 소속이거나 학원 관리자 계정이면 전부 동일하게 `404 USER_404_1`로 응답해 존재 여부를 숨긴다.
+
+### 완료 기준
+
+- [x] `GetMemberDetailUseCase` 추가 + `GetUserDetailService` 확장(TDD)
+- [x] `UserResponseCode.MEMBER_DETAIL_RETRIEVED`("USER_200_6") 추가
+- [x] `UserController`에 `GET /api/users/{userId}` 반영
+- [x] `./gradlew build` 통과
+
+### 범위 밖 (명시적으로 미룸)
+
+- 관리자용 구성원 정보 수정/재직상태변경 — 각각 별도 PR(#365~#366)에서 이어간다.
+
+---
+
+## ✅ 2026-08-11 · 내 비밀번호 변경 추가
+
+### 배경
+
+#361(내 정보 조회, #367)·#362(내 정보 수정, #371)에 이어지는 작업(#363). 로그인한 사용자가 최초 비밀번호 설정(`POST /api/users/password-setup`) 이후 스스로 비밀번호를 바꿀 방법이 없었다.
+
+### 확정된 정책
+
+- `PATCH /api/users/me/password`는 `POST /api/users/password-setup`(최초 1회 설정 전용)과 별개 API다 — 이미 인증된 본인 요청이라 계정 존재 여부를 숨길 필요가 없고, 현재 비밀번호가 틀리면 구체적인 오류(`USER_400_3`)를 그대로 반환한다.
+- 현재 비밀번호 확인 → 새 비밀번호로 교체는 `changeRole`/`updateProfile`과 동일하게 `findById` 후 `UserEntity`의 package-private 뮤테이터를 거쳐 `flush()`하는 패턴을 따랐다.
+
+### 완료 기준
+
+- [x] `UserErrorCode.CURRENT_PASSWORD_MISMATCH`("USER_400_3") 추가
+- [x] `UserRepository.changePassword` + `UserEntity.changePassword` 뮤테이터(TDD)
+- [x] `ChangeMyPasswordUseCase`/`ChangeMyPasswordService` 구현(TDD)
+- [x] `UserController`에 `PATCH /api/users/me/password` 반영
+- [x] `./gradlew build` 통과
+
+### 범위 밖 (명시적으로 미룸)
+
+- 관리자용 구성원 상세조회/수정/재직상태변경 — 각각 별도 PR(#364~#366)에서 이어간다.
+
+---
+
+## ✅ 2026-08-11 · 내 정보 수정 + 계정생성 필드 선택화
+
+### 배경
+
+#361(내 정보 조회)에 이어지는 작업(#362). 본인의 연락처/이메일을 수정하는 API가 없었고, 계정 생성 시 phone/email이 필수라 원장이 직원 전체의 연락처를 일일이 입력해야 하는 문제가 있었다.
+
+### 확정된 정책
+
+- `PATCH /api/users/me`는 `phone`/`email`만 수정 가능하다 — 이름·역할·입사일은 관리자용 구성원 정보 수정(별도 PR)에서 다룬다.
+- 값을 보내지 않은 필드는 기존 값을 유지하는 부분 수정(partial update)으로 구현했다.
+- 계정 생성 시 `phone`/`email`을 선택 입력으로 바꿨다(`V4.1.7` 마이그레이션).
+- `email` UNIQUE 제약 위반은 `EmailDuplicateException`(409)으로 변환한다 — phone/email이 선택값이 되면서 이메일 중복 케이스가 실제로 발생 가능해졌고, 기존 `UsernameDuplicateException`과 동일한 패턴을 따랐다.
+- `UserRepositoryImplDataJpaTest`에 신규 저장(`save`) 테스트를 추가하는 과정에서, notice/messenger의 `users` 테이블 shim이 `@DataJpaTest` 전체 엔티티 스캔과 충돌해 `id` 컬럼의 IDENTITY 속성이 사라지는 문제를 발견했다. users 도메인 엔티티/리포지토리만 스캔하도록 테스트를 좁혀서 해결했다(다른 도메인 코드는 건드리지 않음).
+
+### 완료 기준
+
+- [x] `V4.1.7` 마이그레이션 + `CreateAccountRequest` 필수값 제거(TDD)
+- [x] `UserRepository.updateProfile` + 이메일 중복 예외 변환(TDD)
+- [x] `UpdateMyProfileUseCase`/`UpdateUserProfileService` 구현(TDD)
+- [x] `UserController`에 `PATCH /api/users/me` 반영
+- [x] `./gradlew build` 통과
+
+### 범위 밖 (명시적으로 미룸)
+
+- 비밀번호 변경, 관리자용 상세조회/수정/재직상태변경 — 각각 별도 PR(#363~#366)에서 이어간다.
+
+---
+
+## ✅ 2026-08-11 · 내 정보 조회 추가
+
+### 배경
+
+users 도메인에는 계정 발급/역할 변경/목록 조회/검색만 있고, 로그인한 사용자가 자기 자신의 정보를 조회하는 API가 없었다. 구성원 상세조회·수정·재직상태 변경·비밀번호 변경으로 이어지는 작업(#353)의 첫 단계다.
+
+### 확정된 정책
+
+- `/api/users/me` 경로를 사용한다 — attendance 도메인이 이미 쓰던 `/api/attendance/me` 컨벤션과 맞춘 것이다.
+- 응답을 만드는 `GetUserDetailService`/`UserDetailResult`/`UserDetailResponse`는 이후 관리자용 구성원 상세조회(`GET /api/users/{userId}`)에서도 그대로 재사용할 수 있도록 설계했다.
+
+### 완료 기준
+
+- [x] `GetMyProfileUseCase`/`GetUserDetailService` 구현(TDD)
+- [x] `UserController`에 `GET /api/users/me` 반영
+- [x] `./gradlew build` 통과
+
+### 범위 밖 (명시적으로 미룸)
+
+- 정보 수정, 비밀번호 변경, 관리자용 상세조회/수정/재직상태변경 — 각각 별도 PR(#362~#366)에서 이어간다.
+
+---
+
+## ✅ 2026-08-11 · 학원 신청/승인 기능 폐기
+
+### 배경
+
+실제 운영 배포 모델이 "학원마다 별도 EC2 프로세스 + 별도 RDS 스키마"로 확정되면서, 앱 안에서 신규 학원을 등록한다는 개념 자체가 성립하지 않게 됐다. `academy` 테이블을 만드는 유일한 경로였던 학원 신청/승인 기능(약 30개 클래스)을 삭제했다. 상세 조사와 설계는 `docs/superpowers/specs/2026-08-11-academy-removal-design.md`를 참고.
+
+### 확정된 정책
+
+- 학원 신청/승인 관련 도메인·애플리케이션·인프라·프레젠테이션 계층 클래스와 테스트를 전부 삭제했다. `SubmitAcademyApplicationRequest`/`AcademyApplicationController` 등 5계층 전체가 대상이다.
+- `academy_application` 테이블은 이번 작업으로 코드가 더 이상 참조하지 않는다. `academy` 테이블은 아직 `users.academy_id`/`role.academy_id`(Phase 2 전까지 유지)와 `file`/`messenger` 도메인의 `academy_id` 참조가 남아있어 활성 스키마 계약의 일부다 — Phase 2와 file/messenger 정리가 끝나기 전까지 `academy` 테이블을 DROP하면 안 된다. 두 테이블 모두 이번 작업에서 DROP하지 않았고, 각자의 잔여 참조가 모두 정리된 뒤 별도 후속 작업으로 DROP한다.
+- `PLATFORM:SUPER_ADMIN` 권한 매커니즘(`AdminScope.PLATFORM`, `JwtAuthenticationConverter`의 authority 부여 로직) 자체는 건드리지 않았다 — 다른 팀원이 이 권한 체계를 쓰는 별도 기능(슈퍼 어드민 대시보드 등)을 개발 중이기 때문에, `SecurityConfig`에서 `/api/academy-applications*` 경로 매처 3개만 제거했다.
+- 최초 학원 관리자(원장) 계정은 이제 학원 신청/승인이라는 별도 플로우 없이, 서버·스키마를 새로 배포한 뒤 그 배포 안에서 일반 계정 생성 절차로 수동 생성한다.
+
+### 완료 기준
+
+- [x] 학원 신청/승인 관련 프로덕션 클래스 30개 삭제
+- [x] 학원 신청/승인 관련 테스트 클래스 10개 삭제
+- [x] `UserErrorCode`에서 `ACADEMY_APPLICATION_NOT_FOUND`/`ACADEMY_APPLICATION_ALREADY_REVIEWED` 제거
+- [x] `SecurityConfig`에서 `/api/academy-applications*` 매처 3개 제거, `PLATFORM:SUPER_ADMIN` authority 부여 로직은 유지 확인
+- [x] `./gradlew build` 통과
+- [x] 로컬 e2e로 기존 API(로그인/역할/구성원 목록 등) 정상 동작 확인
+
+### 범위 밖 (명시적으로 보류)
+
+- JWT/인증 체계 및 `users`/`role`의 `academyId` 완전 제거 — Phase 2, 별도 플랜.
+- `academy`/`academy_application` 테이블 자체의 `DROP TABLE` — 안전하다고 판단되면 나중에 별도 후속 작업.
+- `file`/`messenger` 도메인의 `academy_id` 정리 — 각 담당자에게 `MODULES.md`의 "타 모듈 변경 요청" 템플릿으로 별도 요청.
+
+---
+
 ## ✅ 2026-08-11 · 구성원 목록 조회 페이지네이션·역할 필터
 
 ### 배경

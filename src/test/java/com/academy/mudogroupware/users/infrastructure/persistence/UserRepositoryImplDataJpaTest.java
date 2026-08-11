@@ -9,14 +9,25 @@ import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import com.academy.mudogroupware.users.domain.model.User;
 import com.academy.mudogroupware.users.domain.model.UserStatus;
 
+/**
+ * {@code notice.UserInfoEntity}/{@code messenger.ChatMemberInfoEntity}가 같은 "users" 테이블에
+ * 매핑된 임시 shim이라(README.md 참고), 기본 전체 엔티티 스캔으로 {@code @DataJpaTest}를 띄우면
+ * Hibernate가 여러 엔티티의 매핑을 하나의 "users" 테이블 DDL로 합치면서 {@code id} 컬럼의
+ * IDENTITY(자동증가) 속성이 사라진다({@code save()}로 신규 저장 시 PK가 NULL로 들어가 실패).
+ * users 도메인 엔티티/리포지토리만 스캔하도록 좁혀서 이 충돌을 피한다.
+ */
 @DataJpaTest(properties = "spring.jpa.hibernate.ddl-auto=create-drop")
+@EntityScan(basePackageClasses = UserEntity.class)
+@EnableJpaRepositories(basePackageClasses = UserJpaRepository.class)
 @Import(UserRepositoryImpl.class)
 class UserRepositoryImplDataJpaTest {
 
@@ -121,6 +132,41 @@ class UserRepositoryImplDataJpaTest {
 
         assertThat(result).extracting(User::getId)
                 .containsExactlyInAnyOrder(1L, 2L, 3L);
+    }
+
+    @Test
+    void savesUserWithNullPhoneAndEmail() {
+        User user = User.create(1L, "no-contact", "hashed", "연락처없음", null, null,
+                null, com.academy.mudogroupware.global.domain.auth.AccountType.MEMBER, null,
+                java.time.LocalDateTime.now());
+
+        User saved = userRepository.save(user);
+
+        assertThat(saved.getPhone()).isNull();
+        assertThat(saved.getEmail()).isNull();
+    }
+
+    @Test
+    void updateProfileReplacesNameContactAndJoinedAt() {
+        insertUserWithRole(1L, 1L, "before", UserStatus.ACTIVE, null);
+        java.time.LocalDateTime newJoinedAt = java.time.LocalDateTime.of(2026, 1, 1, 0, 0);
+
+        userRepository.updateProfile(1L, "새이름", "010-9999-0000", "new@example.com", newJoinedAt);
+
+        User found = userRepository.findById(1L).orElseThrow();
+        assertThat(found.getName()).isEqualTo("새이름");
+        assertThat(found.getPhone()).isEqualTo("010-9999-0000");
+        assertThat(found.getEmail()).isEqualTo("new@example.com");
+        assertThat(found.getJoinedAt()).isEqualTo(newJoinedAt);
+    }
+
+    @Test
+    void changePasswordReplacesPasswordHash() {
+        insertUserWithRole(1L, 1L, "before", UserStatus.ACTIVE, null);
+
+        userRepository.changePassword(1L, "new-encoded-hash");
+
+        assertThat(userRepository.findById(1L).orElseThrow().getPassword()).isEqualTo("new-encoded-hash");
     }
 
     private void insertUserWithPasswordAndMustChangePw(long id, long academyId, String suffix, String password,

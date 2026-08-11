@@ -18,5 +18,5 @@ public interface LectureRepository {
 
     PageResult<Lecture> findAll(LectureFilter filter, int page, int size);
 
-    boolean existsOverlap(Long classroomId, DayOfWeek dayOfWeek, LocalTime startTime, LocalTime endTime);
+    boolean existsOverlap(String classroomCode, DayOfWeek dayOfWeek, LocalTime startTime, LocalTime endTime);
 }

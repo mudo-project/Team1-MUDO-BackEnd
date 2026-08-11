@@ -1,5 +1,24 @@
 # 출결 Revision
 
+## 2026-08-10 · 출결 안내 문자 실제 발송 구현
+
+### 배경
+
+발송 대상 후보 조회까지는 구현돼 있었지만, 실제 SMS 발송 공급자가 정해지지 않아 발송 자체는 미구현 상태였다. 처음엔 알리고(Aligo, SMS 단가 8.4원으로 가장 저렴)를 선택했으나, 알리고는 API Key 발급에 사업자 인증이 필요해 개인/학교 프로젝트로는 바로 발급받을 수 없었다. 개인 계정도 사업자 인증 없이 즉시 API Key를 발급받을 수 있는 솔라피(SOLAPI)로 전환했다(단가는 13원으로 알리고보다 비싸지만, 일정이 빠듯한 상황에서 즉시 연동 가능한 게 더 중요했다).
+
+### 변경 내용
+
+- `SmsSenderPort`(application/port) 추가, `SolapiSmsAdapter`(infrastructure/external/solapi)가 솔라피 REST API(`POST https://api.solapi.com/messages/v4/send`, HMAC-SHA256 인증, JSON)로 구현.
+- `SendAttendanceMessagesUseCase`/`SendAttendanceMessagesService` 추가: 기존 `GetMessageSendCandidatesUseCase`로 후보를 조회해 요청받은 `studentIds` 중 `eligible=true`인 학생에게만 학생 1명당 API 호출 1건으로 발송. 배치(다수 수신자 comma-join) 대신 개별 호출을 택해 학생별 성공/실패 귀속을 단순하고 명확하게 유지했다.
+- 외부 API 호출 실패는 예외 대신 `SmsSendResult.failed(reason)`으로 반환해, 한 학생의 발송 실패가 나머지 학생 발송을 막지 않는다.
+- `POST /api/rollcall/lectures/{lectureId}/attendance/message-candidates/send` 추가, 신규 에러코드 `NO_STUDENTS_SELECTED`(`ROLLCALL_400_2`).
+- 발송 이력 저장(DB), 실패 자동 재시도, 과금 정책은 이번 범위에 포함하지 않았다 — 필요해지면 후속 작업으로 분리.
+
+> 작성일: 2026-08-10
+> 상태: 백엔드 구현 완료, 테스트 통과. 실제 Solapi API로 문자 발송 성공(응답 `statusCode: "2000"`, 실제 수신 확인)까지 검증 완료. 발송 이력/재시도/과금 정책은 후속 과제.
+
+## 2026-08-06 · 초기 백엔드 구현
+
 > 작성일: 2026-08-06
 > 상태: 초기 백엔드 구현 완료, 실제 SMS 발송 보류
 

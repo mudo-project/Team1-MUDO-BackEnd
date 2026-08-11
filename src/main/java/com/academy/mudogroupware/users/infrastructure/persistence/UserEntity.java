@@ -44,10 +44,10 @@ public class UserEntity {
     @Column(name = "role_id")
     private Long roleId;
 
-    @Column(name = "phone_number", nullable = false, length = 20)
+    @Column(name = "phone_number", length = 20)
     private String phone;
 
-    @Column(nullable = false, length = 100)
+    @Column(length = 100)
     private String email;
 
     @Enumerated(EnumType.STRING)
@@ -98,5 +98,16 @@ public class UserEntity {
 
     void changeRole(Long roleId) {
         this.roleId = roleId;
+    }
+
+    void updateProfile(String name, String phone, String email, LocalDateTime joinedAt) {
+        this.name = name;
+        this.phone = phone;
+        this.email = email;
+        this.joinedAt = joinedAt;
+    }
+
+    void changePassword(String password) {
+        this.password = password;
     }
 }

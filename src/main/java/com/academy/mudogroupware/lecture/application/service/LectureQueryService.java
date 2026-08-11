@@ -2,6 +2,7 @@ package com.academy.mudogroupware.lecture.application.service;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -48,29 +49,30 @@ public class LectureQueryService implements LectureQueryUseCase {
         PageResult<Lecture> result = lectureRepository.findAll(filter, page, size);
         List<Lecture> lectures = result.content();
 
-        Map<Long, String> termNames = idToName(
-                termRepository.findAllById(distinctIds(lectures, Lecture::getTermId)),
+        Map<Long, String> termNames = idToName(findAllTerms(distinctNonNullIds(lectures, Lecture::getTermId)),
                 Term::getId, Term::getName);
         Map<Long, String> subjectNames = idToName(
-                subjectRepository.findAllById(distinctIds(lectures, Lecture::getSubjectId)),
+                findAllSubjects(distinctIdsNeedingFallback(lectures, Lecture::getSubjectName, Lecture::getSubjectId)),
                 Subject::getId, Subject::getName);
         Map<Long, String> classroomNames = idToName(
-                classroomRepository.findAllById(distinctIds(lectures, Lecture::getClassroomId)),
+                findAllClassrooms(distinctNonNullIds(lectures, Lecture::getClassroomId)),
                 Classroom::getId, Classroom::getName);
-        Map<Long, TeacherInfo> teachers = teacherDirectoryPort.findTeachers(
-                distinctIds(lectures, Lecture::getTeacherId));
+        Map<Long, TeacherInfo> teachers = findTeachers(
+                distinctIdsNeedingFallback(lectures, Lecture::getTeacherName, Lecture::getTeacherId));
         Map<Long, Long> studentCounts = enrolledStudentsPort.countByLectureIds(
-                distinctIds(lectures, Lecture::getId));
+                distinctNonNullIds(lectures, Lecture::getId));
 
         return result.map(lecture -> new LectureSummaryView(
                 lecture.getId(),
                 lecture.getName(),
+                lecture.getClassType(),
                 lecture.getGrade(),
                 termNames.get(lecture.getTermId()),
-                subjectNames.get(lecture.getSubjectId()),
+                subjectName(lecture, subjectNames),
                 lecture.getTeacherId(),
-                teacherName(teachers, lecture.getTeacherId()),
-                classroomNames.get(lecture.getClassroomId()),
+                teacherName(lecture, teachers),
+                lecture.getClassroomCode(),
+                classroomName(lecture, classroomNames),
                 toScheduleViews(lecture),
                 studentCounts.getOrDefault(lecture.getId(), 0L).intValue()));
     }
@@ -79,20 +81,25 @@ public class LectureQueryService implements LectureQueryUseCase {
     public LectureDetailView getLectureDetail(Long lectureId) {
         Lecture lecture = lectureRepository.findById(lectureId).orElseThrow(LectureNotFoundException::new);
 
-        String termName = singleName(termRepository.findAllById(List.of(lecture.getTermId())), Term::getName);
-        String subjectName = singleName(subjectRepository.findAllById(List.of(lecture.getSubjectId())),
-                Subject::getName);
-        String classroomName = singleName(classroomRepository.findAllById(List.of(lecture.getClassroomId())),
-                Classroom::getName);
-        Map<Long, TeacherInfo> teachers = teacherDirectoryPort.findTeachers(List.of(lecture.getTeacherId()));
+        String termName = lecture.getTermId() != null
+                ? singleName(termRepository.findAllById(List.of(lecture.getTermId())), Term::getName)
+                : null;
+        Map<Long, String> subjectNames = idToName(findAllSubjects(
+                distinctIdsNeedingFallback(List.of(lecture), Lecture::getSubjectName, Lecture::getSubjectId)),
+                Subject::getId, Subject::getName);
+        Map<Long, String> classroomNames = idToName(findAllClassrooms(
+                distinctNonNullIds(List.of(lecture), Lecture::getClassroomId)), Classroom::getId, Classroom::getName);
+        Map<Long, TeacherInfo> teachers = findTeachers(
+                distinctIdsNeedingFallback(List.of(lecture), Lecture::getTeacherName, Lecture::getTeacherId));
 
         List<EnrolledStudentInfo> enrolledStudents = enrolledStudentsPort.findByLectureId(lectureId);
         List<StudentSummaryView> studentViews = enrolledStudents.stream()
                 .map(s -> new StudentSummaryView(s.studentId(), s.name(), s.grade()))
                 .toList();
 
-        return new LectureDetailView(lecture.getId(), lecture.getName(), lecture.getGrade(), termName, subjectName,
-                lecture.getTeacherId(), teacherName(teachers, lecture.getTeacherId()), classroomName,
+        return new LectureDetailView(lecture.getId(), lecture.getName(), lecture.getClassType(), lecture.getGrade(),
+                termName, subjectName(lecture, subjectNames), lecture.getTeacherId(), teacherName(lecture, teachers),
+                lecture.getClassroomCode(), classroomName(lecture, classroomNames),
                 lecture.getFeeType(), lecture.getFeeAmount(),
                 toScheduleViews(lecture), studentViews, lecture.getCreatedAt());
     }
@@ -103,8 +110,18 @@ public class LectureQueryService implements LectureQueryUseCase {
                 .toList();
     }
 
-    private List<Long> distinctIds(List<Lecture> lectures, Function<Lecture, Long> idExtractor) {
-        return lectures.stream().map(idExtractor).distinct().toList();
+    private List<Long> distinctNonNullIds(List<Lecture> lectures, Function<Lecture, Long> idExtractor) {
+        return lectures.stream().map(idExtractor).filter(Objects::nonNull).distinct().toList();
+    }
+
+    private List<Long> distinctIdsNeedingFallback(List<Lecture> lectures, Function<Lecture, String> storedValue,
+                                                  Function<Lecture, Long> idExtractor) {
+        return lectures.stream()
+                .filter(lecture -> !hasText(storedValue.apply(lecture)))
+                .map(idExtractor)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
     }
 
     private <T> Map<Long, String> idToName(List<T> items, Function<T, Long> idFn, Function<T, String> nameFn) {
@@ -115,8 +132,40 @@ public class LectureQueryService implements LectureQueryUseCase {
         return items.stream().findFirst().map(nameFn).orElse(null);
     }
 
-    private String teacherName(Map<Long, TeacherInfo> teachers, Long teacherId) {
-        TeacherInfo teacher = teachers.get(teacherId);
+    private List<Term> findAllTerms(List<Long> termIds) {
+        return termIds.isEmpty() ? List.of() : termRepository.findAllById(termIds);
+    }
+
+    private List<Subject> findAllSubjects(List<Long> subjectIds) {
+        return subjectIds.isEmpty() ? List.of() : subjectRepository.findAllById(subjectIds);
+    }
+
+    private List<Classroom> findAllClassrooms(List<Long> classroomIds) {
+        return classroomIds.isEmpty() ? List.of() : classroomRepository.findAllById(classroomIds);
+    }
+
+    private Map<Long, TeacherInfo> findTeachers(List<Long> teacherIds) {
+        return teacherIds.isEmpty() ? Map.of() : teacherDirectoryPort.findTeachers(teacherIds);
+    }
+
+    private String teacherName(Lecture lecture, Map<Long, TeacherInfo> teachers) {
+        if (hasText(lecture.getTeacherName())) {
+            return lecture.getTeacherName();
+        }
+        TeacherInfo teacher = lecture.getTeacherId() != null ? teachers.get(lecture.getTeacherId()) : null;
         return teacher != null ? teacher.name() : null;
+    }
+
+    private String subjectName(Lecture lecture, Map<Long, String> subjectNames) {
+        return hasText(lecture.getSubjectName()) ? lecture.getSubjectName() : subjectNames.get(lecture.getSubjectId());
+    }
+
+    private String classroomName(Lecture lecture, Map<Long, String> classroomNames) {
+        String legacyName = lecture.getClassroomId() != null ? classroomNames.get(lecture.getClassroomId()) : null;
+        return legacyName != null ? legacyName : lecture.getClassroomCode();
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 }
