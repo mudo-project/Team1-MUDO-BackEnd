@@ -25,15 +25,17 @@ SharedFileRootRepository → SharedFileRootPersistenceAdapter → shared_file_ro
 
 ```text
 SharedFileController(🚧)
-  → GetSharedFileRootUseCase(🚧) / GetSharedFileRootService(🚧)
+  → GetSharedFileRootUseCase(✅) / GetSharedFileRootService(✅)
     → SharedFileRootRepository.find() ✅
 ```
 
 ### 2. POST /api/shared-files/root/recreation — 시스템 루트 재생성
 
+> **미해결 갭**: 계획서 Task1~6 어디에도 이 API를 담당하는 UseCase가 명시돼 있지 않다. Task2의 `SharedFileRootInitializer`는 이벤트 리스너라 Controller가 직접 호출하는 구조가 아니다. Task6(Controller) 작업 시 `RecreateSharedFileRootUseCase`를 신설할지, `SharedFileRootInitializer`의 재생성 로직을 재사용 가능한 형태로 뽑아낼지 결정 필요.
+
 ```text
 SharedFileController(🚧)
-  → RecreateSharedFileRootUseCase(🚧) / RecreateSharedFileRootService(🚧)
+  → RecreateSharedFileRootUseCase(🚧, 미착수) / RecreateSharedFileRootService(🚧, 미착수)
     → SharedFileRootRepository.find() ✅ (FAILED 상태 확인)
     → GetGoogleAccessTokenUseCase.getAccessToken() ✅(google 도메인)
     → SharedFileDrivePort.createRootFolder() ✅
@@ -44,9 +46,9 @@ SharedFileController(🚧)
 
 ```text
 SharedFileController(🚧)
-  → ListSharedFileItemsUseCase(🚧) / ListSharedFileItemsService(🚧)
+  → ListSharedFileItemsUseCase(✅) / ListSharedFileItemsService(✅)
     → SharedFileRootRepository.find() ✅ (READY 아니면 SharedFileRootUnavailableException ✅)
-    → parentId 없으면 루트 ID를 기본값으로 사용
+    → parentId 없으면 루트 ID를 기본값으로 사용, 있으면 SharedFileRootGuard.requireDescendant() ✅
     → GetGoogleAccessTokenUseCase.getAccessToken() ✅
     → SharedFileDrivePort.listChildren() ✅
 ```
@@ -55,7 +57,8 @@ SharedFileController(🚧)
 
 ```text
 SharedFileController(🚧)
-  → GetSharedFileItemUseCase(🚧) / GetSharedFileItemService(🚧)
+  → GetSharedFileItemUseCase(✅) / GetSharedFileItemService(✅)
+    → SharedFileRootRepository.find() ✅ (READY 확인)
     → GetGoogleAccessTokenUseCase.getAccessToken() ✅
     → SharedFileRootGuard.requireDescendant() ✅
     → SharedFileDrivePort.getItem() ✅
@@ -65,20 +68,22 @@ SharedFileController(🚧)
 
 ```text
 SharedFileController(🚧)
-  → SearchSharedFileItemsUseCase(🚧) / SearchSharedFileItemsService(🚧)
+  → SearchSharedFileItemsUseCase(✅) / SearchSharedFileItemsService(✅)
+    → SharedFileRootRepository.find() ✅ (READY 확인)
     → GetGoogleAccessTokenUseCase.getAccessToken() ✅
     → SharedFileDrivePort.searchByName() ✅
-    → 후보마다 SharedFileRootGuard.requireDescendant() ✅ 적용해 루트 밖 결과 제외
+    → 후보마다 SharedFileItemType(FILE/FOLDER) 필터 → SharedFileRootGuard.requireDescendant() ✅ 적용해 루트 밖 결과 제외
 ```
 
 ### 6. POST /api/shared-files/folders — 하위 폴더 생성
 
 ```text
 SharedFileController(🚧)
-  → CreateSharedFolderUseCase(🚧) / CreateSharedFolderService(🚧)
+  → CreateSharedFolderUseCase(✅) / CreateSharedFolderService(✅)
     → 이름 검증 실패 시 SharedFileInvalidNameException ✅
+    → SharedFileRootRepository.find() ✅ (READY 확인)
     → GetGoogleAccessTokenUseCase.getAccessToken() ✅
-    → SharedFileRootGuard.requireDescendant() ✅ (parentId)
+    → SharedFileRootGuard.requireDescendant() ✅ (parentId, 루트 자신이면 생략)
     → SharedFileDrivePort.createFolder() ✅
 ```
 
@@ -86,20 +91,24 @@ SharedFileController(🚧)
 
 ```text
 SharedFileController(🚧)
-  → UploadSharedFileUseCase(🚧) / UploadSharedFileService(🚧)
+  → UploadSharedFileUseCase(✅) / UploadSharedFileService(✅)
     → 100MB 초과 시 SharedFileUploadTooLargeException ✅
+    → 이름 검증 실패 시 SharedFileInvalidNameException ✅
+    → SharedFileRootRepository.find() ✅ (READY 확인)
     → GetGoogleAccessTokenUseCase.getAccessToken() ✅
-    → SharedFileRootGuard.requireDescendant() ✅ (parentId)
-    → SharedFileDrivePort.upload() 🚧 (Adapter의 multipart 실호출 자체가 미구현 — 이 UseCase 작업 시 TDD로 구현)
+    → SharedFileRootGuard.requireDescendant() ✅ (parentId, 루트 자신이면 생략)
+    → SharedFileDrivePort.upload() ✅ (GoogleDriveAdapter가 multipart/related 본문을 직접 구성해 업로드)
 ```
 
 ### 8. POST /api/shared-files/google-files — Google 파일 생성
 
 ```text
 SharedFileController(🚧)
-  → CreateGoogleWorkspaceFileUseCase(🚧) / CreateGoogleWorkspaceFileService(🚧)
+  → CreateGoogleWorkspaceFileUseCase(✅) / CreateGoogleWorkspaceFileService(✅)
+    → 이름 검증 실패 시 SharedFileInvalidNameException ✅
+    → SharedFileRootRepository.find() ✅ (READY 확인)
     → GetGoogleAccessTokenUseCase.getAccessToken() ✅
-    → SharedFileRootGuard.requireDescendant() ✅ (parentId)
+    → SharedFileRootGuard.requireDescendant() ✅ (parentId, 루트 자신이면 생략)
     → SharedFileDrivePort.createWorkspaceFile(GoogleWorkspaceFileType) ✅
 ```
 
@@ -137,6 +146,6 @@ SharedFileController(🚧)
 
 ## 다음 갱신 시점
 
-- Task4(3·4·5·6·7·8) 구현 완료 시 해당 UseCase/Service 실제 클래스명과 🚧→✅ 갱신
-- Task5(9·10, 그리고 다운로드는 API 목록에 없지만 4번 상세조회 응답의 다운로드 URL/변환 다운로드 흐름으로 별도 절 추가 검토) 구현 완료 시 갱신
-- Task6(Controller) 구현 완료 시 모든 `SharedFileController(🚧)`를 실제 메서드명으로 교체
+- ~~Task4(3·4·5·6·7·8) 구현 완료 시 해당 UseCase/Service 실제 클래스명과 🚧→✅ 갱신~~ 완료(2026-08-11)
+- Task5(9·10·11) 구현 완료 시 갱신
+- Task6(Controller) 구현 완료 시 모든 `SharedFileController(🚧)`를 실제 메서드명으로 교체, 2번(루트 재생성) UseCase 설계 결정

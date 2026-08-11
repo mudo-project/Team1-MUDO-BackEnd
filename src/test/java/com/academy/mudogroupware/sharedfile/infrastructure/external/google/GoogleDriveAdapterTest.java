@@ -26,12 +26,13 @@ import com.academy.mudogroupware.sharedfile.application.port.DrivePage;
 import com.academy.mudogroupware.sharedfile.application.port.GoogleWorkspaceExportFormat;
 import com.academy.mudogroupware.sharedfile.application.port.GoogleWorkspaceFileType;
 import com.academy.mudogroupware.sharedfile.domain.exception.SharedFileDriveFailureException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 class GoogleDriveAdapterTest {
 
     private final RestClient.Builder builder = RestClient.builder();
     private final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-    private final GoogleDriveAdapter adapter = new GoogleDriveAdapter(builder.build());
+    private final GoogleDriveAdapter adapter = new GoogleDriveAdapter(builder.build(), new ObjectMapper());
 
     @Test
     void getItemReturnsDriveItemWithBearerTokenWhenFound() {
@@ -184,6 +185,27 @@ class GoogleDriveAdapterTest {
         DriveItem created = adapter.createWorkspaceFile("access-token", "parent-id", "새 문서", GoogleWorkspaceFileType.DOCS);
 
         assertThat(created.id()).isEqualTo("docs-id");
+    }
+
+    @Test
+    void uploadSendsMultipartRelatedBodyWithMetadataAndContent() {
+        server.expect(requestTo(containsString("/upload/drive/v3/files")))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(header("Authorization", "Bearer access-token"))
+                .andExpect(header("Content-Type", org.hamcrest.Matchers.containsString("multipart/related")))
+                .andExpect(content().string(containsString("\"name\":\"파일.txt\"")))
+                .andExpect(content().string(containsString("\"parents\":[\"parent-id\"]")))
+                .andExpect(content().string(containsString("text/plain")))
+                .andExpect(content().string(containsString("파일 내용")))
+                .andRespond(withSuccess("""
+                        {"id": "uploaded-id", "name": "파일.txt", "mimeType": "text/plain",
+                         "parents": ["parent-id"], "trashed": false}
+                        """, MediaType.APPLICATION_JSON));
+
+        DriveItem uploaded = adapter.upload("access-token", "parent-id", "파일.txt", "text/plain",
+                "파일 내용".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+
+        assertThat(uploaded.id()).isEqualTo("uploaded-id");
     }
 
     @Test

@@ -23,6 +23,8 @@ import com.academy.mudogroupware.sharedfile.application.port.GoogleWorkspaceFile
 import com.academy.mudogroupware.sharedfile.application.port.SharedFileDrivePort;
 import com.academy.mudogroupware.sharedfile.domain.exception.SharedFileDriveFailureException;
 import com.academy.mudogroupware.sharedfile.domain.exception.SharedFileItemNotFoundException;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.RequiredArgsConstructor;
 
@@ -33,11 +35,14 @@ import lombok.RequiredArgsConstructor;
 public class GoogleDriveAdapter implements SharedFileDrivePort {
 
     private static final String FILES_ENDPOINT = "https://www.googleapis.com/drive/v3/files";
+    private static final String UPLOAD_ENDPOINT = "https://www.googleapis.com/upload/drive/v3/files";
     // Drive 응답에서 항상 요청하는 필드 목록. capabilities(canDownload)는 미리보기 미지원 파일 안내에 쓰인다.
     private static final String FILE_FIELDS =
             "id,name,mimeType,parents,webViewLink,modifiedTime,trashed,capabilities(canDownload)";
+    private static final String MULTIPART_BOUNDARY = "shared_file_upload_boundary";
 
     private final RestClient googleDriveRestClient;
+    private final ObjectMapper objectMapper;
 
     // files.get 호출. 404는 "없음"으로, 401/403/5xx/네트워크 오류는 예외로 구분해서 던진다 —
     // 404만 "루트 삭제됨"과 같은 상태 판단에 쓰이고 나머지는 단순 요청 실패이기 때문이다.
@@ -87,11 +92,45 @@ public class GoogleDriveAdapter implements SharedFileDrivePort {
         return createMetadataOnly(accessToken, parentId, name, "application/vnd.google-apps.folder");
     }
 
-    // multipart/related 업로드는 아직 구현하지 않았다 — 실제 호출부(UploadSharedFileUseCase)가 Task4에서
-    // 생기는 시점에 TDD로 채운다.
+    // uploadType=multipart. RestClient는 multipart/related를 직접 지원하지 않아 본문을 수동으로 구성한다:
+    // 메타데이터(JSON) 파트 + 파일 내용 파트를 하나의 boundary로 감싼다.
     @Override
     public DriveItem upload(String accessToken, String parentId, String name, String contentType, byte[] content) {
-        throw new UnsupportedOperationException("not yet implemented");
+        try {
+            String metadataJson = objectMapper.writeValueAsString(
+                    new GoogleDriveCreateFileRequest(name, null, List.of(parentId)));
+            byte[] body = buildMultipartRelatedBody(metadataJson, contentType, content);
+
+            GoogleDriveFileResponse response = googleDriveRestClient.post()
+                    .uri(UPLOAD_ENDPOINT + "?uploadType=multipart&fields=" + FILE_FIELDS)
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                    .contentType(MediaType.parseMediaType("multipart/related; boundary=" + MULTIPART_BOUNDARY))
+                    .body(body)
+                    .retrieve()
+                    .body(GoogleDriveFileResponse.class);
+            return toDriveItem(response);
+        } catch (JsonProcessingException e) {
+            throw new SharedFileDriveFailureException(e);
+        } catch (RestClientException e) {
+            throw new SharedFileDriveFailureException(e);
+        }
+    }
+
+    private byte[] buildMultipartRelatedBody(String metadataJson, String contentType, byte[] content) {
+        String header = "--" + MULTIPART_BOUNDARY + "\r\n"
+                + "Content-Type: application/json; charset=UTF-8\r\n\r\n"
+                + metadataJson + "\r\n"
+                + "--" + MULTIPART_BOUNDARY + "\r\n"
+                + "Content-Type: " + contentType + "\r\n\r\n";
+        String footer = "\r\n--" + MULTIPART_BOUNDARY + "--";
+
+        byte[] headerBytes = header.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        byte[] footerBytes = footer.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        byte[] body = new byte[headerBytes.length + content.length + footerBytes.length];
+        System.arraycopy(headerBytes, 0, body, 0, headerBytes.length);
+        System.arraycopy(content, 0, body, headerBytes.length, content.length);
+        System.arraycopy(footerBytes, 0, body, headerBytes.length + content.length, footerBytes.length);
+        return body;
     }
 
     // files.create. Docs/Sheets/Slides 빈 파일 생성(Task4). Google MIME type 매핑은 이 클래스 안에 가둔다.

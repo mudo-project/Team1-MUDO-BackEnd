@@ -15,9 +15,15 @@ public record DriveItem(
         LocalDateTime modifiedAt,
         boolean trashed
 ) {
+    private static final String FOLDER_MIME_TYPE = "application/vnd.google-apps.folder";
+
     // parentIds를 불변 스냅샷으로 저장한다. Jackson이 만드는 List는 가변이라, 방어적 복사가
     // 없으면 나중에 외부에서 원본이 변경될 때 SharedFileRootGuard의 경로 판정이 흔들릴 수 있다.
     public DriveItem {
         parentIds = List.copyOf(parentIds);
+    }
+
+    public boolean isFolder() {
+        return FOLDER_MIME_TYPE.equals(mimeType);
     }
 }

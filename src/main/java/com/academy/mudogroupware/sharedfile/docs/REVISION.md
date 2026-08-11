@@ -1,5 +1,29 @@
 # 🔄 공유파일 도메인 변경 이력
 
+## ✅ 2026-08-11 · 조회·검색·생성 UseCase 구현 (Task4)
+
+### 변경 목적
+
+계획서 Task4를 구현한다. 이 라운드가 끝나면 시스템 루트 하위 폴더·파일을 실제로 조회·검색·생성·업로드할 수 있다. 이름 변경·이동·삭제·다운로드(Task5)와 HTTP API(Task6)는 이 범위 밖이다.
+
+### 구현 변경
+
+- `GetSharedFileRootUseCase`, `ListSharedFileItemsUseCase`, `GetSharedFileItemUseCase`, `SearchSharedFileItemsUseCase`, `CreateSharedFolderUseCase`, `UploadSharedFileUseCase`, `CreateGoogleWorkspaceFileUseCase` 7개 구현.
+- `parentId`가 시스템 루트 자신이면(목록 조회, 생성) `SharedFileRootGuard` 검증을 생략한다 — Guard는 "루트 자신을 대상으로 지정하는 것"을 거부하도록 설계돼 있어, 대신 "루트 자신을 부모로 지정하는 것"(정상적인 최상위 생성/조회)까지 막지 않기 위함이다.
+- `GoogleDriveAdapter.upload()`를 실제 구현했다. RestClient가 `multipart/related`를 직접 지원하지 않아, 메타데이터(JSON) 파트와 파일 내용 파트를 하나의 boundary로 수동 구성한다.
+- `DriveItem`에 `isFolder()`를 추가해, mimeType 문자열 비교를 Adapter/Port 경계 안쪽에 가뒀다(검색 type 필터가 애플리케이션 계층에서 Google MIME type을 직접 비교하지 않도록).
+- 검색에 `SharedFileItemType`(FILE/FOLDER) 필터를 추가했다 — 설계서의 `type?` 입력에 대응한다.
+
+### 계획서와 다르게 처리·발견한 부분
+
+- **설계 갭 발견**: `POST /api/shared-files/root/recreation`(시스템 루트 재생성)을 담당할 UseCase가 계획서 Task1~6 어디에도 명시돼 있지 않다. Task6에서 신설 여부를 결정해야 한다. 자세한 내용은 `SHAREDFILE_API_FLOW.md`의 2번 항목 참고.
+- **설계 갭 발견**: 10개 API 목록에 다운로드 전용 엔드포인트가 없어 `GET /api/shared-files/items/{itemId}/download`를 11번째로 신설하기로 결정(설계서에도 반영, git 미추적 로컬 문서).
+
+### 검증
+
+- 신규 서비스 테스트 27개(GetSharedFileRootServiceTest 3, ListSharedFileItemsServiceTest 4, GetSharedFileItemServiceTest 4, SearchSharedFileItemsServiceTest 5, CreateSharedFolderServiceTest 4, CreateGoogleWorkspaceFileServiceTest 4, UploadSharedFileServiceTest 5) + `GoogleDriveAdapterTest`에 업로드 케이스 1건 추가.
+- 전체 `./gradlew clean compileJava compileTestJava test --tests "com.academy.mudogroupware.sharedfile.*"` 통과(62개).
+
 ## ✅ 2026-08-11 · PR #369 CodeRabbit 리뷰 반영
 
 ### 변경 목적
