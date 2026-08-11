@@ -28,12 +28,14 @@ import com.academy.mudogroupware.users.application.usecase.GetMyProfileUseCase;
 import com.academy.mudogroupware.users.application.usecase.ListMembersUseCase;
 import com.academy.mudogroupware.users.application.usecase.PasswordSetupUseCase;
 import com.academy.mudogroupware.users.application.usecase.SearchUsersUseCase;
+import com.academy.mudogroupware.users.application.usecase.UpdateMemberProfileUseCase;
 import com.academy.mudogroupware.users.application.usecase.UpdateMyProfileUseCase;
 import com.academy.mudogroupware.users.presentation.api.common.UserResponseCode;
 import com.academy.mudogroupware.users.presentation.api.request.ChangeMyPasswordRequest;
 import com.academy.mudogroupware.users.presentation.api.request.ChangeUserRoleRequest;
 import com.academy.mudogroupware.users.presentation.api.request.CreateAccountRequest;
 import com.academy.mudogroupware.users.presentation.api.request.PasswordSetupRequest;
+import com.academy.mudogroupware.users.presentation.api.request.UpdateMemberProfileRequest;
 import com.academy.mudogroupware.users.presentation.api.request.UpdateMyProfileRequest;
 import com.academy.mudogroupware.users.presentation.api.response.AccountCreateResponse;
 import com.academy.mudogroupware.users.presentation.api.response.MemberListResponse;
@@ -64,6 +66,7 @@ public class UserController {
     private final UpdateMyProfileUseCase updateMyProfileUseCase;
     private final ChangeMyPasswordUseCase changeMyPasswordUseCase;
     private final GetMemberDetailUseCase getMemberDetailUseCase;
+    private final UpdateMemberProfileUseCase updateMemberProfileUseCase;
 
     @PreAuthorize("hasAuthority('ACCOUNT:MANAGE')")
     @PostMapping
@@ -169,6 +172,21 @@ public class UserController {
         UserDetailResponse data = UserDetailResponse.from(
                 getMemberDetailUseCase.getMemberDetail(authUser.academyId(), userId));
         return ResponseEntity.ok(GlobalApiResponse.ok(UserResponseCode.MEMBER_DETAIL_RETRIEVED, data));
+    }
+
+    @PreAuthorize("hasAuthority('ACCOUNT:MANAGE')")
+    @Operation(
+            summary = "구성원 정보 수정(관리자)",
+            description = "일반 직원 계정(accountType=MEMBER)의 이름/연락처/이메일/입사일을 수정합니다. "
+                    + "값을 보내지 않은 필드는 기존 값을 유지합니다.")
+    @PatchMapping("/{userId}")
+    public ResponseEntity<Void> updateMemberProfile(
+            @AuthenticationPrincipal AuthUser authUser,
+            @Parameter(description = "대상 구성원의 사용자 ID") @PathVariable Long userId,
+            @Valid @RequestBody UpdateMemberProfileRequest request) {
+        updateMemberProfileUseCase.updateMemberProfile(authUser.academyId(), userId, request.name(),
+                request.phone(), request.email(), request.joinedAt());
+        return ResponseEntity.noContent().build();
     }
 
     @Operation(

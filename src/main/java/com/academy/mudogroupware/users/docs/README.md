@@ -52,6 +52,7 @@
 - `GET /api/users/members`(관리자용 구성원 목록 조회)는 기존 `GET /api/users`(학원 구성원 검색)와 완전히 별개의 엔드포인트다 — 후자는 워크스페이스/채팅방 멤버 선택용으로 권한 없이 호출 가능하도록 의도적으로 최소 필드만 반환하므로, 여기에 연락처·이메일 등을 추가하지 않는다. 오늘 근태 상태(`attendanceStatus`)는 `users`가 정의한 `TodayAttendanceStatusPort`를 `attendance` 도메인이 구현해 내려준다 — 주간/월간 근태 이력이 필요하면 여전히 `GET /api/attendance/employees/weekly`를 별도 호출해야 한다.
 - `GET /api/users/me`, `PATCH /api/users/me`, `PATCH /api/users/me/password`는 로그인만 되어 있으면 누구나 자기 자신에 대해 호출 가능하다(권한 코드 불필요). `PATCH /api/users/me`는 `phone`/`email`만 수정 가능하고, 값을 보내지 않은 필드는 기존 값을 유지하는 부분 수정이다. 이 API들이 재사용하는 `GetUserDetailService`/`UpdateUserProfileService`는 관리자용 구성원 상세조회/수정에서도 그대로 재사용한다.
 - `GET /api/users/{userId}`(관리자용 구성원 상세조회)는 `ACCOUNT:MANAGE` 권한이 필요하고, `GetUserDetailService`가 `GetMyProfileUseCase`/`GetMemberDetailUseCase` 둘 다 구현하는 방식으로 내 정보 조회와 응답 형태를 그대로 재사용한다. 대상이 없거나 다른 학원 소속이거나 학원 관리자 계정이면 사용자 역할 변경 API와 동일하게 `404 USER_404_1`로 응답해 존재 여부를 숨긴다.
+- `PATCH /api/users/{userId}`(관리자용 구성원 정보 수정)는 같은 방식으로 `UpdateUserProfileService`가 `UpdateMyProfileUseCase`/`UpdateMemberProfileUseCase` 둘 다 구현한다. 본인 수정(`PATCH /api/users/me`)과 달리 `name`/`joinedAt`도 바꿀 수 있지만, `roleId`는 이 API로 바꿀 수 없다(역할 변경은 `PATCH /api/users/{userId}/role`을 씁니다) — 역할 변경에는 role 존재/소속 학원 검증이 별도로 필요해서 책임을 분리했다.
 - `PATCH /api/users/me/password`는 `POST /api/users/password-setup`(최초 1회 설정 전용)과 별개다 — 이미 인증된 본인 요청이라 계정 존재 여부를 숨기지 않고, 현재 비밀번호가 틀리면 구체적인 오류 메시지(`USER_400_3`)를 반환한다.
 - 계정 생성 시 `phone`/`email`은 선택 입력이다(`V4.1.7`). 비워두면 본인이 나중에 `PATCH /api/users/me`로 채워 넣을 수 있다.
 
