@@ -16,7 +16,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
@@ -142,8 +144,26 @@ class CompleteGoogleAccountConnectionServiceTest {
         service.complete(command);
 
         ArgumentCaptor<GoogleAccountConnectedEvent> captor = ArgumentCaptor.forClass(GoogleAccountConnectedEvent.class);
-        verify(eventPublisher).publishEvent(captor.capture());
+        InOrder inOrder = Mockito.inOrder(googleAccountConnectionRepository, eventPublisher);
+        inOrder.verify(googleAccountConnectionRepository).save(any(GoogleAccountConnection.class));
+        inOrder.verify(eventPublisher).publishEvent(captor.capture());
         assertThat(captor.getValue().accountChanged()).isFalse();
+    }
+
+    @Test
+    void completeDoesNotPublishEventWhenSaveFails() {
+        CompleteGoogleConnectionCommand command = new CompleteGoogleConnectionCommand("auth-code", "state");
+        when(googleOAuthStatePort.verify("state")).thenReturn(new GoogleOAuthStateClaims(7L, false));
+        when(googleOAuthPort.exchangeAuthorizationCode("auth-code"))
+                .thenReturn(new GoogleTokenExchangeResult("access-token", "refresh-token", "scope"));
+        when(googleOAuthPort.fetchAccountEmail("access-token")).thenReturn("academy@mudo.co.kr");
+        when(googleAccountConnectionRepository.find()).thenReturn(Optional.empty());
+        when(googleAccountConnectionRepository.save(any(GoogleAccountConnection.class)))
+                .thenThrow(new RuntimeException("db failure"));
+
+        assertThatThrownBy(() -> service.complete(command)).isInstanceOf(RuntimeException.class);
+
+        verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test
