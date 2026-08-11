@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.academy.mudogroupware.google.application.port.GoogleOAuthCallException;
 import com.academy.mudogroupware.google.application.port.GoogleOAuthPort;
 import com.academy.mudogroupware.google.application.port.GoogleTokenExchangeResult;
+import com.academy.mudogroupware.google.application.port.GoogleTokenRevokedException;
 import com.academy.mudogroupware.google.application.port.RequiredGoogleScopePort;
 import com.academy.mudogroupware.google.application.usecase.GetGoogleAccessTokenUseCase;
 import com.academy.mudogroupware.google.domain.exception.GoogleAccountConnectionInvalidException;
@@ -22,7 +23,7 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
+@Transactional
 public class GetGoogleAccessTokenService implements GetGoogleAccessTokenUseCase {
 
     private final GoogleAccountConnectionRepository googleAccountConnectionRepository;
@@ -44,6 +45,10 @@ public class GetGoogleAccessTokenService implements GetGoogleAccessTokenUseCase 
         try {
             GoogleTokenExchangeResult result = googleOAuthPort.refreshAccessToken(connection.getRefreshToken());
             return result.accessToken();
+        } catch (GoogleTokenRevokedException e) {
+            connection.markCheckResult(LocalDateTime.now(clock), false);
+            googleAccountConnectionRepository.save(connection);
+            throw new GoogleAccountConnectionInvalidException();
         } catch (GoogleOAuthCallException e) {
             throw new GoogleOAuthFailedException(e);
         }
