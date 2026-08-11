@@ -10,7 +10,6 @@ import com.academy.mudogroupware.users.domain.exception.UserException;
 public final class User {
 
     private final Long id;
-    private final Long academyId;
     private final String username;
     private final String password;
     private final String name;
@@ -25,11 +24,10 @@ public final class User {
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
 
-    private User(Long id, Long academyId, String username, String password, String name, String phone,
+    private User(Long id, String username, String password, String name, String phone,
                   String email, Long roleId, UserStatus status, boolean mustChangePw, AccountType accountType,
                   AdminScope adminScope, LocalDateTime joinedAt, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
-        this.academyId = academyId;
         this.username = username;
         this.password = password;
         this.name = name;
@@ -45,18 +43,18 @@ public final class User {
         this.updatedAt = updatedAt;
     }
 
-    public static User restore(Long id, Long academyId, String username, String password, String name, String phone,
+    public static User restore(Long id, String username, String password, String name, String phone,
                                 String email, Long roleId, UserStatus status, boolean mustChangePw,
                                 AccountType accountType, AdminScope adminScope, LocalDateTime joinedAt,
                                 LocalDateTime createdAt, LocalDateTime updatedAt) {
-        return new User(id, academyId, username, password, name, phone, email, roleId, status, mustChangePw,
+        return new User(id, username, password, name, phone, email, roleId, status, mustChangePw,
                 accountType, adminScope, joinedAt, createdAt, updatedAt);
     }
 
-    public static User create(Long academyId, String username, String password, String name, String phone,
+    public static User create(String username, String password, String name, String phone,
                                String email, Long roleId, AccountType accountType, AdminScope adminScope,
                                LocalDateTime joinedAt) {
-        return new User(null, academyId, username, password, name, phone, email, roleId, UserStatus.ACTIVE, true,
+        return new User(null, username, password, name, phone, email, roleId, UserStatus.ACTIVE, true,
                 accountType, adminScope, joinedAt, joinedAt, joinedAt);
     }
 
@@ -68,10 +66,6 @@ public final class User {
 
     public Long getId() {
         return id;
-    }
-
-    public Long getAcademyId() {
-        return academyId;
     }
 
     public String getUsername() {

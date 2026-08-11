@@ -6,9 +6,9 @@ import com.academy.mudogroupware.global.domain.auth.AdminScope;
 
 public interface TokenIssuerUseCase {
 
-  TokenPair issue(Long id, String username, Long roleId, Long academyId, AccountType accountType,
+  TokenPair issue(Long id, String username, Long roleId, AccountType accountType,
                    AdminScope adminScope);
 
-  String issueAccessToken(Long id, String username, Long roleId, Long academyId, AccountType accountType,
+  String issueAccessToken(Long id, String username, Long roleId, AccountType accountType,
                            AdminScope adminScope);
 }

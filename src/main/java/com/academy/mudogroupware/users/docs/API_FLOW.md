@@ -13,7 +13,7 @@
    → 불일치하면 UserException(LOGIN_FAILED) — 위 "없음" 케이스와 동일 코드
 → User.ensureLoginAllowed()
    → status != ACTIVE 이면 UserException(LOGIN_RESTRICTED)
-→ TokenIssuerUseCase.issue(id, username, roleId, academyId, accountType, adminScope)  ※ auth 모듈의 TokenService
+→ TokenIssuerUseCase.issue(id, username, roleId, accountType, adminScope)  ※ auth 모듈의 TokenService
    → JwtTokenProvider.createAccessToken / createRefreshToken
    → RefreshTokenRepository: 기존 행 있으면 교체(replace), 없으면 저장(save)
    → TokenPair(accessToken, refreshToken) 반환
@@ -22,7 +22,7 @@
 → GlobalApiResponse<LoginResponse>
 ```
 
-- JWT엔 `roleId`/`academyId`만 싣습니다. `roleName`이나 permission 목록은 싣지 않고, 매 요청마다 새로 조회합니다(아래 3번 흐름).
+- JWT엔 `roleId`만 싣습니다(`academyId`는 Phase 2에서 제거했습니다). `roleName`이나 permission 목록은 싣지 않고, 매 요청마다 새로 조회합니다(아래 3번 흐름).
 - refreshToken은 응답 바디에 절대 포함되지 않고, HttpOnly 쿠키로만 전달됩니다.
 
 ## 2. 액세스 토큰 재발급 흐름
@@ -47,7 +47,7 @@
    → 없으면 UserException(USER_NOT_FOUND)
 → User.ensureLoginAllowed()
    → status != ACTIVE 이면 UserException(LOGIN_RESTRICTED)
-→ TokenIssuerUseCase.issueAccessToken(id, username, roleId, academyId, accountType, adminScope)  ※ 액세스 토큰만 새로 생성, refreshToken 저장소는 건드리지 않음
+→ TokenIssuerUseCase.issueAccessToken(id, username, roleId, accountType, adminScope)  ※ 액세스 토큰만 새로 생성, refreshToken 저장소는 건드리지 않음
 → RefreshResponse(accessToken)
 → GlobalApiResponse<RefreshResponse>
 ```
@@ -62,7 +62,7 @@
 모든 요청 (SecurityConfig: 명시적으로 permitAll 안 된 경로는 authenticated() 필요)
 → JwtAuthenticationFilter (OncePerRequestFilter)
 → Authorization 헤더 또는 accessToken 쿠키에서 토큰 추출
-→ JwtTokenProvider.parseAccessToken → JwtClaims(userId, username, roleId, academyId, accountType, adminScope)
+→ JwtTokenProvider.parseAccessToken → JwtClaims(userId, username, roleId, accountType, adminScope)
    → 위조/만료 시 request attribute에 에러코드만 저장(필터는 그냥 통과, 이후 인가 단계에서 401/403으로 응답)
 → JwtAuthenticationConverter.toAuthentication(claims)
    
@@ -77,7 +77,7 @@
          → role → role_permission → permission 조인 조회 (@Transactional(readOnly=true))
          → RolePermissionInfo(roleName, permissionCodes)
    
-   → AuthUser(userId, username, academyId, roleId, roleName, accountType, adminScope)
+   → AuthUser(userId, username, roleId, roleName, accountType, adminScope)
    → authorities = permissionCodes를 SimpleGrantedAuthority로 변환한 목록
 → SecurityContextHolder에 Authentication 저장
 → 컨트롤러의 @PreAuthorize("hasAuthority('RESOURCE:ACTION')")가 authorities를 검사
@@ -108,10 +108,11 @@
 
 ## 📝 문서 정보
 
-- 업데이트일: `2026-08-07`
+- 업데이트일: `2026-08-11`
 - 변경 사항(요약):
   - 로그인 흐름을 처음 작성했습니다.
   - 액세스 토큰 재발급 흐름을 추가했습니다 (리프레시 토큰 검증 3단계 분기 포함).
   - JWT를 `roleId`/`academyId` 기반으로 재작업하고, 매 요청 권한 조회 흐름(3번)을 추가했습니다.
   - 로그아웃 흐름(4번)을 추가했습니다.
   - JWT에 `accountType`/`adminScope` 매개변수 전파, `JwtAuthenticationConverter`에 platform admin 분기 로직 추가 (accountType==ADMIN && adminScope==PLATFORM인 경우 RolePermissionLookupPort 대신 PlatformAdminPermissionPort 호출).
+  - academyId 스코핑 제거(Phase 2): `JwtClaims`/`JwtTokenProvider`/`AuthUser`/`JwtAuthenticationConverter`에서 `academyId`를 제거했습니다. 위 흐름의 시그니처들을 이에 맞춰 갱신했습니다.

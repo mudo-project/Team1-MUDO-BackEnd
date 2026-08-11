@@ -26,7 +26,7 @@ class JwtAuthenticationConverterTest {
                 () -> Set.of("ROLE:MANAGE", "ACCOUNT:CREATE"));
 
         Authentication authentication = converter.toAuthentication(
-                new JwtClaims(1L, "super-admin", null, 99L, AccountType.ADMIN, AdminScope.PLATFORM));
+                new JwtClaims(1L, "super-admin", null, AccountType.ADMIN, AdminScope.PLATFORM));
 
         assertThat(authentication.getAuthorities())
                 .extracting(GrantedAuthority::getAuthority)
@@ -46,7 +46,7 @@ class JwtAuthenticationConverterTest {
                 () -> Set.of("ROLE:MANAGE"));
 
         Authentication authentication = converter.toAuthentication(
-                new JwtClaims(1L, "super-admin", null, 99L, AccountType.ADMIN, AdminScope.PLATFORM));
+                new JwtClaims(1L, "super-admin", null, AccountType.ADMIN, AdminScope.PLATFORM));
 
         assertThat(authentication.getAuthorities())
                 .extracting(GrantedAuthority::getAuthority)
@@ -62,7 +62,7 @@ class JwtAuthenticationConverterTest {
                 });
 
         Authentication authentication = converter.toAuthentication(
-                new JwtClaims(2L, "teacher", 10L, 1L, AccountType.MEMBER, null));
+                new JwtClaims(2L, "teacher", 10L, AccountType.MEMBER, null));
 
         assertThat(authentication.getAuthorities())
                 .extracting(GrantedAuthority::getAuthority)
@@ -78,7 +78,7 @@ class JwtAuthenticationConverterTest {
                 });
 
         Authentication authentication = converter.toAuthentication(
-                new JwtClaims(2L, "teacher", 10L, 1L, AccountType.MEMBER, null));
+                new JwtClaims(2L, "teacher", 10L, AccountType.MEMBER, null));
 
         assertThat(authentication.getAuthorities())
                 .extracting(GrantedAuthority::getAuthority)
@@ -97,7 +97,7 @@ class JwtAuthenticationConverterTest {
                 });
 
         Authentication authentication = converter.toAuthentication(
-                new JwtClaims(3L, "academy-admin", 5L, 1L, AccountType.ADMIN, AdminScope.ACADEMY));
+                new JwtClaims(3L, "academy-admin", 5L, AccountType.ADMIN, AdminScope.ACADEMY));
 
         assertThat(authentication.getAuthorities())
                 .extracting(GrantedAuthority::getAuthority)

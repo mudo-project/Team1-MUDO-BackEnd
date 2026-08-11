@@ -21,18 +21,18 @@ class ChangeUserStatusServiceTest {
     private final UserRepository userRepository = mock(UserRepository.class);
     private final ChangeUserStatusService service = new ChangeUserStatusService(userRepository);
 
-    private User user(long id, long academyId, AccountType accountType, UserStatus status) {
+    private User user(long id, AccountType accountType, UserStatus status) {
         LocalDateTime now = LocalDateTime.now();
-        return User.restore(id, academyId, "user" + id, "hash", "이름", "010-0000-0000",
+        return User.restore(id, "user" + id, "hash", "이름", "010-0000-0000",
                 "user@example.com", 5L, status, false, accountType, null, now, now, now);
     }
 
     @Test
     void changesStatusFromActiveToResigned() {
         when(userRepository.findById(2L)).thenReturn(
-                Optional.of(user(2L, 1L, AccountType.MEMBER, UserStatus.ACTIVE)));
+                Optional.of(user(2L, AccountType.MEMBER, UserStatus.ACTIVE)));
 
-        service.changeStatus(1L, 2L, UserStatus.RESIGNED);
+        service.changeStatus(2L, UserStatus.RESIGNED);
 
         verify(userRepository).changeStatus(2L, UserStatus.RESIGNED);
     }
@@ -40,9 +40,9 @@ class ChangeUserStatusServiceTest {
     @Test
     void changesStatusBackFromInactiveToActive() {
         when(userRepository.findById(2L)).thenReturn(
-                Optional.of(user(2L, 1L, AccountType.MEMBER, UserStatus.INACTIVE)));
+                Optional.of(user(2L, AccountType.MEMBER, UserStatus.INACTIVE)));
 
-        service.changeStatus(1L, 2L, UserStatus.ACTIVE);
+        service.changeStatus(2L, UserStatus.ACTIVE);
 
         verify(userRepository).changeStatus(2L, UserStatus.ACTIVE);
     }
@@ -50,18 +50,9 @@ class ChangeUserStatusServiceTest {
     @Test
     void throwsWhenTargetIsNotMember() {
         when(userRepository.findById(2L)).thenReturn(
-                Optional.of(user(2L, 1L, AccountType.ADMIN, UserStatus.ACTIVE)));
+                Optional.of(user(2L, AccountType.ADMIN, UserStatus.ACTIVE)));
 
-        assertThatThrownBy(() -> service.changeStatus(1L, 2L, UserStatus.RESIGNED))
-                .isInstanceOf(UserException.class);
-    }
-
-    @Test
-    void throwsWhenTargetIsInDifferentAcademy() {
-        when(userRepository.findById(2L)).thenReturn(
-                Optional.of(user(2L, 99L, AccountType.MEMBER, UserStatus.ACTIVE)));
-
-        assertThatThrownBy(() -> service.changeStatus(1L, 2L, UserStatus.RESIGNED))
+        assertThatThrownBy(() -> service.changeStatus(2L, UserStatus.RESIGNED))
                 .isInstanceOf(UserException.class);
     }
 }

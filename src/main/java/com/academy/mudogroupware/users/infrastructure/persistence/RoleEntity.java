@@ -30,9 +30,6 @@ public class RoleEntity {
     @Column(name = "role_id")
     private Long id;
 
-    @Column(name = "academy_id", nullable = false)
-    private Long academyId;
-
     @Column(nullable = false, length = 50)
     private String name;
 
@@ -46,10 +43,9 @@ public class RoleEntity {
     private LocalDateTime createdAt;
 
     @Builder
-    private RoleEntity(Long id, Long academyId, String name, String description, String color,
+    private RoleEntity(Long id, String name, String description, String color,
                         LocalDateTime createdAt) {
         this.id = id;
-        this.academyId = academyId;
         this.name = name;
         this.description = description;
         this.color = color;

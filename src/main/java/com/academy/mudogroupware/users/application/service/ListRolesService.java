@@ -27,15 +27,15 @@ public class ListRolesService implements ListRolesUseCase {
     private final UserRepository userRepository;
 
     @Override
-    public List<RoleView> listRoles(Long academyId) {
-        log.info("event=role_list_시작 academyId={}", academyId);
-        List<Role> roles = roleRepository.findAllByAcademyId(academyId);
+    public List<RoleView> listRoles() {
+        log.info("event=role_list_시작");
+        List<Role> roles = roleRepository.findAll();
         Set<Long> roleIds = roles.stream().map(Role::getId).collect(Collectors.toSet());
         Map<Long, Long> memberCounts = userRepository.countActiveByRoleIds(roleIds);
         List<RoleView> result = roles.stream()
                 .map(role -> new RoleView(role, memberCounts.getOrDefault(role.getId(), 0L)))
                 .toList();
-        log.info("event=role_list_완료 academyId={}, count={}", academyId, result.size());
+        log.info("event=role_list_완료 count={}", result.size());
         return result;
     }
 }

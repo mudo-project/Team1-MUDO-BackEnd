@@ -29,21 +29,15 @@ public interface UserJpaRepository extends JpaRepository<UserEntity, Long> {
     int completePasswordSetupIfMustChange(@Param("userId") Long userId, @Param("passwordHash") String passwordHash);
 
     @Query("select u.id from UserEntity u "
-            + "where u.academyId = :academyId "
-            + "and u.status = com.academy.mudogroupware.users.domain.model.UserStatus.ACTIVE "
+            + "where u.status = com.academy.mudogroupware.users.domain.model.UserStatus.ACTIVE "
             + "and u.id in :userIds")
-    Set<Long> findActiveIdsByAcademyIdAndIdIn(
-            @Param("academyId") Long academyId,
-            @Param("userIds") Set<Long> userIds);
+    Set<Long> findActiveIdsByIdIn(@Param("userIds") Set<Long> userIds);
 
     List<UserEntity> findAllByStatusAndJoinedAtIsNotNull(UserStatus status);
 
-    List<UserEntity> findAllByAcademyIdAndStatusAndNameContainingIgnoreCase(
-            Long academyId, UserStatus status, String keyword);
+    List<UserEntity> findAllByStatusAndNameContainingIgnoreCase(UserStatus status, String keyword);
 
-    List<UserEntity> findAllByAcademyIdAndStatus(Long academyId, UserStatus status);
-
-    List<UserEntity> findAllByAcademyId(Long academyId);
+    List<UserEntity> findAllByStatus(UserStatus status);
 
     @Query("select u.roleId as roleId, count(u) as count from UserEntity u "
             + "where u.status = com.academy.mudogroupware.users.domain.model.UserStatus.ACTIVE "

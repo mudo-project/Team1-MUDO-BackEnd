@@ -30,7 +30,7 @@ public class JwtAuthenticationConverter {
     RolePermissionInfo info = isPlatformAdmin
         ? new RolePermissionInfo("SUPER_ADMIN", platformAdminPermissionPort.allPermissionCodes())
         : rolePermissionLookupPort.lookup(c.roleId());
-    AuthUser p = new AuthUser(c.userId(), c.username(), c.academyId(), c.roleId(), info.roleName(),
+    AuthUser p = new AuthUser(c.userId(), c.username(), c.roleId(), info.roleName(),
         c.accountType(), c.adminScope());
     List<SimpleGrantedAuthority> authorities = new ArrayList<>(
         info.permissionCodes().stream().map(SimpleGrantedAuthority::new).toList());

@@ -5,5 +5,5 @@ import com.academy.mudogroupware.users.application.result.MemberListItem;
 
 public interface ListMembersUseCase {
 
-    PageResult<MemberListItem> list(Long academyId, String keyword, Long roleId, int page, int size);
+    PageResult<MemberListItem> list(String keyword, Long roleId, int page, int size);
 }

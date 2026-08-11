@@ -29,34 +29,22 @@ class DeleteRoleServiceTest {
         when(roleRepository.findById(1L)).thenReturn(Optional.empty());
         DeleteRoleService service = new DeleteRoleService(roleRepository, userRepository);
 
-        assertThatThrownBy(() -> service.deleteRole(new DeleteRoleCommand(1L, 10L)))
+        assertThatThrownBy(() -> service.deleteRole(new DeleteRoleCommand(1L)))
                 .isInstanceOf(RoleNotFoundException.class);
 
         verify(roleRepository, never()).deleteById(any());
     }
 
     @Test
-    void throwsWhenRoleBelongsToDifferentAcademy() {
-        RoleRepository roleRepository = mock(RoleRepository.class);
-        UserRepository userRepository = mock(UserRepository.class);
-        Role role = Role.restore(1L, 20L, "강사", "설명", LocalDateTime.now(), Set.of());
-        when(roleRepository.findById(1L)).thenReturn(Optional.of(role));
-        DeleteRoleService service = new DeleteRoleService(roleRepository, userRepository);
-
-        assertThatThrownBy(() -> service.deleteRole(new DeleteRoleCommand(1L, 10L)))
-                .isInstanceOf(RoleNotFoundException.class);
-    }
-
-    @Test
     void throwsWhenRoleIsInUseByActiveMember() {
         RoleRepository roleRepository = mock(RoleRepository.class);
         UserRepository userRepository = mock(UserRepository.class);
-        Role role = Role.restore(1L, 10L, "강사", "설명", LocalDateTime.now(), Set.of());
+        Role role = Role.restore(1L, "강사", "설명", LocalDateTime.now(), Set.of());
         when(roleRepository.findById(1L)).thenReturn(Optional.of(role));
         when(userRepository.existsActiveByRoleId(1L)).thenReturn(true);
         DeleteRoleService service = new DeleteRoleService(roleRepository, userRepository);
 
-        assertThatThrownBy(() -> service.deleteRole(new DeleteRoleCommand(1L, 10L)))
+        assertThatThrownBy(() -> service.deleteRole(new DeleteRoleCommand(1L)))
                 .isInstanceOf(RoleInUseException.class);
 
         verify(userRepository, never()).clearRoleId(any());
@@ -67,12 +55,12 @@ class DeleteRoleServiceTest {
     void deletesRoleAndClearsInactiveHoldersWhenNoActiveMember() {
         RoleRepository roleRepository = mock(RoleRepository.class);
         UserRepository userRepository = mock(UserRepository.class);
-        Role role = Role.restore(1L, 10L, "강사", "설명", LocalDateTime.now(), Set.of());
+        Role role = Role.restore(1L, "강사", "설명", LocalDateTime.now(), Set.of());
         when(roleRepository.findById(1L)).thenReturn(Optional.of(role));
         when(userRepository.existsActiveByRoleId(1L)).thenReturn(false);
         DeleteRoleService service = new DeleteRoleService(roleRepository, userRepository);
 
-        service.deleteRole(new DeleteRoleCommand(1L, 10L));
+        service.deleteRole(new DeleteRoleCommand(1L));
 
         verify(userRepository).clearRoleId(1L);
         verify(roleRepository).deleteById(1L);

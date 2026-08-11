@@ -33,23 +33,7 @@ class AssignRolePermissionsServiceTest {
                 new AssignRolePermissionsService(roleRepository, permissionRepository);
 
         assertThatThrownBy(() -> service.assignPermissions(
-                new AssignRolePermissionsCommand(1L, 10L, Set.of("NOTICE:READ"))))
-                .isInstanceOf(RoleNotFoundException.class);
-
-        verify(roleRepository, never()).updatePermissions(any(), any());
-    }
-
-    @Test
-    void throwsWhenRoleBelongsToDifferentAcademy() {
-        RoleRepository roleRepository = mock(RoleRepository.class);
-        PermissionRepository permissionRepository = mock(PermissionRepository.class);
-        Role role = Role.restore(1L, 20L, "강사", "설명", LocalDateTime.now(), Set.of());
-        when(roleRepository.findById(1L)).thenReturn(Optional.of(role));
-        AssignRolePermissionsService service =
-                new AssignRolePermissionsService(roleRepository, permissionRepository);
-
-        assertThatThrownBy(() -> service.assignPermissions(
-                new AssignRolePermissionsCommand(1L, 10L, Set.of("NOTICE:READ"))))
+                new AssignRolePermissionsCommand(1L, Set.of("NOTICE:READ"))))
                 .isInstanceOf(RoleNotFoundException.class);
 
         verify(roleRepository, never()).updatePermissions(any(), any());
@@ -59,7 +43,7 @@ class AssignRolePermissionsServiceTest {
     void throwsWhenPermissionCodeDoesNotExist() {
         RoleRepository roleRepository = mock(RoleRepository.class);
         PermissionRepository permissionRepository = mock(PermissionRepository.class);
-        Role role = Role.restore(1L, 10L, "강사", "설명", LocalDateTime.now(), Set.of());
+        Role role = Role.restore(1L, "강사", "설명", LocalDateTime.now(), Set.of());
         when(roleRepository.findById(1L)).thenReturn(Optional.of(role));
         when(permissionRepository.findAllByCodeIn(Set.of("NOTICE:READ", "WRONG:CODE")))
                 .thenReturn(List.of(new Permission(1L, "NOTICE:READ", "NOTICE", "READ", null)));
@@ -67,7 +51,7 @@ class AssignRolePermissionsServiceTest {
                 new AssignRolePermissionsService(roleRepository, permissionRepository);
 
         assertThatThrownBy(() -> service.assignPermissions(
-                new AssignRolePermissionsCommand(1L, 10L, Set.of("NOTICE:READ", "WRONG:CODE"))))
+                new AssignRolePermissionsCommand(1L, Set.of("NOTICE:READ", "WRONG:CODE"))))
                 .isInstanceOf(InvalidPermissionCodeException.class);
 
         verify(roleRepository, never()).updatePermissions(any(), any());
@@ -77,14 +61,14 @@ class AssignRolePermissionsServiceTest {
     void assignsPermissionsWhenRoleAndCodesAreValid() {
         RoleRepository roleRepository = mock(RoleRepository.class);
         PermissionRepository permissionRepository = mock(PermissionRepository.class);
-        Role role = Role.restore(1L, 10L, "강사", "설명", LocalDateTime.now(), Set.of());
+        Role role = Role.restore(1L, "강사", "설명", LocalDateTime.now(), Set.of());
         when(roleRepository.findById(1L)).thenReturn(Optional.of(role));
         when(permissionRepository.findAllByCodeIn(Set.of("NOTICE:READ")))
                 .thenReturn(List.of(new Permission(1L, "NOTICE:READ", "NOTICE", "READ", null)));
         AssignRolePermissionsService service =
                 new AssignRolePermissionsService(roleRepository, permissionRepository);
 
-        service.assignPermissions(new AssignRolePermissionsCommand(1L, 10L, Set.of("NOTICE:READ")));
+        service.assignPermissions(new AssignRolePermissionsCommand(1L, Set.of("NOTICE:READ")));
 
         verify(roleRepository).updatePermissions(1L, Set.of("NOTICE:READ"));
     }
@@ -93,13 +77,13 @@ class AssignRolePermissionsServiceTest {
     void assignsEmptyPermissionsClearsAllPermissions() {
         RoleRepository roleRepository = mock(RoleRepository.class);
         PermissionRepository permissionRepository = mock(PermissionRepository.class);
-        Role role = Role.restore(1L, 10L, "강사", "설명", LocalDateTime.now(), Set.of("NOTICE:READ"));
+        Role role = Role.restore(1L, "강사", "설명", LocalDateTime.now(), Set.of("NOTICE:READ"));
         when(roleRepository.findById(1L)).thenReturn(Optional.of(role));
         when(permissionRepository.findAllByCodeIn(Set.of())).thenReturn(List.of());
         AssignRolePermissionsService service =
                 new AssignRolePermissionsService(roleRepository, permissionRepository);
 
-        service.assignPermissions(new AssignRolePermissionsCommand(1L, 10L, Set.of()));
+        service.assignPermissions(new AssignRolePermissionsCommand(1L, Set.of()));
 
         verify(roleRepository).updatePermissions(1L, Set.of());
     }

@@ -21,15 +21,15 @@ import com.academy.mudogroupware.users.domain.repository.UserRepository;
 class GetRoleServiceTest {
 
     @Test
-    void returnsRoleViewWithMemberCountWhenFoundInSameAcademy() {
+    void returnsRoleViewWithMemberCountWhenFound() {
         RoleRepository roleRepository = mock(RoleRepository.class);
         UserRepository userRepository = mock(UserRepository.class);
-        Role role = Role.restore(1L, 10L, "강사", "설명", LocalDateTime.now(), Set.of("NOTICE:READ"));
+        Role role = Role.restore(1L, "강사", "설명", LocalDateTime.now(), Set.of("NOTICE:READ"));
         when(roleRepository.findById(1L)).thenReturn(Optional.of(role));
         when(userRepository.countActiveByRoleIds(Set.of(1L))).thenReturn(Map.of(1L, 2L));
         GetRoleService service = new GetRoleService(roleRepository, userRepository);
 
-        RoleView result = service.getRole(1L, 10L);
+        RoleView result = service.getRole(1L);
 
         assertThat(result).isEqualTo(new RoleView(role, 2L));
     }
@@ -38,12 +38,12 @@ class GetRoleServiceTest {
     void returnsZeroMemberCountWhenNoOneAssigned() {
         RoleRepository roleRepository = mock(RoleRepository.class);
         UserRepository userRepository = mock(UserRepository.class);
-        Role role = Role.restore(1L, 10L, "강사", "설명", LocalDateTime.now(), Set.of());
+        Role role = Role.restore(1L, "강사", "설명", LocalDateTime.now(), Set.of());
         when(roleRepository.findById(1L)).thenReturn(Optional.of(role));
         when(userRepository.countActiveByRoleIds(Set.of(1L))).thenReturn(Map.of());
         GetRoleService service = new GetRoleService(roleRepository, userRepository);
 
-        RoleView result = service.getRole(1L, 10L);
+        RoleView result = service.getRole(1L);
 
         assertThat(result).isEqualTo(new RoleView(role, 0L));
     }
@@ -55,19 +55,7 @@ class GetRoleServiceTest {
         when(roleRepository.findById(1L)).thenReturn(Optional.empty());
         GetRoleService service = new GetRoleService(roleRepository, userRepository);
 
-        assertThatThrownBy(() -> service.getRole(1L, 10L))
-                .isInstanceOf(RoleNotFoundException.class);
-    }
-
-    @Test
-    void throwsWhenRoleBelongsToDifferentAcademy() {
-        RoleRepository roleRepository = mock(RoleRepository.class);
-        UserRepository userRepository = mock(UserRepository.class);
-        Role role = Role.restore(1L, 20L, "강사", "설명", LocalDateTime.now(), Set.of());
-        when(roleRepository.findById(1L)).thenReturn(Optional.of(role));
-        GetRoleService service = new GetRoleService(roleRepository, userRepository);
-
-        assertThatThrownBy(() -> service.getRole(1L, 10L))
+        assertThatThrownBy(() -> service.getRole(1L))
                 .isInstanceOf(RoleNotFoundException.class);
     }
 }

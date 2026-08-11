@@ -21,10 +21,10 @@ class TokenServiceTest {
     RefreshTokenRepository r = mock(RefreshTokenRepository.class);
     RefreshTokenJpaEntity saved = new RefreshTokenJpaEntity(1L, "old");
     when(r.findByUserId(1L)).thenReturn(Optional.of(saved));
-    TokenPair pair = new TokenService(provider, r).issue(1L, "user", 2L, 3L, AccountType.MEMBER, null);
+    TokenPair pair = new TokenService(provider, r).issue(1L, "user", 2L, AccountType.MEMBER, null);
     assertThat(saved.getRefreshToken()).isEqualTo(pair.refreshToken());
     verify(r, never()).save(any());
     assertThat(provider.parseAccessToken(pair.accessToken()))
-        .isEqualTo(new JwtClaims(1L, "user", 2L, 3L, AccountType.MEMBER, null));
+        .isEqualTo(new JwtClaims(1L, "user", 2L, AccountType.MEMBER, null));
   }
 }

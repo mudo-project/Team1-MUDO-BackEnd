@@ -34,7 +34,7 @@ import com.academy.mudogroupware.memo.presentation.api.response.MemoResponse;
 
 class MemoControllerTest {
 
-    private static final AuthUser AUTH_USER = new AuthUser(10L, "user", 1L, 1L, "MEMBER");
+    private static final AuthUser AUTH_USER = new AuthUser(10L, "user", 1L, "MEMBER");
 
     private final CreateMemoUseCase createMemoUseCase = mock(CreateMemoUseCase.class);
     private final MemoQueryUseCase memoQueryUseCase = mock(MemoQueryUseCase.class);

@@ -27,7 +27,7 @@ class ApprovalApproverDirectoryAdapterTest {
 
     @Test
     void returnsApproverInfoByUserId() {
-        when(userRepository.findById(10L)).thenReturn(java.util.Optional.of(user(10L, 1L, "Approver Lee")));
+        when(userRepository.findById(10L)).thenReturn(java.util.Optional.of(user(10L, "Approver Lee")));
 
         ApproverInfo result = adapter.getApprover(10L);
 
@@ -47,8 +47,8 @@ class ApprovalApproverDirectoryAdapterTest {
     @Test
     void returnsApproverMapForRequestedIds() {
         when(userRepository.findAllById(Set.of(10L, 20L))).thenReturn(List.of(
-                user(10L, 1L, "Approver Lee"),
-                user(20L, 1L, "Approver Park")));
+                user(10L, "Approver Lee"),
+                user(20L, "Approver Park")));
 
         Map<Long, ApproverInfo> result = adapter.getApprovers(List.of(10L, 20L));
 
@@ -56,8 +56,8 @@ class ApprovalApproverDirectoryAdapterTest {
         assertThat(result).containsEntry(20L, new ApproverInfo(20L, "Approver Park"));
     }
 
-    private User user(Long id, Long academyId, String name) {
-        return User.restore(id, academyId, "user" + id, "pw", name, "010", "user" + id + "@example.com",
+    private User user(Long id, String name) {
+        return User.restore(id, "user" + id, "pw", name, "010", "user" + id + "@example.com",
                 1L, UserStatus.ACTIVE, false, AccountType.MEMBER, null, LocalDateTime.now(), LocalDateTime.now(),
                 LocalDateTime.now());
     }

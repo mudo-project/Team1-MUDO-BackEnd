@@ -22,16 +22,16 @@ class UpdateUserProfileServiceTest {
     private final UserRepository userRepository = mock(UserRepository.class);
     private final UpdateUserProfileService service = new UpdateUserProfileService(userRepository);
 
-    private User user(long id, long academyId, AccountType accountType) {
+    private User user(long id, AccountType accountType) {
         LocalDateTime now = LocalDateTime.now();
-        return User.restore(id, academyId, "user" + id, "hash", "기존이름", "010-0000-0000",
+        return User.restore(id, "user" + id, "hash", "기존이름", "010-0000-0000",
                 "old@example.com", 5L, UserStatus.ACTIVE, false, accountType, null,
                 LocalDateTime.of(2023, 1, 1, 0, 0), now, now);
     }
 
     @Test
     void updateMyProfileReplacesOnlyProvidedFields() {
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user(1L, 1L, AccountType.MEMBER)));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user(1L, AccountType.MEMBER)));
 
         service.updateMyProfile(1L, "010-9999-0000", null);
 
@@ -42,7 +42,7 @@ class UpdateUserProfileServiceTest {
 
     @Test
     void updateMyProfileKeepsExistingValuesWhenNothingProvided() {
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user(1L, 1L, AccountType.MEMBER)));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user(1L, AccountType.MEMBER)));
 
         service.updateMyProfile(1L, null, null);
 
@@ -52,11 +52,11 @@ class UpdateUserProfileServiceTest {
     }
 
     @Test
-    void updateMemberProfileReplacesOnlyProvidedFieldsForMemberInSameAcademy() {
-        when(userRepository.findById(2L)).thenReturn(Optional.of(user(2L, 1L, AccountType.MEMBER)));
+    void updateMemberProfileReplacesOnlyProvidedFieldsForMember() {
+        when(userRepository.findById(2L)).thenReturn(Optional.of(user(2L, AccountType.MEMBER)));
         LocalDateTime newJoinedAt = LocalDateTime.of(2026, 1, 1, 0, 0);
 
-        service.updateMemberProfile(1L, 2L, "새이름", null, null, newJoinedAt);
+        service.updateMemberProfile(2L, "새이름", null, null, newJoinedAt);
 
         verify(userRepository).updateProfile(
                 eq(2L), eq("새이름"), eq("010-0000-0000"), eq("old@example.com"), eq(newJoinedAt));
@@ -64,17 +64,9 @@ class UpdateUserProfileServiceTest {
 
     @Test
     void updateMemberProfileThrowsWhenTargetIsNotMember() {
-        when(userRepository.findById(2L)).thenReturn(Optional.of(user(2L, 1L, AccountType.ADMIN)));
+        when(userRepository.findById(2L)).thenReturn(Optional.of(user(2L, AccountType.ADMIN)));
 
-        assertThatThrownBy(() -> service.updateMemberProfile(1L, 2L, "새이름", null, null, null))
-                .isInstanceOf(UserException.class);
-    }
-
-    @Test
-    void updateMemberProfileThrowsWhenTargetIsInDifferentAcademy() {
-        when(userRepository.findById(2L)).thenReturn(Optional.of(user(2L, 99L, AccountType.MEMBER)));
-
-        assertThatThrownBy(() -> service.updateMemberProfile(1L, 2L, "새이름", null, null, null))
+        assertThatThrownBy(() -> service.updateMemberProfile(2L, "새이름", null, null, null))
                 .isInstanceOf(UserException.class);
     }
 }
