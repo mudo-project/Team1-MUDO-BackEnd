@@ -12,6 +12,7 @@ public enum UserResponseCode implements ResponseCode {
     LOGIN_SUCCEEDED("USER_200_1", "로그인에 성공했습니다."),
     LOGOUT_SUCCEEDED("USER_200_2", "로그아웃되었습니다."),
     USER_SEARCHED("USER_200_3", "구성원 검색에 성공했습니다."),
+    MEMBERS_LISTED("USER_200_4", "구성원 목록 조회에 성공했습니다."),
     ACCOUNT_CREATED("USER_201_1", "직원 계정이 발급되었습니다.");
 
     private final String code;

@@ -94,6 +94,16 @@ public class AttendanceRecordRepositoryImpl implements AttendanceRecordRepositor
                 .toList();
     }
 
+    @Override
+    public List<AttendanceRecord> findAllByUserIdsAndWorkDate(
+            List<Long> userIds, LocalDate workDate) {
+        return attendanceRecordJpaRepository
+                .findAllByUserIdInAndWorkDate(userIds, workDate)
+                .stream()
+                .map(this::toDomain)
+                .toList();
+    }
+
     private AttendanceRecord toDomain(AttendanceRecordJpaEntity entity) {
         return AttendanceRecord.restore(
                 entity.getId(), entity.getUserId(),
