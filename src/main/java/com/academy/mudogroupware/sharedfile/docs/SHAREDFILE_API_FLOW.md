@@ -116,16 +116,26 @@ SharedFileController(🚧)
 
 ```text
 SharedFileController(🚧)
-  → RenameSharedFileItemUseCase(🚧) / MoveSharedFileItemUseCase(🚧)
-    → SharedFileRootGuard.requireDescendant() ✅ (대상, 이동 시 목적지 parentId도 함께 검증)
-    → SharedFileDrivePort.rename() ✅ / SharedFileDrivePort.move() ✅
+  → RenameSharedFileItemUseCase(✅) / RenameSharedFileItemService(✅)
+    → SharedFileRootRepository.find() ✅ (READY 확인)
+    → GetGoogleAccessTokenUseCase.getAccessToken() ✅
+    → SharedFileRootGuard.requireDescendant() ✅ (대상)
+    → SharedFileDrivePort.getItem() ✅ (일반 업로드 파일이면 확장자 동일성 검사, 다르면 SharedFileInvalidNameException ✅)
+    → SharedFileDrivePort.rename() ✅
+
+  → MoveSharedFileItemUseCase(✅) / MoveSharedFileItemService(✅)
+    → SharedFileRootGuard.requireDescendant() ✅ (대상, 목적지가 루트 자신이 아니면 목적지도 검증)
+    → SharedFileDrivePort.getItem() ✅ (현재 parentId 확인 — PATCH 요청엔 새 parentId만 오므로 직접 조회)
+    → SharedFileDrivePort.move() ✅
 ```
 
 ### 10. DELETE /api/shared-files/items/{itemId} — 휴지통 삭제
 
 ```text
 SharedFileController(🚧)
-  → TrashSharedFileItemUseCase(🚧) / TrashSharedFileItemService(🚧)
+  → TrashSharedFileItemUseCase(✅) / TrashSharedFileItemService(✅)
+    → SharedFileRootRepository.find() ✅ (READY 확인)
+    → GetGoogleAccessTokenUseCase.getAccessToken() ✅
     → SharedFileRootGuard.requireDescendant() ✅
     → SharedFileDrivePort.trash() ✅
 ```
@@ -136,16 +146,18 @@ SharedFileController(🚧)
 
 ```text
 SharedFileController(🚧)
-  → DownloadSharedFileUseCase(🚧) / DownloadSharedFileService(🚧)
+  → DownloadSharedFileUseCase(✅) / DownloadSharedFileService(✅)
+    → SharedFileRootRepository.find() ✅ (READY 확인)
     → GetGoogleAccessTokenUseCase.getAccessToken() ✅
     → SharedFileRootGuard.requireDescendant() ✅
-    → format 쿼리 파라미터 없음 → SharedFileDrivePort.downloadOriginal() ✅
-    → format 쿼리 파라미터 있음 → GoogleWorkspaceExportFormat 매핑 후 SharedFileDrivePort.export() ✅
-      (매핑 실패 시 SharedFileInvalidExportFormatException ✅)
+    → format(ExportTargetFormat) 없음 → SharedFileDrivePort.downloadOriginal() ✅
+    → format 있음 → SharedFileDrivePort.getItem() ✅ → DriveItem.workspaceType() ✅으로 원본 유형 확인
+      → GoogleWorkspaceExportFormat.valueOf(유형_format) 매핑 → SharedFileDrivePort.export() ✅
+      (일반 파일에 format 요청, 또는 유형과 안 맞는 조합이면 SharedFileInvalidExportFormatException ✅)
 ```
 
 ## 다음 갱신 시점
 
 - ~~Task4(3·4·5·6·7·8) 구현 완료 시 해당 UseCase/Service 실제 클래스명과 🚧→✅ 갱신~~ 완료(2026-08-11)
-- Task5(9·10·11) 구현 완료 시 갱신
+- ~~Task5(9·10·11) 구현 완료 시 갱신~~ 완료(2026-08-11)
 - Task6(Controller) 구현 완료 시 모든 `SharedFileController(🚧)`를 실제 메서드명으로 교체, 2번(루트 재생성) UseCase 설계 결정

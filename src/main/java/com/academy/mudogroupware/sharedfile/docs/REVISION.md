@@ -1,5 +1,24 @@
 # 🔄 공유파일 도메인 변경 이력
 
+## ✅ 2026-08-11 · 이름변경·이동·삭제·다운로드 UseCase 구현 (Task5)
+
+### 변경 목적
+
+계획서 Task5를 구현한다. 이 라운드가 끝나면 Task1~5로 공유파일 UseCase 계층(HTTP API 제외) 전체가 완성된다.
+
+### 구현 변경
+
+- `RenameSharedFileItemUseCase`: 일반 업로드 파일은 확장자가 바뀌면 거부(`SharedFileInvalidNameException`), 폴더·Google 파일은 이름을 그대로 받는다.
+- `MoveSharedFileItemUseCase`: PATCH 요청에 새 parentId만 오므로 현재 parentId는 `SharedFileDrivePort.getItem()`으로 직접 조회한다. 목적지가 시스템 루트 자신이면 Guard 검증을 생략한다(생성·목록조회와 동일한 원칙).
+- `TrashSharedFileItemUseCase`: Guard 검증 후 `SharedFileDrivePort.trash()` 호출.
+- `DownloadSharedFileUseCase`: `format` 없으면 원본 다운로드, 있으면 `DriveItem.workspaceType()`으로 원본이 Docs/Sheets/Slides 중 무엇인지 확인해 `GoogleWorkspaceExportFormat.valueOf(유형_format)`으로 매핑한다. 존재하지 않는 조합(enum 상수 없음)은 `IllegalArgumentException`을 잡아 `SharedFileInvalidExportFormatException`으로 변환한다.
+- `DriveItem`에 `workspaceType()`/`isRegularFile()` 추가 — Google MIME type 문자열 비교를 Port 값 객체 안에 가둬, Rename·Download 서비스가 Google 고유 문자열을 직접 다루지 않게 했다.
+
+### 검증
+
+- 신규 테스트 22개(RenameSharedFileItemServiceTest 5, MoveSharedFileItemServiceTest 5, TrashSharedFileItemServiceTest 3, DownloadSharedFileServiceTest 5, DriveItemTest 4).
+- 전체 `./gradlew clean compileJava compileTestJava test --tests "com.academy.mudogroupware.sharedfile.*"` 통과(84개).
+
 ## ✅ 2026-08-11 · 조회·검색·생성 UseCase 구현 (Task4)
 
 ### 변경 목적
