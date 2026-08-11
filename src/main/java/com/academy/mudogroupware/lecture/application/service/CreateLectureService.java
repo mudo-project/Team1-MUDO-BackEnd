@@ -3,7 +3,6 @@ package com.academy.mudogroupware.lecture.application.service;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -98,25 +97,28 @@ public class CreateLectureService implements CreateLectureUseCase {
                 .orElseGet(() -> subjectRepository.save(Subject.create(name, now)).getId());
     }
 
-    // 존재하는 강의실이면 findByNameForUpdate로 행을 잠가서, 그 뒤에 이어지는 시간 충돌 검사와
-    // 강의 저장이 같은 트랜잭션 안에서 원자적으로 처리되게 한다(동시 등록 race condition 방지).
+    // 존재 여부는 잠금 없는 findByName으로 먼저 확인한다. 존재하지 않는 행에
+    // findByNameForUpdate(SELECT ... FOR UPDATE)를 바로 쓰면 InnoDB가 그 자리에 갭 락을
+    // 잡는데, 두 트랜잭션이 동시에 같은 신규 강의실 이름을 조회하면 서로의 갭 락을 기다리다
+    // 데드락이 난다(MySQLTransactionRollbackException, CI에서 실제로 재현됨) — 그래서
+    // "잠긴 조회 -> 없으면 저장" 순서로는 못 만든다.
     //
-    // 완전히 새 강의실이면 잠글 행이 아직 없어, 두 트랜잭션이 동시에 "없음"을 보고 둘 다 save를
-    // 시도할 수 있다. 이때 DB 유니크 제약(uk_classroom_name)에 걸려 진 쪽은
-    // DataIntegrityViolationException을 받는데, 그대로 두면 도메인과 무관한 409 에러로
-    // 새어나간다. 다시 findByNameForUpdate로 조회하면 먼저 커밋된 강의실 행을 정상적으로
-    // 찾아 잠그고, 이어지는 흐름(시간 충돌 검사)을 그대로 타게 된다.
+    // 존재하면 findByNameForUpdate로 그 행을 잠가서, 이어지는 시간 충돌 검사 + 강의 저장이
+    // 같은 트랜잭션 안에서 원자적으로 처리되게 한다(동시 등록 race condition 방지). 완전히
+    // 새 강의실이면 잠금 없이 바로 save를 시도하고, 그 사이 다른 트랜잭션이 먼저 같은 이름으로
+    // 커밋했으면 유니크 제약(uk_classroom_name)에 걸려 DataIntegrityViolationException을
+    // 받는다 — 이 시점엔 상대방이 이미 커밋을 마쳤으므로 findByNameForUpdate로 안전하게
+    // 다시 조회해 잠그고 이어간다.
     private Long findOrCreateClassroom(String name, LocalDateTime now) {
-        Optional<Classroom> existing = classroomRepository.findByNameForUpdate(name);
-        if (existing.isPresent()) {
-            return existing.get().getId();
+        if (classroomRepository.findByName(name).isEmpty()) {
+            try {
+                return classroomRepository.save(Classroom.create(name, now)).getId();
+            } catch (DataIntegrityViolationException e) {
+                // 아래 findByNameForUpdate로 넘어가서 방금 커밋된 행을 잠그고 이어간다.
+            }
         }
-        try {
-            return classroomRepository.save(Classroom.create(name, now)).getId();
-        } catch (DataIntegrityViolationException e) {
-            return classroomRepository.findByNameForUpdate(name)
-                    .map(Classroom::getId)
-                    .orElseThrow(() -> e);
-        }
+        return classroomRepository.findByNameForUpdate(name)
+                .map(Classroom::getId)
+                .orElseThrow(() -> new IllegalStateException("강의실 조회/생성에 실패했습니다: " + name));
     }
 }

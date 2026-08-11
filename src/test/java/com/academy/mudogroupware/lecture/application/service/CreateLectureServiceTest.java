@@ -19,6 +19,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import com.academy.mudogroupware.lecture.application.command.CreateLectureCommand;
 import com.academy.mudogroupware.lecture.application.command.ScheduleInput;
@@ -65,6 +66,8 @@ class CreateLectureServiceTest {
                 .thenReturn(Optional.of(Term.restore(10L, "2026 겨울방학 특강", NOW)));
         when(subjectRepository.findByName("수학"))
                 .thenReturn(Optional.of(Subject.restore(20L, "수학", NOW)));
+        when(classroomRepository.findByName("101호"))
+                .thenReturn(Optional.of(Classroom.restore(40L, "101호", NOW)));
         when(classroomRepository.findByNameForUpdate("101호"))
                 .thenReturn(Optional.of(Classroom.restore(40L, "101호", NOW)));
         when(lectureRepository.existsOverlap("101호", DayOfWeek.MONDAY, LocalTime.of(15, 0), LocalTime.of(17, 0)))
@@ -84,7 +87,7 @@ class CreateLectureServiceTest {
         when(termRepository.save(any(Term.class))).thenReturn(Term.restore(10L, "2026 겨울방학 특강", NOW));
         when(subjectRepository.findByName("수학")).thenReturn(Optional.empty());
         when(subjectRepository.save(any(Subject.class))).thenReturn(Subject.restore(20L, "수학", NOW));
-        when(classroomRepository.findByNameForUpdate("101호")).thenReturn(Optional.empty());
+        when(classroomRepository.findByName("101호")).thenReturn(Optional.empty());
         when(classroomRepository.save(any(Classroom.class)))
                 .thenReturn(Classroom.restore(40L, "101호", NOW));
         when(lectureRepository.existsOverlap("101호", DayOfWeek.MONDAY, LocalTime.of(15, 0), LocalTime.of(17, 0)))
@@ -96,6 +99,28 @@ class CreateLectureServiceTest {
         verify(termRepository).save(any(Term.class));
         verify(subjectRepository).save(any(Subject.class));
         verify(classroomRepository).save(any(Classroom.class));
+    }
+
+    @Test
+    void reusesClassroomCreatedByAnotherTransactionWhenSaveLosesUniqueConstraintRace() {
+        CreateLectureCommand command = new CreateLectureCommand(
+                "Math Basics", ClassType.CLASS, "601", null, null, null, null, null, null,
+                List.of(new ScheduleInput(DayOfWeek.MONDAY, LocalTime.of(19, 0), LocalTime.of(21, 0))),
+                99L, null);
+        when(classroomRepository.findByName("601")).thenReturn(Optional.empty());
+        when(classroomRepository.save(any(Classroom.class)))
+                .thenThrow(new DataIntegrityViolationException("uk_classroom_name"));
+        when(classroomRepository.findByNameForUpdate("601"))
+                .thenReturn(Optional.of(Classroom.restore(40L, "601", NOW)));
+        when(lectureRepository.existsOverlap("601", DayOfWeek.MONDAY, LocalTime.of(19, 0), LocalTime.of(21, 0)))
+                .thenReturn(false);
+        when(lectureRepository.save(any(Lecture.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.createLecture(command);
+
+        // 저장 시도는 유니크 제약 위반으로 실패했지만, 다른 트랜잭션이 먼저 커밋한 강의실을
+        // findByNameForUpdate로 다시 찾아 잠그고 정상적으로 이어간다.
+        verify(lectureRepository).save(any(Lecture.class));
     }
 
     @Test
@@ -120,6 +145,8 @@ class CreateLectureServiceTest {
                 .thenReturn(Optional.of(Term.restore(10L, "2026 겨울방학 특강", NOW)));
         when(subjectRepository.findByName("수학"))
                 .thenReturn(Optional.of(Subject.restore(20L, "수학", NOW)));
+        when(classroomRepository.findByName("101호"))
+                .thenReturn(Optional.of(Classroom.restore(40L, "101호", NOW)));
         when(classroomRepository.findByNameForUpdate("101호"))
                 .thenReturn(Optional.of(Classroom.restore(40L, "101호", NOW)));
         when(lectureRepository.existsOverlap("101호", DayOfWeek.MONDAY, LocalTime.of(15, 0), LocalTime.of(17, 0)))
@@ -148,7 +175,7 @@ class CreateLectureServiceTest {
                 null);
         when(subjectRepository.findByName("Math")).thenReturn(Optional.empty());
         when(subjectRepository.save(any(Subject.class))).thenReturn(Subject.restore(20L, "Math", NOW));
-        when(classroomRepository.findByNameForUpdate("601")).thenReturn(Optional.empty());
+        when(classroomRepository.findByName("601")).thenReturn(Optional.empty());
         when(classroomRepository.save(any(Classroom.class))).thenReturn(Classroom.restore(40L, "601", NOW));
         when(lectureRepository.existsOverlap("601", DayOfWeek.MONDAY, LocalTime.of(19, 0), LocalTime.of(21, 0)))
                 .thenReturn(false);
@@ -182,6 +209,7 @@ class CreateLectureServiceTest {
                 List.of(new ScheduleInput(DayOfWeek.MONDAY, LocalTime.of(19, 0), LocalTime.of(21, 0))),
                 99L,
                 null);
+        when(classroomRepository.findByName("601")).thenReturn(Optional.of(Classroom.restore(40L, "601", NOW)));
         when(classroomRepository.findByNameForUpdate("601")).thenReturn(Optional.of(Classroom.restore(40L, "601", NOW)));
         when(lectureRepository.existsOverlap("601", DayOfWeek.MONDAY, LocalTime.of(19, 0), LocalTime.of(21, 0)))
                 .thenReturn(false);
@@ -208,6 +236,8 @@ class CreateLectureServiceTest {
                 .thenReturn(Optional.of(Term.restore(10L, "2026 겨울방학 특강", NOW)));
         when(subjectRepository.findByName("수학"))
                 .thenReturn(Optional.of(Subject.restore(20L, "수학", NOW)));
+        when(classroomRepository.findByName("101호"))
+                .thenReturn(Optional.of(Classroom.restore(40L, "101호", NOW)));
         when(classroomRepository.findByNameForUpdate("101호"))
                 .thenReturn(Optional.of(Classroom.restore(40L, "101호", NOW)));
         when(lectureRepository.existsOverlap("101호", DayOfWeek.MONDAY, LocalTime.of(15, 0), LocalTime.of(17, 0)))
