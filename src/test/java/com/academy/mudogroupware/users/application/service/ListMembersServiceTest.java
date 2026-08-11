@@ -1,6 +1,7 @@
 package com.academy.mudogroupware.users.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -11,6 +12,8 @@ import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 import com.academy.mudogroupware.global.domain.auth.AccountType;
+import com.academy.mudogroupware.users.application.port.MemberTodayAttendanceStatus;
+import com.academy.mudogroupware.users.application.port.TodayAttendanceStatusPort;
 import com.academy.mudogroupware.users.application.result.MemberListItem;
 import com.academy.mudogroupware.users.domain.model.Role;
 import com.academy.mudogroupware.users.domain.model.User;
@@ -22,7 +25,9 @@ class ListMembersServiceTest {
 
     private final UserRepository userRepository = mock(UserRepository.class);
     private final RoleRepository roleRepository = mock(RoleRepository.class);
-    private final ListMembersService service = new ListMembersService(userRepository, roleRepository);
+    private final TodayAttendanceStatusPort todayAttendanceStatusPort = mock(TodayAttendanceStatusPort.class);
+    private final ListMembersService service =
+            new ListMembersService(userRepository, roleRepository, todayAttendanceStatusPort);
 
     private User user(long id, String name, Long roleId, UserStatus status) {
         LocalDateTime now = LocalDateTime.now();
@@ -38,6 +43,7 @@ class ListMembersServiceTest {
         when(roleRepository.findAllByAcademyId(1L)).thenReturn(List.of(
                 Role.restore(8L, 1L, "강사", null, LocalDateTime.now(), Set.of()),
                 Role.restore(9L, 1L, "조교", null, LocalDateTime.now(), Set.of())));
+        when(todayAttendanceStatusPort.findTodayStatusByUserIds(any())).thenReturn(List.of());
 
         List<MemberListItem> result = service.list(1L, null);
 
@@ -55,6 +61,7 @@ class ListMembersServiceTest {
         when(roleRepository.findAllByAcademyId(1L)).thenReturn(List.of(
                 Role.restore(8L, 1L, "강사", null, LocalDateTime.now(), Set.of()),
                 Role.restore(9L, 1L, "조교", null, LocalDateTime.now(), Set.of())));
+        when(todayAttendanceStatusPort.findTodayStatusByUserIds(any())).thenReturn(List.of());
 
         List<MemberListItem> result = service.list(1L, "김강사");
 
@@ -69,6 +76,7 @@ class ListMembersServiceTest {
         when(roleRepository.findAllByAcademyId(1L)).thenReturn(List.of(
                 Role.restore(8L, 1L, "강사", null, LocalDateTime.now(), Set.of()),
                 Role.restore(9L, 1L, "조교", null, LocalDateTime.now(), Set.of())));
+        when(todayAttendanceStatusPort.findTodayStatusByUserIds(any())).thenReturn(List.of());
 
         List<MemberListItem> result = service.list(1L, "조교");
 
@@ -80,6 +88,7 @@ class ListMembersServiceTest {
         when(userRepository.findAllByAcademyId(1L)).thenReturn(List.of(user(1L, "김강사", 8L, UserStatus.ACTIVE)));
         when(roleRepository.findAllByAcademyId(1L)).thenReturn(List.of(
                 Role.restore(8L, 1L, "강사", null, LocalDateTime.now(), Set.of())));
+        when(todayAttendanceStatusPort.findTodayStatusByUserIds(any())).thenReturn(List.of());
 
         List<MemberListItem> result = service.list(1L, "존재하지않는이름");
 
@@ -90,10 +99,31 @@ class ListMembersServiceTest {
     void handlesUserWithNullRoleIdGracefully() {
         when(userRepository.findAllByAcademyId(1L)).thenReturn(List.of(user(1L, "김원장", null, UserStatus.ACTIVE)));
         when(roleRepository.findAllByAcademyId(1L)).thenReturn(List.of());
+        when(todayAttendanceStatusPort.findTodayStatusByUserIds(any())).thenReturn(List.of());
 
         List<MemberListItem> result = service.list(1L, null);
 
         assertThat(result).extracting(MemberListItem::name, MemberListItem::roleName)
                 .containsExactly(org.assertj.core.groups.Tuple.tuple("김원장", null));
+    }
+
+    @Test
+    void fillsAttendanceStatusForActiveMembersOnlyAndNullForOthers() {
+        when(userRepository.findAllByAcademyId(1L)).thenReturn(List.of(
+                user(1L, "김강사", 8L, UserStatus.ACTIVE),
+                user(2L, "이조교", 9L, UserStatus.RESIGNED)));
+        when(roleRepository.findAllByAcademyId(1L)).thenReturn(List.of(
+                Role.restore(8L, 1L, "강사", null, LocalDateTime.now(), Set.of()),
+                Role.restore(9L, 1L, "조교", null, LocalDateTime.now(), Set.of())));
+        when(todayAttendanceStatusPort.findTodayStatusByUserIds(List.of(1L, 2L))).thenReturn(List.of(
+                new MemberTodayAttendanceStatus(1L, "PRESENT"),
+                new MemberTodayAttendanceStatus(2L, "ABSENT")));
+
+        List<MemberListItem> result = service.list(1L, null);
+
+        assertThat(result).extracting(MemberListItem::userId, MemberListItem::attendanceStatus)
+                .containsExactlyInAnyOrder(
+                        org.assertj.core.groups.Tuple.tuple(1L, "PRESENT"),
+                        org.assertj.core.groups.Tuple.tuple(2L, null));
     }
 }

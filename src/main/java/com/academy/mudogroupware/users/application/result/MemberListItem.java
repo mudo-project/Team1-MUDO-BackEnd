@@ -12,5 +12,6 @@ public record MemberListItem(
         Long roleId,
         String roleName,
         LocalDateTime joinedAt,
-        UserStatus status) {
+        UserStatus status,
+        String attendanceStatus) {
 }
