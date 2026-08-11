@@ -62,4 +62,43 @@ class GetUserDetailServiceTest {
                 .isInstanceOf(UserException.class)
                 .hasFieldOrPropertyWithValue("errorCode", UserErrorCode.USER_NOT_FOUND);
     }
+
+    @Test
+    void getMemberDetailReturnsDetailWhenSameAcademyMember() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user(1L, 1L, 5L, AccountType.MEMBER)));
+        when(roleRepository.findById(5L)).thenReturn(
+                Optional.of(Role.restore(5L, 1L, "강사", null, LocalDateTime.now(), Set.of())));
+
+        UserDetailResult result = service.getMemberDetail(1L, 1L);
+
+        assertThat(result.userId()).isEqualTo(1L);
+        assertThat(result.roleName()).isEqualTo("강사");
+    }
+
+    @Test
+    void getMemberDetailThrowsWhenUserNotFound() {
+        when(userRepository.findById(1L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.getMemberDetail(1L, 1L))
+                .isInstanceOf(UserException.class)
+                .hasFieldOrPropertyWithValue("errorCode", UserErrorCode.USER_NOT_FOUND);
+    }
+
+    @Test
+    void getMemberDetailThrowsWhenDifferentAcademy() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user(1L, 2L, 5L, AccountType.MEMBER)));
+
+        assertThatThrownBy(() -> service.getMemberDetail(1L, 1L))
+                .isInstanceOf(UserException.class)
+                .hasFieldOrPropertyWithValue("errorCode", UserErrorCode.USER_NOT_FOUND);
+    }
+
+    @Test
+    void getMemberDetailThrowsWhenTargetIsAdminAccount() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user(1L, 1L, null, AccountType.ADMIN)));
+
+        assertThatThrownBy(() -> service.getMemberDetail(1L, 1L))
+                .isInstanceOf(UserException.class)
+                .hasFieldOrPropertyWithValue("errorCode", UserErrorCode.USER_NOT_FOUND);
+    }
 }
