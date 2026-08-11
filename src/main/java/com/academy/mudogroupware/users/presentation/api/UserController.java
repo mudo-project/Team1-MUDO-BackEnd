@@ -17,7 +17,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.academy.mudogroupware.global.presentation.api.common.GlobalApiResponse;
-import com.academy.mudogroupware.global.presentation.api.common.SliceResponse;
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
 import com.academy.mudogroupware.users.application.result.CreateAccountResult;
 import com.academy.mudogroupware.users.application.usecase.ChangeMyPasswordUseCase;
@@ -41,6 +40,7 @@ import com.academy.mudogroupware.users.presentation.api.request.UpdateMemberProf
 import com.academy.mudogroupware.users.presentation.api.request.UpdateMyProfileRequest;
 import com.academy.mudogroupware.users.presentation.api.response.AccountCreateResponse;
 import com.academy.mudogroupware.users.presentation.api.response.MemberListResponse;
+import com.academy.mudogroupware.users.presentation.api.response.MemberPageResponse;
 import com.academy.mudogroupware.users.presentation.api.response.UserDetailResponse;
 import com.academy.mudogroupware.users.presentation.api.response.UserSearchResponse;
 
@@ -109,11 +109,11 @@ public class UserController {
     @PreAuthorize("hasAuthority('ACCOUNT:MANAGE')")
     @Operation(
             summary = "구성원 목록 조회(관리자)",
-            description = "같은 학원 소속 구성원 전체(퇴사자 포함)를 이름/이메일/전화번호/역할명/입사일/계정상태/오늘 근태상태와 함께 조회합니다. "
+            description = "구성원 전체(퇴사자 포함)를 이름/이메일/전화번호/역할명/입사일/계정상태/오늘 근태상태와 함께 조회합니다. "
                     + "keyword는 이름 또는 역할명에 부분 일치합니다. roleId를 지정하면 해당 역할 구성원만 반환합니다(조직도 화면에서 역할 탭별로 호출하는 용도). "
                     + "결과는 역할명, 이름 순으로 정렬됩니다.")
     @GetMapping("/members")
-    public ResponseEntity<GlobalApiResponse<SliceResponse<MemberListResponse>>> listMembers(
+    public ResponseEntity<GlobalApiResponse<MemberPageResponse<MemberListResponse>>> listMembers(
             @Parameter(description = "이름 또는 역할명 부분 일치 검색어. 없으면 전체 반환")
             @RequestParam(required = false) String keyword,
             @Parameter(description = "특정 역할의 구성원만 조회. 없으면 전체 역할 포함")
@@ -122,7 +122,7 @@ public class UserController {
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @Parameter(description = "페이지 크기(1~100)")
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
-        SliceResponse<MemberListResponse> data = SliceResponse.from(
+        MemberPageResponse<MemberListResponse> data = MemberPageResponse.from(
                 listMembersUseCase.list(keyword, roleId, page, size),
                 MemberListResponse::from);
         return ResponseEntity.ok(GlobalApiResponse.ok(UserResponseCode.MEMBERS_LISTED, data));
