@@ -1,9 +1,94 @@
 > 작성일: 2026-08-04
-> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청/승인 워크플로우(PR 1·2·3/3, "계정 발급 체계" 2단계) 완료, 역할 관리 API 7개(생성/목록/상세/수정/삭제/권한 조립/권한 카탈로그 조회) 완료, 사용자 역할 변경 API 완료, 학원 구성원 검색 API 완료, 역할 색상/인원수 완료, CodeRabbit 피드백 반영 + 로깅 컨벤션 전체 도메인(Service 17개) 적용 완료, 직원 계정 발급 API 완료("계정 발급 체계" 3단계 완료), 학원 신청 접수 API 완료(최소 스코프, "계정 발급 체계" 2단계 최종 완결), 학원 신청 접수 시점 requestedLoginId 중복확인 완료, 비밀번호 설정 링크 + 계정 발급 흐름 통합 완료(원장 역할 자동 생성·전체 권한 배정 포함) · 후속 작업: 이메일 발송, 사업자등록증 검증(OCR·국세청 API), 비밀번호 설정 링크 재발급 흐름
+> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청/승인 워크플로우(PR 1·2·3/3, "계정 발급 체계" 2단계) 완료, 역할 관리 API 7개(생성/목록/상세/수정/삭제/권한 조립/권한 카탈로그 조회) 완료, 사용자 역할 변경 API 완료, 학원 구성원 검색 API 완료, 역할 색상/인원수 완료, CodeRabbit 피드백 반영 + 로깅 컨벤션 전체 도메인(Service 17개) 적용 완료, 직원 계정 발급 API 완료("계정 발급 체계" 3단계 완료), 학원 신청 접수 API 완료(최소 스코프, "계정 발급 체계" 2단계 최종 완결), 학원 신청 접수 시점 requestedLoginId 중복확인 완료, 비밀번호 설정 링크 + 계정 발급 흐름 통합 완료(원장 역할 자동 생성·전체 권한 배정 포함), 관리자용 구성원 목록 조회 API 완료(오늘 근태 상태·페이지네이션·역할 필터 포함) · 후속 작업: 이메일 발송, 사업자등록증 검증(OCR·국세청 API), 비밀번호 설정 링크 재발급 흐름
 
 ## 🎯 변경 목적
 
 계정·권한(users) 도메인을 신설하고, 로그인과 액세스 토큰 재발급을 구현한다. 초기세팅 때 approval 도메인이 참조용으로 임시로 만들어둔 `users` 테이블을 팀이 확정한 ERD에 맞게 정합화하고, 그 위에서 인증 흐름을 짠다.
+
+---
+
+## ✅ 2026-08-11 · 구성원 목록 조회 페이지네이션·역할 필터
+
+### 배경
+
+관리자용 구성원 목록은 "학원당 구성원 규모가 작다"는 전제로 페이지네이션 없이 설계했다. 그런데 직원 수가 많은 학원도 서비스를 쓸 수 있어야 한다는 요구사항이 생겼고, 동시에 화면 목표였던 "역할별로 묶어 보여주는 조직도 뷰"를 어떻게 유지할지가 쟁점이 됐다 — 페이지네이션을 걸면 프론트가 전체 목록을 한 번에 못 받아서 클라이언트 사이드 그룹핑이 불가능해지기 때문이다.
+
+### 확정된 정책
+
+- `roleId` 쿼리 파라미터를 추가해서, 프론트가 역할 탭마다 독립적으로 페이지네이션된 목록을 요청하는 방식으로 해결했다. 중첩(nested) 그룹 응답 구조는 만들지 않았다.
+- 페이지네이션은 기존 `GetWeeklyEmployeeAttendanceUseCase`/`WeeklyEmployeeAttendanceQueryService`가 쓰던 것과 동일한 인메모리 방식(`PageResult`/`SliceResponse`, DB 레벨 Pageable 아님)을 그대로 재사용했다 — 새 패턴을 도입하지 않았다.
+- 근태 상태(`attendanceStatus`) 조회는 전체 구성원이 아니라 페이지에 포함된 구성원만 대상으로 축소했다 — 페이지네이션의 목적(불필요한 데이터 전송 감소)에 맞춘 것이다.
+- 응답을 `List<MemberListResponse>`에서 `SliceResponse<MemberListResponse>`로 바꿨다 — 이 API가 아직 develop에 병합 전이라 하위 호환성 문제가 없다.
+
+### 완료 기준
+
+- [x] `ListMembersUseCase`/`ListMembersService`에 `roleId`/`page`/`size` 반영(TDD: 역할 필터/페이지네이션/정렬/근태 조회 범위 축소)
+- [x] `UserController`에 `@Validated`·`page`/`size` 파라미터 검증 반영
+- [x] 로컬 curl e2e(전체/역할 필터/페이지네이션/잘못된 파라미터 400)
+- [x] `./gradlew build` 통과
+
+### 범위 밖 (명시적으로 미룸)
+
+- DB 레벨 페이지네이션(Pageable/LIMIT-OFFSET) — CodeRabbit 리뷰에서도 같은 지적(전체 구성원을 로드한 뒤 인메모리로 필터·정렬·페이지 자르기를 하므로 학원 규모에 비례해 DB 조회량·메모리 사용량이 늘어남)이 나왔다. 지금은 목업 기준 학원당 구성원 규모가 작아 실익이 없다고 판단해 보류한다. **구성원 수가 실제로 커지거나 성능 지표에 문제가 확인되면 재검토한다.**
+- `TodayAttendanceStatusAdapter`의 `leaveRequestRepository.findApprovedUserIds(today)`가 페이지에 포함된 userId가 아니라 학원 전체 승인 휴가자를 조회하는 것도 같은 이유로 지금은 보류한다.
+- 중첩 그룹 응답 구조 — roleId 필터로 프론트가 탭 단위로 해결.
+
+---
+
+## ✅ 2026-08-11 · 구성원 목록에 오늘 근태 상태 포함 (`attendanceStatus`)
+
+### 배경
+
+관리자용 구성원 목록(`GET /api/users/members`)은 처음엔 근태 상태를 스코프 밖으로 두고, 프론트가 `GET /api/attendance/team/today`나 `GET /api/attendance/employees/weekly`를 별도 호출해 합치도록 했다. 그런데 이 두 API는 정책 시간·전체 요약·요일별 상세 배열까지 포함해 목록 화면이 실제로 쓸 값(오늘 상태 하나)에 비해 너무 무겁다는 문제가 제기됐다.
+
+### 확정된 정책
+
+- `users`가 `TodayAttendanceStatusPort`/`MemberTodayAttendanceStatus`를 정의하고, `attendance`가 이를 구현하는 방향으로 진행했다 — 이 프로젝트에서 `users`가 다른 도메인의 Port를 소비하는 첫 사례다(기존엔 항상 반대 방향이었다).
+- Adapter(`TodayAttendanceStatusAdapter`)는 attendance의 기존 서비스(`TodayTeamAttendanceQueryService`)를 호출하지 않고, `AttendancePolicyRepository`/`LeaveRequestRepository`를 재사용하면서 `AttendanceRecordRepository`에 조회 메서드 하나(`findAllByUserIdsAndWorkDate`)만 추가해 독립적으로 상태를 계산한다 — 기존 서비스 로직은 전혀 수정하지 않았다.
+- 근태 정책이 없어 상태 계산이 실패하면(`ATTENDANCE_POLICY_NOT_FOUND`), 그 오류를 감추지 않고 `GET /api/users/members` 전체를 `404 ATTENDANCE_404_1`로 실패시키기로 했다 — 부분 성공(근태만 null)보다 명확한 실패를 택했다.
+- `attendanceStatus`는 `ACTIVE` 구성원에게만 채우고 `RESIGNED`/`INACTIVE`는 항상 `null`이다 — Adapter 자체는 이 필터링을 하지 않으므로 `ListMembersService`가 매핑 시점에 강제한다.
+
+### 완료 기준
+
+- [x] `AttendanceRecordRepository.findAllByUserIdsAndWorkDate` + 구현(TDD)
+- [x] `TodayAttendanceStatusPort`/`MemberTodayAttendanceStatus` 정의, `TodayAttendanceStatusAdapter` 구현(TDD)
+- [x] `ListMembersService`/`MemberListItem`/`MemberListResponse`에 `attendanceStatus` 통합(TDD)
+- [x] 로컬 curl/Swagger e2e(전체 조회 시 필드 확인, 정책 없을 때 404)
+- [x] `./gradlew build` 통과
+
+### 범위 밖 (명시적으로 미룸)
+
+- 근태 이력(주간/월간) 연동 — 필요 시 별도 브레인스토밍.
+- attendance 기존 API(`/today`, `/weekly`) 응답 축소.
+
+---
+
+## ✅ 2026-08-10 · 관리자용 구성원 목록 조회 (`GET /api/users/members`)
+
+### 배경
+
+Figma 목업(구성원 관리 화면) 확인 중, 기존 "학원 구성원 검색"(`GET /api/users?keyword=`)으로는 화면(이름/이메일/역할명/연락처/입사일/상태)을 채울 수 없다는 게 확인됐다. 그 API는 워크스페이스/채팅방 멤버 선택용으로, 권한 없이 로그인만 하면 누구나 호출 가능하도록 의도적으로 `{userId, name, username}`만 반환하게 설계돼 있어 필드를 추가할 수 없었다(개인정보 노출).
+
+### 확정된 정책
+
+- 완전히 별도의 관리자 전용 엔드포인트(`GET /api/users/members`, `ACCOUNT:MANAGE` 권한)로 새로 만들었다.
+- `status`는 `users` 도메인의 계정 상태(`ACTIVE`/`RESIGNED`/`INACTIVE`)만 원본 값으로 내려주고, "재직/비활성" 탭 분류(비활성 = RESIGNED+INACTIVE 묶음)는 프론트 책임으로 뒀다 — 백엔드는 단순 목록만 담당한다.
+- 역할명은 `RoleRepository.findAllByAcademyId()`(기존 "역할 목록 조회"가 이미 쓰던 메서드)로 한 번에 조회해 애플리케이션 레벨에서 맵으로 합쳤다 — JPA 레벨 조인이나 새 프로젝션 쿼리를 만들지 않고 기존 리포지토리 메서드 재사용만으로 해결했다.
+- 페이지네이션과 서버 사이드 키워드/상태 필터링(SQL WHERE 절)은 만들지 않고 애플리케이션 레벨에서 인메모리로 처리했다 — 학원당 구성원 규모가 작고(목업 기준 한 자릿수~두 자릿수), 기존 역할 목록 조회도 페이지네이션이 없는 전례를 따랐다.
+- 근태 상태 통합은 처음엔 스코프 밖으로 뒀으나, 이후 별도 작업(위 2026-08-11 항목)으로 추가됐다.
+
+### 완료 기준
+
+- [x] `UserRepository.findAllByAcademyId()` + 구현(TDD)
+- [x] `ListMembersUseCase`/`ListMembersService`(TDD: 키워드 없음/이름 검색/역할명 검색/빈 결과/roleId null 케이스)
+- [x] `GET /api/users/members` 컨트롤러 핸들러 + `ACCOUNT:MANAGE` 권한
+- [x] 로컬 curl e2e(전체 조회/이름 검색/역할명 검색/권한 없음 403)
+- [x] `./gradlew build` 통과
+
+### 범위 밖 (명시적으로 미룸)
+
+- 구성원 정보 수정(이름/연락처/이메일/입사일 변경) API — 별도 브레인스토밍 예정.
+- 계정 활성/비활성 전환 API — 별도 브레인스토밍 예정.
 
 ---
 

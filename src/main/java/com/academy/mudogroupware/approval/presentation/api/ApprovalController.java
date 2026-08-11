@@ -221,8 +221,7 @@ public class ApprovalController {
             @PathVariable Long documentId,
             @PathVariable Long fileId) {
         String downloadUrl = getApprovalAttachmentDownloadUrlUseCase.getDownloadUrl(
-                new GetApprovalAttachmentDownloadUrlCommand(documentId, fileId, authUser.userId(),
-                        authUser.academyId()));
+                new GetApprovalAttachmentDownloadUrlCommand(documentId, fileId, authUser.userId()));
         return ResponseEntity.ok(GlobalApiResponse.ok(ApprovalResponseCode.ATTACHMENT_DOWNLOAD_URL_RETRIEVED,
                 ApprovalAttachmentDownloadUrlResponse.from(downloadUrl)));
     }

@@ -34,6 +34,6 @@ public class GetApprovalAttachmentDownloadUrlService implements GetApprovalAttac
         approvalDocument.findAttachmentByFileId(command.fileId())
                 .orElseThrow(() -> new ApprovalException(ApprovalErrorCode.ATTACHMENT_NOT_FOUND));
 
-        return getFileDownloadUrlUseCase.getDownloadUrl(command.fileId(), command.academyId());
+        return getFileDownloadUrlUseCase.getDownloadUrl(command.fileId());
     }
 }

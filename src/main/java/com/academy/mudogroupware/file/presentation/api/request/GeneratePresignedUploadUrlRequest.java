@@ -13,7 +13,7 @@ public record GeneratePresignedUploadUrlRequest(
         @NotBlank String contentType
 ) {
 
-    public GeneratePresignedUploadUrlCommand toCommand(Long academyId) {
-        return new GeneratePresignedUploadUrlCommand(academyId, fileName, contentType);
+    public GeneratePresignedUploadUrlCommand toCommand() {
+        return new GeneratePresignedUploadUrlCommand(fileName, contentType);
     }
 }

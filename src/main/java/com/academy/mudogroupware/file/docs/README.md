@@ -5,7 +5,7 @@ S3 기반 파일 저장소 접근, 업로드/등록, 파일 메타데이터 조�
 ## 책임과 범위
 
 - `FileStoragePort`: objectKey 기준 presigned URL 생성(업로드/다운로드), 다운로드, 삭제.
-- `file_metadata`: `fileId -> academyId/objectKey/contentType` 저장 및 조회용 메타데이터. `academyId`는 등록 시 요청자 학원으로 저장되며, 다운로드 URL 조회는 이 값이 일치하는 파일만 허용한다(`V1.5.6`).
+- `file_metadata`: `fileId -> objectKey/contentType` 저장 및 조회용 메타데이터. 프로젝트가 단일 학원으로 전환되면서 `academyId` 컬럼은 제거했다(`V1.5.14`, 원래 `V1.5.6`에서 IDOR 방지용으로 추가했었다).
 - `POST /api/files/presigned-url`, `POST /api/files`, `GET /api/files/{fileId}/download-url`: 업로드 → 등록 → 다운로드 흐름을 제공하는 공용 API. 자세한 내용은 [API.md](API.md) 참고.
 - `ApprovalAttachmentContentAdapter`: approval의 `AttachmentContentPort`를 구현한다.
 
@@ -23,8 +23,8 @@ S3 기반 파일 저장소 접근, 업로드/등록, 파일 메타데이터 조�
 ```
 
 - 3번 등록 시점에 실제 S3 객체 존재 여부를 검증하지 않는다. 잘못된 objectKey로 등록하면 이후 다운로드/요약 시점에 실패로 드러난다.
-- objectKey는 `uploads/{academyId}/{UUID}-{파일명}` 형태로 서버가 생성한다. 클라이언트가 임의 경로를 지정할 수 없다.
-- 다운로드 URL 조회(단건/배치)는 `academyId`가 일치하는 파일만 대상으로 한다. 다른 학원 소속이거나 존재하지 않는 fileId는 동일하게 "찾을 수 없음"으로 처리한다(존재 여부 노출 방지).
+- objectKey는 `uploads/{UUID}-{파일명}` 형태로 서버가 생성한다. 클라이언트가 임의 경로를 지정할 수 없다.
+- 다운로드 URL 조회(단건/배치)는 fileId만으로 조회한다. **인증만 되면 fileId를 아는(추측/유출된) 누구나 다운로드 URL을 받을 수 있다.** approval처럼 리소스 단위 권한 체크가 필요한 도메인은 자체 엔드포인트를 앞단에 둬야 한다(`approval.GetApprovalAttachmentDownloadUrlService` 참고). notice 등 나머지 도메인은 아직 이런 체크가 없다 — 알려진 갭.
 
 ## approval 연동
 
@@ -36,18 +36,18 @@ approval SummarizeApprovalAttachmentService
 -> file ApprovalAttachmentContentAdapter
 -> file_metadata 조회
 -> S3 objectKey 다운로드
--> UTF-8 텍스트 반환
+-> contentType에 따라 AttachmentContent.text(...) 또는 AttachmentContent.binary(...) 반환
 ```
 
-현재 지원 contentType:
+contentType별 처리 (2026-08-11 확장):
 
-- `text/*`
-- `application/json`
-- `application/xml`
-- `application/csv`
-- `application/x-www-form-urlencoded`
+| 구분 | contentType | 처리 |
+| --- | --- | --- |
+| 텍스트 | `text/*`, `application/json`, `application/xml`, `application/csv`, `application/x-www-form-urlencoded` | UTF-8 디코딩 후 `AttachmentContent.text` |
+| docx | `application/vnd.openxmlformats-officedocument.wordprocessingml.document` | Apache POI(`XWPFDocument`)로 텍스트 추출 후 `AttachmentContent.text` |
+| PDF/이미지 | `application/pdf`, `image/jpeg`, `image/png`, `image/webp`, `image/heic`, `image/heif` | 바이너리 그대로 `AttachmentContent.binary`(15MB 초과 시 실패) |
 
-미지원 파일(PDF 등), 메타데이터 없음, S3 다운로드 실패는 `AttachmentContentUnavailableException`으로 변환되어 approval에서 `APPROVAL_409_7`로 처리된다.
+미지원 contentType(hwp 등), 메타데이터 없음, S3 다운로드 실패, PDF/이미지 15MB 초과, docx 텍스트 추출 실패는 모두 `AttachmentContentUnavailableException`으로 변환되어 approval에서 `APPROVAL_409_7`로 처리된다. `AttachmentContent.binary`로 반환된 바이너리는 approval의 `GeminiSummarizerAdapter`가 Gemini 멀티모달 입력(inline base64)으로 그대로 전달한다.
 
 ## notice 연동
 

@@ -84,8 +84,7 @@ public class ChatMessageQueryService implements ChatMessageQueryUseCase {
                 .distinct()
                 .toList();
         Map<Long, String> downloadUrls = fileIds.isEmpty() ? Map.of()
-                : getFileDownloadUrlUseCase.getDownloadUrls(fileIds,
-                        chatMemberDirectoryPort.getMember(requesterId).academyId());
+                : getFileDownloadUrlUseCase.getDownloadUrls(fileIds);
         List<ChatMessageView> messageViews = pageMessages.stream()
                 .map(message -> toMessageView(message, senders, unreadCounts, downloadUrls))
                 .toList();

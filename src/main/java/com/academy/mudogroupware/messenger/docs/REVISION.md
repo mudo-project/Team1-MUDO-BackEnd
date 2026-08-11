@@ -1,26 +1,26 @@
 # Messenger Revision
 
-## (예정) academyId 완전 제거 — users/file 쪽 인터페이스 변경 대기 중
+## (예정) academyId 완전 제거 — users 쪽 인터페이스 변경 대기 중
 
 ### 배경
 
 academy 테이블 자체를 시스템 전체에서 없애기로 해서, messenger에 남아있는 academyId 관련 코드도 전부 없앨 계획이다. 단, 아래 두 곳은 messenger 소유가 아니라 다른 도메인의 public 계약이라 그쪽이 먼저 academyId를 빼야 messenger도 뺄 수 있다.
 
-- `UserDirectoryUseCase.findActiveUserIds(Long academyId, Set<Long> userIds)` — users 도메인 소유.
-- `GetFileDownloadUrlUseCase.getDownloadUrls(List<Long> fileIds, Long academyId)` — file 도메인 소유(minseo0327).
+- `UserDirectoryUseCase.findActiveUserIds(Long academyId, Set<Long> userIds)` — users 도메인 소유. **아직 대기 중.**
+- ~~`GetFileDownloadUrlUseCase.getDownloadUrls(List<Long> fileIds, Long academyId)` — file 도메인 소유(minseo0327).~~ **2026-08-11 해소됨.** file 모듈이 `file_metadata`의 academyId를 제거하면서(`V1.5.14`) `getDownloadUrl(fileId)`/`getDownloadUrls(fileIds)`로 시그니처가 바뀌었다. `SendMessageService`/`ChatMessageQueryService`의 호출부(`chatMemberDirectoryPort.getMember(...).academyId()` 넘기던 부분)는 컴파일이 깨져서 file 담당자가 같이 제거해뒀다 — 아래 "진행 예정" 목록 중 이 항목만 이미 완료됨.
 
-두 인터페이스가 여전히 academyId를 필수로 받기 때문에, 지금 messenger 쪽 호출부(`ChatMemberDirectoryPortAdapter`, `SendMessageService`, `ChatMessageQueryService`)와 `ChatMemberInfo`/`ChatMemberInfoEntity`의 academyId를 먼저 없애면 컴파일이 깨진다.
+`UserDirectoryUseCase` 쪽 인터페이스가 여전히 academyId를 필수로 받기 때문에, `ChatMemberDirectoryPortAdapter`와 `ChatMemberInfo`/`ChatMemberInfoEntity`의 academyId를 먼저 없애면 컴파일이 깨진다.
 
 ### 진행 예정
 
-users/file 도메인 쪽에서 위 두 시그니처의 academyId 파라미터를 제거하면(develop 병합 확인), 그다음 messenger에서:
+users 도메인 쪽에서 `findActiveUserIds`의 academyId 파라미터를 제거하면(develop 병합 확인), 그다음 messenger에서:
 
 - `ChatMemberInfo`/`ChatMemberInfoEntity`의 `academyId` 필드 제거.
 - `ChatMemberDirectoryPortAdapter`가 `findActiveUserIds` 호출 시 넘기던 academyId 제거.
-- `SendMessageService`/`ChatMessageQueryService`가 `getDownloadUrls` 호출 시 넘기던 academyId(`chatMemberDirectoryPort.getMember(...).academyId()`) 제거.
+- ~~`SendMessageService`/`ChatMessageQueryService`가 `getDownloadUrls` 호출 시 넘기던 academyId 제거.~~ 완료(2026-08-11, file 쪽 변경에 맞춰 함께 처리됨).
 
 > 작성일: 2026-08-10
-> 상태: 대기 중 (users/file 도메인 인터페이스 변경 선행 필요)
+> 상태: 부분 완료 (file 쪽은 해소, users 도메인 인터페이스 변경만 남음)
 
 ## 2026-08-10 · 채팅방 academy_id 제거
 

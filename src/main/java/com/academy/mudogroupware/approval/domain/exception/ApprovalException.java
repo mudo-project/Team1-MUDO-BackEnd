@@ -7,4 +7,8 @@ public class ApprovalException extends BusinessException {
     public ApprovalException(ApprovalErrorCode errorCode) {
         super(errorCode);
     }
+
+    public ApprovalException(ApprovalErrorCode errorCode, Throwable cause) {
+        super(errorCode, errorCode.getMessage(), cause);
+    }
 }

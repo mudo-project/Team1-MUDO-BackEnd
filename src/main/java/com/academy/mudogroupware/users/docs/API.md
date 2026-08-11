@@ -582,6 +582,60 @@
 
 ---
 
+## 17-1. 구성원 목록 조회(관리자)
+
+`GET /api/users/members`
+권한: `ACCOUNT:MANAGE` 필요
+
+### Request
+
+Query Parameter
+
+| name | type | required | 설명 |
+| --- | --- | --- | --- |
+| `keyword` | String | false | 이름 또는 역할명 부분 일치 검색어(대소문자 무관). 없으면 전체 반환 |
+| `roleId` | Long | false | 특정 역할의 구성원만 조회. 없으면 전체 역할 포함 |
+| `page` | int | false | 페이지 번호(0부터 시작). 기본값 0 |
+| `size` | int | false | 페이지 크기(1~100). 기본값 20 |
+
+### Response · `200 OK`
+
+```json
+{
+  "status": 200,
+  "code": "USER_200_4",
+  "message": "구성원 목록 조회에 성공했습니다.",
+  "data": {
+    "content": [
+      {
+        "userId": 10,
+        "name": "최현우",
+        "email": "hwchoi@academy.kr",
+        "phone": "010-4567-8901",
+        "roleId": 8,
+        "roleName": "강사",
+        "joinedAt": "2023-03-02T00:00:00",
+        "status": "ACTIVE",
+        "attendanceStatus": "PRESENT"
+      }
+    ],
+    "page": 0,
+    "size": 20,
+    "hasNext": false
+  }
+}
+```
+
+### 검증 및 정책
+
+- 기존 "학원 구성원 검색"(17번 항목)과 달리 `ACTIVE`뿐 아니라 `RESIGNED`/`INACTIVE`도 포함한 전체 구성원을 반환합니다 — 관리자 전용 관리 화면 API이기 때문입니다. "재직/비활성" 탭 분류(비활성 = RESIGNED+INACTIVE)는 프론트에서 처리합니다.
+- `roleId`가 없는 계정(예: 역할 미배정)은 `roleId`/`roleName` 모두 `null`로 내려갑니다.
+- 결과는 `roleName`, `name` 순으로 정렬됩니다 — 역할별로 묶어 보여주는 조직도 화면에서, `roleId`를 지정해 역할 탭마다 별도로 호출하는 방식을 전제로 합니다.
+- `page`/`size` 범위를 벗어나면(`page<0`, `size`가 1~100 밖) `400`으로 실패합니다.
+- `attendanceStatus`는 `ACTIVE` 구성원만 `PRESENT`/`ABSENT`/`OFF`/`LEAVE` 중 하나로 채워지고, `RESIGNED`/`INACTIVE` 구성원은 `null`입니다. 근태 정책(`AttendancePolicy`)이 등록되어 있지 않으면 이 API 전체가 `404 ATTENDANCE_404_1`로 실패합니다. 근태 조회는 현재 페이지에 포함된 구성원만 대상으로 합니다.
+
+---
+
 ## 18. 직원 계정 발급
 
 `POST /api/users`
