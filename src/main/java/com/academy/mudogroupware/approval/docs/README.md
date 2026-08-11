@@ -19,6 +19,7 @@
 - file: `AttachmentContentPort`를 file 모듈의 `ApprovalAttachmentContentAdapter`가 구현한다. 텍스트/PDF/이미지/docx 파일 원문을 Gemini 요약으로 전달한다(PDF·이미지는 멀티모달 inline 데이터, docx는 Apache POI로 추출한 텍스트).
 - file: 첨부파일 다운로드 URL 발급은 file 모듈이 공개하는 `GetFileDownloadUrlUseCase`를 직접 주입해서 쓴다(`GetApprovalAttachmentDownloadUrlService`). approval이 신청자/결재선 참여자 검증과 fileId의 문서 소속 검증을 먼저 마친 뒤에만 호출한다 — file 모듈의 범용 다운로드 API는 academyId만 검증하므로 그대로 노출하면 결재선과 무관한 사람도 URL을 받을 수 있다.
 - attendance: 휴가 기간이 포함된 결재는 `LeaveRequestSubmittedEvent`와 `ApprovalDocumentDecidedEvent`로 휴가 상태를 전달한다.
+- corporatecard: `ExtractApprovalAttachmentFieldsUseCase`를 corporatecard가 직접 주입해서 쓴다. 결재 문서의 첫 번째 첨부파일에서 Gemini 구조화 출력으로 금액/일자/가맹점을 추출해준다(영수증-카드거래 대사 검증용). REST 엔드포인트는 없고 UseCase만 공개한다.
 - global security: `AuthUser`로 인증 사용자 정보를 받는다.
 
 ## 권한 정책
