@@ -49,7 +49,7 @@ public class SendMessageService implements SendMessageUseCase {
         chatRoom.markRead(command.senderId(), saved.getCreatedAt());
         chatRoomRepository.markRead(command.chatRoomId(), command.senderId(), saved.getCreatedAt());
         String fileDownloadUrl = saved.getFileId() == null ? null
-                : getFileDownloadUrlUseCase.getDownloadUrl(saved.getFileId(), chatRoom.getAcademyId());
+                : getFileDownloadUrlUseCase.getDownloadUrl(saved.getFileId());
         eventPublisher.publishEvent(new ChatMessageSentEvent(saved.getChatRoomId(), saved.getId(),
                 saved.getSenderUserId(), saved.getMessageType(), saved.getContent(), saved.getFileId(),
                 fileDownloadUrl, saved.getFileName(), saved.getCreatedAt(), chatRoom.getMembers().size() - 1L));

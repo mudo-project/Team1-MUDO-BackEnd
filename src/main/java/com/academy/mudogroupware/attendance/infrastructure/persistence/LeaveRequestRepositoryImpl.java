@@ -24,7 +24,6 @@ public class LeaveRequestRepositoryImpl implements LeaveRequestRepository {
     public LeaveRequest save(LeaveRequest leaveRequest) {
         LeaveRequestJpaEntity entity = LeaveRequestJpaEntity.builder()
                 .id(leaveRequest.getId())
-                .academyId(leaveRequest.getAcademyId())
                 .userId(leaveRequest.getUserId())
                 .documentId(leaveRequest.getDocumentId())
                 .startDate(leaveRequest.getStartDate())
@@ -43,28 +42,28 @@ public class LeaveRequestRepositoryImpl implements LeaveRequestRepository {
     }
 
     @Override
-    public Set<Long> findApprovedUserIds(Long academyId, LocalDate date) {
+    public Set<Long> findApprovedUserIds(LocalDate date) {
         return new HashSet<>(leaveRequestJpaRepository
-                .findUserIdsByAcademyIdAndStatusAndDateBetween(academyId, LeaveRequestStatus.APPROVED, date));
+                .findUserIdsByStatusAndDateBetween(LeaveRequestStatus.APPROVED, date));
     }
 
     @Override
-    public boolean existsOverlapping(Long academyId, Long userId, LocalDate startDate, LocalDate endDate) {
-        return leaveRequestJpaRepository.existsOverlapping(academyId, userId,
+    public boolean existsOverlapping(Long userId, LocalDate startDate, LocalDate endDate) {
+        return leaveRequestJpaRepository.existsOverlapping(userId,
                 Set.of(LeaveRequestStatus.PENDING, LeaveRequestStatus.APPROVED), startDate, endDate);
     }
 
     @Override
-    public int sumReservedDays(Long academyId, Long userId, LocalDate periodStart, LocalDate periodEnd) {
-        return leaveRequestJpaRepository.sumUsedDays(academyId, userId,
+    public int sumReservedDays(Long userId, LocalDate periodStart, LocalDate periodEnd) {
+        return leaveRequestJpaRepository.sumUsedDays(userId,
                 Set.of(LeaveRequestStatus.PENDING, LeaveRequestStatus.APPROVED), periodStart, periodEnd);
     }
 
     @Override
     public List<LeaveRequest> findApprovedOverlapping(
-            Long academyId, Long userId, LocalDate startDate, LocalDate endDate) {
+            Long userId, LocalDate startDate, LocalDate endDate) {
         return leaveRequestJpaRepository.findOverlapping(
-                        academyId, userId, LeaveRequestStatus.APPROVED, startDate, endDate)
+                        userId, LeaveRequestStatus.APPROVED, startDate, endDate)
                 .stream()
                 .map(this::toDomain)
                 .toList();
@@ -72,14 +71,14 @@ public class LeaveRequestRepositoryImpl implements LeaveRequestRepository {
 
     @Override
     public int sumUsedDaysByStatus(
-            Long academyId, Long userId, LocalDate periodStart, LocalDate periodEnd,
+            Long userId, LocalDate periodStart, LocalDate periodEnd,
             LeaveRequestStatus status) {
         return leaveRequestJpaRepository.sumUsedDays(
-                academyId, userId, Set.of(status), periodStart, periodEnd);
+                userId, Set.of(status), periodStart, periodEnd);
     }
 
     private LeaveRequest toDomain(LeaveRequestJpaEntity entity) {
-        return LeaveRequest.restore(entity.getId(), entity.getAcademyId(), entity.getUserId(),
+        return LeaveRequest.restore(entity.getId(), entity.getUserId(),
                 entity.getDocumentId(), entity.getStartDate(), entity.getEndDate(), entity.getUsedDays(), entity.getStatus(),
                 entity.getCreatedAt(), entity.getUpdatedAt());
     }

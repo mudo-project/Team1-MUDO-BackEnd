@@ -37,9 +37,9 @@ public class StudentRepositoryImpl implements StudentRepository {
     }
 
     @Override
-    public PageResult<Student> findAll(Long academyId, String keyword, int page, int size) {
-        Slice<StudentEntity> slice = studentJpaRepository.findAllByAcademyIdAndKeyword(
-                academyId, keyword, PageRequest.of(page, size));
+    public PageResult<Student> findAll(String keyword, int page, int size) {
+        Slice<StudentEntity> slice = studentJpaRepository.findAllByKeyword(
+                keyword, PageRequest.of(page, size));
         List<Student> content = slice.getContent().stream().map(this::toDomain).toList();
         return PageResult.of(content, slice.getNumber(), slice.getSize(), slice.hasNext());
     }
@@ -51,7 +51,6 @@ public class StudentRepositoryImpl implements StudentRepository {
 
     private StudentEntity toNewEntity(Student student) {
         return StudentEntity.builder()
-                .academyId(student.getAcademyId())
                 .name(student.getName())
                 .grade(student.getGrade())
                 .school(student.getSchool())
@@ -73,7 +72,7 @@ public class StudentRepositoryImpl implements StudentRepository {
     }
 
     private Student toDomain(StudentEntity entity) {
-        return Student.restore(entity.getId(), entity.getAcademyId(), entity.getName(), entity.getGrade(),
+        return Student.restore(entity.getId(), entity.getName(), entity.getGrade(),
                 entity.getSchool(), entity.getPhone(), entity.getParentPhone(), entity.getNote(),
                 entity.getCreatedAt(), entity.getUpdatedAt());
     }

@@ -10,9 +10,9 @@ public interface MessageTemplateRepository {
 
     Optional<MessageTemplate> findById(Long id);
 
-    List<MessageTemplate> findByAcademyId(Long academyId);
+    List<MessageTemplate> findAll();
 
-    Optional<MessageTemplate> findByAcademyIdAndStatus(Long academyId, AttendanceStatus status);
+    Optional<MessageTemplate> findByStatus(AttendanceStatus status);
 
     MessageTemplate save(MessageTemplate template);
 

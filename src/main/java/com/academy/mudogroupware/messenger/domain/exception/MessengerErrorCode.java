@@ -17,7 +17,6 @@ public enum MessengerErrorCode implements ErrorCode {
     MESSAGE_CONTENT_REQUIRED(HttpStatus.BAD_REQUEST, "MESSENGER_400_5", "메시지 내용은 비어 있을 수 없습니다."),
     FILE_ID_REQUIRED(HttpStatus.BAD_REQUEST, "MESSENGER_400_6", "첨부파일(fileId)이 지정되지 않았습니다."),
     INVALID_PARTICIPANT(HttpStatus.BAD_REQUEST, "MESSENGER_400_7", "존재하지 않는 참여자가 포함되어 있습니다."),
-    CROSS_ACADEMY_INVITE(HttpStatus.BAD_REQUEST, "MESSENGER_400_8", "다른 학원 소속 사용자는 초대할 수 없습니다."),
     INVALID_CURSOR(HttpStatus.BAD_REQUEST, "MESSENGER_400_11",
             "cursorCreatedAt과 cursorMessageId는 함께 전달하거나 함께 생략해야 합니다."),
     INVALID_PAGE_SIZE(HttpStatus.BAD_REQUEST, "MESSENGER_400_12", "메시지 조회 size는 1 이상 100 이하여야 합니다."),

@@ -22,14 +22,13 @@ public class AcademyWifiIpRepositoryImpl implements AcademyWifiIpRepository {
     private final AcademyWifiIpJpaRepository academyWifiIpJpaRepository;
 
     @Override
-    public boolean existsByAcademyIdAndIpAddress(Long academyId, String ipAddress) {
-        return academyWifiIpJpaRepository.existsByAcademyIdAndIpAddress(academyId, ipAddress);
+    public boolean existsByIpAddress(String ipAddress) {
+        return academyWifiIpJpaRepository.existsByIpAddress(ipAddress);
     }
 
     @Override
     public AcademyWifiIp save(AcademyWifiIp wifiIp) {
         AcademyWifiIpJpaEntity entity = AcademyWifiIpJpaEntity.builder()
-                .academyId(wifiIp.getAcademyId())
                 .ipAddress(wifiIp.getIpAddress())
                 .note(wifiIp.getNote())
                 .createdAt(wifiIp.getCreatedAt())
@@ -49,23 +48,22 @@ public class AcademyWifiIpRepositoryImpl implements AcademyWifiIpRepository {
     }
 
     @Override
-    public List<AcademyWifiIp> findAllByAcademyId(Long academyId) {
+    public List<AcademyWifiIp> findAll() {
         return academyWifiIpJpaRepository
-                .findAllByAcademyIdOrderByCreatedAtAscIdAsc(academyId)
+                .findAllByOrderByCreatedAtAscIdAsc()
                 .stream()
                 .map(this::toDomain)
                 .toList();
     }
 
     @Override
-    public boolean deleteByIdAndAcademyId(Long wifiIpId, Long academyId) {
-        return academyWifiIpJpaRepository.deleteByIdAndAcademyId(wifiIpId, academyId) > 0;
+    public boolean deleteById(Long wifiIpId) {
+        return academyWifiIpJpaRepository.deleteByIdReturningCount(wifiIpId) > 0;
     }
 
     private AcademyWifiIp toDomain(AcademyWifiIpJpaEntity entity) {
         return AcademyWifiIp.restore(
                 entity.getId(),
-                entity.getAcademyId(),
                 entity.getIpAddress(),
                 entity.getNote(),
                 entity.getCreatedAt(),

@@ -17,8 +17,8 @@ public class TermRepositoryImpl implements TermRepository {
     private final TermJpaRepository termJpaRepository;
 
     @Override
-    public Optional<Term> findByAcademyIdAndName(Long academyId, String name) {
-        return termJpaRepository.findByAcademyIdAndName(academyId, name).map(this::toDomain);
+    public Optional<Term> findByName(String name) {
+        return termJpaRepository.findByName(name).map(this::toDomain);
     }
 
     @Override
@@ -29,13 +29,12 @@ public class TermRepositoryImpl implements TermRepository {
     @Override
     public Term save(Term term) {
         TermEntity entity = TermEntity.builder()
-                .academyId(term.getAcademyId())
                 .name(term.getName())
                 .build();
         return toDomain(termJpaRepository.save(entity));
     }
 
     private Term toDomain(TermEntity entity) {
-        return Term.restore(entity.getId(), entity.getAcademyId(), entity.getName(), entity.getCreatedAt());
+        return Term.restore(entity.getId(), entity.getName(), entity.getCreatedAt());
     }
 }

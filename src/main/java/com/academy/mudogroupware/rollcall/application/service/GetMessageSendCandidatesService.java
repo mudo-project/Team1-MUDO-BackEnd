@@ -29,9 +29,9 @@ public class GetMessageSendCandidatesService implements GetMessageSendCandidates
     private final MessageTemplateRepository messageTemplateRepository;
 
     @Override
-    public List<MessageSendCandidateView> getCandidates(Long lectureId, Long academyId, LocalDate date) {
-        RosterView roster = getLectureRosterUseCase.getRoster(lectureId, academyId, date);
-        Map<AttendanceStatus, MessageTemplate> templatesByStatus = messageTemplateRepository.findByAcademyId(academyId).stream()
+    public List<MessageSendCandidateView> getCandidates(Long lectureId, LocalDate date) {
+        RosterView roster = getLectureRosterUseCase.getRoster(lectureId, date);
+        Map<AttendanceStatus, MessageTemplate> templatesByStatus = messageTemplateRepository.findAll().stream()
                 .collect(Collectors.toMap(MessageTemplate::getStatus, Function.identity(), (a, b) -> a));
 
         return roster.entries().stream()

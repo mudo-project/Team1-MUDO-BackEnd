@@ -37,9 +37,9 @@ class LectureEnrollmentPortAdapterTest {
         adapter = new LectureEnrollmentPortAdapter(lectureRepository, enrolledStudentsPort);
     }
 
-    private Lecture lecture(Long academyId) {
+    private Lecture lecture() {
         LectureSchedule schedule = LectureSchedule.create(DayOfWeek.MONDAY, LocalTime.of(15, 0), LocalTime.of(17, 0));
-        return Lecture.create(academyId, "수학 기초반", Grade.MIDDLE_3, 10L, 20L, 30L, 40L, FeeType.PER_SESSION, 50000,
+        return Lecture.create("수학 기초반", Grade.MIDDLE_3, 10L, 20L, 30L, 40L, FeeType.PER_SESSION, 50000,
                 List.of(schedule), NOW);
     }
 
@@ -52,13 +52,12 @@ class LectureEnrollmentPortAdapterTest {
 
     @Test
     void findLectureMapsToLectureRef() {
-        when(lectureRepository.findById(1L)).thenReturn(Optional.of(lecture(9L)));
+        when(lectureRepository.findById(1L)).thenReturn(Optional.of(lecture()));
 
         Optional<LectureRef> ref = adapter.findLecture(1L);
 
         assertThat(ref).isPresent();
         assertThat(ref.get().name()).isEqualTo("수학 기초반");
-        assertThat(ref.get().academyId()).isEqualTo(9L);
     }
 
     @Test
@@ -70,8 +69,8 @@ class LectureEnrollmentPortAdapterTest {
 
     @Test
     void getEnrolledStudentsMapsFromEnrolledStudentsPort() {
-        when(lectureRepository.findById(1L)).thenReturn(Optional.of(lecture(9L)));
-        when(enrolledStudentsPort.findByLectureId(9L, 1L)).thenReturn(List.of(
+        when(lectureRepository.findById(1L)).thenReturn(Optional.of(lecture()));
+        when(enrolledStudentsPort.findByLectureId(1L)).thenReturn(List.of(
                 new EnrolledStudentInfo(5L, "이준호", "MIDDLE_3", "010-1111-1111")));
 
         List<EnrolledStudentRef> refs = adapter.getEnrolledStudents(1L);

@@ -28,7 +28,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class WorkspaceDetailQueryServiceTest {
 
-  private static final Long ACADEMY_ID = 1L;
   private static final Long USER_ID = 10L;
   private static final Long WORKSPACE_ID = 100L;
   private static final LocalDate DATE = LocalDate.of(2026, 8, 5);
@@ -47,7 +46,7 @@ class WorkspaceDetailQueryServiceTest {
     when(workspaceDetailQueryPort.findActiveWorkspaceName(WORKSPACE_ID)).thenReturn(Optional.empty());
 
     assertThatThrownBy(
-            () -> service().getWorkspaceDetail(ACADEMY_ID, USER_ID, WORKSPACE_ID, DATE, false))
+            () -> service().getWorkspaceDetail(USER_ID, WORKSPACE_ID, DATE, false))
         .isInstanceOf(WorkspaceNotFoundException.class);
   }
 
@@ -55,11 +54,11 @@ class WorkspaceDetailQueryServiceTest {
   void throwsAccessDeniedWhenWorkspaceExistsButRequesterCannotAccessIt() {
     when(workspaceDetailQueryPort.findActiveWorkspaceName(WORKSPACE_ID))
         .thenReturn(Optional.of("ws"));
-    when(workspaceListQueryPort.existsAccessible(WORKSPACE_ID, ACADEMY_ID, USER_ID, false))
+    when(workspaceListQueryPort.existsAccessible(WORKSPACE_ID, USER_ID, false))
         .thenReturn(false);
 
     assertThatThrownBy(
-            () -> service().getWorkspaceDetail(ACADEMY_ID, USER_ID, WORKSPACE_ID, DATE, false))
+            () -> service().getWorkspaceDetail(USER_ID, WORKSPACE_ID, DATE, false))
         .isInstanceOf(WorkspaceAccessDeniedException.class);
   }
 
@@ -67,7 +66,7 @@ class WorkspaceDetailQueryServiceTest {
   void assemblesMembersAndTasksWithResolvedNamesAndCommentCounts() {
     when(workspaceDetailQueryPort.findActiveWorkspaceName(WORKSPACE_ID))
         .thenReturn(Optional.of("1월 학사 운영"));
-    when(workspaceListQueryPort.existsAccessible(WORKSPACE_ID, ACADEMY_ID, USER_ID, false))
+    when(workspaceListQueryPort.existsAccessible(WORKSPACE_ID, USER_ID, false))
         .thenReturn(true);
     when(workspaceDetailQueryPort.findMemberIds(WORKSPACE_ID)).thenReturn(List.of(12L));
     WorkspaceTaskCandidate withComments =
@@ -86,7 +85,7 @@ class WorkspaceDetailQueryServiceTest {
         .thenReturn(List.of(new TaskCommentSummary(101L, 1L, 2L)));
 
     WorkspaceDetail result =
-        service().getWorkspaceDetail(ACADEMY_ID, USER_ID, WORKSPACE_ID, DATE, false);
+        service().getWorkspaceDetail(USER_ID, WORKSPACE_ID, DATE, false);
 
     assertThat(result.workspaceId()).isEqualTo(WORKSPACE_ID);
     assertThat(result.name()).isEqualTo("1월 학사 운영");
@@ -105,7 +104,7 @@ class WorkspaceDetailQueryServiceTest {
   void sortsTasksByStatusThenDueDateAscendingWithNullsLastThenCreatedAtAscending() {
     when(workspaceDetailQueryPort.findActiveWorkspaceName(WORKSPACE_ID))
         .thenReturn(Optional.of("ws"));
-    when(workspaceListQueryPort.existsAccessible(WORKSPACE_ID, ACADEMY_ID, USER_ID, false))
+    when(workspaceListQueryPort.existsAccessible(WORKSPACE_ID, USER_ID, false))
         .thenReturn(true);
     when(workspaceDetailQueryPort.findMemberIds(WORKSPACE_ID)).thenReturn(List.of());
     WorkspaceTaskCandidate noDueDate =
@@ -126,7 +125,7 @@ class WorkspaceDetailQueryServiceTest {
     when(workspaceDetailQueryPort.findCommentSummaries(List.of(3L, 2L, 1L))).thenReturn(List.of());
 
     WorkspaceDetail result =
-        service().getWorkspaceDetail(ACADEMY_ID, USER_ID, WORKSPACE_ID, DATE, false);
+        service().getWorkspaceDetail(USER_ID, WORKSPACE_ID, DATE, false);
 
     assertThat(result.tasks()).extracting(WorkspaceTaskItem::taskId).containsExactly(1L, 2L, 3L);
   }
@@ -135,7 +134,7 @@ class WorkspaceDetailQueryServiceTest {
   void sortsTasksByTaskIdWhenStatusDueDateAndCreatedAtAreAllTied() {
     when(workspaceDetailQueryPort.findActiveWorkspaceName(WORKSPACE_ID))
         .thenReturn(Optional.of("ws"));
-    when(workspaceListQueryPort.existsAccessible(WORKSPACE_ID, ACADEMY_ID, USER_ID, false))
+    when(workspaceListQueryPort.existsAccessible(WORKSPACE_ID, USER_ID, false))
         .thenReturn(true);
     when(workspaceDetailQueryPort.findMemberIds(WORKSPACE_ID)).thenReturn(List.of());
     LocalDate sameDue = LocalDate.of(2026, 8, 10);
@@ -151,7 +150,7 @@ class WorkspaceDetailQueryServiceTest {
     when(workspaceDetailQueryPort.findCommentSummaries(List.of(102L, 101L))).thenReturn(List.of());
 
     WorkspaceDetail result =
-        service().getWorkspaceDetail(ACADEMY_ID, USER_ID, WORKSPACE_ID, DATE, false);
+        service().getWorkspaceDetail(USER_ID, WORKSPACE_ID, DATE, false);
 
     assertThat(result.tasks())
         .extracting(WorkspaceTaskItem::taskId)
@@ -162,7 +161,7 @@ class WorkspaceDetailQueryServiceTest {
   void fallsBackToUnknownNameWhenMemberOrCreatorNameCannotBeResolved() {
     when(workspaceDetailQueryPort.findActiveWorkspaceName(WORKSPACE_ID))
         .thenReturn(Optional.of("ws"));
-    when(workspaceListQueryPort.existsAccessible(WORKSPACE_ID, ACADEMY_ID, USER_ID, false))
+    when(workspaceListQueryPort.existsAccessible(WORKSPACE_ID, USER_ID, false))
         .thenReturn(true);
     when(workspaceDetailQueryPort.findMemberIds(WORKSPACE_ID)).thenReturn(List.of(12L));
     WorkspaceTaskCandidate candidate =
@@ -174,7 +173,7 @@ class WorkspaceDetailQueryServiceTest {
     when(workspaceDetailQueryPort.findCommentSummaries(List.of(101L))).thenReturn(List.of());
 
     WorkspaceDetail result =
-        service().getWorkspaceDetail(ACADEMY_ID, USER_ID, WORKSPACE_ID, DATE, false);
+        service().getWorkspaceDetail(USER_ID, WORKSPACE_ID, DATE, false);
 
     assertThat(result.members()).containsExactly(new WorkspaceMemberInfo(12L, "알 수 없음"));
     assertThat(result.tasks().get(0).creator()).isEqualTo(new WorkspaceMemberInfo(99L, "알 수 없음"));

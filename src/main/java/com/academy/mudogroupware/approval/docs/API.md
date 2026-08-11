@@ -689,6 +689,17 @@ Response Body
 
 Gemini API를 호출해 첨부파일 요약을 생성한다. 신청자 또는 결재선 참여자만 가능하다.
 
+지원하는 첨부파일 형식은 다음과 같다.
+
+| 구분 | contentType | 처리 방식 |
+| --- | --- | --- |
+| 텍스트 | `text/plain` 등 UTF-8 텍스트 계열 | 원문 텍스트를 그대로 프롬프트에 포함 |
+| PDF | `application/pdf` | Gemini 멀티모달 입력(inline base64)으로 전달 |
+| 이미지 | `image/jpeg`, `image/png`, `image/webp`, `image/heic`, `image/heif` | Gemini 멀티모달 입력(inline base64)으로 전달 |
+| Word 문서 | `application/vnd.openxmlformats-officedocument.wordprocessingml.document` (docx) | Apache POI로 텍스트를 추출한 뒤 프롬프트에 포함 |
+
+PDF/이미지는 원본 용량이 15MB를 초과하면 요약할 수 없다(`APPROVAL_409_7`). 위 표에 없는 형식(예: hwp, ppt, xlsx 등)도 지원하지 않는다.
+
 # **[request]**
 
 Request Header
@@ -739,12 +750,74 @@ Response Body
 | `403 Forbidden` | `APPROVAL_403_1` | 해당 결재를 조회할 권한이 없습니다. | 신청자/결재선 참여자가 아닌 경우 |
 | `404 Not Found` | `APPROVAL_404_2` | 결재 문서를 찾을 수 없습니다. | `documentId`에 해당하는 결재 문서가 없는 경우 |
 | `404 Not Found` | `APPROVAL_404_4` | 첨부파일을 찾을 수 없습니다. | `fileId`가 해당 문서의 첨부파일이 아닌 경우 |
-| `409 Conflict` | `APPROVAL_409_7` | 첨부파일 원문 조회 기능이 없어 요약할 수 없습니다. | 텍스트로 변환할 수 없는 첨부파일(PDF/이미지 등)인 경우 |
+| `409 Conflict` | `APPROVAL_409_7` | 첨부파일 원문 조회 기능이 없어 요약할 수 없습니다. | 지원하지 않는 형식(hwp 등)이거나, PDF/이미지 용량이 15MB를 초과하거나, docx 텍스트 추출에 실패한 경우 |
 | `502 Bad Gateway` | `APPROVAL_502_1` | 첨부파일 요약 생성에 실패했습니다. | Gemini API 호출이 실패한 경우 |
 
 ---
 
-## **14. 결재 템플릿 생성**
+## **14. 첨부파일 다운로드 URL 조회**
+
+`GET /api/approvals/{documentId}/attachments/{fileId}/download-url`
+
+결재 첨부파일은 기밀 자료이므로 신청자 또는 결재선 참여자만 다운로드 URL을 받을 수 있다. `file` 모듈의 `GET /api/files/{fileId}/download-url`([file 모듈 API.md](../../file/docs/API.md))은 인증된 사용자면 fileId만으로 누구나 호출할 수 있으므로, 이 엔드포인트가 "요청자가 이 결재 문서의 신청자/결재선 참여자인지"와 "이 fileId가 실제로 이 documentId 소속인지"를 먼저 검증한다. 두 조건을 모두 통과해야 presigned URL을 발급한다.
+
+### **14.1 요청**
+
+Request Header
+
+| **name** | **description** |
+| --- | --- |
+| `Authorization` | `Bearer {AccessToken}` 형식의 사용자 인증 토큰입니다. |
+
+Request Parameter
+
+| **name** | **description** |
+| --- | --- |
+| `documentId` | 결재 문서 ID입니다. |
+| `fileId` | 다운로드 URL을 받을 첨부파일 ID입니다. |
+
+Request Body
+
+없음
+
+### **14.2 응답**
+
+#### **성공코드**
+
+| **HTTP 상태** | **설명** |
+| --- | --- |
+| `200 OK` | 다운로드 URL 조회 성공 |
+
+Response Body
+
+```json
+{"status":200,"code":"APPROVAL_200_10","message":"첨부파일 다운로드 URL 조회에 성공했습니다.","data":{"downloadUrl":"https://s3.ap-northeast-2.amazonaws.com/..."}}
+```
+
+### **Response Field**
+
+| **name** | **설명** |
+| --- | --- |
+| `data.downloadUrl` | 짧은 시간 동안만 유효한 S3 presigned 다운로드 URL입니다. |
+
+### **실패 코드**
+
+| **HTTP 상태** | **code** | **message** | **설명** |
+| --- | --- | --- | --- |
+| `401 Unauthorized` | `COMMON_401_1` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않은 경우 |
+| `403 Forbidden` | `APPROVAL_403_1` | 해당 결재를 조회할 권한이 없습니다. | 신청자/결재선 참여자가 아닌 경우 |
+| `404 Not Found` | `APPROVAL_404_2` | 결재 문서를 찾을 수 없습니다. | `documentId`에 해당하는 결재 문서가 없는 경우 |
+| `404 Not Found` | `APPROVAL_404_4` | 첨부파일을 찾을 수 없습니다. | `fileId`가 해당 문서의 첨부파일이 아닌 경우 |
+| `404 Not Found` | `FILE_404_1` | 파일을 찾을 수 없습니다. | 문서 소속 확인은 통과했지만 file 모듈에 해당 fileId 메타데이터가 없는 경우(정상 상황에서는 발생하지 않음) |
+
+### **알려진 제약**
+
+- 이 엔드포인트는 결재 첨부파일 전용이다. notice 등 다른 도메인의 첨부파일은 여전히 `file` 모듈의 범용 엔드포인트(`GET /api/files/{fileId}/download-url`)를 그대로 쓴다.
+- 프론트는 결재 상세 화면의 첨부파일 다운로드/미리보기에서 반드시 이 엔드포인트를 호출해야 한다. 범용 `file` 모듈 엔드포인트를 직접 호출하면 인증된 사용자면 누구나 다운로드 URL을 받을 수 있다(의도한 동작이 아님).
+
+---
+
+## **15. 결재 템플릿 생성**
 
 `POST /api/approval-templates`
 
@@ -804,7 +877,7 @@ Response Body
 
 ---
 
-## **15. 결재 템플릿 목록 조회**
+## **16. 결재 템플릿 목록 조회**
 
 `GET /api/approval-templates`
 
@@ -858,7 +931,7 @@ Response Body
 
 ---
 
-## **16. 결재 템플릿 상세 조회**
+## **17. 결재 템플릿 상세 조회**
 
 `GET /api/approval-templates/{templateId}`
 
@@ -914,7 +987,7 @@ Response Body
 
 ---
 
-## **17. 결재 템플릿 수정**
+## **18. 결재 템플릿 수정**
 
 `PATCH /api/approval-templates/{templateId}`
 
@@ -970,7 +1043,7 @@ Request Body
 
 ---
 
-## **18. 결재 템플릿 삭제**
+## **19. 결재 템플릿 삭제**
 
 `DELETE /api/approval-templates/{templateId}`
 
@@ -1008,7 +1081,7 @@ Request Parameter
 
 ---
 
-## **19. (사용 중지 예정) 웹 푸시 구독 등록**
+## **20. (사용 중지 예정) 웹 푸시 구독 등록**
 
 `POST /api/approvals/push-subscriptions`
 
@@ -1067,7 +1140,7 @@ Response Body
 
 ---
 
-## **20. (사용 중지 예정) 웹 푸시 구독 해지**
+## **21. (사용 중지 예정) 웹 푸시 구독 해지**
 
 `DELETE /api/approvals/push-subscriptions?endpoint={endpoint}`
 

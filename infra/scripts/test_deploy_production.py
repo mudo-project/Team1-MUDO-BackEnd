@@ -57,10 +57,16 @@ class DeploymentManifestTest(unittest.TestCase):
         self.assertEqual("basic", environment["TENANT_PLAN"])
         self.assertEqual("30", environment["SERVER_TOMCAT_THREADS_MAX"])
         self.assertEqual(500, container["cpu"])
-        self.assertEqual(480, container["memoryReservation"])
-        self.assertEqual(550, container["memory"])
+        self.assertEqual(640, container["memoryReservation"])
+        self.assertEqual(768, container["memory"])
         self.assertEqual("academy-a", container["dockerLabels"]["mudo.tenant"])
         self.assertIn("DB_PASSWORD", secret_names)
+        self.assertIn("GOOGLE_TOKEN_ENCRYPTION_KEY", secret_names)
+        self.assertIn("GOOGLE_CLIENT_ID", secret_names)
+        self.assertIn("GOOGLE_CLIENT_SECRET", secret_names)
+        self.assertIn("GOOGLE_REDIRECT_URI", secret_names)
+        self.assertIn("GOOGLE_OAUTH_FRONTEND_REDIRECT_URI", secret_names)
+        self.assertIn("APP_FRONTEND_URL", secret_names)
         self.assertNotIn("DB_PASSWORD", environment)
 
     def test_billing_plan_does_not_change_runtime_resources(self):

@@ -20,7 +20,7 @@
 
 | 엔티티 | 주요 필드 | 비고 |
 |---|---|---|
-| `Student` | `academyId`, `name`, `grade`, `school`, `phone`, `parentPhone`, `note`, `createdAt`, `updatedAt` | 학생 마스터 데이터. `users`와 무관하며 로그인 계정이 없다. |
+| `Student` | `academyId`, `name`, `grade`, `school`, `phone`, `parentPhone`, `note`, `createdAt`, `updatedAt`, `deletedAt` | 학생 마스터 데이터. `users`와 무관하며 로그인 계정이 없다. 삭제는 소프트 삭제(`deletedAt`)이며, 30일 경과 후 배치로 하드 삭제된다(아래 "삭제 정책" 참고). |
 | `Enrollment` | `academyId`, `studentId`, `lectureId`, `enrolledAt`, `status`(enum: `ACTIVE`/`ENDED`) | 학생과 강의의 수강 연결. 같은 학생이 같은 강의에 중복 등록되지 않게 한다. |
 
 모든 테이블에 `academyId`(멀티테넌시) 컬럼을 두고, 모든 조회·생성·수정 경로에서 요청자 학원 스코프를 검증한다.
@@ -39,6 +39,13 @@
 - 같은 학생을 같은 강의에 중복 등록하지 않는다.
 - `Enrollment.status=ACTIVE`이면 현재 수강 중으로 본다.
 - 수강 종료/휴강/퇴원 처리는 추후 확장 가능하게 상태값을 두되, 이번 화면의 핵심 흐름은 학생 등록과 현재 수강 등록이다.
+
+### 삭제 정책 (소프트 삭제 → 하드 삭제)
+
+- `DELETE /api/students/{studentId}`는 `deletedAt`만 채우는 소프트 삭제다. 삭제 즉시 목록/상세/수정 조회에서 제외되지만 DB row와 수강 이력(`student_enrollment`)은 그대로 남는다.
+- 소프트 삭제 후 **30일이 지난 학생**은 `global`의 공통 삭제 배치(`GlobalRetentionScheduler`, 매일 03:00 KST)가 자동으로 하드 삭제한다 — `student.application.retention.{StudentRetentionJob, StudentRetentionService, StudentRetentionProperties}`, `StudentRetentionAdapter`.
+- 하드 삭제 순서: 수강 이력(자식) 먼저 삭제 → 학생(부모) 삭제. 삭제 시점에 `deletedAt < threshold` 조건을 다시 검사해, 후보 조회 이후 상태가 바뀐 경우(복구 등)를 방어한다.
+- 보관 기간(30일)과 배치 크기(500)는 `StudentRetentionProperties` 기본값으로 관리하며 비밀값이 아니다. 설계 배경은 [global/docs/BOILER_PLATE.md](../../global/docs/BOILER_PLATE.md) 참고.
 
 ## 외부에 공개하는 Application API
 

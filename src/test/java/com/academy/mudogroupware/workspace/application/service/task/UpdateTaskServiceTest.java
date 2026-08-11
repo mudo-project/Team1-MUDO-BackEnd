@@ -236,7 +236,7 @@ class UpdateTaskServiceTest {
 
   private void givenWorkspaceWithMember() {
     Workspace workspace =
-        Workspace.restore(WORKSPACE_ID, 1L, "8월 학사 운영", MEMBER_ID, Set.of(MEMBER_ID));
+        Workspace.restore(WORKSPACE_ID, "8월 학사 운영", MEMBER_ID, Set.of(MEMBER_ID));
     when(workspaceRepository.findById(WORKSPACE_ID)).thenReturn(Optional.of(workspace));
   }
 

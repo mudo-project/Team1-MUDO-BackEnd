@@ -17,9 +17,13 @@ public interface UserRepository {
 
     List<User> searchByAcademyId(Long academyId, String keyword);
 
+    List<User> findAllByAcademyId(Long academyId);
+
     Map<Long, Long> countActiveByRoleIds(Set<Long> roleIds);
 
     User save(User user);
+
+    boolean completePasswordSetup(Long userId, String newPasswordHash);
 
     Optional<User> findByUsername(String username);
 

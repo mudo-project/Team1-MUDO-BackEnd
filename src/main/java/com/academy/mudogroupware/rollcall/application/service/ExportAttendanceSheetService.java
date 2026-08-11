@@ -31,8 +31,8 @@ public class ExportAttendanceSheetService implements ExportAttendanceSheetUseCas
     private final GetLectureRosterUseCase getLectureRosterUseCase;
 
     @Override
-    public byte[] exportSheet(Long lectureId, Long academyId, LocalDate date) {
-        RosterView roster = getLectureRosterUseCase.getRoster(lectureId, academyId, date);
+    public byte[] exportSheet(Long lectureId, LocalDate date) {
+        RosterView roster = getLectureRosterUseCase.getRoster(lectureId, date);
 
         try (XSSFWorkbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Sheet sheet = workbook.createSheet("출결부");

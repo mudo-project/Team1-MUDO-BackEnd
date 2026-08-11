@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.academy.mudogroupware.approval.application.command.CancelApprovalDocumentCommand;
+import com.academy.mudogroupware.approval.application.command.GetApprovalAttachmentDownloadUrlCommand;
 import com.academy.mudogroupware.approval.application.command.HideApprovalHistoryCommand;
 import com.academy.mudogroupware.approval.application.command.ResubmitApprovalDocumentCommand;
 import com.academy.mudogroupware.approval.application.command.SummarizeApprovalAttachmentCommand;
@@ -25,6 +26,7 @@ import com.academy.mudogroupware.approval.application.usecase.ApprovalQueryUseCa
 import com.academy.mudogroupware.approval.application.usecase.CancelApprovalDocumentUseCase;
 import com.academy.mudogroupware.approval.application.usecase.CreateApprovalDocumentUseCase;
 import com.academy.mudogroupware.approval.application.usecase.DecideApprovalLineUseCase;
+import com.academy.mudogroupware.approval.application.usecase.GetApprovalAttachmentDownloadUrlUseCase;
 import com.academy.mudogroupware.approval.application.usecase.HideApprovalHistoryUseCase;
 import com.academy.mudogroupware.approval.application.usecase.ResubmitApprovalDocumentUseCase;
 import com.academy.mudogroupware.approval.application.usecase.SummarizeApprovalAttachmentUseCase;
@@ -33,6 +35,7 @@ import com.academy.mudogroupware.approval.presentation.api.common.ApprovalRespon
 import com.academy.mudogroupware.approval.presentation.api.request.CreateApprovalDocumentRequest;
 import com.academy.mudogroupware.approval.presentation.api.request.DecideApprovalLineRequest;
 import com.academy.mudogroupware.approval.presentation.api.request.UpdateApprovalDocumentLinesRequest;
+import com.academy.mudogroupware.approval.presentation.api.response.ApprovalAttachmentDownloadUrlResponse;
 import com.academy.mudogroupware.approval.presentation.api.response.ApprovalAttachmentSummaryResponse;
 import com.academy.mudogroupware.approval.presentation.api.response.ApprovalCreateResponse;
 import com.academy.mudogroupware.approval.presentation.api.response.ApprovalDetailResponse;
@@ -61,6 +64,7 @@ public class ApprovalController {
     private final UpdateApprovalDocumentLinesUseCase updateApprovalDocumentLinesUseCase;
     private final ResubmitApprovalDocumentUseCase resubmitApprovalDocumentUseCase;
     private final SummarizeApprovalAttachmentUseCase summarizeApprovalAttachmentUseCase;
+    private final GetApprovalAttachmentDownloadUrlUseCase getApprovalAttachmentDownloadUrlUseCase;
     private final CancelApprovalDocumentUseCase cancelApprovalDocumentUseCase;
     private final HideApprovalHistoryUseCase hideApprovalHistoryUseCase;
     private final ApprovalQueryUseCase approvalQueryUseCase;
@@ -71,7 +75,8 @@ public class ApprovalController {
     public ResponseEntity<GlobalApiResponse<ApprovalCreateResponse>> createDocument(
             @AuthenticationPrincipal AuthUser authUser,
             @Valid @RequestBody CreateApprovalDocumentRequest request) {
-        Long documentId = createApprovalDocumentUseCase.createDocument(request.toCommand(authUser.userId()));
+        Long documentId = createApprovalDocumentUseCase.createDocument(
+                request.toCommand(authUser.userId()));
         ApprovalCreateResponse data = ApprovalCreateResponse.from(documentId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(GlobalApiResponse.created(ApprovalResponseCode.DOCUMENT_CREATED, data));
@@ -85,7 +90,7 @@ public class ApprovalController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         SliceResponse<ApprovalSubmittedSummaryResponse> data = SliceResponse.from(
-                approvalQueryUseCase.getAllApprovals(authUser.academyId(), page, size),
+                approvalQueryUseCase.getAllApprovals(page, size),
                 ApprovalSubmittedSummaryResponse::from);
         return ResponseEntity.ok(GlobalApiResponse.ok(ApprovalResponseCode.ALL_APPROVALS_RETRIEVED, data));
     }
@@ -150,7 +155,7 @@ public class ApprovalController {
             Authentication authentication,
             @PathVariable Long documentId) {
         ApprovalDetailView view = approvalQueryUseCase.getApprovalDetail(documentId, authUser.userId(),
-                authUser.academyId(), hasApprovalReadAll(authentication));
+                hasApprovalReadAll(authentication));
         ApprovalDetailResponse data = ApprovalDetailResponse.from(view);
         return ResponseEntity.ok(GlobalApiResponse.ok(ApprovalResponseCode.DOCUMENT_DETAIL_RETRIEVED, data));
     }
@@ -205,6 +210,20 @@ public class ApprovalController {
                 new SummarizeApprovalAttachmentCommand(documentId, fileId, authUser.userId()));
         ApprovalAttachmentSummaryResponse data = ApprovalAttachmentSummaryResponse.from(view);
         return ResponseEntity.ok(GlobalApiResponse.ok(ApprovalResponseCode.ATTACHMENT_SUMMARIZED, data));
+    }
+
+    @Operation(summary = "첨부파일 다운로드 URL 조회",
+            description = "결재 첨부파일은 기밀 자료이므로 신청자 또는 결재선 참여자만 다운로드 URL을 받을 수 있다. "
+                    + "요청한 fileId가 해당 결재 문서 소속이 아니면 조회에 실패한다.")
+    @GetMapping("/{documentId}/attachments/{fileId}/download-url")
+    public ResponseEntity<GlobalApiResponse<ApprovalAttachmentDownloadUrlResponse>> getAttachmentDownloadUrl(
+            @AuthenticationPrincipal AuthUser authUser,
+            @PathVariable Long documentId,
+            @PathVariable Long fileId) {
+        String downloadUrl = getApprovalAttachmentDownloadUrlUseCase.getDownloadUrl(
+                new GetApprovalAttachmentDownloadUrlCommand(documentId, fileId, authUser.userId()));
+        return ResponseEntity.ok(GlobalApiResponse.ok(ApprovalResponseCode.ATTACHMENT_DOWNLOAD_URL_RETRIEVED,
+                ApprovalAttachmentDownloadUrlResponse.from(downloadUrl)));
     }
 
     private boolean hasApprovalReadAll(Authentication authentication) {

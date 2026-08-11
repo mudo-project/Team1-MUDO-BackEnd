@@ -41,7 +41,7 @@ class GetTimetableSlotsServiceTest {
     @Test
     void getSlotsReturnsAllSlotsInSet() {
         TimetableSet set = TimetableSet.restore(
-                1L, 1L, "이름", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16),
+                1L, "이름", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16),
                 LocalTime.of(8, 30), LocalTime.of(22, 0), Set.of(DayOfWeek.MONDAY), 30,
                 List.of(new TimetableClassroom("6층", "601")), null, null);
         when(timetableSetRepository.findById(1L)).thenReturn(Optional.of(set));
@@ -50,7 +50,7 @@ class GetTimetableSlotsServiceTest {
                 Grade.HIGH_3, "정T", "미적분", set.getStartDate(), set.getEndDate(), null, null);
         when(timetableSlotRepository.findAllByTimetableSetId(1L)).thenReturn(List.of(slot));
 
-        List<TimetableSlotView> views = service.getSlots(1L, 1L);
+        List<TimetableSlotView> views = service.getSlots(1L);
 
         assertThat(views).hasSize(1);
         assertThat(views.get(0).classroomCode()).isEqualTo("601");

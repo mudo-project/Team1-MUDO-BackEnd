@@ -129,7 +129,7 @@ class TimetableControllerTest {
 
     @Test
     void getTimetableSetsReturns200WithList() throws Exception {
-        when(getTimetableSetsUseCase.getTimetableSets(1L)).thenReturn(List.of(
+        when(getTimetableSetsUseCase.getTimetableSets()).thenReturn(List.of(
                 new TimetableSetSummaryView(
                         1L, "2026 여름특강", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16),
                         TimetableSetStatus.ACTIVE)));
@@ -148,7 +148,7 @@ class TimetableControllerTest {
                 1L, "2026 여름특강", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16),
                 LocalTime.of(8, 30), LocalTime.of(22, 0), Set.of(DayOfWeek.MONDAY), 30,
                 List.of(new TimetableClassroom("6층", "601")), TimetableSetStatus.ACTIVE);
-        when(getTimetableSetUseCase.getTimetableSet(1L, 1L)).thenReturn(view);
+        when(getTimetableSetUseCase.getTimetableSet(1L)).thenReturn(view);
 
         mockMvc.perform(get("/api/timetables/1")
                         .with(authentication(authenticatedUser())))
@@ -160,7 +160,7 @@ class TimetableControllerTest {
 
     @Test
     void getTimetableSetReturns404WhenNotFound() throws Exception {
-        when(getTimetableSetUseCase.getTimetableSet(1L, 999L))
+        when(getTimetableSetUseCase.getTimetableSet(999L))
                 .thenThrow(new TimetableSetNotFoundException());
 
         mockMvc.perform(get("/api/timetables/999")

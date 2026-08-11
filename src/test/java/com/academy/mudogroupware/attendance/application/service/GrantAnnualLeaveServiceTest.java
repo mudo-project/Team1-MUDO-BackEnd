@@ -33,9 +33,9 @@ class GrantAnnualLeaveServiceTest {
         GrantAnnualLeaveService service = new GrantAnnualLeaveService(employeePort, leaveGrantRepository);
         LocalDateTime now = LocalDateTime.of(2026, 8, 6, 0, 5);
         when(employeePort.findActiveEmployeesWithJoinedDate())
-                .thenReturn(List.of(new LeaveGrantEmployee(2L, 1L, LocalDate.of(2024, 10, 10))));
-        when(leaveGrantRepository.existsByAcademyIdAndUserIdAndGrantDate(
-                1L, 2L, LocalDate.of(2025, 10, 10))).thenReturn(false);
+                .thenReturn(List.of(new LeaveGrantEmployee(2L, LocalDate.of(2024, 10, 10))));
+        when(leaveGrantRepository.existsByUserIdAndGrantDate(
+                2L, LocalDate.of(2025, 10, 10))).thenReturn(false);
 
         int count = service.grantAnnualLeave(now);
 
@@ -52,9 +52,9 @@ class GrantAnnualLeaveServiceTest {
         GrantAnnualLeaveService service = new GrantAnnualLeaveService(employeePort, leaveGrantRepository);
         LocalDateTime now = LocalDateTime.of(2026, 8, 6, 0, 5);
         when(employeePort.findActiveEmployeesWithJoinedDate())
-                .thenReturn(List.of(new LeaveGrantEmployee(2L, 1L, LocalDate.of(2024, 8, 6))));
-        when(leaveGrantRepository.existsByAcademyIdAndUserIdAndGrantDate(
-                1L, 2L, LocalDate.of(2026, 8, 6))).thenReturn(true);
+                .thenReturn(List.of(new LeaveGrantEmployee(2L, LocalDate.of(2024, 8, 6))));
+        when(leaveGrantRepository.existsByUserIdAndGrantDate(
+                2L, LocalDate.of(2026, 8, 6))).thenReturn(true);
 
         int count = service.grantAnnualLeave(now);
 

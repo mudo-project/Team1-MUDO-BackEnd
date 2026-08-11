@@ -10,15 +10,15 @@ public interface EnrollmentRepository {
 
     Enrollment save(Enrollment enrollment);
 
-    Optional<Enrollment> findByStudentIdAndLectureId(Long academyId, Long studentId, Long lectureId);
+    Optional<Enrollment> findByStudentIdAndLectureId(Long studentId, Long lectureId);
 
-    Optional<Enrollment> findById(Long academyId, Long studentId, Long enrollmentId);
+    Optional<Enrollment> findById(Long studentId, Long enrollmentId);
 
-    List<Enrollment> findActiveByStudentId(Long academyId, Long studentId);
+    List<Enrollment> findActiveByStudentId(Long studentId);
 
-    Map<Long, Long> countActiveByStudentIds(Long academyId, List<Long> studentIds);
+    Map<Long, Long> countActiveByStudentIds(List<Long> studentIds);
 
-    List<Enrollment> findActiveByLectureId(Long academyId, Long lectureId);
+    List<Enrollment> findActiveByLectureId(Long lectureId);
 
-    Map<Long, Long> countActiveByLectureIds(Long academyId, List<Long> lectureIds);
+    Map<Long, Long> countActiveByLectureIds(List<Long> lectureIds);
 }

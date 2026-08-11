@@ -9,7 +9,7 @@ public record UpdateMessageTemplateRequest(
         @NotBlank String content
 ) {
 
-    public UpdateMessageTemplateCommand toCommand(Long templateId, Long academyId) {
-        return new UpdateMessageTemplateCommand(templateId, academyId, name, content);
+    public UpdateMessageTemplateCommand toCommand(Long templateId) {
+        return new UpdateMessageTemplateCommand(templateId, name, content);
     }
 }

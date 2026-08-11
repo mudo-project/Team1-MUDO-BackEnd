@@ -8,20 +8,23 @@ import java.util.Optional;
 import com.academy.mudogroupware.attendance.domain.model.AttendanceRecord;
 
 public interface AttendanceRecordRepository {
-    boolean existsByAcademyIdAndUserIdAndWorkDate(
-            Long academyId, Long userId, LocalDate workDate);
+    boolean existsByUserIdAndWorkDate(
+            Long userId, LocalDate workDate);
 
     AttendanceRecord save(AttendanceRecord attendanceRecord);
 
     Optional<AttendanceRecord> findLatestOpenSince(
-            Long academyId, Long userId, LocalDate earliestWorkDate);
+            Long userId, LocalDate earliestWorkDate);
 
     boolean existsCheckedOutBetween(
-            Long academyId, Long userId, LocalDateTime from, LocalDateTime to);
+            Long userId, LocalDateTime from, LocalDateTime to);
 
-    Optional<AttendanceRecord> findByAcademyIdAndUserIdAndWorkDate(
-            Long academyId, Long userId, LocalDate workDate);
+    Optional<AttendanceRecord> findByUserIdAndWorkDate(
+            Long userId, LocalDate workDate);
 
-    List<AttendanceRecord> findByAcademyIdAndUserIdAndWorkDateBetween(
-            Long academyId, Long userId, LocalDate startDate, LocalDate endDate);
+    List<AttendanceRecord> findByUserIdAndWorkDateBetween(
+            Long userId, LocalDate startDate, LocalDate endDate);
+
+    List<AttendanceRecord> findAllByUserIdsAndWorkDate(
+            List<Long> userIds, LocalDate workDate);
 }

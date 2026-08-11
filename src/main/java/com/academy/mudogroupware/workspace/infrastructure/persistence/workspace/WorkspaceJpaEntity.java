@@ -22,8 +22,8 @@ import lombok.NoArgsConstructor;
     name = "workspace",
     uniqueConstraints =
         @UniqueConstraint(
-            name = "uk_workspace_academy_active_name",
-            columnNames = {"academy_id", "active_name"}))
+            name = "uk_workspace_active_name",
+            columnNames = {"active_name"}))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class WorkspaceJpaEntity extends SoftDeleteTimeEntity {
@@ -32,9 +32,6 @@ public class WorkspaceJpaEntity extends SoftDeleteTimeEntity {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(name = "workspace_id")
   private Long id;
-
-  @Column(name = "academy_id", nullable = false)
-  private Long academyId;
 
   @Column(nullable = false, length = 100)
   private String name;
@@ -57,18 +54,13 @@ public class WorkspaceJpaEntity extends SoftDeleteTimeEntity {
   private List<WorkspaceMemberJpaEntity> members = new ArrayList<>();
 
   @Builder
-  private WorkspaceJpaEntity(Long academyId, String name, Long createdBy) {
-    this.academyId = academyId;
+  private WorkspaceJpaEntity(String name, Long createdBy) {
     this.name = name;
     this.createdBy = createdBy;
   }
 
-  public static WorkspaceJpaEntity create(Long academyId, String name, Long createdBy) {
-    return WorkspaceJpaEntity.builder()
-        .academyId(academyId)
-        .name(name)
-        .createdBy(createdBy)
-        .build();
+  public static WorkspaceJpaEntity create(String name, Long createdBy) {
+    return WorkspaceJpaEntity.builder().name(name).createdBy(createdBy).build();
   }
 
   public WorkspaceMemberJpaEntity addMember(Long userId) {

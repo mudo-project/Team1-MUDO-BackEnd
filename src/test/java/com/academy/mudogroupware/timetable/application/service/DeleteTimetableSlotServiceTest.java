@@ -48,21 +48,21 @@ class DeleteTimetableSlotServiceTest {
         service = new DeleteTimetableSlotService(timetableSetRepository, timetableSlotRepository);
     }
 
-    private TimetableSet timetableSet(Long academyId) {
+    private TimetableSet timetableSet() {
         return TimetableSet.restore(
-                1L, academyId, "이름", FROM, UNTIL, LocalTime.of(8, 30), LocalTime.of(22, 0),
+                1L, "이름", FROM, UNTIL, LocalTime.of(8, 30), LocalTime.of(22, 0),
                 Set.of(DayOfWeek.MONDAY), 30, List.of(new TimetableClassroom("6층", "601")), null, null);
     }
 
     @Test
     void deleteSlotDeletesWhenScopeIsAllAndBelongsToSet() {
-        when(timetableSetRepository.findById(1L)).thenReturn(Optional.of(timetableSet(1L)));
+        when(timetableSetRepository.findById(1L)).thenReturn(Optional.of(timetableSet()));
         TimetableSlot slot = TimetableSlot.restore(
                 100L, 1L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
                 Grade.HIGH_3, "정T", "미적분", FROM, UNTIL, null, null);
         when(timetableSlotRepository.findById(100L)).thenReturn(Optional.of(slot));
 
-        service.deleteSlot(new DeleteTimetableSlotCommand(1L, 1L, 100L, UpdateScope.ALL));
+        service.deleteSlot(new DeleteTimetableSlotCommand(1L, 100L, UpdateScope.ALL));
 
         verify(timetableSlotRepository).deleteById(100L);
     }
@@ -70,7 +70,7 @@ class DeleteTimetableSlotServiceTest {
     @Test
     void deleteSlotThrowsWhenScopeIsNotAll() {
         assertThatThrownBy(() -> service.deleteSlot(
-                new DeleteTimetableSlotCommand(1L, 1L, 100L, UpdateScope.FROM_NOW)))
+                new DeleteTimetableSlotCommand(1L, 100L, UpdateScope.FROM_NOW)))
                 .isInstanceOf(UnsupportedSlotScopeException.class);
         verify(timetableSlotRepository, never()).deleteById(anyLong());
     }
@@ -79,36 +79,36 @@ class DeleteTimetableSlotServiceTest {
     void deleteSlotThrowsWhenTimetableSetNotFound() {
         when(timetableSetRepository.findById(999L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.deleteSlot(new DeleteTimetableSlotCommand(1L, 999L, 100L, UpdateScope.ALL)))
+        assertThatThrownBy(() -> service.deleteSlot(new DeleteTimetableSlotCommand(999L, 100L, UpdateScope.ALL)))
                 .isInstanceOf(TimetableSetNotFoundException.class);
     }
 
     @Test
-    void deleteSlotThrowsWhenTimetableSetBelongsToDifferentAcademy() {
-        when(timetableSetRepository.findById(1L)).thenReturn(Optional.of(timetableSet(2L)));
+    void deleteSlotThrowsWhenSlotIsMissing() {
+        when(timetableSetRepository.findById(1L)).thenReturn(Optional.of(timetableSet()));
 
-        assertThatThrownBy(() -> service.deleteSlot(new DeleteTimetableSlotCommand(1L, 1L, 100L, UpdateScope.ALL)))
-                .isInstanceOf(TimetableSetNotFoundException.class);
+        assertThatThrownBy(() -> service.deleteSlot(new DeleteTimetableSlotCommand(1L, 100L, UpdateScope.ALL)))
+                .isInstanceOf(TimetableSlotNotFoundException.class);
     }
 
     @Test
     void deleteSlotThrowsWhenNotFound() {
-        when(timetableSetRepository.findById(1L)).thenReturn(Optional.of(timetableSet(1L)));
+        when(timetableSetRepository.findById(1L)).thenReturn(Optional.of(timetableSet()));
         when(timetableSlotRepository.findById(999L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.deleteSlot(new DeleteTimetableSlotCommand(1L, 1L, 999L, UpdateScope.ALL)))
+        assertThatThrownBy(() -> service.deleteSlot(new DeleteTimetableSlotCommand(1L, 999L, UpdateScope.ALL)))
                 .isInstanceOf(TimetableSlotNotFoundException.class);
     }
 
     @Test
     void deleteSlotThrowsWhenBelongsToDifferentSet() {
-        when(timetableSetRepository.findById(1L)).thenReturn(Optional.of(timetableSet(1L)));
+        when(timetableSetRepository.findById(1L)).thenReturn(Optional.of(timetableSet()));
         TimetableSlot slot = TimetableSlot.restore(
                 100L, 2L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
                 Grade.HIGH_3, "정T", "미적분", FROM, UNTIL, null, null);
         when(timetableSlotRepository.findById(100L)).thenReturn(Optional.of(slot));
 
-        assertThatThrownBy(() -> service.deleteSlot(new DeleteTimetableSlotCommand(1L, 1L, 100L, UpdateScope.ALL)))
+        assertThatThrownBy(() -> service.deleteSlot(new DeleteTimetableSlotCommand(1L, 100L, UpdateScope.ALL)))
                 .isInstanceOf(TimetableSlotNotFoundException.class);
     }
 }

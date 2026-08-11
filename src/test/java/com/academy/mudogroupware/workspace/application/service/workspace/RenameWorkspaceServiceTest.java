@@ -34,7 +34,7 @@ class RenameWorkspaceServiceTest {
   @Test
   void renamesWorkspaceWhenRequesterIsCurrentMember() {
     when(workspaceRepository.findByIdForUpdate(100L))
-        .thenReturn(Optional.of(Workspace.restore(100L, 1L, "개발팀", 10L, Set.of(10L))));
+        .thenReturn(Optional.of(Workspace.restore(100L, "개발팀", 10L, Set.of(10L))));
 
     String name = renameWorkspaceService.rename(new RenameWorkspaceCommand(10L, 100L, "  운영팀  "));
 
@@ -45,7 +45,7 @@ class RenameWorkspaceServiceTest {
   @Test
   void rejectsRenameWhenRequesterIsNotCurrentMember() {
     when(workspaceRepository.findByIdForUpdate(100L))
-        .thenReturn(Optional.of(Workspace.restore(100L, 1L, "개발팀", 10L, Set.of(10L))));
+        .thenReturn(Optional.of(Workspace.restore(100L, "개발팀", 10L, Set.of(10L))));
 
     assertThatThrownBy(
             () -> renameWorkspaceService.rename(new RenameWorkspaceCommand(99L, 100L, "운영팀")))

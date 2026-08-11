@@ -19,25 +19,16 @@ public class WorkspaceQueryService implements WorkspaceQueryUseCase {
   private final WorkspaceListQueryPort workspaceListQueryPort;
 
   @Override
-  public List<WorkspaceListItem> getWorkspaces(
-      Long academyId, Long userId, WorkspaceListScope scope) {
-    log.info(
-        "event=workspace_list_시작 academyId={}, userId={}, scope={}",
-        academyId,
-        userId,
-        scope);
+  public List<WorkspaceListItem> getWorkspaces(Long userId, WorkspaceListScope scope) {
+    log.info("event=workspace_list_시작 userId={}, scope={}", userId, scope);
 
     List<WorkspaceListItem> result =
         switch (scope) {
-          case MINE -> workspaceListQueryPort.findMine(academyId, userId);
-          case ALL -> workspaceListQueryPort.findAll(academyId, userId);
+          case MINE -> workspaceListQueryPort.findMine(userId);
+          case ALL -> workspaceListQueryPort.findAll(userId);
         };
 
-    log.info(
-        "event=workspace_list_완료 academyId={}, userId={}, count={}",
-        academyId,
-        userId,
-        result.size());
+    log.info("event=workspace_list_완료 userId={}, count={}", userId, result.size());
     return result;
   }
 }

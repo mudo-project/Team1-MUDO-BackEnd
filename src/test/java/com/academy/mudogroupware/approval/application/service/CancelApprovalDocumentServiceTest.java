@@ -54,7 +54,6 @@ class CancelApprovalDocumentServiceTest {
         assertThat(eventCaptor.getValue())
                 .isInstanceOfSatisfying(ApprovalDocumentDecidedEvent.class, event -> {
                     assertThat(event.documentId()).isEqualTo(1L);
-                    assertThat(event.academyId()).isEqualTo(1L);
                     assertThat(event.requesterId()).isEqualTo(7L);
                     assertThat(event.approved()).isFalse();
                     assertThat(event.decidedAt()).isEqualTo(NOW);
@@ -77,11 +76,10 @@ class CancelApprovalDocumentServiceTest {
         return ApprovalDocument.restore(
                 1L,
                 1L,
-                1L,
                 "Vacation",
                 ApprovalContent.create(ApprovalContentType.TEXT, "content"),
                 7L,
-                ApprovalDocument.create(1L, 1L, "Vacation", ApprovalContent.create(ApprovalContentType.TEXT, "content"),
+                ApprovalDocument.create(1L, "Vacation", ApprovalContent.create(ApprovalContentType.TEXT, "content"),
                         7L, List.of(12L), List.of(), CREATED_AT).getLines(),
                 List.of(),
                 ApprovalStatus.IN_PROGRESS,

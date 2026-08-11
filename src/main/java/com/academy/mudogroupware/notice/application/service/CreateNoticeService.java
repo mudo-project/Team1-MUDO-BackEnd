@@ -9,7 +9,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.academy.mudogroupware.notice.application.command.CreateNoticeCommand;
 import com.academy.mudogroupware.notice.application.command.NoticeAttachmentInput;
-import com.academy.mudogroupware.notice.application.port.AuthorInfo;
 import com.academy.mudogroupware.notice.application.port.NoticeAuthorDirectoryPort;
 import com.academy.mudogroupware.notice.application.usecase.CreateNoticeUseCase;
 import com.academy.mudogroupware.notice.domain.model.Notice;
@@ -32,13 +31,13 @@ public class CreateNoticeService implements CreateNoticeUseCase {
     @Override
     public Long createNotice(CreateNoticeCommand command) {
         log.info("event=notice_create_시작 authorUserId={}", command.authorUserId());
-        AuthorInfo author = noticeAuthorDirectoryPort.getAuthor(command.authorUserId());
+        noticeAuthorDirectoryPort.getAuthor(command.authorUserId());
 
         List<NoticeAttachment> attachments = command.attachments() == null
                 ? List.of()
                 : command.attachments().stream().map(this::toAttachment).toList();
 
-        Notice notice = Notice.create(author.academyId(), command.authorUserId(), command.title(),
+        Notice notice = Notice.create(command.authorUserId(), command.title(),
                 command.content(), command.pinned(), attachments, LocalDateTime.now(clock));
 
         Long noticeId = noticeRepository.save(notice).getId();

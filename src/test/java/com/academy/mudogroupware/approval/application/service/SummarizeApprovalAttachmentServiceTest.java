@@ -13,8 +13,11 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.SimpleTransactionStatus;
 
 import com.academy.mudogroupware.approval.application.command.SummarizeApprovalAttachmentCommand;
+import com.academy.mudogroupware.approval.application.port.AttachmentContent;
 import com.academy.mudogroupware.approval.application.port.AttachmentContentPort;
 import com.academy.mudogroupware.approval.application.port.AttachmentContentUnavailableException;
 import com.academy.mudogroupware.approval.application.port.AttachmentSummarizationException;
@@ -37,6 +40,7 @@ class SummarizeApprovalAttachmentServiceTest {
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 4, 15, 0);
 
     private final ApprovalDocumentRepository approvalDocumentRepository = mock(ApprovalDocumentRepository.class);
+    private final PlatformTransactionManager transactionManager = mock(PlatformTransactionManager.class);
     private final AttachmentContentPort attachmentContentPort = mock(AttachmentContentPort.class);
     private final AttachmentSummarizerPort attachmentSummarizerPort = mock(AttachmentSummarizerPort.class);
     private final Clock clock = Clock.fixed(
@@ -46,12 +50,13 @@ class SummarizeApprovalAttachmentServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new SummarizeApprovalAttachmentService(approvalDocumentRepository, attachmentContentPort,
-                attachmentSummarizerPort, clock);
+        when(transactionManager.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
+        service = new SummarizeApprovalAttachmentService(approvalDocumentRepository, transactionManager,
+                attachmentContentPort, attachmentSummarizerPort, clock);
     }
 
     private ApprovalDocument newDocument() {
-        return ApprovalDocument.create(1L, 1L, "제목", ApprovalContent.create(ApprovalContentType.TEXT, "내용"),
+        return ApprovalDocument.create(1L, "제목", ApprovalContent.create(ApprovalContentType.TEXT, "내용"),
                 CREATOR_ID, List.of(APPROVER_ID), List.of(FILE_ID), CREATED_AT);
     }
 
@@ -90,9 +95,10 @@ class SummarizeApprovalAttachmentServiceTest {
     @Test
     void appliesSummaryAndSavesDocumentOnSuccess() {
         ApprovalDocument document = newDocument();
+        AttachmentContent content = AttachmentContent.text("실제 첨부파일 본문");
         when(approvalDocumentRepository.findById(1L)).thenReturn(Optional.of(document));
-        when(attachmentContentPort.loadContent(FILE_ID)).thenReturn("실제 첨부파일 본문");
-        when(attachmentSummarizerPort.summarize(anyString())).thenReturn("생성된 요약");
+        when(attachmentContentPort.loadContent(FILE_ID)).thenReturn(content);
+        when(attachmentSummarizerPort.summarize(content)).thenReturn("생성된 요약");
         when(approvalDocumentRepository.save(document)).thenReturn(document);
 
         ApprovalAttachmentSummaryView view = service.summarize(
@@ -102,7 +108,7 @@ class SummarizeApprovalAttachmentServiceTest {
         assertThat(view.aiSummary()).isEqualTo("생성된 요약");
         assertThat(view.summaryStatus()).isEqualTo(AttachmentSummaryStatus.COMPLETED);
         assertThat(view.summarizedAt()).isEqualTo(NOW);
-        verify(attachmentSummarizerPort).summarize("실제 첨부파일 본문");
+        verify(attachmentSummarizerPort).summarize(content);
         verify(approvalDocumentRepository).save(document);
     }
 
@@ -131,8 +137,8 @@ class SummarizeApprovalAttachmentServiceTest {
     void marksFailedAndStillSavesWhenSummarizerFails() {
         ApprovalDocument document = newDocument();
         when(approvalDocumentRepository.findById(1L)).thenReturn(Optional.of(document));
-        when(attachmentContentPort.loadContent(FILE_ID)).thenReturn("실제 첨부파일 본문");
-        when(attachmentSummarizerPort.summarize(anyString()))
+        when(attachmentContentPort.loadContent(FILE_ID)).thenReturn(AttachmentContent.text("실제 첨부파일 본문"));
+        when(attachmentSummarizerPort.summarize(any(AttachmentContent.class)))
                 .thenThrow(new AttachmentSummarizationException("Gemini API 호출에 실패했습니다."));
 
         assertThatThrownBy(() -> service.summarize(new SummarizeApprovalAttachmentCommand(1L, FILE_ID, CREATOR_ID)))

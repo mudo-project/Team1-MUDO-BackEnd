@@ -32,15 +32,15 @@ class LectureCatalogPortAdapterTest {
 
     @Test
     void includesTeacherNameFromUsersDirectory() {
-        Lecture lecture = Lecture.restore(100L, 1L, "Math", Grade.HIGH_1, 10L, 20L, 30L, 40L,
+        Lecture lecture = Lecture.restore(100L, "Math", Grade.HIGH_1, 10L, 20L, 30L, 40L,
                 FeeType.PER_MONTH, 300000,
                 List.of(LectureSchedule.create(DayOfWeek.MONDAY, LocalTime.of(19, 0), LocalTime.of(21, 0))),
                 NOW);
         when(lectureRepository.findAllById(List.of(100L))).thenReturn(List.of(lecture));
-        when(teacherDirectoryPort.findTeachers(1L, List.of(30L)))
+        when(teacherDirectoryPort.findTeachers(List.of(30L)))
                 .thenReturn(Map.of(30L, new TeacherInfo(30L, "Teacher Park", 1L, "ACTIVE")));
 
-        Map<Long, LectureCatalogInfo> result = adapter.findByIds(1L, List.of(100L));
+        Map<Long, LectureCatalogInfo> result = adapter.findByIds(List.of(100L));
 
         assertThat(result.get(100L).teacherName()).isEqualTo("Teacher Park");
     }

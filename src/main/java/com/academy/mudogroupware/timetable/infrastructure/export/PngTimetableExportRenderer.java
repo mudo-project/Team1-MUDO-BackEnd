@@ -54,8 +54,7 @@ public class PngTimetableExportRenderer implements TimetableExportRenderer {
             g.fillRect(0, 0, width, height);
 
             g.setColor(Color.BLACK);
-            g.setFont(TimetableExportFonts.AWT_BOLD.deriveFont(16f));
-            g.drawString(timetableSetName, 8, TITLE_HEIGHT - 8);
+            drawMixedFontString(g, timetableSetName, 8, TITLE_HEIGHT - 8, 16f, true);
 
             int y = TITLE_HEIGHT;
             drawRow(g, y, headerHeight, TimetableExportLabels.HEADERS, new Color(0xE0E0E0), true, fontSize);
@@ -90,15 +89,44 @@ public class PngTimetableExportRenderer implements TimetableExportRenderer {
     private void drawRow(Graphics2D g, int y, int height, String[] values, Color background, boolean bold,
                           float fontSize) {
         int x = 0;
-        Font baseFont = bold ? TimetableExportFonts.AWT_BOLD : TimetableExportFonts.AWT_REGULAR;
-        g.setFont(baseFont.deriveFont(fontSize));
         for (int i = 0; i < values.length; i++) {
             g.setColor(background);
             g.fillRect(x, y, COLUMN_WIDTHS[i], height);
             g.setColor(Color.BLACK);
             g.drawRect(x, y, COLUMN_WIDTHS[i], height);
-            g.drawString(values[i], x + 6, y + height / 2 + 5);
+            drawMixedFontString(g, values[i], x + 6, y + height / 2 + 5, fontSize, bold);
             x += COLUMN_WIDTHS[i];
+        }
+    }
+
+    /**
+     * Inter는 한글 글리프가 없으므로, Inter가 그릴 수 없는 문자(한글 등)는
+     * 나눔고딕으로 자동 대체해서 그린다.
+     */
+    private void drawMixedFontString(Graphics2D g, String text, int x, int y, float fontSize, boolean bold) {
+        Font interFont = TimetableExportFonts.AWT_INTER.deriveFont(bold ? Font.BOLD : Font.PLAIN, fontSize);
+        Font koreanFont = (bold ? TimetableExportFonts.AWT_KOREAN_BOLD : TimetableExportFonts.AWT_KOREAN_REGULAR)
+                .deriveFont(fontSize);
+
+        int cursorX = x;
+        int i = 0;
+        while (i < text.length()) {
+            int codePoint = text.codePointAt(i);
+            boolean useInter = interFont.canDisplay(codePoint);
+            int runStart = i;
+            i += Character.charCount(codePoint);
+            while (i < text.length()) {
+                int nextCodePoint = text.codePointAt(i);
+                if (interFont.canDisplay(nextCodePoint) != useInter) {
+                    break;
+                }
+                i += Character.charCount(nextCodePoint);
+            }
+            String run = text.substring(runStart, i);
+            Font runFont = useInter ? interFont : koreanFont;
+            g.setFont(runFont);
+            g.drawString(run, cursorX, y);
+            cursorX += g.getFontMetrics(runFont).stringWidth(run);
         }
     }
 }

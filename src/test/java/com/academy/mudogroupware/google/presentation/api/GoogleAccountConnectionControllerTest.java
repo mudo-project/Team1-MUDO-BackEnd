@@ -29,9 +29,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import com.academy.mudogroupware.global.infrastructure.security.jwt.JwtTokenProvider;
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
 import com.academy.mudogroupware.global.presentation.security.JwtAuthenticationConverter;
-import com.academy.mudogroupware.google.application.command.CheckGoogleConnectionCommand;
 import com.academy.mudogroupware.google.application.command.CompleteGoogleConnectionCommand;
-import com.academy.mudogroupware.google.application.command.DisconnectGoogleAccountCommand;
 import com.academy.mudogroupware.google.application.command.StartGoogleConnectionCommand;
 import com.academy.mudogroupware.google.application.query.GoogleAccountConnectionView;
 import com.academy.mudogroupware.google.application.usecase.CheckGoogleAccountConnectionUseCase;
@@ -73,7 +71,7 @@ class GoogleAccountConnectionControllerTest {
                 .andExpect(jsonPath("$.code").value("GOOGLE_200_1"))
                 .andExpect(jsonPath("$.data.authorizationUrl").value("https://accounts.google.com/o/oauth2/v2/auth?state=abc"));
 
-        verify(startGoogleAccountConnectionUseCase).start(new StartGoogleConnectionCommand(1L, 7L, true));
+        verify(startGoogleAccountConnectionUseCase).start(new StartGoogleConnectionCommand(7L, true));
     }
 
     @Test
@@ -125,7 +123,7 @@ class GoogleAccountConnectionControllerTest {
 
     @Test
     void getConnectionReturns200WithNullDataWhenNotConnected() throws Exception {
-        when(getGoogleAccountConnectionUseCase.getConnection(1L)).thenReturn(Optional.empty());
+        when(getGoogleAccountConnectionUseCase.getConnection()).thenReturn(Optional.empty());
 
         mockMvc.perform(get("/api/google/connections").with(authentication(authenticatedUser("ACADEMY:OWNER"))))
                 .andExpect(status().isOk())
@@ -137,13 +135,14 @@ class GoogleAccountConnectionControllerTest {
     void getConnectionReturns200WithConnectionDataWhenConnected() throws Exception {
         LocalDateTime connectedAt = LocalDateTime.of(2026, 7, 1, 14, 22);
         GoogleAccountConnectionView view = new GoogleAccountConnectionView(
-                "academy@mudo.co.kr", 7L, "drive.file", connectedAt, connectedAt.plusDays(60), connectedAt,
+                "academy@mudo.co.kr", 7L, "drive.file", connectedAt, null, connectedAt,
                 GoogleConnectionStatus.CONNECTED);
-        when(getGoogleAccountConnectionUseCase.getConnection(1L)).thenReturn(Optional.of(view));
+        when(getGoogleAccountConnectionUseCase.getConnection()).thenReturn(Optional.of(view));
 
         mockMvc.perform(get("/api/google/connections").with(authentication(authenticatedUser("ACADEMY:OWNER"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.googleEmail").value("academy@mudo.co.kr"))
+                .andExpect(jsonPath("$.data.refreshTokenExpiresAt").value(org.hamcrest.Matchers.nullValue()))
                 .andExpect(jsonPath("$.data.status").value("CONNECTED"));
     }
 
@@ -154,13 +153,13 @@ class GoogleAccountConnectionControllerTest {
                         .with(csrf()))
                 .andExpect(status().isNoContent());
 
-        verify(checkGoogleAccountConnectionUseCase).check(new CheckGoogleConnectionCommand(1L));
+        verify(checkGoogleAccountConnectionUseCase).check();
     }
 
     @Test
     void checkConnectionReturns404WhenNotConnected() throws Exception {
         doThrow(new GoogleAccountNotConnectedException())
-                .when(checkGoogleAccountConnectionUseCase).check(any(CheckGoogleConnectionCommand.class));
+                .when(checkGoogleAccountConnectionUseCase).check();
 
         mockMvc.perform(post("/api/google/connections/check")
                         .with(authentication(authenticatedUser("ACADEMY:OWNER")))
@@ -176,7 +175,7 @@ class GoogleAccountConnectionControllerTest {
                         .with(csrf()))
                 .andExpect(status().isNoContent());
 
-        verify(disconnectGoogleAccountUseCase).disconnect(new DisconnectGoogleAccountCommand(1L));
+        verify(disconnectGoogleAccountUseCase).disconnect();
     }
 
     @Test

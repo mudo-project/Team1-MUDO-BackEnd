@@ -12,10 +12,9 @@ import org.springframework.data.repository.query.Param;
 import jakarta.persistence.LockModeType;
 
 public interface CorporateCardTransactionJpaRepository extends JpaRepository<CorporateCardTransactionJpaEntity, Long> {
-    Slice<CorporateCardTransactionJpaEntity> findAllByCard_AcademyId(Long academyId, Pageable pageable);
-    Optional<CorporateCardTransactionJpaEntity> findByIdAndCard_AcademyId(Long id, Long academyId);
+    Slice<CorporateCardTransactionJpaEntity> findAllBy(Pageable pageable);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select t from CorporateCardTransactionJpaEntity t join fetch t.card c where t.id = :id and c.academyId = :academyId")
-    Optional<CorporateCardTransactionJpaEntity> findForUpdate(@Param("id") Long id, @Param("academyId") Long academyId);
+    @Query("select t from CorporateCardTransactionJpaEntity t join fetch t.card where t.id = :id")
+    Optional<CorporateCardTransactionJpaEntity> findForUpdate(@Param("id") Long id);
 }

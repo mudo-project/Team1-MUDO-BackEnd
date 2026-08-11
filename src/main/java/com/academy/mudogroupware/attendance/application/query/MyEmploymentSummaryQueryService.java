@@ -25,15 +25,15 @@ public class MyEmploymentSummaryQueryService implements GetMyEmploymentSummaryUs
     private final Clock clock;
 
     @Override
-    public MyEmploymentSummaryView getSummary(Long userId, Long academyId) {
-        log.info("event=attendance_employment_summary_read_시작 userId={}, academyId={}", userId, academyId);
-        LocalDate hireDate = employmentSummaryPort.findByUserIdAndAcademyId(userId, academyId)
+    public MyEmploymentSummaryView getSummary(Long userId) {
+        log.info("event=attendance_employment_summary_read_시작 userId={}={}", userId);
+        LocalDate hireDate = employmentSummaryPort.findByUserId(userId)
                 .orElseThrow(() -> new AttendanceException(
                         AttendanceErrorCode.EMPLOYMENT_INFO_NOT_FOUND))
                 .hireDate();
         long tenureDays = Math.max(0, ChronoUnit.DAYS.between(hireDate, LocalDate.now(clock)));
         MyEmploymentSummaryView result = new MyEmploymentSummaryView(hireDate, tenureDays);
-        log.info("event=attendance_employment_summary_read_완료 userId={}, academyId={}, tenureDays={}", userId, academyId, tenureDays);
+        log.info("event=attendance_employment_summary_read_완료 userId={}={}, tenureDays={}", userId, tenureDays);
         return result;
     }
 }

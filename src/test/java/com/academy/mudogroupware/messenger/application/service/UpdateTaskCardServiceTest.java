@@ -43,7 +43,7 @@ class UpdateTaskCardServiceTest {
     private ChatRoom roomWithMembers(Long... userIds) {
         List<ChatRoomMember> members = List.of(userIds).stream().map(id -> ChatRoomMember.restore(id, null))
                 .toList();
-        return ChatRoom.restore(1L, 10L, "그룹", ChatRoomType.GROUP, 2L, members, ROOM_CREATED_AT);
+        return ChatRoom.restore(1L, "그룹", ChatRoomType.GROUP, 2L, members, ROOM_CREATED_AT);
     }
 
     @Test

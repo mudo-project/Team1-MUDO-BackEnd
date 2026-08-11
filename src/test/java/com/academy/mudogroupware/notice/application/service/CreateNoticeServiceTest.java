@@ -27,7 +27,7 @@ class CreateNoticeServiceTest {
     private final NoticeAuthorDirectoryPort authorDirectoryPort = new NoticeAuthorDirectoryPort() {
         @Override
         public AuthorInfo getAuthor(Long userId) {
-            return new AuthorInfo(userId, "김직원", "직원", 10L);
+            return new AuthorInfo(userId, "김직원", "직원");
         }
 
         @Override
@@ -36,7 +36,7 @@ class CreateNoticeServiceTest {
         }
 
         @Override
-        public long countActiveUsers(Long academyId) {
+        public long countActiveUsers() {
             return 0;
         }
     };
@@ -51,7 +51,6 @@ class CreateNoticeServiceTest {
                 List.of(new NoticeAttachmentInput(5L, "휴가원.pdf"))));
 
         Notice saved = noticeRepository.findById(noticeId).orElseThrow();
-        assertThat(saved.getAcademyId()).isEqualTo(10L);
         assertThat(saved.getAttachments()).hasSize(1);
         assertThat(saved.getAttachments().get(0).getFileId()).isEqualTo(5L);
         assertThat(saved.getAttachments().get(0).getFileName()).isEqualTo("휴가원.pdf");
@@ -72,7 +71,7 @@ class CreateNoticeServiceTest {
 
         @Override
         public Notice save(Notice notice) {
-            Notice saved = Notice.restore(sequence++, notice.getAcademyId(), notice.getAuthorUserId(),
+            Notice saved = Notice.restore(sequence++, notice.getAuthorUserId(),
                     notice.getTitle(), notice.getContent(), notice.isPinned(), notice.getViewCount(),
                     notice.getAttachments(), notice.getCreatedAt(), notice.getUpdatedAt());
             notices.put(saved.getId(), saved);
@@ -85,7 +84,7 @@ class CreateNoticeServiceTest {
         }
 
         @Override
-        public PageResult<Notice> findAll(Long academyId, String titleKeyword, int page, int size) {
+        public PageResult<Notice> findAll(String titleKeyword, int page, int size) {
             return PageResult.of(List.of(), page, size, false);
         }
 

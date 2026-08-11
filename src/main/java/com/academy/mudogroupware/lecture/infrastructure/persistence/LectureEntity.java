@@ -35,9 +35,6 @@ public class LectureEntity extends CreatedAtEntity {
     @Column(name = "lecture_id")
     private Long id;
 
-    @Column(name = "academy_id", nullable = false)
-    private Long academyId;
-
     @Column(nullable = false, length = 100)
     private String name;
 
@@ -69,9 +66,8 @@ public class LectureEntity extends CreatedAtEntity {
     private List<LectureScheduleEntity> schedules = new ArrayList<>();
 
     @Builder
-    private LectureEntity(Long academyId, String name, Grade grade, Long termId, Long subjectId, Long teacherId,
+    private LectureEntity(String name, Grade grade, Long termId, Long subjectId, Long teacherId,
                            Long classroomId, FeeType feeType, Integer feeAmount) {
-        this.academyId = academyId;
         this.name = name;
         this.grade = grade;
         this.termId = termId;

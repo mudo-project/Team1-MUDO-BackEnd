@@ -26,7 +26,6 @@ public class LectureRepositoryImpl implements LectureRepository {
     @Override
     public Lecture save(Lecture lecture) {
         LectureEntity entity = LectureEntity.builder()
-                .academyId(lecture.getAcademyId())
                 .name(lecture.getName())
                 .grade(lecture.getGrade())
                 .termId(lecture.getTermId())
@@ -51,8 +50,8 @@ public class LectureRepositoryImpl implements LectureRepository {
     }
 
     @Override
-    public PageResult<Lecture> findAll(Long academyId, LectureFilter filter, int page, int size) {
-        Slice<LectureEntity> slice = lectureJpaRepository.findAllByFilter(academyId, filter.termId(),
+    public PageResult<Lecture> findAll(LectureFilter filter, int page, int size) {
+        Slice<LectureEntity> slice = lectureJpaRepository.findAllByFilter(filter.termId(),
                 filter.grade(), filter.subjectId(), filter.teacherId(), filter.classroomId(), filter.dayOfWeek(),
                 PageRequest.of(page, size));
         List<Lecture> content = slice.getContent().stream().map(this::toDomain).toList();
@@ -76,7 +75,7 @@ public class LectureRepositoryImpl implements LectureRepository {
         List<LectureSchedule> schedules = entity.getSchedules().stream()
                 .map(s -> LectureSchedule.restore(s.getId(), s.getDayOfWeek(), s.getStartTime(), s.getEndTime()))
                 .toList();
-        return Lecture.restore(entity.getId(), entity.getAcademyId(), entity.getName(), entity.getGrade(),
+        return Lecture.restore(entity.getId(), entity.getName(), entity.getGrade(),
                 entity.getTermId(), entity.getSubjectId(), entity.getTeacherId(), entity.getClassroomId(),
                 entity.getFeeType(), entity.getFeeAmount(), schedules, entity.getCreatedAt());
     }

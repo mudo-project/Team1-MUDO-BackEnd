@@ -5,9 +5,9 @@ import java.util.List;
 
 public interface WorkspaceListQueryPort {
 
-  List<WorkspaceListItem> findMine(Long academyId, Long userId);
+  List<WorkspaceListItem> findMine(Long userId);
 
-  List<WorkspaceListItem> findAll(Long academyId, Long userId);
+  List<WorkspaceListItem> findAll(Long userId);
 
-  boolean existsAccessible(Long workspaceId, Long academyId, Long userId, boolean canReadAll);
+  boolean existsAccessible(Long workspaceId, Long userId, boolean canReadAll);
 }

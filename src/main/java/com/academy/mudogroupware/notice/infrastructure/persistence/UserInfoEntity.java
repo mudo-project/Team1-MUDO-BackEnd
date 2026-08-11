@@ -27,9 +27,6 @@ public class UserInfoEntity {
     @Column(name = "role_id")
     private Long roleId;
 
-    @Column(name = "academy_id", nullable = false)
-    private Long academyId;
-
     @Column(nullable = false, length = 20)
     private String status;
 }

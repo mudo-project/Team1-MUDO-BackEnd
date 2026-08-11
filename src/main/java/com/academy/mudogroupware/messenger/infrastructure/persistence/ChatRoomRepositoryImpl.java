@@ -31,15 +31,15 @@ public class ChatRoomRepositoryImpl implements ChatRoomRepository {
     }
 
     @Override
-    public Optional<ChatRoom> findDirectMessage(Long academyId, Long userId, Long otherUserId) {
-        return chatRoomJpaRepository.findDirectMessages(academyId, ChatRoomType.DM, userId, otherUserId).stream()
+    public Optional<ChatRoom> findDirectMessage(Long userId, Long otherUserId) {
+        return chatRoomJpaRepository.findDirectMessages(ChatRoomType.DM, userId, otherUserId).stream()
                 .findFirst()
                 .map(this::toDomain);
     }
 
     @Override
-    public List<ChatRoom> findAllByMember(Long academyId, Long userId) {
-        return chatRoomJpaRepository.findAllByMember(academyId, userId).stream()
+    public List<ChatRoom> findAllByMember(Long userId) {
+        return chatRoomJpaRepository.findAllByMember(userId).stream()
                 .map(this::toDomain)
                 .toList();
     }
@@ -59,7 +59,6 @@ public class ChatRoomRepositoryImpl implements ChatRoomRepository {
 
         return ChatRoomEntity.builder()
                 .id(chatRoom.getId())
-                .academyId(chatRoom.getAcademyId())
                 .name(chatRoom.getName())
                 .type(chatRoom.getType())
                 .createdBy(chatRoom.getCreatedBy())
@@ -73,7 +72,7 @@ public class ChatRoomRepositoryImpl implements ChatRoomRepository {
                 .map(member -> ChatRoomMember.restore(member.getUserId(), member.getLastReadAt()))
                 .toList();
 
-        return ChatRoom.restore(entity.getId(), entity.getAcademyId(), entity.getName(), entity.getType(),
+        return ChatRoom.restore(entity.getId(), entity.getName(), entity.getType(),
                 entity.getCreatedBy(), members, entity.getCreatedAt());
     }
 }

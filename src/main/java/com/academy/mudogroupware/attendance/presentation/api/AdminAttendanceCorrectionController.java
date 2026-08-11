@@ -36,7 +36,7 @@ public class AdminAttendanceCorrectionController {
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "30") @Min(1) @Max(100) int size) {
         return GlobalApiResponse.ok(AttendanceResponseCode.ATTENDANCE_CORRECTION_LIST_RETRIEVED,
-                SliceResponse.from(useCase.getAll(user.academyId(), status, page, size),
+                SliceResponse.from(useCase.getAll(status, page, size),
                         AdminAttendanceCorrectionResponse::from));
     }
 
@@ -46,7 +46,7 @@ public class AdminAttendanceCorrectionController {
     public GlobalApiResponse<AdminAttendanceCorrectionResponse> get(
             @AuthenticationPrincipal AuthUser user, @PathVariable Long requestId) {
         return GlobalApiResponse.ok(AttendanceResponseCode.ATTENDANCE_CORRECTION_RETRIEVED,
-                AdminAttendanceCorrectionResponse.from(useCase.get(user.academyId(), requestId)));
+                AdminAttendanceCorrectionResponse.from(useCase.get(requestId)));
     }
 
     @Operation(summary = "근태 수정 요청 승인")
@@ -54,7 +54,7 @@ public class AdminAttendanceCorrectionController {
     @PreAuthorize("hasAuthority('ATTENDANCE:CORRECTION_PROCESS')")
     public GlobalApiResponse<Void> approve(
             @AuthenticationPrincipal AuthUser user, @PathVariable Long requestId) {
-        useCase.approve(user.academyId(), requestId, user.userId());
+        useCase.approve(requestId, user.userId());
         return GlobalApiResponse.ok(AttendanceResponseCode.ATTENDANCE_CORRECTION_APPROVED);
     }
 
@@ -65,7 +65,7 @@ public class AdminAttendanceCorrectionController {
             @AuthenticationPrincipal AuthUser user,
             @PathVariable Long requestId,
             @Valid @RequestBody RejectAttendanceCorrectionRequest request) {
-        useCase.reject(user.academyId(), requestId, user.userId(), request.reason());
+        useCase.reject(requestId, user.userId(), request.reason());
         return GlobalApiResponse.ok(AttendanceResponseCode.ATTENDANCE_CORRECTION_REJECTED);
     }
 }

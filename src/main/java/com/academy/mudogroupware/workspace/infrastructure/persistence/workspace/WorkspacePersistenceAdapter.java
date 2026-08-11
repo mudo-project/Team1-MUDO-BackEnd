@@ -19,8 +19,7 @@ import org.springframework.stereotype.Repository;
 @RequiredArgsConstructor
 public class WorkspacePersistenceAdapter implements WorkspaceRepository {
 
-  private static final String ACTIVE_NAME_UNIQUE_CONSTRAINT =
-      "uk_workspace_academy_active_name";
+  private static final String ACTIVE_NAME_UNIQUE_CONSTRAINT = "uk_workspace_active_name";
 
   private final WorkspaceJpaRepository workspaceJpaRepository;
   private final WorkspacePersistenceMapper workspacePersistenceMapper;
@@ -42,8 +41,8 @@ public class WorkspacePersistenceAdapter implements WorkspaceRepository {
 
   // 활성화된 workspace 검색
   @Override
-  public boolean existsByAcademyIdAndName(Long academyId, String name) {
-    return workspaceJpaRepository.existsByAcademyIdAndNameAndDeletedAtIsNull(academyId, name);
+  public boolean existsByName(String name) {
+    return workspaceJpaRepository.existsByNameAndDeletedAtIsNull(name);
   }
 
   @Override

@@ -18,13 +18,12 @@ public class EmploymentSummaryQueryAdapter implements EmploymentSummaryPort {
     private final EntityManager entityManager;
 
     @Override
-    public Optional<EmploymentSummary> findByUserIdAndAcademyId(Long userId, Long academyId) {
+    public Optional<EmploymentSummary> findByUserId(Long userId) {
         List<?> results = entityManager.createNativeQuery(
                         "select date(joined_at) from users "
-                                + "where id = :userId and academy_id = :academyId "
+                                + "where id = :userId "
                                 + "and joined_at is not null")
                 .setParameter("userId", userId)
-                .setParameter("academyId", academyId)
                 .getResultList();
         if (results.isEmpty()) {
             return Optional.empty();

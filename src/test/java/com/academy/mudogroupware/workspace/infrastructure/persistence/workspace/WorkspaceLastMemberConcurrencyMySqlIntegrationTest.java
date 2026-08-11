@@ -107,10 +107,10 @@ class WorkspaceLastMemberConcurrencyMySqlIntegrationTest {
     LocalDateTime createdAt = LocalDateTime.of(2026, 8, 6, 9, 0);
     jdbcTemplate.update(
         """
-        insert into workspace (workspace_id, academy_id, name, created_by, created_at, updated_at)
-        values (?, ?, ?, ?, ?, ?)
+        insert into workspace (workspace_id, name, created_by, created_at, updated_at)
+        values (?, ?, ?, ?, ?)
         """,
-        workspaceId, 1L, "workspace", userId1, createdAt, createdAt);
+        workspaceId, "workspace", userId1, createdAt, createdAt);
     jdbcTemplate.update(
         "insert into workspace_member (workspace_id, user_id, created_at) values (?, ?, ?)",
         workspaceId, userId1, createdAt);

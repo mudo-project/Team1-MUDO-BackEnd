@@ -6,5 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface AttendancePolicyJpaRepository
         extends JpaRepository<AttendancePolicyJpaEntity, Long> {
-    Optional<AttendancePolicyJpaEntity> findByAcademyId(Long academyId);
+    Optional<AttendancePolicyJpaEntity> findFirstByOrderByIdAsc();
 }

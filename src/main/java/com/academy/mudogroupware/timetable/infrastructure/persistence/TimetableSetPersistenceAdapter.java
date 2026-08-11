@@ -35,8 +35,8 @@ public class TimetableSetPersistenceAdapter implements TimetableSetRepository {
     }
 
     @Override
-    public List<TimetableSet> findAllByAcademyId(Long academyId) {
-        return timetableSetJpaRepository.findAllByAcademyIdOrderByStartDateDesc(academyId).stream()
+    public List<TimetableSet> findAll() {
+        return timetableSetJpaRepository.findAllByOrderByStartDateDesc().stream()
                 .map(this::toDomain)
                 .toList();
     }
@@ -57,7 +57,6 @@ public class TimetableSetPersistenceAdapter implements TimetableSetRepository {
     private TimetableSetEntity toEntity(TimetableSet domain) {
         return TimetableSetEntity.builder()
                 .id(domain.getId())
-                .academyId(domain.getAcademyId())
                 .name(domain.getName())
                 .startDate(domain.getStartDate())
                 .endDate(domain.getEndDate())
@@ -71,7 +70,7 @@ public class TimetableSetPersistenceAdapter implements TimetableSetRepository {
 
     private TimetableSet toDomain(TimetableSetEntity entity) {
         return TimetableSet.restore(
-                entity.getId(), entity.getAcademyId(), entity.getName(), entity.getStartDate(), entity.getEndDate(),
+                entity.getId(), entity.getName(), entity.getStartDate(), entity.getEndDate(),
                 entity.getOperatingStartTime(), entity.getOperatingEndTime(), splitDays(entity.getOperatingDays()),
                 entity.getSlotUnitMinutes(), toDomainClassrooms(entity.getClassrooms()),
                 entity.getCreatedAt(), entity.getUpdatedAt());

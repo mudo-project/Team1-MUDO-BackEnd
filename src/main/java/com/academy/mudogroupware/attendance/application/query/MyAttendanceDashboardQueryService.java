@@ -25,14 +25,14 @@ public class MyAttendanceDashboardQueryService implements GetMyAttendanceDashboa
 
     @Override
     public MyAttendanceDashboardView getDashboard(
-            Long userId, Long academyId, int year, int month) {
-        log.info("event=attendance_dashboard_read_시작 userId={}, academyId={}, year={}, month={}", userId, academyId, year, month);
+            Long userId, int year, int month) {
+        log.info("event=attendance_dashboard_read_시작 userId={}={}, year={}, month={}", userId, year, month);
         MyAttendanceDashboardView result = new MyAttendanceDashboardView(
-                monthlyAttendanceUseCase.getMonthly(userId, academyId, year, month),
-                todayAttendanceUseCase.getToday(userId, academyId),
-                leaveSummaryUseCase.getSummary(userId, academyId),
-                employmentSummaryUseCase.getSummary(userId, academyId));
-        log.info("event=attendance_dashboard_read_완료 userId={}, academyId={}, year={}, month={}", userId, academyId, year, month);
+                monthlyAttendanceUseCase.getMonthly(userId, year, month),
+                todayAttendanceUseCase.getToday(userId),
+                leaveSummaryUseCase.getSummary(userId),
+                employmentSummaryUseCase.getSummary(userId));
+        log.info("event=attendance_dashboard_read_완료 userId={}={}, year={}, month={}", userId, year, month);
         return result;
     }
 }

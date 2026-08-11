@@ -26,17 +26,16 @@ public class AttendanceRecordRepositoryImpl implements AttendanceRecordRepositor
     private final AttendanceRecordJpaRepository attendanceRecordJpaRepository;
 
     @Override
-    public boolean existsByAcademyIdAndUserIdAndWorkDate(
-            Long academyId, Long userId, LocalDate workDate) {
-        return attendanceRecordJpaRepository.existsByAcademyIdAndUserIdAndWorkDate(
-                academyId, userId, workDate);
+    public boolean existsByUserIdAndWorkDate(
+            Long userId, LocalDate workDate) {
+        return attendanceRecordJpaRepository.existsByUserIdAndWorkDate(
+                userId, workDate);
     }
 
     @Override
     public AttendanceRecord save(AttendanceRecord record) {
         AttendanceRecordJpaEntity entity = AttendanceRecordJpaEntity.builder()
                 .id(record.getId())
-                .academyId(record.getAcademyId())
                 .userId(record.getUserId())
                 .workDate(record.getWorkDate())
                 .clockInAt(record.getClockInAt())
@@ -61,35 +60,45 @@ public class AttendanceRecordRepositoryImpl implements AttendanceRecordRepositor
 
     @Override
     public Optional<AttendanceRecord> findLatestOpenSince(
-            Long academyId, Long userId, LocalDate earliestWorkDate) {
+            Long userId, LocalDate earliestWorkDate) {
         return attendanceRecordJpaRepository
-                .findFirstByAcademyIdAndUserIdAndWorkDateGreaterThanEqualAndClockOutAtIsNullOrderByClockInAtDesc(
-                        academyId, userId, earliestWorkDate)
+                .findFirstByUserIdAndWorkDateGreaterThanEqualAndClockOutAtIsNullOrderByClockInAtDesc(
+                        userId, earliestWorkDate)
                 .map(this::toDomain);
     }
 
     @Override
     public boolean existsCheckedOutBetween(
-            Long academyId, Long userId, LocalDateTime from, LocalDateTime to) {
+            Long userId, LocalDateTime from, LocalDateTime to) {
         return attendanceRecordJpaRepository
-                .existsByAcademyIdAndUserIdAndClockOutAtBetween(
-                        academyId, userId, from, to);
+                .existsByUserIdAndClockOutAtBetween(
+                        userId, from, to);
     }
 
     @Override
-    public Optional<AttendanceRecord> findByAcademyIdAndUserIdAndWorkDate(
-            Long academyId, Long userId, LocalDate workDate) {
+    public Optional<AttendanceRecord> findByUserIdAndWorkDate(
+            Long userId, LocalDate workDate) {
         return attendanceRecordJpaRepository
-                .findByAcademyIdAndUserIdAndWorkDate(academyId, userId, workDate)
+                .findByUserIdAndWorkDate(userId, workDate)
                 .map(this::toDomain);
     }
 
     @Override
-    public List<AttendanceRecord> findByAcademyIdAndUserIdAndWorkDateBetween(
-            Long academyId, Long userId, LocalDate startDate, LocalDate endDate) {
+    public List<AttendanceRecord> findByUserIdAndWorkDateBetween(
+            Long userId, LocalDate startDate, LocalDate endDate) {
         return attendanceRecordJpaRepository
-                .findAllByAcademyIdAndUserIdAndWorkDateBetweenOrderByWorkDate(
-                        academyId, userId, startDate, endDate)
+                .findAllByUserIdAndWorkDateBetweenOrderByWorkDate(
+                        userId, startDate, endDate)
+                .stream()
+                .map(this::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<AttendanceRecord> findAllByUserIdsAndWorkDate(
+            List<Long> userIds, LocalDate workDate) {
+        return attendanceRecordJpaRepository
+                .findAllByUserIdInAndWorkDate(userIds, workDate)
                 .stream()
                 .map(this::toDomain)
                 .toList();
@@ -97,7 +106,7 @@ public class AttendanceRecordRepositoryImpl implements AttendanceRecordRepositor
 
     private AttendanceRecord toDomain(AttendanceRecordJpaEntity entity) {
         return AttendanceRecord.restore(
-                entity.getId(), entity.getAcademyId(), entity.getUserId(),
+                entity.getId(), entity.getUserId(),
                 entity.getWorkDate(), entity.getClockInAt(), entity.getClockInNote(),
                 entity.getClockOutAt(), entity.getClockOutNote(),
                 entity.getClockOutType(), entity.getStatus(),

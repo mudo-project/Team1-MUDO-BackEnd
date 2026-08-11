@@ -25,8 +25,7 @@ public class EndEnrollmentService implements EndEnrollmentUseCase {
 
     @Override
     public void end(EndEnrollmentCommand command) {
-        Enrollment enrollment = enrollmentRepository.findById(command.academyId(), command.studentId(),
-                        command.enrollmentId())
+        Enrollment enrollment = enrollmentRepository.findById(command.studentId(), command.enrollmentId())
                 .orElseThrow(() -> new StudentException(StudentErrorCode.ENROLLMENT_NOT_FOUND));
         enrollment.end(LocalDateTime.now(clock));
         enrollmentRepository.save(enrollment);

@@ -50,19 +50,17 @@ public class LectureController {
     public ResponseEntity<GlobalApiResponse<LectureCreateResponse>> createLecture(
             @AuthenticationPrincipal AuthUser authUser,
             @Valid @RequestBody CreateLectureRequest request) {
-        Long lectureId = createLectureUseCase.createLecture(request.toCommand(authUser.academyId(),
-                authUser.userId()));
+        Long lectureId = createLectureUseCase.createLecture(request.toCommand(authUser.userId()));
         LectureCreateResponse data = LectureCreateResponse.from(lectureId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(GlobalApiResponse.created(LectureResponseCode.LECTURE_CREATED, data));
     }
 
     @Operation(summary = "강의 목록 조회",
-            description = "시즌/학년/과목/선생님/교실/요일 필터와 페이지 단위로 요청자 소속 학원의 강의 목록을 조회한다.")
+            description = "시즌/학년/과목/선생님/교실/요일 필터와 페이지 단위로 강의 목록을 조회한다.")
     @PreAuthorize("hasAnyAuthority('LECTURE:READ', 'LECTURE:MANAGE')")
     @GetMapping
     public ResponseEntity<GlobalApiResponse<SliceResponse<LectureSummaryResponse>>> getLectures(
-            @AuthenticationPrincipal AuthUser authUser,
             @RequestParam(required = false) Long termId,
             @RequestParam(required = false) Grade grade,
             @RequestParam(required = false) Long subjectId,
@@ -73,18 +71,17 @@ public class LectureController {
             @RequestParam(defaultValue = "20") int size) {
         LectureFilter filter = new LectureFilter(termId, grade, subjectId, teacherId, classroomId, dayOfWeek);
         SliceResponse<LectureSummaryResponse> data = SliceResponse.from(
-                lectureQueryUseCase.getLectures(authUser.academyId(), filter, page, size),
+                lectureQueryUseCase.getLectures(filter, page, size),
                 LectureSummaryResponse::from);
         return ResponseEntity.ok(GlobalApiResponse.ok(LectureResponseCode.LECTURE_LIST_RETRIEVED, data));
     }
 
-    @Operation(summary = "강의 상세 조회", description = "강의 기본 정보와 수강생 목록을 조회한다. 다른 학원의 강의를 조회하면 403.")
+    @Operation(summary = "강의 상세 조회", description = "강의 기본 정보와 수강생 목록을 조회한다.")
     @PreAuthorize("hasAnyAuthority('LECTURE:READ', 'LECTURE:MANAGE')")
     @GetMapping("/{lectureId}")
     public ResponseEntity<GlobalApiResponse<LectureDetailResponse>> getLectureDetail(
-            @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long lectureId) {
-        LectureDetailView view = lectureQueryUseCase.getLectureDetail(lectureId, authUser.academyId());
+        LectureDetailView view = lectureQueryUseCase.getLectureDetail(lectureId);
         return ResponseEntity.ok(GlobalApiResponse.ok(LectureResponseCode.LECTURE_DETAIL_RETRIEVED,
                 LectureDetailResponse.from(view)));
     }

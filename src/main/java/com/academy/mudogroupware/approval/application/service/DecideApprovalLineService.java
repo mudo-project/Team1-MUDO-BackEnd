@@ -49,7 +49,7 @@ public class DecideApprovalLineService implements DecideApprovalLineUseCase {
         if (approvalDocument.getStatus() == ApprovalStatus.APPROVED
                 || approvalDocument.getStatus() == ApprovalStatus.REJECTED) {
             eventPublisher.publishEvent(new ApprovalDocumentDecidedEvent(approvalDocument.getId(),
-                    approvalDocument.getAcademyId(), approvalDocument.getCreatorId(),
+                    approvalDocument.getCreatorId(),
                     approvalDocument.getStatus() == ApprovalStatus.APPROVED, now));
         }
     }

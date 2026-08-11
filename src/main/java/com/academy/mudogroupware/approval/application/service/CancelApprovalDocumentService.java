@@ -40,6 +40,6 @@ public class CancelApprovalDocumentService implements CancelApprovalDocumentUseC
         approvalDocumentRepository.save(approvalDocument);
 
         eventPublisher.publishEvent(new ApprovalDocumentDecidedEvent(approvalDocument.getId(),
-                approvalDocument.getAcademyId(), approvalDocument.getCreatorId(), false, now));
+                approvalDocument.getCreatorId(), false, now));
     }
 }

@@ -11,7 +11,7 @@ public interface NoticeRepository {
 
     Optional<Notice> findById(Long id);
 
-    PageResult<Notice> findAll(Long academyId, String titleKeyword, int page, int size);
+    PageResult<Notice> findAll(String titleKeyword, int page, int size);
 
     void deleteById(Long id);
 }

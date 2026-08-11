@@ -86,6 +86,54 @@ class UserRepositoryImplDataJpaTest {
         assertThat(result).isEmpty();
     }
 
+    @Test
+    void completePasswordSetupReplacesPasswordAndClearsMustChangePw() {
+        insertUserWithPasswordAndMustChangePw(1L, 1L, "pending", "old-hash", true);
+
+        boolean updated = userRepository.completePasswordSetup(1L, "new-hash");
+
+        assertThat(updated).isTrue();
+        User found = userRepository.findById(1L).orElseThrow();
+        assertThat(found.getPassword()).isEqualTo("new-hash");
+        assertThat(found.isMustChangePw()).isFalse();
+    }
+
+    @Test
+    void completePasswordSetupReturnsFalseWhenAlreadyCompleted() {
+        insertUserWithPasswordAndMustChangePw(2L, 1L, "done", "already-hash", false);
+
+        boolean updated = userRepository.completePasswordSetup(2L, "new-hash");
+
+        assertThat(updated).isFalse();
+        User found = userRepository.findById(2L).orElseThrow();
+        assertThat(found.getPassword()).isEqualTo("already-hash");
+        assertThat(found.isMustChangePw()).isFalse();
+    }
+
+    @Test
+    void findAllByAcademyIdReturnsAllStatusesIncludingResignedButExcludesOtherAcademies() {
+        insertUserWithRole(1L, 1L, "active", UserStatus.ACTIVE, 5L);
+        insertUserWithRole(2L, 1L, "resigned", UserStatus.RESIGNED, 5L);
+        insertUserWithRole(3L, 1L, "inactive", UserStatus.INACTIVE, 7L);
+        insertUserWithRole(4L, 2L, "other-academy", UserStatus.ACTIVE, 5L);
+
+        List<User> result = userRepository.findAllByAcademyId(1L);
+
+        assertThat(result).extracting(User::getId)
+                .containsExactlyInAnyOrder(1L, 2L, 3L);
+    }
+
+    private void insertUserWithPasswordAndMustChangePw(long id, long academyId, String suffix, String password,
+                                                         boolean mustChangePw) {
+        jdbcTemplate.update("""
+                insert into users (
+                    id, academy_id, role_id, username, password, name, phone_number, email, status,
+                    must_change_pw, account_type, admin_scope, created_at, updated_at
+                ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, current_timestamp, current_timestamp)
+                """, id, academyId, null, "user-" + suffix, password, "사용자-" + suffix,
+                "010-0000-0000", suffix + "@example.com", UserStatus.ACTIVE.name(), mustChangePw, "MEMBER", null);
+    }
+
     private void insertUser(long id, long academyId, String suffix, UserStatus status) {
         insertUserWithRole(id, academyId, suffix, status, null);
     }

@@ -45,6 +45,6 @@ public class AttendanceWeeklyEmployeeController {
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
         return GlobalApiResponse.ok(AttendanceResponseCode.WEEKLY_EMPLOYEE_ATTENDANCE_RETRIEVED,
                 WeeklyEmployeeAttendanceResponse.from(useCase.getWeekly(
-                        user.userId(), user.academyId(), date, keyword, status, page, size)));
+                        user.userId(), date, keyword, status, page, size)));
     }
 }

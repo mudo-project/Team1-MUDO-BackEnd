@@ -4,10 +4,12 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.academy.mudogroupware.google.application.command.CompleteGoogleConnectionCommand;
+import com.academy.mudogroupware.google.application.event.GoogleAccountConnectedEvent;
 import com.academy.mudogroupware.google.application.port.GoogleOAuthCallException;
 import com.academy.mudogroupware.google.application.port.GoogleOAuthPort;
 import com.academy.mudogroupware.google.application.port.GoogleOAuthStateClaims;
@@ -29,6 +31,7 @@ public class CompleteGoogleAccountConnectionService implements CompleteGoogleAcc
     private final GoogleOAuthPort googleOAuthPort;
     private final GoogleAccountConnectionRepository googleAccountConnectionRepository;
     private final Clock clock;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     public void complete(CompleteGoogleConnectionCommand command) {
@@ -48,14 +51,21 @@ public class CompleteGoogleAccountConnectionService implements CompleteGoogleAcc
                     new IllegalStateException("구글이 리프레시 토큰을 반환하지 않았습니다."));
         }
 
-        Optional<GoogleAccountConnection> existing =
-                googleAccountConnectionRepository.findByAcademyId(claims.academyId());
+        Optional<GoogleAccountConnection> existing = googleAccountConnectionRepository.find();
+        Optional<String> previousEmail = existing.map(GoogleAccountConnection::getGoogleEmail);
         existing.ifPresent(connection -> googleOAuthPort.revoke(connection.getRefreshToken()));
-        googleAccountConnectionRepository.deleteByAcademyId(claims.academyId());
+        googleAccountConnectionRepository.deleteAll();
 
+        LocalDateTime connectedAt = LocalDateTime.now(clock);
+        LocalDateTime refreshTokenExpiresAt = tokens.refreshTokenExpiresInSeconds() == null
+                ? null
+                : connectedAt.plusSeconds(tokens.refreshTokenExpiresInSeconds());
         GoogleAccountConnection connection = GoogleAccountConnection.connect(
-                claims.academyId(), googleEmail, claims.userId(), tokens.scope(), tokens.refreshToken(),
-                LocalDateTime.now(clock));
+                googleEmail, claims.userId(), tokens.scope(), tokens.refreshToken(),
+                connectedAt, refreshTokenExpiresAt);
         googleAccountConnectionRepository.save(connection);
+
+        boolean accountChanged = previousEmail.isPresent() && !previousEmail.get().equals(googleEmail);
+        eventPublisher.publishEvent(new GoogleAccountConnectedEvent(accountChanged));
     }
 }

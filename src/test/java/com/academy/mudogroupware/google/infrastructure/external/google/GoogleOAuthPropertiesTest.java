@@ -10,29 +10,30 @@ import org.junit.jupiter.api.Test;
 class GoogleOAuthPropertiesTest {
 
     @Test
-    void requiredScopesSplitsSpaceSeparatedScopeString() {
+    void requiredScopesReturnsOnlyDataAccessScopes() {
         GoogleOAuthProperties properties = new GoogleOAuthProperties(
                 "client-id", "client-secret", "https://example.com/callback",
                 "openid email https://www.googleapis.com/auth/drive.file", "/");
 
-        assertThat(properties.requiredScopes()).containsExactlyInAnyOrder(
-                "openid", "email", "https://www.googleapis.com/auth/drive.file");
+        assertThat(properties.requiredScopes())
+                .containsExactly("https://www.googleapis.com/auth/drive.file");
     }
 
     @Test
-    void requiredScopesTrimsExtraWhitespace() {
+    void requiredScopesIgnoresIdentityScopes() {
         GoogleOAuthProperties properties = new GoogleOAuthProperties(
                 "client-id", "client-secret", "https://example.com/callback", "  openid   email  ", "/");
 
-        assertThat(properties.requiredScopes()).isEqualTo(Set.of("openid", "email"));
+        assertThatThrownBy(properties::requiredScopes).isInstanceOf(IllegalStateException.class);
     }
 
     @Test
-    void requiredScopesDeduplicatesRepeatedScopes() {
+    void requiredScopesDeduplicatesRepeatedDataScopes() {
         GoogleOAuthProperties properties = new GoogleOAuthProperties(
-                "client-id", "client-secret", "https://example.com/callback", "openid openid email", "/");
+                "client-id", "client-secret", "https://example.com/callback",
+                "openid https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.file", "/");
 
-        assertThat(properties.requiredScopes()).isEqualTo(Set.of("openid", "email"));
+        assertThat(properties.requiredScopes()).isEqualTo(Set.of("https://www.googleapis.com/auth/drive.file"));
     }
 
     @Test

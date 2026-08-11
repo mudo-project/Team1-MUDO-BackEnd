@@ -23,6 +23,11 @@ public interface UserJpaRepository extends JpaRepository<UserEntity, Long> {
     @Query("update UserEntity u set u.roleId = null where u.roleId = :roleId")
     void clearRoleId(@Param("roleId") Long roleId);
 
+    @Modifying(clearAutomatically = true)
+    @Query("update UserEntity u set u.password = :passwordHash, u.mustChangePw = false "
+            + "where u.id = :userId and u.mustChangePw = true")
+    int completePasswordSetupIfMustChange(@Param("userId") Long userId, @Param("passwordHash") String passwordHash);
+
     @Query("select u.id from UserEntity u "
             + "where u.academyId = :academyId "
             + "and u.status = com.academy.mudogroupware.users.domain.model.UserStatus.ACTIVE "
@@ -37,6 +42,8 @@ public interface UserJpaRepository extends JpaRepository<UserEntity, Long> {
             Long academyId, UserStatus status, String keyword);
 
     List<UserEntity> findAllByAcademyIdAndStatus(Long academyId, UserStatus status);
+
+    List<UserEntity> findAllByAcademyId(Long academyId);
 
     @Query("select u.roleId as roleId, count(u) as count from UserEntity u "
             + "where u.status = com.academy.mudogroupware.users.domain.model.UserStatus.ACTIVE "

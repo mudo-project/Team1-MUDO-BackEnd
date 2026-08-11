@@ -25,13 +25,13 @@ public class GoogleAccountConnectionPersistenceAdapter implements GoogleAccountC
     }
 
     @Override
-    public Optional<GoogleAccountConnection> findByAcademyId(Long academyId) {
-        return googleAccountConnectionJpaRepository.findByAcademyId(academyId).map(this::toDomain);
+    public Optional<GoogleAccountConnection> find() {
+        return googleAccountConnectionJpaRepository.findAll().stream().findFirst().map(this::toDomain);
     }
 
     @Override
-    public void deleteByAcademyId(Long academyId) {
-        googleAccountConnectionJpaRepository.deleteByAcademyId(academyId);
+    public void deleteAll() {
+        googleAccountConnectionJpaRepository.deleteAll();
     }
 
     private GoogleAccountConnectionEntity updateExisting(GoogleAccountConnection domain) {
@@ -42,13 +42,12 @@ public class GoogleAccountConnectionPersistenceAdapter implements GoogleAccountC
 
     private GoogleAccountConnectionEntity toEntity(GoogleAccountConnection domain) {
         return GoogleAccountConnectionEntity.builder()
-                .academyId(domain.getAcademyId())
                 .googleEmail(domain.getGoogleEmail())
                 .connectedByUserId(domain.getConnectedByUserId())
                 .scope(domain.getScope())
                 .encryptedRefreshToken(googleTokenCipher.encrypt(domain.getRefreshToken()))
                 .connectedAt(domain.getConnectedAt())
-                .tokenExpiresAt(domain.getTokenExpiresAt())
+                .refreshTokenExpiresAt(domain.getRefreshTokenExpiresAt())
                 .lastCheckedAt(domain.getLastCheckedAt())
                 .failed(domain.isFailed())
                 .build();
@@ -56,8 +55,8 @@ public class GoogleAccountConnectionPersistenceAdapter implements GoogleAccountC
 
     private GoogleAccountConnection toDomain(GoogleAccountConnectionEntity entity) {
         return GoogleAccountConnection.restore(
-                entity.getId(), entity.getAcademyId(), entity.getGoogleEmail(), entity.getConnectedByUserId(),
+                entity.getId(), entity.getGoogleEmail(), entity.getConnectedByUserId(),
                 entity.getScope(), googleTokenCipher.decrypt(entity.getEncryptedRefreshToken()),
-                entity.getConnectedAt(), entity.getTokenExpiresAt(), entity.getLastCheckedAt(), entity.isFailed());
+                entity.getConnectedAt(), entity.getRefreshTokenExpiresAt(), entity.getLastCheckedAt(), entity.isFailed());
     }
 }

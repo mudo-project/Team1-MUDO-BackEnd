@@ -14,7 +14,6 @@ import com.academy.mudogroupware.attendance.domain.exception.AttendanceException
 public final class LeaveRequest {
 
     private final Long id;
-    private final Long academyId;
     private final Long userId;
     private final Long documentId;
     private final LocalDate startDate;
@@ -24,16 +23,15 @@ public final class LeaveRequest {
     private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    private LeaveRequest(Long id, Long academyId, Long userId, Long documentId, LocalDate startDate,
+    private LeaveRequest(Long id, Long userId, Long documentId, LocalDate startDate,
                          LocalDate endDate, int usedDays, LeaveRequestStatus status, LocalDateTime createdAt,
                          LocalDateTime updatedAt) {
-        if (academyId == null || userId == null || documentId == null || startDate == null || endDate == null
+        if (userId == null || documentId == null || startDate == null || endDate == null
                 || endDate.isBefore(startDate) || usedDays <= 0 || status == null || createdAt == null
                 || updatedAt == null) {
             throw new AttendanceException(AttendanceErrorCode.INVALID_LEAVE_PERIOD);
         }
         this.id = id;
-        this.academyId = academyId;
         this.userId = userId;
         this.documentId = documentId;
         this.startDate = startDate;
@@ -44,16 +42,16 @@ public final class LeaveRequest {
         this.updatedAt = updatedAt;
     }
 
-    public static LeaveRequest submit(Long academyId, Long userId, Long documentId, LocalDate startDate,
+    public static LeaveRequest submit(Long userId, Long documentId, LocalDate startDate,
                                       LocalDate endDate, int usedDays, LocalDateTime now) {
-        return new LeaveRequest(null, academyId, userId, documentId, startDate, endDate, usedDays,
+        return new LeaveRequest(null, userId, documentId, startDate, endDate, usedDays,
                 LeaveRequestStatus.PENDING, now, now);
     }
 
-    public static LeaveRequest restore(Long id, Long academyId, Long userId, Long documentId, LocalDate startDate,
+    public static LeaveRequest restore(Long id, Long userId, Long documentId, LocalDate startDate,
                                        LocalDate endDate, int usedDays, LeaveRequestStatus status, LocalDateTime createdAt,
                                        LocalDateTime updatedAt) {
-        return new LeaveRequest(id, academyId, userId, documentId, startDate, endDate, usedDays, status, createdAt,
+        return new LeaveRequest(id, userId, documentId, startDate, endDate, usedDays, status, createdAt,
                 updatedAt);
     }
 
@@ -81,10 +79,6 @@ public final class LeaveRequest {
 
     public Long getId() {
         return id;
-    }
-
-    public Long getAcademyId() {
-        return academyId;
     }
 
     public Long getUserId() {

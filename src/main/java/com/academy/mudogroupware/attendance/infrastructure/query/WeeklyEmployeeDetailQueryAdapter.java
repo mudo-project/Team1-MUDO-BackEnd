@@ -23,11 +23,9 @@ public class WeeklyEmployeeDetailQueryAdapter implements WeeklyEmployeeDetailQue
             FROM users u
             LEFT JOIN role r ON r.role_id = u.role_id
             LEFT JOIN attendance_record ar
-              ON ar.academy_id = u.academy_id
-             AND ar.user_id = u.id
+              ON ar.user_id = u.id
              AND ar.work_date BETWEEN ? AND ?
-            WHERE u.academy_id = ?
-              AND u.id = ?
+            WHERE u.id = ?
               AND u.status = 'ACTIVE'
             ORDER BY ar.work_date ASC
             """;
@@ -36,7 +34,7 @@ public class WeeklyEmployeeDetailQueryAdapter implements WeeklyEmployeeDetailQue
 
     @Override
     public List<WeeklyEmployeeDetail> findByEmployee(
-            Long academyId, Long userId, LocalDate startDate, LocalDate endDate) {
+            Long userId, LocalDate startDate, LocalDate endDate) {
         return jdbcTemplate.query(FIND_EMPLOYEE, (rs, rowNum) -> {
             Timestamp clockIn = rs.getTimestamp("clock_in_at");
             Timestamp clockOut = rs.getTimestamp("clock_out_at");
@@ -47,6 +45,6 @@ public class WeeklyEmployeeDetailQueryAdapter implements WeeklyEmployeeDetailQue
                     clockIn == null ? null : clockIn.toLocalDateTime(),
                     clockOut == null ? null : clockOut.toLocalDateTime(),
                     status == null ? null : AttendanceStatus.valueOf(status));
-        }, startDate, endDate, academyId, userId);
+        }, startDate, endDate, userId);
     }
 }

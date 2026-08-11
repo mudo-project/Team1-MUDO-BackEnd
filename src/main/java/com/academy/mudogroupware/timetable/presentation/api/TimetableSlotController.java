@@ -3,7 +3,6 @@ package com.academy.mudogroupware.timetable.presentation.api;
 import java.util.List;
 
 import com.academy.mudogroupware.global.presentation.api.common.GlobalApiResponse;
-import com.academy.mudogroupware.global.presentation.security.AuthUser;
 import com.academy.mudogroupware.timetable.application.command.DeleteTimetableSlotCommand;
 import com.academy.mudogroupware.timetable.application.usecase.CreateTimetableSlotUseCase;
 import com.academy.mudogroupware.timetable.application.usecase.DeleteTimetableSlotUseCase;
@@ -26,7 +25,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -60,10 +58,9 @@ public class TimetableSlotController {
     @PreAuthorize("hasAuthority('TIMETABLE:MANAGE')")
     @PostMapping
     public ResponseEntity<GlobalApiResponse<CreateTimetableSlotResponse>> createSlot(
-            @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long timetableSetId,
             @Valid @RequestBody CreateTimetableSlotRequest request) {
-        Long slotId = createTimetableSlotUseCase.createSlot(request.toCommand(authUser.academyId(), timetableSetId));
+        Long slotId = createTimetableSlotUseCase.createSlot(request.toCommand(timetableSetId));
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(GlobalApiResponse.created(TimetableResponseCode.SLOT_CREATED, CreateTimetableSlotResponse.from(slotId)));
     }
@@ -75,10 +72,9 @@ public class TimetableSlotController {
     })
     @GetMapping
     public ResponseEntity<GlobalApiResponse<List<TimetableSlotResponse>>> getSlots(
-            @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long timetableSetId) {
         List<TimetableSlotResponse> responses = getTimetableSlotsUseCase
-                .getSlots(authUser.academyId(), timetableSetId).stream()
+                .getSlots(timetableSetId).stream()
                 .map(TimetableSlotResponse::from)
                 .toList();
         return ResponseEntity.ok(GlobalApiResponse.ok(TimetableResponseCode.SLOT_LIST_RETRIEVED, responses));
@@ -91,11 +87,10 @@ public class TimetableSlotController {
     })
     @GetMapping("/{timetableSlotId}")
     public ResponseEntity<GlobalApiResponse<TimetableSlotResponse>> getSlot(
-            @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long timetableSetId,
             @PathVariable Long timetableSlotId) {
         TimetableSlotResponse response = TimetableSlotResponse.from(
-                getTimetableSlotUseCase.getSlot(authUser.academyId(), timetableSetId, timetableSlotId));
+                getTimetableSlotUseCase.getSlot(timetableSetId, timetableSlotId));
         return ResponseEntity.ok(GlobalApiResponse.ok(TimetableResponseCode.SLOT_DETAIL_RETRIEVED, response));
     }
 
@@ -110,11 +105,10 @@ public class TimetableSlotController {
     @PreAuthorize("hasAuthority('TIMETABLE:MANAGE')")
     @PatchMapping("/{timetableSlotId}")
     public ResponseEntity<Void> updateSlot(
-            @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long timetableSetId,
             @PathVariable Long timetableSlotId,
             @Valid @RequestBody UpdateTimetableSlotRequest request) {
-        updateTimetableSlotUseCase.updateSlot(request.toCommand(authUser.academyId(), timetableSetId, timetableSlotId));
+        updateTimetableSlotUseCase.updateSlot(request.toCommand(timetableSetId, timetableSlotId));
         return ResponseEntity.noContent().build();
     }
 
@@ -128,12 +122,11 @@ public class TimetableSlotController {
     @PreAuthorize("hasAuthority('TIMETABLE:MANAGE')")
     @DeleteMapping("/{timetableSlotId}")
     public ResponseEntity<Void> deleteSlot(
-            @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long timetableSetId,
             @PathVariable Long timetableSlotId,
             @RequestParam UpdateScope scope) {
         deleteTimetableSlotUseCase.deleteSlot(
-                new DeleteTimetableSlotCommand(authUser.academyId(), timetableSetId, timetableSlotId, scope));
+                new DeleteTimetableSlotCommand(timetableSetId, timetableSlotId, scope));
         return ResponseEntity.noContent().build();
     }
 }

@@ -23,9 +23,8 @@ public class GetTimetableSlotsService implements GetTimetableSlotsUseCase {
     private final TimetableSlotRepository timetableSlotRepository;
 
     @Override
-    public List<TimetableSlotView> getSlots(Long academyId, Long timetableSetId) {
+    public List<TimetableSlotView> getSlots(Long timetableSetId) {
         timetableSetRepository.findById(timetableSetId)
-                .filter(found -> found.getAcademyId().equals(academyId))
                 .orElseThrow(TimetableSetNotFoundException::new);
 
         return timetableSlotRepository.findAllByTimetableSetId(timetableSetId).stream()

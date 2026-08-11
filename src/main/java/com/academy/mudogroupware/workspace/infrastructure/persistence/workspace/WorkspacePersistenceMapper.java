@@ -15,11 +15,7 @@ public interface WorkspacePersistenceMapper {
 
   default Workspace toDomain(WorkspaceJpaEntity entity) {
     return Workspace.restore(
-        entity.getId(),
-        entity.getAcademyId(),
-        entity.getName(),
-        entity.getCreatedBy(),
-        toMemberIds(entity.getMembers()));
+        entity.getId(), entity.getName(), entity.getCreatedBy(), toMemberIds(entity.getMembers()));
   }
 
   default Set<Long> toMemberIds(List<WorkspaceMemberJpaEntity> members) {

@@ -19,7 +19,6 @@ import com.academy.mudogroupware.google.application.query.GoogleAccountConnectio
 import com.academy.mudogroupware.google.domain.model.GoogleAccountConnection;
 import com.academy.mudogroupware.google.domain.model.GoogleConnectionStatus;
 import com.academy.mudogroupware.google.domain.repository.GoogleAccountConnectionRepository;
-import com.academy.mudogroupware.google.infrastructure.external.google.GoogleOAuthProperties;
 
 @ExtendWith(MockitoExtension.class)
 class GetGoogleAccountConnectionServiceTest {
@@ -31,33 +30,27 @@ class GetGoogleAccountConnectionServiceTest {
 
     private GetGoogleAccountConnectionService service;
 
-    private GetGoogleAccountConnectionService serviceWithScope(String requiredScope) {
-        Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
-        GoogleOAuthProperties properties = new GoogleOAuthProperties(
-                "client-id", "client-secret", "https://example.com/callback", requiredScope, "/");
-        return new GetGoogleAccountConnectionService(googleAccountConnectionRepository, clock, properties);
-    }
-
     @BeforeEach
     void setUp() {
-        service = serviceWithScope("scope");
+        Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
+        service = new GetGoogleAccountConnectionService(googleAccountConnectionRepository, clock);
     }
 
     @Test
     void getConnectionReturnsEmptyWhenNotConnected() {
-        when(googleAccountConnectionRepository.findByAcademyId(1L)).thenReturn(Optional.empty());
+        when(googleAccountConnectionRepository.find()).thenReturn(Optional.empty());
 
-        assertThat(service.getConnection(1L)).isEmpty();
+        assertThat(service.getConnection()).isEmpty();
     }
 
     @Test
     void getConnectionReturnsViewWithDerivedStatus() {
         GoogleAccountConnection connection = GoogleAccountConnection.restore(
-                10L, 1L, "academy@mudo.co.kr", 7L, "scope", "refresh-token", CONNECTED_AT,
-                CONNECTED_AT.plusDays(60), CONNECTED_AT, false);
-        when(googleAccountConnectionRepository.findByAcademyId(1L)).thenReturn(Optional.of(connection));
+                10L, "academy@mudo.co.kr", 7L, "scope", "refresh-token", CONNECTED_AT,
+                null, CONNECTED_AT, false);
+        when(googleAccountConnectionRepository.find()).thenReturn(Optional.of(connection));
 
-        Optional<GoogleAccountConnectionView> view = service.getConnection(1L);
+        Optional<GoogleAccountConnectionView> view = service.getConnection();
 
         assertThat(view).isPresent();
         assertThat(view.get().googleEmail()).isEqualTo("academy@mudo.co.kr");
@@ -66,16 +59,15 @@ class GetGoogleAccountConnectionServiceTest {
     }
 
     @Test
-    void getConnectionReturnsFailedWhenStoredScopeMissingNewlyRequiredScope() {
-        GetGoogleAccountConnectionService serviceWithExpandedScope = serviceWithScope("openid email drive.file");
+    void getConnectionKeepsConnectedWhenStoredScopeMissesNewlyRequiredScope() {
         GoogleAccountConnection connection = GoogleAccountConnection.restore(
-                10L, 1L, "academy@mudo.co.kr", 7L, "openid email", "refresh-token", CONNECTED_AT,
-                CONNECTED_AT.plusDays(60), CONNECTED_AT, false);
-        when(googleAccountConnectionRepository.findByAcademyId(1L)).thenReturn(Optional.of(connection));
+                10L, "academy@mudo.co.kr", 7L, "openid email", "refresh-token", CONNECTED_AT,
+                null, CONNECTED_AT, false);
+        when(googleAccountConnectionRepository.find()).thenReturn(Optional.of(connection));
 
-        Optional<GoogleAccountConnectionView> view = serviceWithExpandedScope.getConnection(1L);
+        Optional<GoogleAccountConnectionView> view = service.getConnection();
 
         assertThat(view).isPresent();
-        assertThat(view.get().status()).isEqualTo(GoogleConnectionStatus.FAILED);
+        assertThat(view.get().status()).isEqualTo(GoogleConnectionStatus.CONNECTED);
     }
 }

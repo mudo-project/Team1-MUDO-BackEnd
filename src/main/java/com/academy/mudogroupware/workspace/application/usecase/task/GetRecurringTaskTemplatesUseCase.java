@@ -7,5 +7,5 @@ public interface GetRecurringTaskTemplatesUseCase {
 
   // 최신 생성순으로 정렬한 페이지 결과를 반환한다.
   PageResult<RecurringTaskTemplate> getTemplates(
-      Long workspaceId, Long requesterId, int page, int size, Long academyId, boolean canReadAll);
+      Long workspaceId, Long requesterId, int page, int size, boolean canReadAll);
 }

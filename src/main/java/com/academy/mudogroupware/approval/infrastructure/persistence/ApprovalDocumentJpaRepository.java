@@ -34,7 +34,7 @@ public interface ApprovalDocumentJpaRepository extends JpaRepository<ApprovalDoc
 
     Slice<ApprovalDocumentEntity> findAllByCreatorId(Long creatorId, Pageable pageable);
 
-    Slice<ApprovalDocumentEntity> findAllByAcademyId(Long academyId, Pageable pageable);
+    Slice<ApprovalDocumentEntity> findAllBy(Pageable pageable);
 
     @Query("""
             select distinct d

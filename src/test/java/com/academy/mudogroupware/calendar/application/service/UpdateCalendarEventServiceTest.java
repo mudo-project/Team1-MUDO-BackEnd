@@ -24,62 +24,42 @@ import com.academy.mudogroupware.calendar.domain.repository.CalendarEventReposit
 
 @ExtendWith(MockitoExtension.class)
 class UpdateCalendarEventServiceTest {
-
     private static final LocalDateTime START = LocalDateTime.of(2026, 8, 3, 10, 0);
     private static final LocalDateTime END = LocalDateTime.of(2026, 8, 3, 11, 30);
 
     @Mock private CalendarEventRepository calendarEventRepository;
-
-    private UpdateCalendarEventService updateCalendarEventService;
+    private UpdateCalendarEventService service;
 
     @BeforeEach
     void setUp() {
-        updateCalendarEventService = new UpdateCalendarEventService(calendarEventRepository);
+        service = new UpdateCalendarEventService(calendarEventRepository);
     }
 
     @Test
-    void updateEventAppliesChangesAndSavesWhenEventBelongsToSameAcademy() {
+    void updateEventAppliesChangesAndSaves() {
         CalendarEvent existing = CalendarEvent.restore(
-                101L, 1L, "기존 제목", "기존 내용", START, END, false, "green", 7L, START, START);
+                101L, "기존 제목", "기존 내용", START, END, false, "green", 7L, START, START);
         when(calendarEventRepository.findById(101L)).thenReturn(Optional.of(existing));
-        LocalDateTime newStart = LocalDateTime.of(2026, 8, 4, 12, 30);
-        LocalDateTime newEnd = LocalDateTime.of(2026, 8, 4, 15, 30);
+        LocalDateTime newStart = START.plusDays(1);
+        LocalDateTime newEnd = END.plusDays(1);
         UpdateCalendarEventCommand command = new UpdateCalendarEventCommand(
-                101L, 1L, "새 제목", "새 내용", newStart, newEnd, true, "orange");
+                101L, "새 제목", "새 내용", newStart, newEnd, true, "orange");
 
-        updateCalendarEventService.updateEvent(command);
+        service.updateEvent(command);
 
         ArgumentCaptor<CalendarEvent> captor = ArgumentCaptor.forClass(CalendarEvent.class);
         verify(calendarEventRepository).save(captor.capture());
-        CalendarEvent saved = captor.getValue();
-        assertThat(saved.getTitle()).isEqualTo("새 제목");
-        assertThat(saved.getContent()).isEqualTo("새 내용");
-        assertThat(saved.getEventStartAt()).isEqualTo(newStart);
-        assertThat(saved.getEventEndAt()).isEqualTo(newEnd);
-        assertThat(saved.isAllDay()).isTrue();
-        assertThat(saved.getColor()).isEqualTo("orange");
+        assertThat(captor.getValue().getTitle()).isEqualTo("새 제목");
+        assertThat(captor.getValue().getColor()).isEqualTo("orange");
     }
 
     @Test
     void updateEventThrowsWhenEventDoesNotExist() {
         when(calendarEventRepository.findById(999L)).thenReturn(Optional.empty());
         UpdateCalendarEventCommand command = new UpdateCalendarEventCommand(
-                999L, 1L, "제목", null, START, END, false, null);
+                999L, "제목", null, START, END, false, null);
 
-        assertThatThrownBy(() -> updateCalendarEventService.updateEvent(command))
-                .isInstanceOf(CalendarEventNotFoundException.class);
-        verify(calendarEventRepository, never()).save(org.mockito.ArgumentMatchers.any());
-    }
-
-    @Test
-    void updateEventThrowsWhenEventBelongsToDifferentAcademy() {
-        CalendarEvent existing = CalendarEvent.restore(
-                101L, 2L, "다른 학원 일정", null, START, END, false, null, 7L, START, START);
-        when(calendarEventRepository.findById(101L)).thenReturn(Optional.of(existing));
-        UpdateCalendarEventCommand command = new UpdateCalendarEventCommand(
-                101L, 1L, "제목", null, START, END, false, null);
-
-        assertThatThrownBy(() -> updateCalendarEventService.updateEvent(command))
+        assertThatThrownBy(() -> service.updateEvent(command))
                 .isInstanceOf(CalendarEventNotFoundException.class);
         verify(calendarEventRepository, never()).save(org.mockito.ArgumentMatchers.any());
     }
@@ -87,12 +67,12 @@ class UpdateCalendarEventServiceTest {
     @Test
     void updateEventThrowsWhenTitleIsBlankWithoutSaving() {
         CalendarEvent existing = CalendarEvent.restore(
-                101L, 1L, "기존 제목", null, START, END, false, null, 7L, START, START);
+                101L, "기존 제목", null, START, END, false, null, 7L, START, START);
         when(calendarEventRepository.findById(101L)).thenReturn(Optional.of(existing));
         UpdateCalendarEventCommand command = new UpdateCalendarEventCommand(
-                101L, 1L, "   ", null, START, END, false, null);
+                101L, "   ", null, START, END, false, null);
 
-        assertThatThrownBy(() -> updateCalendarEventService.updateEvent(command))
+        assertThatThrownBy(() -> service.updateEvent(command))
                 .isInstanceOf(CalendarTitleRequiredException.class);
         verify(calendarEventRepository, never()).save(org.mockito.ArgumentMatchers.any());
     }

@@ -7,6 +7,6 @@ import java.time.LocalDateTime;
  * 라인 단위 진행 상황을 알리는 {@link ApprovalLineActivatedEvent}와 달리, 문서 전체의
  * 최종 결과 1회만 알린다(중간 결재 단계 통과 시에는 발행되지 않는다).
  */
-public record ApprovalDocumentDecidedEvent(Long documentId, Long academyId, Long requesterId, boolean approved,
+public record ApprovalDocumentDecidedEvent(Long documentId, Long requesterId, boolean approved,
                                             LocalDateTime decidedAt) {
 }

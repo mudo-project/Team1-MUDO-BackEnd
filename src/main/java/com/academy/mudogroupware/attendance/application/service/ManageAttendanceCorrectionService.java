@@ -44,71 +44,70 @@ public class ManageAttendanceCorrectionService implements ManageAttendanceCorrec
 
     @Override
     @Transactional(readOnly = true)
-    public PageResult<AdminAttendanceCorrectionView> getAll(Long academyId,
-                                                              AttendanceCorrectionStatus status,
+    public PageResult<AdminAttendanceCorrectionView> getAll(AttendanceCorrectionStatus status,
                                                               int page, int size) {
-        log.info("event=attendance_admin_correction_list_read_시작 academyId={}, status={}, page={}, size={}", academyId, status, page, size);
+        log.info("event=attendance_admin_correction_list_read_시작 status={}, page={}, size={}", status, page, size);
         try {
         PageResult<AttendanceCorrectionRequest> result = correctionRepository
-                .findAllByAcademyId(academyId, status, page, size);
-        Map<Long, Requester> requesters = requesterPort.findByAcademyIdAndUserIds(
-                academyId, result.content().stream().map(AttendanceCorrectionRequest::getUserId).collect(java.util.stream.Collectors.toSet()));
+                .findAll(status, page, size);
+        Map<Long, Requester> requesters = requesterPort.findByUserIds(
+                result.content().stream().map(AttendanceCorrectionRequest::getUserId).collect(java.util.stream.Collectors.toSet()));
         PageResult<AdminAttendanceCorrectionView> mapped = result.map(request -> new AdminAttendanceCorrectionView(
                 AttendanceCorrectionView.from(request), requesters.get(request.getUserId())));
-        log.info("event=attendance_admin_correction_list_read_완료 academyId={}, count={}", academyId, mapped.content().size());
+        log.info("event=attendance_admin_correction_list_read_완료 count={}", mapped.content().size());
         return mapped;
-        } catch (RuntimeException e) { log.warn("event=attendance_admin_correction_list_read_실패 academyId={}, reason={}", academyId, e.getMessage()); throw e; }
+        } catch (RuntimeException e) { log.warn("event=attendance_admin_correction_list_read_실패 reason={}", e.getMessage()); throw e; }
     }
 
     @Override
     @Transactional(readOnly = true)
-    public AdminAttendanceCorrectionView get(Long academyId, Long requestId) {
-        log.info("event=attendance_admin_correction_detail_read_시작 academyId={}, requestId={}", academyId, requestId);
+    public AdminAttendanceCorrectionView get(Long requestId) {
+        log.info("event=attendance_admin_correction_detail_read_시작 requestId={}", requestId);
         try {
-        AttendanceCorrectionRequest request = findRequest(academyId, requestId);
-        Requester requester = requesterPort.findByAcademyIdAndUserIds(academyId, Set.of(request.getUserId()))
+        AttendanceCorrectionRequest request = findRequest(requestId);
+        Requester requester = requesterPort.findByUserIds(Set.of(request.getUserId()))
                 .get(request.getUserId());
         AdminAttendanceCorrectionView result = new AdminAttendanceCorrectionView(AttendanceCorrectionView.from(request), requester);
-        log.info("event=attendance_admin_correction_detail_read_완료 academyId={}, requestId={}", academyId, requestId); return result;
-        } catch (RuntimeException e) { log.warn("event=attendance_admin_correction_detail_read_실패 academyId={}, requestId={}, reason={}", academyId, requestId, e.getMessage()); throw e; }
+        log.info("event=attendance_admin_correction_detail_read_완료 requestId={}", requestId); return result;
+        } catch (RuntimeException e) { log.warn("event=attendance_admin_correction_detail_read_실패 requestId={}, reason={}", requestId, e.getMessage()); throw e; }
     }
 
     @Override
     @Transactional
-    public void approve(Long academyId, Long requestId, Long processorId) {
-        log.info("event=attendance_admin_correction_approve_시작 academyId={}, requestId={}, processorId={}", academyId, requestId, processorId);
+    public void approve(Long requestId, Long processorId) {
+        log.info("event=attendance_admin_correction_approve_시작 requestId={}, processorId={}", requestId, processorId);
         try {
-        AttendanceCorrectionRequest request = findRequestForUpdate(academyId, requestId);
+        AttendanceCorrectionRequest request = findRequestForUpdate(requestId);
         LocalDateTime now = LocalDateTime.now(clock);
-        AttendanceRecord current = attendanceRepository.findByAcademyIdAndUserIdAndWorkDate(
-                academyId, request.getUserId(), request.getWorkDate()).orElse(null);
+        AttendanceRecord current = attendanceRepository.findByUserIdAndWorkDate(
+                request.getUserId(), request.getWorkDate()).orElse(null);
         AttendanceRecord corrected = applyCorrection(request, current, now);
         AttendanceRecord saved = attendanceRepository.save(corrected);
         AttendanceCorrectionRequest processed = request.attachAttendanceId(saved.getId())
                 .approve(processorId, now);
         correctionRepository.save(processed);
-        log.info("event=attendance_admin_correction_approve_완료 academyId={}, requestId={}", academyId, requestId);
-        } catch (RuntimeException e) { log.warn("event=attendance_admin_correction_approve_실패 academyId={}, requestId={}, reason={}", academyId, requestId, e.getMessage()); throw e; }
+        log.info("event=attendance_admin_correction_approve_완료 requestId={}", requestId);
+        } catch (RuntimeException e) { log.warn("event=attendance_admin_correction_approve_실패 requestId={}, reason={}", requestId, e.getMessage()); throw e; }
     }
 
     @Override
     @Transactional
-    public void reject(Long academyId, Long requestId, Long processorId, String reason) {
-        log.info("event=attendance_admin_correction_reject_시작 academyId={}, requestId={}, processorId={}", academyId, requestId, processorId);
+    public void reject(Long requestId, Long processorId, String reason) {
+        log.info("event=attendance_admin_correction_reject_시작 requestId={}, processorId={}", requestId, processorId);
         try {
-        AttendanceCorrectionRequest request = findRequestForUpdate(academyId, requestId);
+        AttendanceCorrectionRequest request = findRequestForUpdate(requestId);
         correctionRepository.save(request.reject(processorId, LocalDateTime.now(clock), reason));
-        log.info("event=attendance_admin_correction_reject_완료 academyId={}, requestId={}", academyId, requestId);
-        } catch (RuntimeException e) { log.warn("event=attendance_admin_correction_reject_실패 academyId={}, requestId={}, reason={}", academyId, requestId, e.getMessage()); throw e; }
+        log.info("event=attendance_admin_correction_reject_완료 requestId={}", requestId);
+        } catch (RuntimeException e) { log.warn("event=attendance_admin_correction_reject_실패 requestId={}, reason={}", requestId, e.getMessage()); throw e; }
     }
 
-    private AttendanceCorrectionRequest findRequest(Long academyId, Long requestId) {
-        return correctionRepository.findByIdAndAcademyId(requestId, academyId)
+    private AttendanceCorrectionRequest findRequest(Long requestId) {
+        return correctionRepository.findById(requestId)
                 .orElseThrow(() -> new AttendanceException(AttendanceErrorCode.CORRECTION_REQUEST_NOT_FOUND));
     }
 
-    private AttendanceCorrectionRequest findRequestForUpdate(Long academyId, Long requestId) {
-        return correctionRepository.findByIdAndAcademyIdForUpdate(requestId, academyId)
+    private AttendanceCorrectionRequest findRequestForUpdate(Long requestId) {
+        return correctionRepository.findByIdForUpdate(requestId)
                 .orElseThrow(() -> new AttendanceException(AttendanceErrorCode.CORRECTION_REQUEST_NOT_FOUND));
     }
 
@@ -120,10 +119,10 @@ public class ManageAttendanceCorrectionService implements ManageAttendanceCorrec
             if (current != null) {
                 throw new AttendanceException(AttendanceErrorCode.INVALID_CORRECTION_REQUEST);
             }
-            return AttendanceRecord.createFromCorrection(request.getAcademyId(), request.getUserId(),
+            return AttendanceRecord.createFromCorrection(request.getUserId(),
                     request.getWorkDate(), request.getRequestedClockInAt(), request.getRequestedClockInNote(),
                     request.getRequestedClockOutAt(), request.getRequestedClockOutNote(),
-                    resolveStatus(request.getAcademyId(), request.getWorkDate(), request.getRequestedClockInAt()), now);
+                    resolveStatus(request.getWorkDate(), request.getRequestedClockInAt()), now);
         }
         if (current == null) {
             throw new AttendanceException(AttendanceErrorCode.CORRECTION_ATTENDANCE_NOT_FOUND);
@@ -137,14 +136,14 @@ public class ManageAttendanceCorrectionService implements ManageAttendanceCorrec
         String clockOutNote = type == AttendanceCorrectionType.CLOCK_OUT_NOTE
                 ? request.getRequestedClockOutNote() : current.getClockOutNote();
         AttendanceStatus status = type == AttendanceCorrectionType.CLOCK_IN_TIME
-                ? resolveStatus(request.getAcademyId(), request.getWorkDate(), clockInAt)
+                ? resolveStatus(request.getWorkDate(), clockInAt)
                 : current.getStatus();
         return current.applyCorrection(clockInAt, clockInNote, clockOutAt, clockOutNote, status, now);
     }
 
-    private AttendanceStatus resolveStatus(Long academyId, java.time.LocalDate workDate,
+    private AttendanceStatus resolveStatus(java.time.LocalDate workDate,
                                             LocalDateTime clockInAt) {
-        AttendancePolicy policy = policyRepository.findByAcademyId(academyId)
+        AttendancePolicy policy = policyRepository.findCurrent()
                 .orElseThrow(() -> new AttendanceException(AttendanceErrorCode.ATTENDANCE_POLICY_NOT_FOUND));
         if (!policy.isWorkday(workDate.getDayOfWeek().getValue())) {
             throw new AttendanceException(AttendanceErrorCode.ATTENDANCE_NON_WORKDAY);

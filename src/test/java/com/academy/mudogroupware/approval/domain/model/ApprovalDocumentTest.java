@@ -18,7 +18,7 @@ class ApprovalDocumentTest {
     @Test
     void findAttachmentByFileIdReturnsMatchingAttachment() {
         ApprovalDocument document = ApprovalDocument.create(
-                1L, 1L, "제목", ApprovalContent.create(ApprovalContentType.TEXT, "내용"),
+                1L, "제목", ApprovalContent.create(ApprovalContentType.TEXT, "내용"),
                 7L, List.of(12L), List.of(101L, 102L), NOW);
 
         assertThat(document.findAttachmentByFileId(102L))
@@ -30,7 +30,7 @@ class ApprovalDocumentTest {
     @Test
     void findAttachmentByFileIdReturnsEmptyWhenNoAttachmentMatches() {
         ApprovalDocument document = ApprovalDocument.create(
-                1L, 1L, "제목", ApprovalContent.create(ApprovalContentType.TEXT, "내용"),
+                1L, "제목", ApprovalContent.create(ApprovalContentType.TEXT, "내용"),
                 7L, List.of(12L), List.of(101L), NOW);
 
         assertThat(document.findAttachmentByFileId(999L)).isEmpty();
@@ -38,7 +38,7 @@ class ApprovalDocumentTest {
     @Test
     void cancelChangesStatusWhenNoApprovalLineWasDecided() {
         ApprovalDocument document = ApprovalDocument.create(
-                1L, 1L, "Vacation", ApprovalContent.create(ApprovalContentType.TEXT, "content"),
+                1L, "Vacation", ApprovalContent.create(ApprovalContentType.TEXT, "content"),
                 7L, List.of(12L, 13L), List.of(), NOW);
 
         document.cancel();
@@ -49,7 +49,7 @@ class ApprovalDocumentTest {
     @Test
     void cancelRejectsDocumentAfterAnyApprovalLineWasDecided() {
         ApprovalDocument document = ApprovalDocument.create(
-                1L, 1L, "Vacation", ApprovalContent.create(ApprovalContentType.TEXT, "content"),
+                1L, "Vacation", ApprovalContent.create(ApprovalContentType.TEXT, "content"),
                 7L, List.of(12L, 13L), List.of(), NOW);
         document.decide(12L, ApprovalDecision.APPROVE, null, NOW.plusHours(1));
 

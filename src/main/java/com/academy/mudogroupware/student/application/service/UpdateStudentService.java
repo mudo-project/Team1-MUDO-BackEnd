@@ -27,9 +27,6 @@ public class UpdateStudentService implements UpdateStudentUseCase {
     public void updateStudent(UpdateStudentCommand command) {
         Student student = studentRepository.findById(command.studentId())
                 .orElseThrow(() -> new StudentException(StudentErrorCode.STUDENT_NOT_FOUND));
-        if (!student.getAcademyId().equals(command.academyId())) {
-            throw new StudentException(StudentErrorCode.STUDENT_ACCESS_DENIED);
-        }
         student.update(command.name(), command.grade(), command.school(), command.phone(), command.parentPhone(),
                 command.note(), LocalDateTime.now(clock));
         studentRepository.save(student);

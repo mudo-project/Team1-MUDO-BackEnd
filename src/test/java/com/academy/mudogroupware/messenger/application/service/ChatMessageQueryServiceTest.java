@@ -52,7 +52,7 @@ class ChatMessageQueryServiceTest {
     @Test
     void includesUnreadCountForEachMessage() {
         LocalDateTime createdAt = LocalDateTime.of(2026, 8, 5, 10, 0);
-        ChatRoom chatRoom = ChatRoom.restore(1L, 10L, "group", ChatRoomType.GROUP, 1L,
+        ChatRoom chatRoom = ChatRoom.restore(1L, "group", ChatRoomType.GROUP, 1L,
                 List.of(ChatRoomMember.restore(1L, createdAt), ChatRoomMember.restore(2L, null)),
                 createdAt.minusHours(1));
         ChatMessage first = ChatMessage.restore(10L, 1L, 1L, MessageType.TEXT,
@@ -75,7 +75,7 @@ class ChatMessageQueryServiceTest {
     @Test
     void resolvesDownloadUrlsForImageAndFileMessagesInBatch() {
         LocalDateTime createdAt = LocalDateTime.of(2026, 8, 5, 10, 0);
-        ChatRoom chatRoom = ChatRoom.restore(1L, 10L, "group", ChatRoomType.GROUP, 1L,
+        ChatRoom chatRoom = ChatRoom.restore(1L, "group", ChatRoomType.GROUP, 1L,
                 List.of(ChatRoomMember.restore(1L, createdAt), ChatRoomMember.restore(2L, null)),
                 createdAt.minusHours(1));
         ChatMessage textMessage = ChatMessage.restore(10L, 1L, 1L, MessageType.TEXT,
@@ -87,14 +87,15 @@ class ChatMessageQueryServiceTest {
                 .thenReturn(List.of(textMessage, imageMessage));
         when(chatMemberDirectoryPort.getMembers(List.of(1L))).thenReturn(
                 Map.of(1L, new ChatMemberInfo(1L, "sender", 10L)));
+        when(chatMemberDirectoryPort.getMember(1L)).thenReturn(new ChatMemberInfo(1L, "sender", 10L));
         when(chatMessageRepository.countUnreadByMessageIds(1L, List.of(10L, 11L)))
                 .thenReturn(Map.of(10L, 1L, 11L, 1L));
-        when(getFileDownloadUrlUseCase.getDownloadUrls(List.of(99L), 10L))
+        when(getFileDownloadUrlUseCase.getDownloadUrls(List.of(99L)))
                 .thenReturn(Map.of(99L, "https://example.com/download/99"));
 
         ChatMessagePageView view = service.getMessages(1L, 1L, null, null, 20);
 
-        verify(getFileDownloadUrlUseCase).getDownloadUrls(List.of(99L), 10L);
+        verify(getFileDownloadUrlUseCase).getDownloadUrls(List.of(99L));
         org.assertj.core.api.Assertions.assertThat(view.messages().get(0).fileDownloadUrl()).isNull();
         org.assertj.core.api.Assertions.assertThat(view.messages().get(1).fileDownloadUrl())
                 .isEqualTo("https://example.com/download/99");
@@ -103,7 +104,7 @@ class ChatMessageQueryServiceTest {
     @Test
     void excludesDeletedMessagesFromDownloadUrlBatchLookup() {
         LocalDateTime createdAt = LocalDateTime.of(2026, 8, 5, 10, 0);
-        ChatRoom chatRoom = ChatRoom.restore(1L, 10L, "group", ChatRoomType.GROUP, 1L,
+        ChatRoom chatRoom = ChatRoom.restore(1L, "group", ChatRoomType.GROUP, 1L,
                 List.of(ChatRoomMember.restore(1L, createdAt), ChatRoomMember.restore(2L, null)),
                 createdAt.minusHours(1));
         ChatMessage deletedImageMessage = ChatMessage.restore(10L, 1L, 1L, MessageType.IMAGE,
@@ -115,20 +116,21 @@ class ChatMessageQueryServiceTest {
                 .thenReturn(List.of(deletedImageMessage, activeImageMessage));
         when(chatMemberDirectoryPort.getMembers(List.of(1L))).thenReturn(
                 Map.of(1L, new ChatMemberInfo(1L, "sender", 10L)));
+        when(chatMemberDirectoryPort.getMember(1L)).thenReturn(new ChatMemberInfo(1L, "sender", 10L));
         when(chatMessageRepository.countUnreadByMessageIds(1L, List.of(10L, 11L)))
                 .thenReturn(Map.of(10L, 1L, 11L, 1L));
-        when(getFileDownloadUrlUseCase.getDownloadUrls(List.of(99L), 10L))
+        when(getFileDownloadUrlUseCase.getDownloadUrls(List.of(99L)))
                 .thenReturn(Map.of(99L, "https://example.com/download/99"));
 
         service.getMessages(1L, 1L, null, null, 20);
 
-        verify(getFileDownloadUrlUseCase).getDownloadUrls(List.of(99L), 10L);
+        verify(getFileDownloadUrlUseCase).getDownloadUrls(List.of(99L));
     }
 
     @Test
     void publishesReadEventWhenFirstPageMarksRoomRead() {
         LocalDateTime createdAt = LocalDateTime.of(2026, 8, 5, 10, 0);
-        ChatRoom chatRoom = ChatRoom.restore(1L, 10L, "group", ChatRoomType.GROUP, 1L,
+        ChatRoom chatRoom = ChatRoom.restore(1L, "group", ChatRoomType.GROUP, 1L,
                 List.of(ChatRoomMember.restore(1L, null), ChatRoomMember.restore(2L, null)),
                 createdAt.minusHours(1));
         ChatMessage message = ChatMessage.restore(10L, 1L, 1L, MessageType.TEXT,

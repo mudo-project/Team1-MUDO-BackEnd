@@ -82,7 +82,6 @@ public class CalendarController {
     })
     @GetMapping
     public ResponseEntity<GlobalApiResponse<List<CalendarEventResponse>>> getEvents(
-            @AuthenticationPrincipal AuthUser authUser,
             @Parameter(description = "일별 조회 대상 날짜(한국 시간 기준)", example = "2026-08-04")
             @RequestParam(required = false) LocalDate date,
             @Parameter(description = "월간 조회 대상 연월(한국 시간 기준)", example = "2026-08")
@@ -100,7 +99,7 @@ public class CalendarController {
         }
 
         List<CalendarEventResponse> responses = getCalendarEventsUseCase
-                .getEvents(authUser.academyId(), from, to).stream()
+                .getEvents(from, to).stream()
                 .map(CalendarEventResponse::from)
                 .toList();
         return ResponseEntity.ok(GlobalApiResponse.ok(CalendarResponseCode.EVENT_LIST_RETRIEVED, responses));
@@ -114,10 +113,8 @@ public class CalendarController {
     })
     @PreAuthorize("hasAuthority('CALENDAR:MANAGE')")
     @DeleteMapping("/{eventId}")
-    public ResponseEntity<Void> deleteEvent(
-            @AuthenticationPrincipal AuthUser authUser,
-            @PathVariable Long eventId) {
-        deleteCalendarEventUseCase.deleteEvent(new DeleteCalendarEventCommand(eventId, authUser.academyId()));
+    public ResponseEntity<Void> deleteEvent(@PathVariable Long eventId) {
+        deleteCalendarEventUseCase.deleteEvent(new DeleteCalendarEventCommand(eventId));
         return ResponseEntity.noContent().build();
     }
 
@@ -131,10 +128,9 @@ public class CalendarController {
     @PreAuthorize("hasAuthority('CALENDAR:MANAGE')")
     @PatchMapping("/{eventId}")
     public ResponseEntity<Void> updateEvent(
-            @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long eventId,
             @Valid @RequestBody UpdateCalendarEventRequest request) {
-        updateCalendarEventUseCase.updateEvent(request.toCommand(eventId, authUser));
+        updateCalendarEventUseCase.updateEvent(request.toCommand(eventId));
         return ResponseEntity.noContent().build();
     }
 
@@ -144,11 +140,8 @@ public class CalendarController {
         @ApiResponse(responseCode = "404", description = "일정이 존재하지 않거나 다른 학원 소속인 경우")
     })
     @GetMapping("/{eventId}")
-    public ResponseEntity<GlobalApiResponse<CalendarEventResponse>> getEvent(
-            @AuthenticationPrincipal AuthUser authUser,
-            @PathVariable Long eventId) {
-        CalendarEventResponse response = CalendarEventResponse.from(
-                getCalendarEventUseCase.getEvent(authUser.academyId(), eventId));
+    public ResponseEntity<GlobalApiResponse<CalendarEventResponse>> getEvent(@PathVariable Long eventId) {
+        CalendarEventResponse response = CalendarEventResponse.from(getCalendarEventUseCase.getEvent(eventId));
         return ResponseEntity.ok(GlobalApiResponse.ok(CalendarResponseCode.EVENT_DETAIL_RETRIEVED, response));
     }
 }

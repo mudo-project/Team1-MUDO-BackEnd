@@ -41,12 +41,12 @@ class SendMessageServiceTest {
     private final Clock clock = Clock.fixed(
             NOW.atZone(ZoneId.of("Asia/Seoul")).toInstant(), ZoneId.of("Asia/Seoul"));
     private final SendMessageService service =
-            new SendMessageService(chatRoomRepository, chatMessageRepository, getFileDownloadUrlUseCase,
-                    eventPublisher, clock);
+            new SendMessageService(chatRoomRepository, chatMessageRepository,
+                    getFileDownloadUrlUseCase, eventPublisher, clock);
 
     @Test
     void sendsMessageWithClockBasedTimestampAndMarksSenderRead() {
-        ChatRoom chatRoom = ChatRoom.restore(1L, 10L, null, ChatRoomType.DM, 1L,
+        ChatRoom chatRoom = ChatRoom.restore(1L, null, ChatRoomType.DM, 1L,
                 List.of(ChatRoomMember.restore(1L, null), ChatRoomMember.restore(2L, null)), ROOM_CREATED_AT);
         when(chatRoomRepository.findById(1L)).thenReturn(Optional.of(chatRoom));
         when(chatMessageRepository.save(any(ChatMessage.class))).thenAnswer(invocation -> {
@@ -71,7 +71,7 @@ class SendMessageServiceTest {
 
     @Test
     void sendsImageMessageAndResolvesDownloadUrlForRealtimeEvent() {
-        ChatRoom chatRoom = ChatRoom.restore(1L, 10L, null, ChatRoomType.DM, 1L,
+        ChatRoom chatRoom = ChatRoom.restore(1L, null, ChatRoomType.DM, 1L,
                 List.of(ChatRoomMember.restore(1L, null), ChatRoomMember.restore(2L, null)), ROOM_CREATED_AT);
         when(chatRoomRepository.findById(1L)).thenReturn(Optional.of(chatRoom));
         when(chatMessageRepository.save(any(ChatMessage.class))).thenAnswer(invocation -> {
@@ -80,14 +80,14 @@ class SendMessageServiceTest {
                     message.getMessageType(), message.getContent(), message.getFileId(), message.getFileName(),
                     message.getCreatedAt(), message.getEditedAt(), message.getDeletedAt());
         });
-        when(getFileDownloadUrlUseCase.getDownloadUrl(99L, 10L)).thenReturn("https://example.com/download/99");
+        when(getFileDownloadUrlUseCase.getDownloadUrl(99L)).thenReturn("https://example.com/download/99");
 
         service.sendMessage(new SendMessageCommand(1L, 1L, MessageType.IMAGE, null, 99L, "photo.png"));
 
         ArgumentCaptor<ChatMessage> messageCaptor = ArgumentCaptor.forClass(ChatMessage.class);
         verify(chatMessageRepository).save(messageCaptor.capture());
         assertThat(messageCaptor.getValue().getFileId()).isEqualTo(99L);
-        verify(getFileDownloadUrlUseCase).getDownloadUrl(99L, 10L);
+        verify(getFileDownloadUrlUseCase).getDownloadUrl(99L);
         ArgumentCaptor<ChatMessageSentEvent> eventCaptor = ArgumentCaptor.forClass(ChatMessageSentEvent.class);
         verify(eventPublisher).publishEvent(eventCaptor.capture());
         assertThat(eventCaptor.getValue().fileId()).isEqualTo(99L);
@@ -96,7 +96,7 @@ class SendMessageServiceTest {
 
     @Test
     void doesNotPublishEventWhenDownloadUrlLookupFails() {
-        ChatRoom chatRoom = ChatRoom.restore(1L, 10L, null, ChatRoomType.DM, 1L,
+        ChatRoom chatRoom = ChatRoom.restore(1L, null, ChatRoomType.DM, 1L,
                 List.of(ChatRoomMember.restore(1L, null), ChatRoomMember.restore(2L, null)), ROOM_CREATED_AT);
         when(chatRoomRepository.findById(1L)).thenReturn(Optional.of(chatRoom));
         when(chatMessageRepository.save(any(ChatMessage.class))).thenAnswer(invocation -> {
@@ -105,7 +105,7 @@ class SendMessageServiceTest {
                     message.getMessageType(), message.getContent(), message.getFileId(), message.getFileName(),
                     message.getCreatedAt(), message.getEditedAt(), message.getDeletedAt());
         });
-        when(getFileDownloadUrlUseCase.getDownloadUrl(99L, 10L))
+        when(getFileDownloadUrlUseCase.getDownloadUrl(99L))
                 .thenThrow(new RuntimeException("file not found"));
 
         assertThatThrownBy(() -> service.sendMessage(

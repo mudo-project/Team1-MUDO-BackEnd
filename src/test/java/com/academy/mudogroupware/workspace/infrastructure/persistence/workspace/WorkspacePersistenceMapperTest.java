@@ -11,7 +11,7 @@ class WorkspacePersistenceMapperTest {
 
   @Test
   void preservesPersistedMembersWithoutAddingCreatorWhenMappingToDomain() {
-    WorkspaceJpaEntity entity = WorkspaceJpaEntity.create(1L, "개발팀", 10L);
+    WorkspaceJpaEntity entity = WorkspaceJpaEntity.create("개발팀", 10L);
     entity.addMember(20L);
 
     Workspace workspace = mapper.toDomain(entity);

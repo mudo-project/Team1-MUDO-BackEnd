@@ -34,18 +34,18 @@ class WorkspaceRecentAccessServiceTest {
 
   @Test
   void recordsClockBasedAccessOnlyForAccessibleWorkspace() {
-    when(queryPort.existsAccessible(100L, 1L, 10L, false)).thenReturn(true);
+    when(queryPort.existsAccessible(100L, 10L, false)).thenReturn(true);
 
-    service.recordRecentAccess(1L, 10L, 100L, false);
+    service.recordRecentAccess(10L, 100L, false);
 
     verify(accessPort).upsert(10L, 100L, LocalDateTime.now(clock));
   }
 
   @Test
   void rejectsRecentAccessOutsideRequestersScope() {
-    when(queryPort.existsAccessible(100L, 1L, 10L, false)).thenReturn(false);
+    when(queryPort.existsAccessible(100L, 10L, false)).thenReturn(false);
 
-    assertThatThrownBy(() -> service.recordRecentAccess(1L, 10L, 100L, false))
+    assertThatThrownBy(() -> service.recordRecentAccess(10L, 100L, false))
         .isInstanceOf(ForbiddenException.class);
 
     verifyNoInteractions(accessPort);

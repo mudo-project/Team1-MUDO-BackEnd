@@ -2,6 +2,7 @@ package com.academy.mudogroupware.google.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -16,12 +17,14 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.academy.mudogroupware.google.application.port.GoogleOAuthCallException;
 import com.academy.mudogroupware.google.application.port.GoogleOAuthPort;
 import com.academy.mudogroupware.google.application.port.GoogleTokenExchangeResult;
+import com.academy.mudogroupware.google.application.port.GoogleTokenRevokedException;
 import com.academy.mudogroupware.google.domain.exception.GoogleAccountConnectionInvalidException;
 import com.academy.mudogroupware.google.domain.exception.GoogleAccountNotConnectedException;
 import com.academy.mudogroupware.google.domain.exception.GoogleOAuthFailedException;
@@ -51,9 +54,9 @@ class GetGoogleAccessTokenServiceTest {
 
     @Test
     void getAccessTokenThrowsWhenNotConnected() {
-        when(googleAccountConnectionRepository.findByAcademyId(1L)).thenReturn(Optional.empty());
+        when(googleAccountConnectionRepository.find()).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.getAccessToken(1L))
+        assertThatThrownBy(() -> service.getAccessToken())
                 .isInstanceOf(GoogleAccountNotConnectedException.class);
         verifyNoInteractions(googleOAuthPort);
     }
@@ -61,11 +64,11 @@ class GetGoogleAccessTokenServiceTest {
     @Test
     void getAccessTokenThrowsWithoutCallingGoogleWhenScopeInsufficient() {
         GoogleAccountConnection connection = GoogleAccountConnection.restore(
-                10L, 1L, "academy@mudo.co.kr", 7L, "openid email", "refresh-token", CONNECTED_AT,
+                10L, "academy@mudo.co.kr", 7L, "openid email", "refresh-token", CONNECTED_AT,
                 CONNECTED_AT.plusDays(60), CONNECTED_AT, false);
-        when(googleAccountConnectionRepository.findByAcademyId(1L)).thenReturn(Optional.of(connection));
+        when(googleAccountConnectionRepository.find()).thenReturn(Optional.of(connection));
 
-        assertThatThrownBy(() -> service.getAccessToken(1L))
+        assertThatThrownBy(() -> service.getAccessToken())
                 .isInstanceOf(GoogleAccountConnectionInvalidException.class);
         verifyNoInteractions(googleOAuthPort);
     }
@@ -73,11 +76,11 @@ class GetGoogleAccessTokenServiceTest {
     @Test
     void getAccessTokenThrowsWithoutCallingGoogleWhenExpired() {
         GoogleAccountConnection connection = GoogleAccountConnection.restore(
-                10L, 1L, "academy@mudo.co.kr", 7L, "openid email drive.file", "refresh-token",
+                10L, "academy@mudo.co.kr", 7L, "openid email drive.file", "refresh-token",
                 CONNECTED_AT, CONNECTED_AT.minusDays(1), CONNECTED_AT, false);
-        when(googleAccountConnectionRepository.findByAcademyId(1L)).thenReturn(Optional.of(connection));
+        when(googleAccountConnectionRepository.find()).thenReturn(Optional.of(connection));
 
-        assertThatThrownBy(() -> service.getAccessToken(1L))
+        assertThatThrownBy(() -> service.getAccessToken())
                 .isInstanceOf(GoogleAccountConnectionInvalidException.class);
         verify(googleOAuthPort, never()).refreshAccessToken(org.mockito.ArgumentMatchers.anyString());
     }
@@ -85,13 +88,13 @@ class GetGoogleAccessTokenServiceTest {
     @Test
     void getAccessTokenReturnsFreshTokenWhenConnectionValid() {
         GoogleAccountConnection connection = GoogleAccountConnection.restore(
-                10L, 1L, "academy@mudo.co.kr", 7L, "openid email drive.file", "refresh-token",
+                10L, "academy@mudo.co.kr", 7L, "openid email drive.file", "refresh-token",
                 CONNECTED_AT, CONNECTED_AT.plusDays(60), CONNECTED_AT, false);
-        when(googleAccountConnectionRepository.findByAcademyId(1L)).thenReturn(Optional.of(connection));
+        when(googleAccountConnectionRepository.find()).thenReturn(Optional.of(connection));
         when(googleOAuthPort.refreshAccessToken("refresh-token"))
                 .thenReturn(new GoogleTokenExchangeResult("new-access-token", "refresh-token", "openid email drive.file"));
 
-        String accessToken = service.getAccessToken(1L);
+        String accessToken = service.getAccessToken();
 
         assertThat(accessToken).isEqualTo("new-access-token");
     }
@@ -99,13 +102,31 @@ class GetGoogleAccessTokenServiceTest {
     @Test
     void getAccessTokenWrapsGoogleOAuthCallExceptionWhenRefreshFails() {
         GoogleAccountConnection connection = GoogleAccountConnection.restore(
-                10L, 1L, "academy@mudo.co.kr", 7L, "openid email drive.file", "refresh-token",
+                10L, "academy@mudo.co.kr", 7L, "openid email drive.file", "refresh-token",
                 CONNECTED_AT, CONNECTED_AT.plusDays(60), CONNECTED_AT, false);
-        when(googleAccountConnectionRepository.findByAcademyId(1L)).thenReturn(Optional.of(connection));
+        when(googleAccountConnectionRepository.find()).thenReturn(Optional.of(connection));
         when(googleOAuthPort.refreshAccessToken("refresh-token"))
                 .thenThrow(new GoogleOAuthCallException("구글 토큰 발급에 실패했습니다."));
 
-        assertThatThrownBy(() -> service.getAccessToken(1L))
+        assertThatThrownBy(() -> service.getAccessToken())
                 .isInstanceOf(GoogleOAuthFailedException.class);
+        verify(googleAccountConnectionRepository, never()).save(any());
+    }
+
+    @Test
+    void getAccessTokenMarksFailedAndThrowsInvalidWhenTokenRevoked() {
+        GoogleAccountConnection connection = GoogleAccountConnection.restore(
+                10L, "academy@mudo.co.kr", 7L, "openid email drive.file", "refresh-token",
+                CONNECTED_AT, CONNECTED_AT.plusDays(60), CONNECTED_AT, false);
+        when(googleAccountConnectionRepository.find()).thenReturn(Optional.of(connection));
+        when(googleOAuthPort.refreshAccessToken("refresh-token"))
+                .thenThrow(new GoogleTokenRevokedException("revoked", null));
+
+        assertThatThrownBy(() -> service.getAccessToken())
+                .isInstanceOf(GoogleAccountConnectionInvalidException.class);
+
+        ArgumentCaptor<GoogleAccountConnection> captor = ArgumentCaptor.forClass(GoogleAccountConnection.class);
+        verify(googleAccountConnectionRepository).save(captor.capture());
+        assertThat(captor.getValue().isFailed()).isTrue();
     }
 }

@@ -5,7 +5,6 @@ import java.time.LocalDateTime;
 
 public record SubmitLeaveRequestCommand(
         Long documentId,
-        Long academyId,
         Long userId,
         LocalDate startDate,
         LocalDate endDate,

@@ -30,33 +30,33 @@ public class SubmitLeaveRequestService implements SubmitLeaveRequestUseCase {
     @Override
     @Transactional
     public void submit(SubmitLeaveRequestCommand command) {
-        log.info("event=attendance_leave_request_submit_시작 academyId={}, userId={}, documentId={}", command.academyId(), command.userId(), command.documentId());
+        log.info("event=attendance_leave_request_submit_시작 userId={}, documentId={}", command.userId(), command.documentId());
         try {
-        AttendancePolicy policy = attendancePolicyRepository.findByAcademyId(command.academyId())
+        AttendancePolicy policy = attendancePolicyRepository.findCurrent()
                 .orElseThrow(() -> new AttendanceException(AttendanceErrorCode.ATTENDANCE_POLICY_NOT_FOUND));
         int usedDays = leaveUsedDaysCalculator.calculate(policy, command.startDate(), command.endDate());
 
-        LeaveGrant grant = leaveGrantRepository.findActiveForUpdate(command.academyId(), command.userId(),
+        LeaveGrant grant = leaveGrantRepository.findActiveForUpdate(command.userId(),
                         command.submittedAt().toLocalDate())
                 .orElseThrow(() -> new AttendanceException(AttendanceErrorCode.INSUFFICIENT_LEAVE_BALANCE));
         if (!grant.contains(command.startDate()) || !grant.contains(command.endDate())) {
             throw new AttendanceException(AttendanceErrorCode.INVALID_LEAVE_PERIOD);
         }
 
-        if (leaveRequestRepository.existsOverlapping(command.academyId(), command.userId(),
+        if (leaveRequestRepository.existsOverlapping(command.userId(),
                 command.startDate(), command.endDate())) {
             throw new AttendanceException(AttendanceErrorCode.LEAVE_REQUEST_OVERLAP);
         }
 
-        int reservedDays = leaveRequestRepository.sumReservedDays(command.academyId(), command.userId(),
+        int reservedDays = leaveRequestRepository.sumReservedDays(command.userId(),
                 grant.getGrantDate(), grant.getExpirationDate());
         if (grant.getGrantedDays() - reservedDays < usedDays) {
             throw new AttendanceException(AttendanceErrorCode.INSUFFICIENT_LEAVE_BALANCE);
         }
 
-        leaveRequestRepository.save(LeaveRequest.submit(command.academyId(), command.userId(),
+        leaveRequestRepository.save(LeaveRequest.submit(command.userId(),
                 command.documentId(), command.startDate(), command.endDate(), usedDays, command.submittedAt()));
-        log.info("event=attendance_leave_request_submit_완료 academyId={}, userId={}, documentId={}, usedDays={}", command.academyId(), command.userId(), command.documentId(), usedDays);
-        } catch (RuntimeException e) { log.warn("event=attendance_leave_request_submit_실패 academyId={}, userId={}, reason={}", command.academyId(), command.userId(), e.getMessage()); throw e; }
+        log.info("event=attendance_leave_request_submit_완료 userId={}, documentId={}, usedDays={}", command.userId(), command.documentId(), usedDays);
+        } catch (RuntimeException e) { log.warn("event=attendance_leave_request_submit_실패 userId={}, reason={}", command.userId(), e.getMessage()); throw e; }
     }
 }

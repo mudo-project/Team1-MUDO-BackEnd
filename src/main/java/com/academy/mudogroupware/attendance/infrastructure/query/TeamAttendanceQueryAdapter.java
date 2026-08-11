@@ -23,11 +23,9 @@ public class TeamAttendanceQueryAdapter implements TeamAttendanceQueryPort {
             SELECT u.id, u.name, ar.clock_in_at
             FROM users u
             LEFT JOIN attendance_record ar
-              ON ar.academy_id = u.academy_id
-             AND ar.user_id = u.id
+              ON ar.user_id = u.id
              AND ar.work_date = ?
-            WHERE u.academy_id = ?
-              AND u.status = 'ACTIVE'
+            WHERE u.status = 'ACTIVE'
               AND u.id <> ?
             ORDER BY u.name ASC, u.id ASC
             """;
@@ -36,7 +34,7 @@ public class TeamAttendanceQueryAdapter implements TeamAttendanceQueryPort {
 
     @Override
     public List<TeamAttendanceEmployee> findEmployeesWithAttendance(
-            Long academyId, Long ownerUserId, LocalDate workDate) {
+            Long ownerUserId, LocalDate workDate) {
         return jdbcTemplate.query(
                 FIND_EMPLOYEES_WITH_ATTENDANCE,
                 (resultSet, rowNumber) -> new TeamAttendanceEmployee(
@@ -45,6 +43,6 @@ public class TeamAttendanceQueryAdapter implements TeamAttendanceQueryPort {
                         resultSet.getTimestamp("clock_in_at") == null
                                 ? null
                                 : resultSet.getTimestamp("clock_in_at").toLocalDateTime()),
-                workDate, academyId, ownerUserId);
+                workDate, ownerUserId);
     }
 }

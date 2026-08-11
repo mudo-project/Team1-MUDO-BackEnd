@@ -5,14 +5,10 @@ import java.time.LocalDateTime;
 public final class Classroom {
 
     private final Long id;
-    private final Long academyId;
     private final String name;
     private final LocalDateTime createdAt;
 
-    private Classroom(Long id, Long academyId, String name, LocalDateTime createdAt) {
-        if (academyId == null) {
-            throw new IllegalArgumentException("academyId must not be null");
-        }
+    private Classroom(Long id, String name, LocalDateTime createdAt) {
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("name must not be null or blank");
         }
@@ -20,25 +16,20 @@ public final class Classroom {
             throw new IllegalArgumentException("createdAt must not be null");
         }
         this.id = id;
-        this.academyId = academyId;
         this.name = name;
         this.createdAt = createdAt;
     }
 
-    public static Classroom create(Long academyId, String name, LocalDateTime now) {
-        return new Classroom(null, academyId, name, now);
+    public static Classroom create(String name, LocalDateTime now) {
+        return new Classroom(null, name, now);
     }
 
-    public static Classroom restore(Long id, Long academyId, String name, LocalDateTime createdAt) {
-        return new Classroom(id, academyId, name, createdAt);
+    public static Classroom restore(Long id, String name, LocalDateTime createdAt) {
+        return new Classroom(id, name, createdAt);
     }
 
     public Long getId() {
         return id;
-    }
-
-    public Long getAcademyId() {
-        return academyId;
     }
 
     public String getName() {

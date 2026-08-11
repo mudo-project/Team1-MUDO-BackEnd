@@ -25,9 +25,6 @@ public class AttendancePolicyJpaEntity {
     @Column(name = "policy_id")
     private Long id;
 
-    @Column(name = "academy_id", nullable = false)
-    private Long academyId;
-
     @Column(name = "default_start_time", nullable = false)
     private LocalTime defaultStartTime;
 
@@ -47,12 +44,11 @@ public class AttendancePolicyJpaEntity {
     private LocalDateTime updatedAt;
 
     @Builder
-    private AttendancePolicyJpaEntity(Long id, Long academyId,
+    private AttendancePolicyJpaEntity(Long id,
                                       LocalTime defaultStartTime, LocalTime defaultEndTime,
                                       int lateGraceMinutes, boolean weekdayExceptionEnabled,
                                       LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
-        this.academyId = academyId;
         this.defaultStartTime = defaultStartTime;
         this.defaultEndTime = defaultEndTime;
         this.lateGraceMinutes = lateGraceMinutes;
