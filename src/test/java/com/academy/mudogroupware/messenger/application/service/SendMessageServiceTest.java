@@ -20,8 +20,6 @@ import org.springframework.context.ApplicationEventPublisher;
 
 import com.academy.mudogroupware.file.application.usecase.GetFileDownloadUrlUseCase;
 import com.academy.mudogroupware.messenger.application.command.SendMessageCommand;
-import com.academy.mudogroupware.messenger.application.port.ChatMemberDirectoryPort;
-import com.academy.mudogroupware.messenger.application.port.ChatMemberInfo;
 import com.academy.mudogroupware.messenger.domain.event.ChatMessageSentEvent;
 import com.academy.mudogroupware.messenger.domain.model.ChatMessage;
 import com.academy.mudogroupware.messenger.domain.model.ChatRoom;
@@ -38,13 +36,12 @@ class SendMessageServiceTest {
 
     private final ChatRoomRepository chatRoomRepository = mock(ChatRoomRepository.class);
     private final ChatMessageRepository chatMessageRepository = mock(ChatMessageRepository.class);
-    private final ChatMemberDirectoryPort chatMemberDirectoryPort = mock(ChatMemberDirectoryPort.class);
     private final GetFileDownloadUrlUseCase getFileDownloadUrlUseCase = mock(GetFileDownloadUrlUseCase.class);
     private final ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
     private final Clock clock = Clock.fixed(
             NOW.atZone(ZoneId.of("Asia/Seoul")).toInstant(), ZoneId.of("Asia/Seoul"));
     private final SendMessageService service =
-            new SendMessageService(chatRoomRepository, chatMessageRepository, chatMemberDirectoryPort,
+            new SendMessageService(chatRoomRepository, chatMessageRepository,
                     getFileDownloadUrlUseCase, eventPublisher, clock);
 
     @Test
@@ -83,15 +80,14 @@ class SendMessageServiceTest {
                     message.getMessageType(), message.getContent(), message.getFileId(), message.getFileName(),
                     message.getCreatedAt(), message.getEditedAt(), message.getDeletedAt());
         });
-        when(chatMemberDirectoryPort.getMember(1L)).thenReturn(new ChatMemberInfo(1L, "sender", 10L));
-        when(getFileDownloadUrlUseCase.getDownloadUrl(99L, 10L)).thenReturn("https://example.com/download/99");
+        when(getFileDownloadUrlUseCase.getDownloadUrl(99L)).thenReturn("https://example.com/download/99");
 
         service.sendMessage(new SendMessageCommand(1L, 1L, MessageType.IMAGE, null, 99L, "photo.png"));
 
         ArgumentCaptor<ChatMessage> messageCaptor = ArgumentCaptor.forClass(ChatMessage.class);
         verify(chatMessageRepository).save(messageCaptor.capture());
         assertThat(messageCaptor.getValue().getFileId()).isEqualTo(99L);
-        verify(getFileDownloadUrlUseCase).getDownloadUrl(99L, 10L);
+        verify(getFileDownloadUrlUseCase).getDownloadUrl(99L);
         ArgumentCaptor<ChatMessageSentEvent> eventCaptor = ArgumentCaptor.forClass(ChatMessageSentEvent.class);
         verify(eventPublisher).publishEvent(eventCaptor.capture());
         assertThat(eventCaptor.getValue().fileId()).isEqualTo(99L);
@@ -109,8 +105,7 @@ class SendMessageServiceTest {
                     message.getMessageType(), message.getContent(), message.getFileId(), message.getFileName(),
                     message.getCreatedAt(), message.getEditedAt(), message.getDeletedAt());
         });
-        when(chatMemberDirectoryPort.getMember(1L)).thenReturn(new ChatMemberInfo(1L, "sender", 10L));
-        when(getFileDownloadUrlUseCase.getDownloadUrl(99L, 10L))
+        when(getFileDownloadUrlUseCase.getDownloadUrl(99L))
                 .thenThrow(new RuntimeException("file not found"));
 
         assertThatThrownBy(() -> service.sendMessage(

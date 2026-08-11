@@ -90,12 +90,12 @@ class ChatMessageQueryServiceTest {
         when(chatMemberDirectoryPort.getMember(1L)).thenReturn(new ChatMemberInfo(1L, "sender", 10L));
         when(chatMessageRepository.countUnreadByMessageIds(1L, List.of(10L, 11L)))
                 .thenReturn(Map.of(10L, 1L, 11L, 1L));
-        when(getFileDownloadUrlUseCase.getDownloadUrls(List.of(99L), 10L))
+        when(getFileDownloadUrlUseCase.getDownloadUrls(List.of(99L)))
                 .thenReturn(Map.of(99L, "https://example.com/download/99"));
 
         ChatMessagePageView view = service.getMessages(1L, 1L, null, null, 20);
 
-        verify(getFileDownloadUrlUseCase).getDownloadUrls(List.of(99L), 10L);
+        verify(getFileDownloadUrlUseCase).getDownloadUrls(List.of(99L));
         org.assertj.core.api.Assertions.assertThat(view.messages().get(0).fileDownloadUrl()).isNull();
         org.assertj.core.api.Assertions.assertThat(view.messages().get(1).fileDownloadUrl())
                 .isEqualTo("https://example.com/download/99");
@@ -119,12 +119,12 @@ class ChatMessageQueryServiceTest {
         when(chatMemberDirectoryPort.getMember(1L)).thenReturn(new ChatMemberInfo(1L, "sender", 10L));
         when(chatMessageRepository.countUnreadByMessageIds(1L, List.of(10L, 11L)))
                 .thenReturn(Map.of(10L, 1L, 11L, 1L));
-        when(getFileDownloadUrlUseCase.getDownloadUrls(List.of(99L), 10L))
+        when(getFileDownloadUrlUseCase.getDownloadUrls(List.of(99L)))
                 .thenReturn(Map.of(99L, "https://example.com/download/99"));
 
         service.getMessages(1L, 1L, null, null, 20);
 
-        verify(getFileDownloadUrlUseCase).getDownloadUrls(List.of(99L), 10L);
+        verify(getFileDownloadUrlUseCase).getDownloadUrls(List.of(99L));
     }
 
     @Test

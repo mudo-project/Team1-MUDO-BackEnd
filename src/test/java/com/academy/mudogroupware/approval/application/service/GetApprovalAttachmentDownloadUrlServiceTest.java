@@ -22,7 +22,6 @@ import com.academy.mudogroupware.file.application.usecase.GetFileDownloadUrlUseC
 
 class GetApprovalAttachmentDownloadUrlServiceTest {
 
-    private static final Long ACADEMY_ID = 1L;
     private static final Long CREATOR_ID = 7L;
     private static final Long APPROVER_ID = 12L;
     private static final Long FILE_ID = 101L;
@@ -48,7 +47,7 @@ class GetApprovalAttachmentDownloadUrlServiceTest {
         when(approvalDocumentRepository.findById(1L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.getDownloadUrl(
-                new GetApprovalAttachmentDownloadUrlCommand(1L, FILE_ID, CREATOR_ID, ACADEMY_ID)))
+                new GetApprovalAttachmentDownloadUrlCommand(1L, FILE_ID, CREATOR_ID)))
                 .isInstanceOf(ApprovalException.class)
                 .extracting(e -> ((ApprovalException) e).getErrorCode())
                 .isEqualTo(ApprovalErrorCode.DOCUMENT_NOT_FOUND);
@@ -61,7 +60,7 @@ class GetApprovalAttachmentDownloadUrlServiceTest {
         when(approvalDocumentRepository.findById(1L)).thenReturn(Optional.of(newDocument()));
 
         assertThatThrownBy(() -> service.getDownloadUrl(
-                new GetApprovalAttachmentDownloadUrlCommand(1L, FILE_ID, 999L, ACADEMY_ID)))
+                new GetApprovalAttachmentDownloadUrlCommand(1L, FILE_ID, 999L)))
                 .isInstanceOf(ApprovalException.class)
                 .extracting(e -> ((ApprovalException) e).getErrorCode())
                 .isEqualTo(ApprovalErrorCode.DOCUMENT_ACCESS_DENIED);
@@ -74,7 +73,7 @@ class GetApprovalAttachmentDownloadUrlServiceTest {
         when(approvalDocumentRepository.findById(1L)).thenReturn(Optional.of(newDocument()));
 
         assertThatThrownBy(() -> service.getDownloadUrl(
-                new GetApprovalAttachmentDownloadUrlCommand(1L, 999L, CREATOR_ID, ACADEMY_ID)))
+                new GetApprovalAttachmentDownloadUrlCommand(1L, 999L, CREATOR_ID)))
                 .isInstanceOf(ApprovalException.class)
                 .extracting(e -> ((ApprovalException) e).getErrorCode())
                 .isEqualTo(ApprovalErrorCode.ATTACHMENT_NOT_FOUND);
@@ -85,10 +84,10 @@ class GetApprovalAttachmentDownloadUrlServiceTest {
     @Test
     void returnsDownloadUrlWhenRequesterIsCreator() {
         when(approvalDocumentRepository.findById(1L)).thenReturn(Optional.of(newDocument()));
-        when(getFileDownloadUrlUseCase.getDownloadUrl(FILE_ID, ACADEMY_ID)).thenReturn("https://example.com/signed");
+        when(getFileDownloadUrlUseCase.getDownloadUrl(FILE_ID)).thenReturn("https://example.com/signed");
 
         String downloadUrl = service.getDownloadUrl(
-                new GetApprovalAttachmentDownloadUrlCommand(1L, FILE_ID, CREATOR_ID, ACADEMY_ID));
+                new GetApprovalAttachmentDownloadUrlCommand(1L, FILE_ID, CREATOR_ID));
 
         assertThat(downloadUrl).isEqualTo("https://example.com/signed");
     }
@@ -96,10 +95,10 @@ class GetApprovalAttachmentDownloadUrlServiceTest {
     @Test
     void returnsDownloadUrlWhenRequesterIsApprover() {
         when(approvalDocumentRepository.findById(1L)).thenReturn(Optional.of(newDocument()));
-        when(getFileDownloadUrlUseCase.getDownloadUrl(FILE_ID, ACADEMY_ID)).thenReturn("https://example.com/signed");
+        when(getFileDownloadUrlUseCase.getDownloadUrl(FILE_ID)).thenReturn("https://example.com/signed");
 
         String downloadUrl = service.getDownloadUrl(
-                new GetApprovalAttachmentDownloadUrlCommand(1L, FILE_ID, APPROVER_ID, ACADEMY_ID));
+                new GetApprovalAttachmentDownloadUrlCommand(1L, FILE_ID, APPROVER_ID));
 
         assertThat(downloadUrl).isEqualTo("https://example.com/signed");
     }

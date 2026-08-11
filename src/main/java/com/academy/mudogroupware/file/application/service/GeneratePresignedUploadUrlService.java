@@ -19,15 +19,15 @@ public class GeneratePresignedUploadUrlService implements GeneratePresignedUploa
 
     @Override
     public PresignedUploadUrlResult generate(GeneratePresignedUploadUrlCommand command) {
-        String objectKey = buildObjectKey(command.academyId(), command.fileName());
+        String objectKey = buildObjectKey(command.fileName());
         String uploadUrl = fileStoragePort.generatePresignedUploadUrl(objectKey, command.contentType());
         return new PresignedUploadUrlResult(objectKey, uploadUrl);
     }
 
     // 원본 파일명 그대로는 경로 구분자(/,\)로 임의 경로에 쓰일 수 있어 제거하고,
-    // academyId + UUID로 겹치지 않는 고유 objectKey를 만든다.
-    private String buildObjectKey(Long academyId, String fileName) {
+    // UUID로 겹치지 않는 고유 objectKey를 만든다.
+    private String buildObjectKey(String fileName) {
         String sanitized = fileName.replaceAll("[\\\\/]+", "_");
-        return "uploads/%d/%s-%s".formatted(academyId, UUID.randomUUID(), sanitized);
+        return "uploads/%s-%s".formatted(UUID.randomUUID(), sanitized);
     }
 }
