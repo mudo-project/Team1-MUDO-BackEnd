@@ -7,6 +7,30 @@
 
 ---
 
+## ✅ 2026-08-12 · 프로필 수정 동시성 방어 + 이메일 형식 검증 (CodeRabbit 피드백 반영)
+
+### 배경
+
+PR #374(구성원 정보 수정) 리뷰에서 CodeRabbit이 남긴 미해결 지적 3건을 반영했다: (1) `UpdateUserProfileService`가 조회한 기존 값으로 모든 프로필 필드를 다시 저장하는 방식이라 동시 수정 시 필드 유실 위험이 있음, (2) 프로필/계정발급 요청의 `email` 필드가 `@Size`만 있고 `@Email`이 없어 형식이 안 맞는 값도 저장됨, (3) 테스트가 `UserException` 타입만 검증하고 구체적 에러코드는 검증하지 않음.
+
+### 확정된 정책
+
+- **동시성 방어**: `UserEntity`에 `@Version`(JPA 낙관적 락)을 추가했다(`V4.1.9` 마이그레이션, `users.version BIGINT NOT NULL DEFAULT 0`). `UserRepositoryImpl.updateProfile`이 `flush()` 중 `OptimisticLockingFailureException`을 받으면 `ProfileUpdateConflictException`(`409 USER_409_8`)으로 변환한다. `shared_file_root`(`SharedFileRootEntity`)에 이미 있던 `@Version` 패턴을 그대로 따랐다.
+- **이메일 형식 검증**: `UpdateMemberProfileRequest`/`UpdateMyProfileRequest`/`CreateAccountRequest`의 `email` 필드에 `@Email`을 추가했다. `null`은 부분 수정 의미로 계속 허용되고(Bean Validation은 null을 유효한 값으로 취급), 형식이 안 맞는 비어있지 않은 값만 `400 COMMON_400_1`로 거절된다.
+- **테스트 보강**: `UpdateUserProfileServiceTest`의 두 실패 케이스가 `.extracting(e -> ((UserException) e).getErrorCode()).isEqualTo(UserErrorCode.USER_NOT_FOUND)`로 구체적 에러코드까지 검증하도록 바꿨고, `findById`가 `Optional.empty()`를 반환하는(대상이 진짜로 존재하지 않는) 케이스를 `updateMyProfile`/`updateMemberProfile` 양쪽에 추가했다.
+- **범위 밖**: PR #367에서 CodeRabbit이 지적했던 나머지 1건은 이미 해당 PR 안에서 해결된 상태였다(코멘트에 "Addressed in commit decb792" 표시 확인). PR #371/#372/#373/#375에는 CodeRabbit 리뷰가 rate limit으로 아예 실행되지 않았고, 이미 머지된 PR이라 `@coderabbitai review`로도 재실행이 안 된다("This command is applicable only when automatic reviews are paused") — 재검토가 필요하면 해당 코드를 건드리는 새 PR을 열어야 리뷰가 트리거된다.
+
+### 완료 기준
+
+- [x] `UserEntity.version`(`@Version`) + `V4.1.9` 마이그레이션
+- [x] `ProfileUpdateConflictException`/`UserErrorCode.PROFILE_UPDATE_CONFLICT`(`USER_409_8`) + `UserRepositoryImpl.updateProfile` 예외 변환(TDD)
+- [x] `UpdateMemberProfileRequest`/`UpdateMyProfileRequest`/`CreateAccountRequest`에 `@Email` 추가(TDD)
+- [x] `UpdateUserProfileServiceTest` 에러코드 구체화 + `Optional.empty()` 케이스 추가
+- [x] `./gradlew build` 전체 통과
+- [x] 문서 갱신(API.md/CHANGELOG.md/REVISION.md)
+
+---
+
 ## ✅ 2026-08-12 · 구성원 목록 조회 번호 기반 페이지네이션
 
 ### 배경

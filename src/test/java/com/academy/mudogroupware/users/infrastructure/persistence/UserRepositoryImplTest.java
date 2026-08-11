@@ -16,8 +16,10 @@ import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 
 import com.academy.mudogroupware.global.domain.auth.AccountType;
+import com.academy.mudogroupware.users.domain.exception.ProfileUpdateConflictException;
 import com.academy.mudogroupware.users.domain.exception.RoleNotFoundException;
 import com.academy.mudogroupware.users.domain.exception.UsernameDuplicateException;
 import com.academy.mudogroupware.users.domain.model.User;
@@ -131,6 +133,21 @@ class UserRepositoryImplTest {
         assertThatThrownBy(() -> adapter.updateProfile(
                 1L, "이름", "010-0000-0000", "new@example.com", LocalDateTime.now()))
                 .isSameAs(violation);
+    }
+
+    @Test
+    void convertsOptimisticLockConflictOnUpdateProfileToProfileUpdateConflictException() {
+        UserJpaRepository jpaRepository = mock(UserJpaRepository.class);
+        UserRepositoryImpl adapter = new UserRepositoryImpl(jpaRepository);
+        when(jpaRepository.findById(1L)).thenReturn(Optional.of(userEntity()));
+        OptimisticLockingFailureException conflict =
+                new OptimisticLockingFailureException("concurrent update");
+        doThrow(conflict).when(jpaRepository).flush();
+
+        assertThatThrownBy(() -> adapter.updateProfile(
+                1L, "이름", "010-0000-0000", "new@example.com", LocalDateTime.now()))
+                .isInstanceOf(ProfileUpdateConflictException.class)
+                .hasCause(conflict);
     }
 
     private UserEntity userEntity() {

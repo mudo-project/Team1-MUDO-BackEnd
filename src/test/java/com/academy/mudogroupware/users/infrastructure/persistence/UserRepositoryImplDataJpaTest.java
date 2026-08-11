@@ -182,10 +182,10 @@ class UserRepositoryImplDataJpaTest {
         jdbcTemplate.update("""
                 insert into users (
                     id, role_id, username, password, name, phone_number, email, status,
-                    must_change_pw, account_type, admin_scope, created_at, updated_at
-                ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, current_timestamp, current_timestamp)
+                    must_change_pw, account_type, admin_scope, version, created_at, updated_at
+                ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, current_timestamp, current_timestamp)
                 """, id, null, "user-" + suffix, password, "사용자-" + suffix,
-                "010-0000-0000", suffix + "@example.com", UserStatus.ACTIVE.name(), mustChangePw, "MEMBER", null);
+                "010-0000-0000", suffix + "@example.com", UserStatus.ACTIVE.name(), mustChangePw, "MEMBER", null, 0L);
     }
 
     private void insertUser(long id, String suffix, UserStatus status) {
@@ -196,9 +196,9 @@ class UserRepositoryImplDataJpaTest {
         jdbcTemplate.update("""
                 insert into users (
                     id, role_id, username, password, name, phone_number, email, status,
-                    must_change_pw, account_type, admin_scope, created_at, updated_at
-                ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, current_timestamp, current_timestamp)
+                    must_change_pw, account_type, admin_scope, version, created_at, updated_at
+                ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, current_timestamp, current_timestamp)
                 """, id, roleId, "user-" + suffix, "password", "사용자-" + suffix,
-                "010-0000-0000", suffix + "@example.com", status.name(), false, "MEMBER", null);
+                "010-0000-0000", suffix + "@example.com", status.name(), false, "MEMBER", null, 0L);
     }
 }
