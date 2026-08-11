@@ -1,5 +1,20 @@
 # 🔄 공유파일 도메인 변경 이력
 
+## ✅ 2026-08-12 · V3.1.8 마이그레이션을 테이블·권한 시딩으로 분리
+
+### 변경 목적
+
+로컬에서 `V3.1.8__create_shared_file_root_and_permissions.sql`을 이미 실행한 상태였다. 앞으로 권한 카탈로그만 별도로 추가·수정할 수 있도록, 이미 적용된 `V3.1.8`을 편집하는 대신 권한 INSERT 부분만 새 `V3.1.9`로 분리했다.
+
+### 구현 변경
+
+- `V3.1.8__create_shared_file_root_and_permissions.sql` → `V3.1.8__create_shared_file_root.sql`로 이름을 바꾸고 `shared_file_root` 테이블 생성만 남겼다.
+- `SHAREDFILE:MANAGE`/`SHAREDFILE:ROOT_MANAGE` 권한 INSERT 두 건을 신규 `V3.1.9__seed_shared_file_permissions.sql`로 옮겼다. `NOT EXISTS` 가드는 그대로 유지해 이미 권한이 있는 환경에서 재실행해도 안전하다.
+
+### 주의
+
+- 이미 develop에 병합된 `V3.1.8`을 수정하는 것이라 체크섬이 바뀐다. 이 브랜치 기준으로 로컬 DB를 이미 마이그레이션한 사람은 `flyway repair` 또는 `flyway_schema_history`에서 `V3.1.8` 행을 지우고 `V3.1.8`+`V3.1.9`를 다시 적용해야 한다. CI·신규 환경은 처음부터 두 파일을 순서대로 적용하므로 영향이 없다.
+
 ## ✅ 2026-08-11 · PR #391 CodeRabbit 리뷰 반영
 
 ### 변경 목적
