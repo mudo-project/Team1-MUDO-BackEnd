@@ -11,7 +11,7 @@ public record SendAttendanceMessagesRequest(
         @NotEmpty List<Long> studentIds
 ) {
 
-    public SendAttendanceMessagesCommand toCommand(Long lectureId, Long academyId, LocalDate date) {
-        return new SendAttendanceMessagesCommand(lectureId, academyId, date, studentIds);
+    public SendAttendanceMessagesCommand toCommand(Long lectureId, LocalDate date) {
+        return new SendAttendanceMessagesCommand(lectureId, date, studentIds);
     }
 }

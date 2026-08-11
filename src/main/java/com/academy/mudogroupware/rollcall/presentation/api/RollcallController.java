@@ -114,12 +114,11 @@ public class RollcallController {
     @PreAuthorize("hasAuthority('ROLLCALL:MANAGE')")
     @PostMapping("/message-candidates/send")
     public ResponseEntity<GlobalApiResponse<List<MessageSendResultResponse>>> sendMessages(
-            @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long lectureId,
             @RequestParam LocalDate date,
             @Valid @RequestBody SendAttendanceMessagesRequest request) {
         List<MessageSendResultResponse> results = sendAttendanceMessagesUseCase
-                .send(request.toCommand(lectureId, authUser.academyId(), date)).stream()
+                .send(request.toCommand(lectureId, date)).stream()
                 .map(MessageSendResultResponse::from)
                 .toList();
         return ResponseEntity.ok(GlobalApiResponse.ok(RollcallResponseCode.MESSAGES_SENT, results));

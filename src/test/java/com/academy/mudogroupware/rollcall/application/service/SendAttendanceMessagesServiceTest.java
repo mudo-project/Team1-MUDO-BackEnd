@@ -31,7 +31,6 @@ import com.academy.mudogroupware.rollcall.domain.repository.MessageTemplateRepos
 class SendAttendanceMessagesServiceTest {
 
     private static final Long LECTURE_ID = 1L;
-    private static final Long ACADEMY_ID = 100L;
     private static final LocalDate DATE = LocalDate.of(2026, 8, 5);
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 5, 9, 0);
 
@@ -51,7 +50,7 @@ class SendAttendanceMessagesServiceTest {
     @Test
     void throwsWhenNoStudentsSelected() {
         assertThatThrownBy(() -> service.send(
-                new SendAttendanceMessagesCommand(LECTURE_ID, ACADEMY_ID, DATE, List.of())))
+                new SendAttendanceMessagesCommand(LECTURE_ID, DATE, List.of())))
                 .isInstanceOf(NoStudentsSelectedException.class);
 
         verifyNoInteractions(getMessageSendCandidatesUseCase, messageTemplateRepository, smsSenderPort);
@@ -60,16 +59,16 @@ class SendAttendanceMessagesServiceTest {
     @Test
     void sendsMessageToEligibleStudentAndReportsSuccess() {
         MessageTemplate template = MessageTemplate.restore(
-                7L, ACADEMY_ID, "결석 안내", AttendanceStatus.ABSENT, "결석했습니다", 1L, NOW, NOW);
+                7L, "결석 안내", AttendanceStatus.ABSENT, "결석했습니다", 1L, NOW, NOW);
         MessageSendCandidateView candidate = new MessageSendCandidateView(
                 10L, "이준호", AttendanceStatus.ABSENT, "010-1111-1111", 7L, "결석 안내", true);
-        when(getMessageSendCandidatesUseCase.getCandidates(LECTURE_ID, ACADEMY_ID, DATE))
+        when(getMessageSendCandidatesUseCase.getCandidates(LECTURE_ID, DATE))
                 .thenReturn(List.of(candidate));
         when(messageTemplateRepository.findById(7L)).thenReturn(Optional.of(template));
         when(smsSenderPort.send("010-1111-1111", "결석했습니다")).thenReturn(SmsSendResult.succeeded());
 
         List<MessageSendResultView> results = service.send(
-                new SendAttendanceMessagesCommand(LECTURE_ID, ACADEMY_ID, DATE, List.of(10L)));
+                new SendAttendanceMessagesCommand(LECTURE_ID, DATE, List.of(10L)));
 
         assertThat(results).hasSize(1);
         assertThat(results.get(0).studentId()).isEqualTo(10L);
@@ -81,11 +80,11 @@ class SendAttendanceMessagesServiceTest {
     void doesNotCallSmsPortForIneligibleStudent() {
         MessageSendCandidateView candidate = new MessageSendCandidateView(
                 10L, "이준호", AttendanceStatus.ABSENT, "010-1111-1111", null, null, false);
-        when(getMessageSendCandidatesUseCase.getCandidates(LECTURE_ID, ACADEMY_ID, DATE))
+        when(getMessageSendCandidatesUseCase.getCandidates(LECTURE_ID, DATE))
                 .thenReturn(List.of(candidate));
 
         List<MessageSendResultView> results = service.send(
-                new SendAttendanceMessagesCommand(LECTURE_ID, ACADEMY_ID, DATE, List.of(10L)));
+                new SendAttendanceMessagesCommand(LECTURE_ID, DATE, List.of(10L)));
 
         assertThat(results.get(0).sent()).isFalse();
         assertThat(results.get(0).failureReason()).isNotBlank();
@@ -95,17 +94,17 @@ class SendAttendanceMessagesServiceTest {
     @Test
     void reportsFailureReasonWhenSmsPortFails() {
         MessageTemplate template = MessageTemplate.restore(
-                7L, ACADEMY_ID, "결석 안내", AttendanceStatus.ABSENT, "결석했습니다", 1L, NOW, NOW);
+                7L, "결석 안내", AttendanceStatus.ABSENT, "결석했습니다", 1L, NOW, NOW);
         MessageSendCandidateView candidate = new MessageSendCandidateView(
                 10L, "이준호", AttendanceStatus.ABSENT, "010-1111-1111", 7L, "결석 안내", true);
-        when(getMessageSendCandidatesUseCase.getCandidates(LECTURE_ID, ACADEMY_ID, DATE))
+        when(getMessageSendCandidatesUseCase.getCandidates(LECTURE_ID, DATE))
                 .thenReturn(List.of(candidate));
         when(messageTemplateRepository.findById(7L)).thenReturn(Optional.of(template));
         when(smsSenderPort.send("010-1111-1111", "결석했습니다"))
                 .thenReturn(SmsSendResult.failed("인증오류입니다"));
 
         List<MessageSendResultView> results = service.send(
-                new SendAttendanceMessagesCommand(LECTURE_ID, ACADEMY_ID, DATE, List.of(10L)));
+                new SendAttendanceMessagesCommand(LECTURE_ID, DATE, List.of(10L)));
 
         assertThat(results.get(0).sent()).isFalse();
         assertThat(results.get(0).failureReason()).isEqualTo("인증오류입니다");
@@ -113,11 +112,11 @@ class SendAttendanceMessagesServiceTest {
 
     @Test
     void marksRequestedStudentNotInCandidateListAsNotEligible() {
-        when(getMessageSendCandidatesUseCase.getCandidates(LECTURE_ID, ACADEMY_ID, DATE))
+        when(getMessageSendCandidatesUseCase.getCandidates(LECTURE_ID, DATE))
                 .thenReturn(List.of());
 
         List<MessageSendResultView> results = service.send(
-                new SendAttendanceMessagesCommand(LECTURE_ID, ACADEMY_ID, DATE, List.of(999L)));
+                new SendAttendanceMessagesCommand(LECTURE_ID, DATE, List.of(999L)));
 
         assertThat(results.get(0).sent()).isFalse();
         verify(smsSenderPort, never()).send(any(), any());

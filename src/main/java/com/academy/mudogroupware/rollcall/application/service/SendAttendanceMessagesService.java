@@ -35,15 +35,15 @@ public class SendAttendanceMessagesService implements SendAttendanceMessagesUseC
 
     @Override
     public List<MessageSendResultView> send(SendAttendanceMessagesCommand command) {
-        log.info("event=attendance_message_send_시작 lectureId={}, academyId={}, studentCount={}",
-                command.lectureId(), command.academyId(),
+        log.info("event=attendance_message_send_시작 lectureId={}, studentCount={}",
+                command.lectureId(),
                 command.studentIds() == null ? 0 : command.studentIds().size());
         if (command.studentIds() == null || command.studentIds().isEmpty()) {
             throw new NoStudentsSelectedException();
         }
 
         List<MessageSendCandidateView> candidates = getMessageSendCandidatesUseCase
-                .getCandidates(command.lectureId(), command.academyId(), command.date());
+                .getCandidates(command.lectureId(), command.date());
         Map<Long, MessageSendCandidateView> candidatesByStudentId = candidates.stream()
                 .collect(Collectors.toMap(MessageSendCandidateView::studentId, Function.identity()));
         Map<Long, MessageTemplate> templatesById = candidates.stream()
@@ -60,8 +60,8 @@ public class SendAttendanceMessagesService implements SendAttendanceMessagesUseC
                 .toList();
 
         long sentCount = results.stream().filter(MessageSendResultView::sent).count();
-        log.info("event=attendance_message_send_완료 lectureId={}, academyId={}, sentCount={}, failedCount={}",
-                command.lectureId(), command.academyId(), sentCount, results.size() - sentCount);
+        log.info("event=attendance_message_send_완료 lectureId={}, sentCount={}, failedCount={}",
+                command.lectureId(), sentCount, results.size() - sentCount);
         return results;
     }
 

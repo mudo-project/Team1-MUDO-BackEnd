@@ -5,7 +5,6 @@ import java.util.List;
 
 public record SendAttendanceMessagesCommand(
         Long lectureId,
-        Long academyId,
         LocalDate date,
         List<Long> studentIds
 ) {
