@@ -36,11 +36,16 @@ LOCAL_MYSQL_ROOT_PASSWORD=mudo
 AI 헤더 매핑 보정 사용 시:
 
 ```text
+DATA_IMPORT_AI_BASE_URL=http://localhost:8000
+DATA_IMPORT_AI_PATH=/api/import/analyze
+DATA_IMPORT_AI_API_KEY=선택값
+DATA_IMPORT_AI_CONNECT_TIMEOUT_MS=2000
+DATA_IMPORT_AI_READ_TIMEOUT_MS=8000
 GEMINI_API_KEY=구글 AI Studio에서 발급한 키
 GEMINI_MODEL=gemini-2.0-flash
 ```
 
-`GEMINI_API_KEY`가 없어도 파일 분석은 동작한다. 이 경우 AI 보정 없이 CSV/XLSX 헤더 alias 기반 parser로 초안을 만든다.
+`DATA_IMPORT_AI_BASE_URL`이 있으면 Spring이 FastAPI AI 분석 엔진을 먼저 호출한다. FastAPI가 꺼져 있거나 실패하면 Spring 내부 Gemini 보정으로 넘어가고, `GEMINI_API_KEY`도 없으면 CSV/XLSX 헤더 alias 기반 parser로 초안을 만든다.
 
 ## 3. 로그인 계정 준비
 
@@ -132,13 +137,14 @@ Request Part에 아래 파일을 넣는다.
 - 확정 전 결과 조회는 `DATA_IMPORT_409_5`
 - `READY`가 아닌 행을 선택한 채 확정하면 `DATA_IMPORT_409_3`
 
-## 11. FastAPI 연동 판단
+## 11. FastAPI 1차 연동 확인
 
-현재 dataimport 1차 기능은 Spring Boot 안에서 완료된다.
+현재 dataimport 1차 AI 확장은 FastAPI를 분석 엔진으로만 사용한다.
 
 - 파일 파싱: Spring
-- Gemini 헤더 매핑 보정: Spring
+- AI 분석 엔진 호출: Spring -> FastAPI
+- FastAPI 실패 시 Gemini/parser fallback: Spring
 - 초안 저장/수정/확정: Spring
 - 실제 등록: 기존 student/lecture UseCase
 
-FastAPI는 지금 필수 연결 대상이 아니다. 나중에 PDF/OCR, 자유 형식 문서 해석, 대용량 비동기 분석을 붙일 때 Spring의 AI Port 뒤에 FastAPI Adapter를 추가하는 방식이 적절하다.
+프론트는 FastAPI를 직접 호출하지 않는다. Swagger 테스트도 기존 Spring API만 호출하면 된다.

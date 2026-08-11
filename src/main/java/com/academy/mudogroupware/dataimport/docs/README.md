@@ -11,7 +11,7 @@
 ## 전체 흐름
 
 1. 사용자가 학생 정보, 강의 정보, 수강 관계 파일을 업로드한다.
-2. 서버가 CSV/XLSX 파일을 읽고, Gemini API 키가 있으면 헤더 의미를 보정한 뒤 학생/강의/수강 등록 후보 초안을 만든다.
+2. 서버가 CSV/XLSX 파일을 읽고, FastAPI AI 분석 엔진 또는 Gemini 헤더 보정으로 학생/강의/수강 등록 후보 초안을 만든다.
 3. 프론트는 초안 화면에서 행별로 수정, 제외, 선택 여부를 조정한다.
 4. 사용자가 확정하면 선택된 `READY` 행만 실제 학생/강의/수강 데이터로 저장된다.
 5. 확정 결과에서 생성된 학생/강의/수강 수와 스킵 수를 확인한다.
@@ -46,6 +46,7 @@ PDF, 이미지, OCR, 장기 파일 저장은 이번 범위에서 제외한다.
 ## Swagger 검증
 
 Swagger에서 프론트 연동 전 백엔드 흐름을 확인할 때는 [SWAGGER_TEST.md](./SWAGGER_TEST.md)를 따른다.
+FastAPI AI 분석 엔진의 1차 판단 근거와 Spring-FastAPI 연동 계약은 [FASTAPI_AI_ENGINE_DESIGN.md](./FASTAPI_AI_ENGINE_DESIGN.md)를 따른다.
 
 검증 전제:
 
@@ -56,32 +57,54 @@ Swagger에서 프론트 연동 전 백엔드 흐름을 확인할 때는 [SWAGGER
 ## AI 분석
 
 - 기본 동작은 deterministic parser이다. API 키가 없어도 CSV/XLSX 헤더 alias 기반으로 초안을 만든다.
-- `GEMINI_API_KEY`가 있으면 Gemini가 파일 헤더와 샘플 행을 보고 표준 컬럼명 매핑을 제안한다.
-- Gemini에는 전체 파일이 아니라 헤더와 최대 5개 샘플 행만 전달한다.
-- Gemini 호출 실패, 빈 응답, 파싱 실패가 발생하면 기존 parser 결과만 사용한다.
+- `DATA_IMPORT_AI_BASE_URL`이 있으면 Spring이 FastAPI AI 분석 엔진을 먼저 호출한다.
+- FastAPI는 파일 원본이 아니라 Spring이 파싱한 role, fileName, headers, rows 구조를 받는다.
+- FastAPI는 표준 컬럼명 매핑 또는 row별 정규화 값을 반환한다.
+- FastAPI가 꺼져 있거나 실패하면 Spring 내부 Gemini 헤더 보정으로 fallback한다.
+- `GEMINI_API_KEY`가 있으면 Spring 내부 Gemini adapter가 파일 헤더와 최대 5개 샘플 행을 보고 표준 컬럼명 매핑을 제안한다.
+- FastAPI와 Gemini가 모두 실패해도 기존 parser 결과만 사용해 초안을 만든다.
 - AI 결과도 서버의 필수값/상태/수강 관계 검증을 반드시 다시 통과해야 한다.
 
 로컬 환경 변수:
 
 ```text
+DATA_IMPORT_AI_BASE_URL=http://localhost:8000
+DATA_IMPORT_AI_PATH=/api/import/analyze
+DATA_IMPORT_AI_API_KEY=선택값
+DATA_IMPORT_AI_CONNECT_TIMEOUT_MS=2000
+DATA_IMPORT_AI_READ_TIMEOUT_MS=8000
 GEMINI_API_KEY=구글 AI Studio에서 발급한 키
 GEMINI_MODEL=gemini-2.0-flash
 ```
 
-`GEMINI_MODEL`은 생략하면 `gemini-2.0-flash`를 사용한다. API 키가 없으면 AI 보정 없이 기존 parser로 동작한다.
+`DATA_IMPORT_AI_BASE_URL`이 없으면 FastAPI 호출은 비활성화된다. `GEMINI_MODEL`은 생략하면 `gemini-2.0-flash`를 사용한다. FastAPI와 Gemini 설정이 모두 없으면 AI 보정 없이 기존 parser로 동작한다.
 
-## FastAPI 연동 판단
+## FastAPI 1차 연동 판단
 
-1차 구현은 Spring Boot 내부에서 CSV/XLSX 파싱과 Gemini 헤더 매핑 보정을 처리한다. 따라서 현재 Swagger 검증과 프론트 연동에는 별도 FastAPI 서버가 필요하지 않다.
+1차 구현은 FastAPI를 AI 분석 엔진으로만 사용한다. Spring Boot는 인증/권한, 파일 업로드, 초안 저장, 사용자의 수정/확정, 실제 학생/강의/수강 등록을 계속 담당한다.
 
-FastAPI는 아래 범위로 확장할 때 별도 AI 서비스로 분리하는 것이 적절하다.
+현재 타깃은 엑셀로 운영하던 중소~중형 학원의 초기 데이터 이관이다. 따라서 Redis, Kafka, SQS 같은 큐 기반 대용량 비동기 구조는 제외하고 요청-응답 기반 FastAPI 호출만 붙인다.
 
-- PDF, 이미지, OCR 기반 데이터 추출
-- 자유 형식 문서 전체 해석
-- 대용량 파일 비동기 분석
-- Python 전용 라이브러리가 필요한 정교한 정제/추천 로직
+Spring -> FastAPI 계약:
 
-분리할 경우에도 프론트는 Spring API만 호출하고, Spring이 `dataimport` Port 뒤에서 FastAPI를 호출하는 구조를 유지한다.
+```text
+POST {DATA_IMPORT_AI_BASE_URL}{DATA_IMPORT_AI_PATH}
+Header: X-Data-Import-Ai-Key: {DATA_IMPORT_AI_API_KEY} // 설정된 경우만
+```
+
+요청 요약:
+
+```json
+{"sheets":[{"role":"STUDENT","fileName":"students.csv","headers":["학생명","학년"],"rows":[{"rowNumber":2,"values":{"학생명":"김민수","학년":"고1"}}]}]}
+```
+
+응답 요약:
+
+```json
+{"sheets":[{"role":"STUDENT","fileName":"students.csv","headerMappings":{"학생명":"name","학년":"grade"},"rows":[{"rowNumber":2,"values":{"name":"김민수","grade":"HIGH_1"}}]}]}
+```
+
+FastAPI가 반환한 알 수 없는 컬럼명은 무시한다. 반환된 값도 Spring의 draft builder와 validator를 다시 통과해야 한다.
 
 ## 행 상태
 
