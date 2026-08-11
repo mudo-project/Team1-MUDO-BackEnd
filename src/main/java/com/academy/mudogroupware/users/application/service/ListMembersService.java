@@ -51,11 +51,13 @@ public class ListMembersService implements ListMembersUseCase {
                 .filter(item -> matchesRole(item, roleId))
                 .sorted(Comparator
                         .comparing(MemberListItem::roleName, Comparator.nullsLast(String::compareTo))
-                        .thenComparing(MemberListItem::name))
+                        .thenComparing(MemberListItem::name)
+                        .thenComparing(MemberListItem::userId))
                 .toList();
 
-        int from = Math.min(page * size, filtered.size());
-        int to = Math.min(from + size, filtered.size());
+        long offset = (long) page * size;
+        int from = (int) Math.min(offset, (long) filtered.size());
+        int to = (int) Math.min(offset + size, (long) filtered.size());
         List<MemberListItem> paged = filtered.subList(from, to);
 
         Map<Long, String> attendanceStatusByUserId = todayAttendanceStatusPort

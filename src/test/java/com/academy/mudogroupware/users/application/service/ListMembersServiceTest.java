@@ -167,6 +167,34 @@ class ListMembersServiceTest {
     }
 
     @Test
+    void doesNotOverflowWhenPageIsVeryLarge() {
+        when(userRepository.findAllByAcademyId(1L)).thenReturn(List.of(
+                user(1L, "김강사", 8L, UserStatus.ACTIVE)));
+        when(roleRepository.findAllByAcademyId(1L)).thenReturn(List.of(
+                Role.restore(8L, 1L, "강사", null, LocalDateTime.now(), Set.of())));
+        when(todayAttendanceStatusPort.findTodayStatusByUserIds(any())).thenReturn(List.of());
+
+        PageResult<MemberListItem> result = service.list(1L, null, null, Integer.MAX_VALUE, 100);
+
+        assertThat(result.content()).isEmpty();
+        assertThat(result.hasNext()).isFalse();
+    }
+
+    @Test
+    void sortsMembersWithSameRoleAndNameDeterministicallyByUserId() {
+        when(userRepository.findAllByAcademyId(1L)).thenReturn(List.of(
+                user(2L, "김강사", 8L, UserStatus.ACTIVE),
+                user(1L, "김강사", 8L, UserStatus.ACTIVE)));
+        when(roleRepository.findAllByAcademyId(1L)).thenReturn(List.of(
+                Role.restore(8L, 1L, "강사", null, LocalDateTime.now(), Set.of())));
+        when(todayAttendanceStatusPort.findTodayStatusByUserIds(any())).thenReturn(List.of());
+
+        PageResult<MemberListItem> result = service.list(1L, null, null, 0, 20);
+
+        assertThat(result.content()).extracting(MemberListItem::userId).containsExactly(1L, 2L);
+    }
+
+    @Test
     void queriesAttendanceStatusOnlyForUsersInTheCurrentPage() {
         when(userRepository.findAllByAcademyId(1L)).thenReturn(List.of(
                 user(1L, "김강사", 8L, UserStatus.ACTIVE),
