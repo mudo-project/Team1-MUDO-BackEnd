@@ -29,7 +29,8 @@
 
 ### 범위 밖 (명시적으로 미룸)
 
-- DB 레벨 페이지네이션(Pageable/LIMIT-OFFSET) — 인메모리 방식으로 충분하지 않다고 판단되면 별도 재검토.
+- DB 레벨 페이지네이션(Pageable/LIMIT-OFFSET) — CodeRabbit 리뷰에서도 같은 지적(전체 구성원을 로드한 뒤 인메모리로 필터·정렬·페이지 자르기를 하므로 학원 규모에 비례해 DB 조회량·메모리 사용량이 늘어남)이 나왔다. 지금은 목업 기준 학원당 구성원 규모가 작아 실익이 없다고 판단해 보류한다. **구성원 수가 실제로 커지거나 성능 지표에 문제가 확인되면 재검토한다.**
+- `TodayAttendanceStatusAdapter`의 `leaveRequestRepository.findApprovedUserIds(today)`가 페이지에 포함된 userId가 아니라 학원 전체 승인 휴가자를 조회하는 것도 같은 이유로 지금은 보류한다.
 - 중첩 그룹 응답 구조 — roleId 필터로 프론트가 탭 단위로 해결.
 
 ---
