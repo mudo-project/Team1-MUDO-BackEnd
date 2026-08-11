@@ -7,6 +7,31 @@
 
 ---
 
+## ✅ 2026-08-11 · 구성원 정보 수정 추가
+
+### 배경
+
+#361(내 정보 조회, #367)·#362(내 정보 수정, #371)·#363(내 비밀번호 변경, #372)·#364(구성원 상세 조회, #373)에 이어지는 작업(#365). 관리자가 구성원의 정보를 고치려면 아직 DB를 직접 만져야 했다.
+
+### 확정된 정책
+
+- `UpdateUserProfileService`가 `UpdateMyProfileUseCase`에 이어 `UpdateMemberProfileUseCase`도 구현하도록 확장했다 — 본인 수정과 동일한 부분 수정(partial update) 방식과 `UserRepository.updateProfile`을 재사용한다.
+- 본인 수정(`phone`/`email`만)과 달리 관리자는 `name`/`joinedAt`도 바꿀 수 있다. 다만 `roleId`는 이 API의 범위에서 제외했다 — 역할 변경은 이미 존재하는 `PATCH /api/users/{userId}/role`이 role 존재/소속 학원 검증까지 책임지고 있어서, 책임을 나누지 않고 그대로 유지했다.
+- 대상 검증은 구성원 상세 조회(#364)와 동일한 `findById → academyId 필터 → accountType == MEMBER 필터` 패턴을 따랐다.
+
+### 완료 기준
+
+- [x] `UpdateMemberProfileUseCase` 추가 + `UpdateUserProfileService` 확장(TDD)
+- [x] `UserController`에 `PATCH /api/users/{userId}` 반영
+- [x] `./gradlew build` 통과
+
+### 범위 밖 (명시적으로 미룸)
+
+- 관리자용 구성원 재직상태변경 — 별도 PR(#366)에서 이어간다.
+- `roleId` 변경은 기존 `PATCH /api/users/{userId}/role`을 그대로 쓴다(이 API의 범위 아님).
+
+---
+
 ## ✅ 2026-08-11 · 구성원 상세 조회 추가
 
 ### 배경
