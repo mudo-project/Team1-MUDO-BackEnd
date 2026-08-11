@@ -94,6 +94,7 @@ public final class ChatTaskCard {
     public void update(Long requesterId, String content, LocalDate dueDate, List<Long> assigneeUserIds) {
         validateOwner(requesterId);
         validateNotDeleted();
+        validateNoCompletion();
         if (content == null || content.isBlank()) {
             throw new MessengerException(MessengerErrorCode.TASK_CONTENT_REQUIRED);
         }
@@ -112,6 +113,7 @@ public final class ChatTaskCard {
     public void delete(Long requesterId, LocalDateTime deletedAt) {
         validateOwner(requesterId);
         if (this.deletedAt == null) {
+            validateNoCompletion();
             this.deletedAt = deletedAt;
         }
     }
@@ -125,6 +127,12 @@ public final class ChatTaskCard {
     private void validateNotDeleted() {
         if (isDeleted()) {
             throw new MessengerException(MessengerErrorCode.TASK_CARD_ALREADY_DELETED);
+        }
+    }
+
+    private void validateNoCompletion() {
+        if (getCompletedCount() > 0) {
+            throw new MessengerException(MessengerErrorCode.TASK_CARD_HAS_COMPLETION);
         }
     }
 
