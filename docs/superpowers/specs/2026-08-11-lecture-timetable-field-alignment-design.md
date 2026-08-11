@@ -16,7 +16,7 @@
 
 - `lecture` 등록 요청에 시간표 슬롯 기준 필드를 추가한다.
 - 강의 등록 입력에서 `teacherId` 대신 `teacherName`을 중심으로 사용한다.
-- `lecture` 저장 모델에 `classType`, `teacherName`, `classroomCode`를 추가한다.
+- `lecture` 저장 모델에 `classType`, `teacherName`, `subjectName`, `classroomCode`를 추가한다.
 - 기존 강의 전용 필드(`name`, `termName`, `feeType`, `feeAmount`, 수강생 목록, 학생 수 카운트)는 유지한다.
 - 필수 검증은 실제 저장과 충돌 검사에 필요한 값 위주로 줄인다.
 - 기존 `dataimport` 등 다른 도메인 호출이 즉시 깨지지 않도록 호환 경로를 둔다.
@@ -82,6 +82,7 @@
 
 - `class_type VARCHAR(20) NULL`
 - `teacher_name VARCHAR(50) NULL`
+- `subject_name VARCHAR(50) NULL`
 - `classroom_code VARCHAR(50) NULL`
 
 기존 컬럼은 즉시 삭제하지 않고 nullable로 완화한다.
@@ -122,7 +123,7 @@
 
 작업 내용:
 
-- `lecture`에 `class_type`, `teacher_name`, `classroom_code` 추가
+- `lecture`에 `class_type`, `teacher_name`, `subject_name`, `classroom_code` 추가
 - `lecture.grade`, `lecture.term_id`, `lecture.subject_id`, `lecture.teacher_id`, `lecture.classroom_id` nullable 변경
 - 기존 foreign key는 컬럼 nullable 변경 후 유지한다
 
