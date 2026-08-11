@@ -1,5 +1,11 @@
 # file 모듈 Changelog
 
+## 2026-08-11 - 단일 학원 전환: file_metadata academy_id 제거
+
+- **[변경]** `file_metadata`에서 `academy_id` 컬럼을 제거했다(`V1.5.14`). `FileMetadataEntity.create/restore`, `RegisterFileCommand`, `GeneratePresignedUploadUrlCommand`, `GetFileDownloadUrlUseCase.getDownloadUrl(s)`에서 academyId 파라미터를 뺐다. objectKey도 `uploads/{academyId}/...` → `uploads/...`로 바뀌었다.
+- 2026-08-10에 IDOR 방지 목적으로 추가했던 academyId 스코프 체크(`findByIdAndAcademyId` 등)를 되돌렸다 — 단일 학원에서는 모든 사용자의 academyId가 항상 같은 값이라 실질적인 격리 효과가 없었다. **다만 진짜 문제(인증만 되면 fileId를 아는 누구나 다운로드 가능)는 academyId와 무관하게 여전히 남아있다.** approval은 자체 리소스 단위 권한 체크(`GetApprovalAttachmentDownloadUrlService`)로 이미 방어하고 있지만, notice 등 나머지 도메인은 아직 없다 — 별도 후속 작업 필요.
+- 이 변경으로 messenger의 `SendMessageService`/`ChatMessageQueryService`, approval의 `GetApprovalAttachmentDownloadUrlService`도 academyId 전달을 뺐다.
+
 ## 2026-08-11 - approval 첨부파일 요약용 원문 조회에 PDF/이미지/docx 지원 추가
 
 - `ApprovalAttachmentContentAdapter`가 텍스트뿐 아니라 PDF/이미지(jpeg/png/webp/heic/heif)/docx도 읽어서 반환하도록 확장했다. 반환 타입이 `String`에서 `AttachmentContent`(TEXT/BINARY)로 바뀌었다(`AttachmentContentPort` 계약 변경, approval 도메인 소유 타입).

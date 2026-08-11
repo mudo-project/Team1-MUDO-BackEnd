@@ -29,7 +29,7 @@ class ApprovalAttachmentContentAdapterTest {
 
     @Test
     void loadsUtf8TextContentByFileId() {
-        FileMetadataEntity metadata = FileMetadataEntity.restore(10L, 1L, "approval/10.txt", "text/plain");
+        FileMetadataEntity metadata = FileMetadataEntity.restore(10L, "approval/10.txt", "text/plain");
         when(fileMetadataJpaRepository.findById(10L)).thenReturn(Optional.of(metadata));
         when(fileStoragePort.download("approval/10.txt")).thenReturn("real attachment text".getBytes(UTF_8));
 
@@ -50,7 +50,7 @@ class ApprovalAttachmentContentAdapterTest {
     @Test
     void returnsBinaryContentForPdf() {
         byte[] pdfBytes = {0x25, 0x50, 0x44, 0x46};
-        FileMetadataEntity metadata = FileMetadataEntity.restore(10L, 1L, "approval/10.pdf", "application/pdf");
+        FileMetadataEntity metadata = FileMetadataEntity.restore(10L, "approval/10.pdf", "application/pdf");
         when(fileMetadataJpaRepository.findById(10L)).thenReturn(Optional.of(metadata));
         when(fileStoragePort.download("approval/10.pdf")).thenReturn(pdfBytes);
 
@@ -64,7 +64,7 @@ class ApprovalAttachmentContentAdapterTest {
     @Test
     void throwsWhenPdfExceedsSizeLimit() {
         byte[] oversized = new byte[16 * 1024 * 1024];
-        FileMetadataEntity metadata = FileMetadataEntity.restore(10L, 1L, "approval/10.pdf", "application/pdf");
+        FileMetadataEntity metadata = FileMetadataEntity.restore(10L, "approval/10.pdf", "application/pdf");
         when(fileMetadataJpaRepository.findById(10L)).thenReturn(Optional.of(metadata));
         when(fileStoragePort.download("approval/10.pdf")).thenReturn(oversized);
 
@@ -75,7 +75,7 @@ class ApprovalAttachmentContentAdapterTest {
     @Test
     void extractsTextFromDocx() throws Exception {
         byte[] docxBytes = buildDocxWithParagraph("결재 첨부 docx 본문입니다");
-        FileMetadataEntity metadata = FileMetadataEntity.restore(10L, 1L, "approval/10.docx",
+        FileMetadataEntity metadata = FileMetadataEntity.restore(10L, "approval/10.docx",
                 "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
         when(fileMetadataJpaRepository.findById(10L)).thenReturn(Optional.of(metadata));
         when(fileStoragePort.download("approval/10.docx")).thenReturn(docxBytes);
@@ -88,7 +88,7 @@ class ApprovalAttachmentContentAdapterTest {
 
     @Test
     void throwsWhenContentTypeIsUnsupported() {
-        FileMetadataEntity metadata = FileMetadataEntity.restore(10L, 1L, "approval/10.hwp",
+        FileMetadataEntity metadata = FileMetadataEntity.restore(10L, "approval/10.hwp",
                 "application/x-hwp");
         when(fileMetadataJpaRepository.findById(10L)).thenReturn(Optional.of(metadata));
 

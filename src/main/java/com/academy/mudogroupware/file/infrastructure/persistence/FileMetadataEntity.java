@@ -20,27 +20,23 @@ public class FileMetadataEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "academy_id", nullable = false)
-    private Long academyId;
-
     @Column(name = "object_key", nullable = false, length = 500)
     private String objectKey;
 
     @Column(name = "content_type", nullable = false, length = 100)
     private String contentType;
 
-    private FileMetadataEntity(Long id, Long academyId, String objectKey, String contentType) {
+    private FileMetadataEntity(Long id, String objectKey, String contentType) {
         this.id = id;
-        this.academyId = academyId;
         this.objectKey = objectKey;
         this.contentType = contentType;
     }
 
-    public static FileMetadataEntity create(Long academyId, String objectKey, String contentType) {
-        return new FileMetadataEntity(null, academyId, objectKey, contentType);
+    public static FileMetadataEntity create(String objectKey, String contentType) {
+        return new FileMetadataEntity(null, objectKey, contentType);
     }
 
-    public static FileMetadataEntity restore(Long id, Long academyId, String objectKey, String contentType) {
-        return new FileMetadataEntity(id, academyId, objectKey, contentType);
+    public static FileMetadataEntity restore(Long id, String objectKey, String contentType) {
+        return new FileMetadataEntity(id, objectKey, contentType);
     }
 }

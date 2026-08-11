@@ -759,7 +759,7 @@ Response Body
 
 `GET /api/approvals/{documentId}/attachments/{fileId}/download-url`
 
-결재 첨부파일은 기밀 자료이므로 신청자 또는 결재선 참여자만 다운로드 URL을 받을 수 있다. 내부적으로 `file` 모듈의 `GET /api/files/{fileId}/download-url`([file 모듈 API.md](../../file/docs/API.md))이 하는 academyId 검증에 더해, "요청자가 이 결재 문서의 신청자/결재선 참여자인지"와 "이 fileId가 실제로 이 documentId 소속인지"를 먼저 검증한다. 두 조건을 모두 통과해야 presigned URL을 발급한다.
+결재 첨부파일은 기밀 자료이므로 신청자 또는 결재선 참여자만 다운로드 URL을 받을 수 있다. `file` 모듈의 `GET /api/files/{fileId}/download-url`([file 모듈 API.md](../../file/docs/API.md))은 인증된 사용자면 fileId만으로 누구나 호출할 수 있으므로, 이 엔드포인트가 "요청자가 이 결재 문서의 신청자/결재선 참여자인지"와 "이 fileId가 실제로 이 documentId 소속인지"를 먼저 검증한다. 두 조건을 모두 통과해야 presigned URL을 발급한다.
 
 ### **14.1 요청**
 
@@ -813,7 +813,7 @@ Response Body
 ### **알려진 제약**
 
 - 이 엔드포인트는 결재 첨부파일 전용이다. notice 등 다른 도메인의 첨부파일은 여전히 `file` 모듈의 범용 엔드포인트(`GET /api/files/{fileId}/download-url`)를 그대로 쓴다.
-- 프론트는 결재 상세 화면의 첨부파일 다운로드/미리보기에서 반드시 이 엔드포인트를 호출해야 한다. 범용 `file` 모듈 엔드포인트를 직접 호출하면 academyId만 검증되어 결재선과 무관한 같은 학원 소속 사용자도 다운로드 URL을 받을 수 있다(의도한 동작이 아님).
+- 프론트는 결재 상세 화면의 첨부파일 다운로드/미리보기에서 반드시 이 엔드포인트를 호출해야 한다. 범용 `file` 모듈 엔드포인트를 직접 호출하면 인증된 사용자면 누구나 다운로드 URL을 받을 수 있다(의도한 동작이 아님).
 
 ---
 

@@ -1,5 +1,9 @@
 # approval Changelog
 
+## 2026-08-11 (2)
+
+- file 모듈의 `file_metadata` academyId 제거에 맞춰, `GetApprovalAttachmentDownloadUrlCommand`/`GetApprovalAttachmentDownloadUrlService`/`ApprovalController`에서 academyId 전달을 뺐다. 방어 로직 자체(신청자/결재선 참여자 검증 + fileId 문서 소속 검증)는 academyId와 무관하게 그대로 유지된다.
+
 ## 2026-08-11
 
 - 첨부파일 AI 요약이 PDF/이미지/docx까지 지원하도록 확장됐다. `AttachmentContentPort`가 텍스트 대신 `AttachmentContent`(TEXT/BINARY)를 반환하도록 바뀌었다.

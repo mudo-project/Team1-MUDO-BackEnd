@@ -5,7 +5,7 @@ S3 기반 파일 저장소 접근, 업로드/등록, 파일 메타데이터 조�
 ## 책임과 범위
 
 - `FileStoragePort`: objectKey 기준 presigned URL 생성(업로드/다운로드), 다운로드, 삭제.
-- `file_metadata`: `fileId -> academyId/objectKey/contentType` 저장 및 조회용 메타데이터. `academyId`는 등록 시 요청자 학원으로 저장되며, 다운로드 URL 조회는 이 값이 일치하는 파일만 허용한다(`V1.5.6`).
+- `file_metadata`: `fileId -> objectKey/contentType` 저장 및 조회용 메타데이터. 프로젝트가 단일 학원으로 전환되면서 `academyId` 컬럼은 제거했다(`V1.5.14`, 원래 `V1.5.6`에서 IDOR 방지용으로 추가했었다).
 - `POST /api/files/presigned-url`, `POST /api/files`, `GET /api/files/{fileId}/download-url`: 업로드 → 등록 → 다운로드 흐름을 제공하는 공용 API. 자세한 내용은 [API.md](API.md) 참고.
 - `ApprovalAttachmentContentAdapter`: approval의 `AttachmentContentPort`를 구현한다.
 
@@ -23,8 +23,8 @@ S3 기반 파일 저장소 접근, 업로드/등록, 파일 메타데이터 조�
 ```
 
 - 3번 등록 시점에 실제 S3 객체 존재 여부를 검증하지 않는다. 잘못된 objectKey로 등록하면 이후 다운로드/요약 시점에 실패로 드러난다.
-- objectKey는 `uploads/{academyId}/{UUID}-{파일명}` 형태로 서버가 생성한다. 클라이언트가 임의 경로를 지정할 수 없다.
-- 다운로드 URL 조회(단건/배치)는 `academyId`가 일치하는 파일만 대상으로 한다. 다른 학원 소속이거나 존재하지 않는 fileId는 동일하게 "찾을 수 없음"으로 처리한다(존재 여부 노출 방지).
+- objectKey는 `uploads/{UUID}-{파일명}` 형태로 서버가 생성한다. 클라이언트가 임의 경로를 지정할 수 없다.
+- 다운로드 URL 조회(단건/배치)는 fileId만으로 조회한다. **인증만 되면 fileId를 아는(추측/유출된) 누구나 다운로드 URL을 받을 수 있다.** approval처럼 리소스 단위 권한 체크가 필요한 도메인은 자체 엔드포인트를 앞단에 둬야 한다(`approval.GetApprovalAttachmentDownloadUrlService` 참고). notice 등 나머지 도메인은 아직 이런 체크가 없다 — 알려진 갭.
 
 ## approval 연동
 
