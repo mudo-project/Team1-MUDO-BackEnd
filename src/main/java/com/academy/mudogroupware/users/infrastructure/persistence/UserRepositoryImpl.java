@@ -75,6 +75,11 @@ public class UserRepositoryImpl implements UserRepository {
     }
 
     @Override
+    public List<User> findAllByAcademyId(Long academyId) {
+        return userJpaRepository.findAllByAcademyId(academyId).stream().map(this::toDomain).toList();
+    }
+
+    @Override
     public Map<Long, Long> countActiveByRoleIds(Set<Long> roleIds) {
         if (roleIds.isEmpty()) {
             return Map.of();
