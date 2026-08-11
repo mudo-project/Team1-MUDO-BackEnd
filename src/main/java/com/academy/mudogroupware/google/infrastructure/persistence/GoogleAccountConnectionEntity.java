@@ -41,8 +41,8 @@ public class GoogleAccountConnectionEntity extends BaseTimeEntity {
     @Column(name = "connected_at", nullable = false)
     private LocalDateTime connectedAt;
 
-    @Column(name = "token_expires_at", nullable = false)
-    private LocalDateTime tokenExpiresAt;
+    @Column(name = "refresh_token_expires_at")
+    private LocalDateTime refreshTokenExpiresAt;
 
     @Column(name = "last_checked_at", nullable = false)
     private LocalDateTime lastCheckedAt;
@@ -53,7 +53,7 @@ public class GoogleAccountConnectionEntity extends BaseTimeEntity {
     @Builder
     private GoogleAccountConnectionEntity(Long id, String googleEmail, Long connectedByUserId,
                                            String scope, String encryptedRefreshToken, LocalDateTime connectedAt,
-                                           LocalDateTime tokenExpiresAt, LocalDateTime lastCheckedAt,
+                                           LocalDateTime refreshTokenExpiresAt, LocalDateTime lastCheckedAt,
                                            boolean failed) {
         this.id = id;
         this.googleEmail = googleEmail;
@@ -61,7 +61,7 @@ public class GoogleAccountConnectionEntity extends BaseTimeEntity {
         this.scope = scope;
         this.encryptedRefreshToken = encryptedRefreshToken;
         this.connectedAt = connectedAt;
-        this.tokenExpiresAt = tokenExpiresAt;
+        this.refreshTokenExpiresAt = refreshTokenExpiresAt;
         this.lastCheckedAt = lastCheckedAt;
         this.failed = failed;
     }

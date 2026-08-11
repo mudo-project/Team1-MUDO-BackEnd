@@ -52,9 +52,13 @@ public class CompleteGoogleAccountConnectionService implements CompleteGoogleAcc
         existing.ifPresent(connection -> googleOAuthPort.revoke(connection.getRefreshToken()));
         googleAccountConnectionRepository.deleteAll();
 
+        LocalDateTime connectedAt = LocalDateTime.now(clock);
+        LocalDateTime refreshTokenExpiresAt = tokens.refreshTokenExpiresInSeconds() == null
+                ? null
+                : connectedAt.plusSeconds(tokens.refreshTokenExpiresInSeconds());
         GoogleAccountConnection connection = GoogleAccountConnection.connect(
                 googleEmail, claims.userId(), tokens.scope(), tokens.refreshToken(),
-                LocalDateTime.now(clock));
+                connectedAt, refreshTokenExpiresAt);
         googleAccountConnectionRepository.save(connection);
     }
 }
