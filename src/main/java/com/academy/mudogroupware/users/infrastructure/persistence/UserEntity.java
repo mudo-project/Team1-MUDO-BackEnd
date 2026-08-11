@@ -106,4 +106,8 @@ public class UserEntity {
         this.email = email;
         this.joinedAt = joinedAt;
     }
+
+    void changePassword(String password) {
+        this.password = password;
+    }
 }

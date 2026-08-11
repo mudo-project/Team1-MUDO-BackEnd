@@ -160,6 +160,15 @@ class UserRepositoryImplDataJpaTest {
         assertThat(found.getJoinedAt()).isEqualTo(newJoinedAt);
     }
 
+    @Test
+    void changePasswordReplacesPasswordHash() {
+        insertUserWithRole(1L, 1L, "before", UserStatus.ACTIVE, null);
+
+        userRepository.changePassword(1L, "new-encoded-hash");
+
+        assertThat(userRepository.findById(1L).orElseThrow().getPassword()).isEqualTo("new-encoded-hash");
+    }
+
     private void insertUserWithPasswordAndMustChangePw(long id, long academyId, String suffix, String password,
                                                          boolean mustChangePw) {
         jdbcTemplate.update("""

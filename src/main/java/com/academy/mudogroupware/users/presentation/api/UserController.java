@@ -20,6 +20,7 @@ import com.academy.mudogroupware.global.presentation.api.common.GlobalApiRespons
 import com.academy.mudogroupware.global.presentation.api.common.SliceResponse;
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
 import com.academy.mudogroupware.users.application.result.CreateAccountResult;
+import com.academy.mudogroupware.users.application.usecase.ChangeMyPasswordUseCase;
 import com.academy.mudogroupware.users.application.usecase.ChangeUserRoleUseCase;
 import com.academy.mudogroupware.users.application.usecase.CreateAccountUseCase;
 import com.academy.mudogroupware.users.application.usecase.GetMyProfileUseCase;
@@ -28,6 +29,7 @@ import com.academy.mudogroupware.users.application.usecase.PasswordSetupUseCase;
 import com.academy.mudogroupware.users.application.usecase.SearchUsersUseCase;
 import com.academy.mudogroupware.users.application.usecase.UpdateMyProfileUseCase;
 import com.academy.mudogroupware.users.presentation.api.common.UserResponseCode;
+import com.academy.mudogroupware.users.presentation.api.request.ChangeMyPasswordRequest;
 import com.academy.mudogroupware.users.presentation.api.request.ChangeUserRoleRequest;
 import com.academy.mudogroupware.users.presentation.api.request.CreateAccountRequest;
 import com.academy.mudogroupware.users.presentation.api.request.PasswordSetupRequest;
@@ -59,6 +61,7 @@ public class UserController {
     private final ListMembersUseCase listMembersUseCase;
     private final GetMyProfileUseCase getMyProfileUseCase;
     private final UpdateMyProfileUseCase updateMyProfileUseCase;
+    private final ChangeMyPasswordUseCase changeMyPasswordUseCase;
 
     @PreAuthorize("hasAuthority('ACCOUNT:MANAGE')")
     @PostMapping
@@ -138,6 +141,17 @@ public class UserController {
             @AuthenticationPrincipal AuthUser authUser,
             @Valid @RequestBody UpdateMyProfileRequest request) {
         updateMyProfileUseCase.updateMyProfile(authUser.userId(), request.phone(), request.email());
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(
+            summary = "내 비밀번호 변경",
+            description = "현재 비밀번호를 확인한 뒤 새 비밀번호로 교체합니다.")
+    @PatchMapping("/me/password")
+    public ResponseEntity<Void> changeMyPassword(
+            @AuthenticationPrincipal AuthUser authUser,
+            @Valid @RequestBody ChangeMyPasswordRequest request) {
+        changeMyPasswordUseCase.changePassword(authUser.userId(), request.currentPassword(), request.newPassword());
         return ResponseEntity.noContent().build();
     }
 

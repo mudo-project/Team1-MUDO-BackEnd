@@ -7,6 +7,31 @@
 
 ---
 
+## ✅ 2026-08-11 · 내 비밀번호 변경 추가
+
+### 배경
+
+#361(내 정보 조회, #367)·#362(내 정보 수정, #371)에 이어지는 작업(#363). 로그인한 사용자가 최초 비밀번호 설정(`POST /api/users/password-setup`) 이후 스스로 비밀번호를 바꿀 방법이 없었다.
+
+### 확정된 정책
+
+- `PATCH /api/users/me/password`는 `POST /api/users/password-setup`(최초 1회 설정 전용)과 별개 API다 — 이미 인증된 본인 요청이라 계정 존재 여부를 숨길 필요가 없고, 현재 비밀번호가 틀리면 구체적인 오류(`USER_400_3`)를 그대로 반환한다.
+- 현재 비밀번호 확인 → 새 비밀번호로 교체는 `changeRole`/`updateProfile`과 동일하게 `findById` 후 `UserEntity`의 package-private 뮤테이터를 거쳐 `flush()`하는 패턴을 따랐다.
+
+### 완료 기준
+
+- [x] `UserErrorCode.CURRENT_PASSWORD_MISMATCH`("USER_400_3") 추가
+- [x] `UserRepository.changePassword` + `UserEntity.changePassword` 뮤테이터(TDD)
+- [x] `ChangeMyPasswordUseCase`/`ChangeMyPasswordService` 구현(TDD)
+- [x] `UserController`에 `PATCH /api/users/me/password` 반영
+- [x] `./gradlew build` 통과
+
+### 범위 밖 (명시적으로 미룸)
+
+- 관리자용 구성원 상세조회/수정/재직상태변경 — 각각 별도 PR(#364~#366)에서 이어간다.
+
+---
+
 ## ✅ 2026-08-11 · 내 정보 수정 + 계정생성 필드 선택화
 
 ### 배경
