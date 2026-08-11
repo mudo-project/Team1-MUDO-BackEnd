@@ -2,6 +2,7 @@ package com.academy.mudogroupware.google.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -16,12 +17,14 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.academy.mudogroupware.google.application.port.GoogleOAuthCallException;
 import com.academy.mudogroupware.google.application.port.GoogleOAuthPort;
 import com.academy.mudogroupware.google.application.port.GoogleTokenExchangeResult;
+import com.academy.mudogroupware.google.application.port.GoogleTokenRevokedException;
 import com.academy.mudogroupware.google.domain.exception.GoogleAccountConnectionInvalidException;
 import com.academy.mudogroupware.google.domain.exception.GoogleAccountNotConnectedException;
 import com.academy.mudogroupware.google.domain.exception.GoogleOAuthFailedException;
@@ -107,5 +110,23 @@ class GetGoogleAccessTokenServiceTest {
 
         assertThatThrownBy(() -> service.getAccessToken())
                 .isInstanceOf(GoogleOAuthFailedException.class);
+        verify(googleAccountConnectionRepository, never()).save(any());
+    }
+
+    @Test
+    void getAccessTokenMarksFailedAndThrowsInvalidWhenTokenRevoked() {
+        GoogleAccountConnection connection = GoogleAccountConnection.restore(
+                10L, "academy@mudo.co.kr", 7L, "openid email drive.file", "refresh-token",
+                CONNECTED_AT, CONNECTED_AT.plusDays(60), CONNECTED_AT, false);
+        when(googleAccountConnectionRepository.find()).thenReturn(Optional.of(connection));
+        when(googleOAuthPort.refreshAccessToken("refresh-token"))
+                .thenThrow(new GoogleTokenRevokedException("revoked", null));
+
+        assertThatThrownBy(() -> service.getAccessToken())
+                .isInstanceOf(GoogleAccountConnectionInvalidException.class);
+
+        ArgumentCaptor<GoogleAccountConnection> captor = ArgumentCaptor.forClass(GoogleAccountConnection.class);
+        verify(googleAccountConnectionRepository).save(captor.capture());
+        assertThat(captor.getValue().isFailed()).isTrue();
     }
 }

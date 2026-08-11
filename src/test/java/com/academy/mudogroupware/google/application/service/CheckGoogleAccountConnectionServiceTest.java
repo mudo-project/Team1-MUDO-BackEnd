@@ -21,6 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.academy.mudogroupware.google.application.port.GoogleOAuthCallException;
 import com.academy.mudogroupware.google.application.port.GoogleOAuthPort;
 import com.academy.mudogroupware.google.application.port.GoogleTokenExchangeResult;
+import com.academy.mudogroupware.google.application.port.GoogleTokenRevokedException;
 import com.academy.mudogroupware.google.domain.exception.GoogleAccountNotConnectedException;
 import com.academy.mudogroupware.google.domain.model.GoogleAccountConnection;
 import com.academy.mudogroupware.google.domain.repository.GoogleAccountConnectionRepository;
@@ -60,19 +61,36 @@ class CheckGoogleAccountConnectionServiceTest {
     }
 
     @Test
-    void checkMarksFailedWhenGoogleRefreshFails() {
+    void checkMarksFailedWhenTokenIsRevoked() {
         GoogleAccountConnection connection = GoogleAccountConnection.restore(
                 10L, "a@b.com", 7L, "scope", "refresh-token", CONNECTED_AT, CONNECTED_AT.plusDays(60),
                 CONNECTED_AT, false);
         when(googleAccountConnectionRepository.find()).thenReturn(Optional.of(connection));
         when(googleOAuthPort.refreshAccessToken("refresh-token"))
-                .thenThrow(new GoogleOAuthCallException("revoked"));
+                .thenThrow(new GoogleTokenRevokedException("revoked", null));
 
         service.check();
 
         ArgumentCaptor<GoogleAccountConnection> captor = ArgumentCaptor.forClass(GoogleAccountConnection.class);
         verify(googleAccountConnectionRepository).save(captor.capture());
         assertThat(captor.getValue().isFailed()).isTrue();
+    }
+
+    @Test
+    void checkDoesNotMarkFailedOnTransientError() {
+        GoogleAccountConnection connection = GoogleAccountConnection.restore(
+                10L, "a@b.com", 7L, "scope", "refresh-token", CONNECTED_AT, CONNECTED_AT.plusDays(60),
+                CONNECTED_AT, false);
+        when(googleAccountConnectionRepository.find()).thenReturn(Optional.of(connection));
+        when(googleOAuthPort.refreshAccessToken("refresh-token"))
+                .thenThrow(new GoogleOAuthCallException("timeout"));
+
+        service.check();
+
+        ArgumentCaptor<GoogleAccountConnection> captor = ArgumentCaptor.forClass(GoogleAccountConnection.class);
+        verify(googleAccountConnectionRepository).save(captor.capture());
+        assertThat(captor.getValue().isFailed()).isFalse();
+        assertThat(captor.getValue().getLastCheckedAt()).isEqualTo(NOW.atZone(ZoneOffset.UTC).toLocalDateTime());
     }
 
     @Test

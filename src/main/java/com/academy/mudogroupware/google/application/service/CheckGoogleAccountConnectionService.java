@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.academy.mudogroupware.google.application.port.GoogleOAuthCallException;
 import com.academy.mudogroupware.google.application.port.GoogleOAuthPort;
+import com.academy.mudogroupware.google.application.port.GoogleTokenRevokedException;
 import com.academy.mudogroupware.google.application.usecase.CheckGoogleAccountConnectionUseCase;
 import com.academy.mudogroupware.google.domain.exception.GoogleAccountNotConnectedException;
 import com.academy.mudogroupware.google.domain.model.GoogleAccountConnection;
@@ -30,14 +31,15 @@ public class CheckGoogleAccountConnectionService implements CheckGoogleAccountCo
                 .find()
                 .orElseThrow(GoogleAccountNotConnectedException::new);
 
-        boolean valid = true;
         try {
             googleOAuthPort.refreshAccessToken(connection.getRefreshToken());
+            connection.markCheckResult(LocalDateTime.now(clock), true);
+        } catch (GoogleTokenRevokedException e) {
+            connection.markCheckResult(LocalDateTime.now(clock), false);
         } catch (GoogleOAuthCallException e) {
-            valid = false;
+            connection.markCheckAttempted(LocalDateTime.now(clock));
         }
 
-        connection.markCheckResult(LocalDateTime.now(clock), valid);
         googleAccountConnectionRepository.save(connection);
     }
 }

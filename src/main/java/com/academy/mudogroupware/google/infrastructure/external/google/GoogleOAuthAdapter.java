@@ -4,16 +4,21 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
 import com.academy.mudogroupware.google.application.port.GoogleOAuthCallException;
 import com.academy.mudogroupware.google.application.port.GoogleOAuthPort;
 import com.academy.mudogroupware.google.application.port.GoogleTokenExchangeResult;
+import com.academy.mudogroupware.google.application.port.GoogleTokenRevokedException;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +35,7 @@ public class GoogleOAuthAdapter implements GoogleOAuthPort {
 
     private final RestClient googleOAuthRestClient;
     private final GoogleOAuthProperties googleOAuthProperties;
+    private final ObjectMapper objectMapper;
 
     @Override
     public String buildAuthorizationUrl(String state, boolean forceAccountSelection) {
@@ -120,8 +126,26 @@ public class GoogleOAuthAdapter implements GoogleOAuthPort {
                 throw new GoogleOAuthCallException("구글 토큰 응답에 액세스 토큰이 없습니다.");
             }
             return response;
+        } catch (HttpClientErrorException e) {
+            if (isTokenRevoked(e)) {
+                throw new GoogleTokenRevokedException("리프레시 토큰이 무효화되었습니다.", e);
+            }
+            throw new GoogleOAuthCallException("구글 토큰 발급에 실패했습니다.", e);
         } catch (RestClientException e) {
             throw new GoogleOAuthCallException("구글 토큰 발급에 실패했습니다.", e);
+        }
+    }
+
+    // package-private로 열어 GoogleOAuthAdapterTest가 실제 HTTP 호출 없이 분류 로직만 검증할 수 있게 한다.
+    boolean isTokenRevoked(HttpClientErrorException e) {
+        if (e.getStatusCode().value() != HttpStatus.BAD_REQUEST.value()) {
+            return false;
+        }
+        try {
+            GoogleOAuthErrorBody error = objectMapper.readValue(e.getResponseBodyAsString(), GoogleOAuthErrorBody.class);
+            return "invalid_grant".equals(error.error());
+        } catch (JsonProcessingException ex) {
+            return false;
         }
     }
 

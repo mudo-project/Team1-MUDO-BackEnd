@@ -285,6 +285,7 @@ def render_app_task(
         "GOOGLE_CLIENT_SECRET",
         "GOOGLE_REDIRECT_URI",
         "GOOGLE_OAUTH_FRONTEND_REDIRECT_URI",
+        "APP_FRONTEND_URL",
     )
     container["secrets"] = [
         {"name": name, "valueFrom": parameter_arn(region, account_id, code, name)}
