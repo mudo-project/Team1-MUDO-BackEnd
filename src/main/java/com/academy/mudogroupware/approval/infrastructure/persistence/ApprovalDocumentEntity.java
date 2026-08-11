@@ -98,6 +98,10 @@ public class ApprovalDocumentEntity {
         line.assignDocument(this);
     }
 
+    public void clearLines() {
+        lines.clear();
+    }
+
     public void addAttachment(ApprovalAttachmentEntity attachment) {
         attachments.add(attachment);
         attachment.assignDocument(this);
