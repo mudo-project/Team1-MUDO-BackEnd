@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
+import jakarta.persistence.EntityManager;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
@@ -24,6 +26,9 @@ class TimetableSetPersistenceAdapterDataJpaTest {
 
     @Autowired
     private TimetableSetPersistenceAdapter adapter;
+
+    @Autowired
+    private EntityManager entityManager;
 
     @Test
     void savesAndFindsTimetableSetWithClassrooms() {
@@ -48,6 +53,8 @@ class TimetableSetPersistenceAdapterDataJpaTest {
                 30, List.of(new TimetableClassroom("6층", "601")));
 
         TimetableSet saved = adapter.save(set);
+        entityManager.flush();
+        entityManager.clear();
         Optional<TimetableSet> found = adapter.findById(saved.getId());
 
         assertThat(found).isPresent();
