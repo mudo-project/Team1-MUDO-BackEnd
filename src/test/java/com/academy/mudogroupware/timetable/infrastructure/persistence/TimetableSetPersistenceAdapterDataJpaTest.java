@@ -41,6 +41,20 @@ class TimetableSetPersistenceAdapterDataJpaTest {
     }
 
     @Test
+    void savesTimetableSetWithAllSevenOperatingDays() {
+        TimetableSet set = TimetableSet.create(
+                "매일 운영", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16),
+                LocalTime.of(8, 30), LocalTime.of(22, 0), Set.of(DayOfWeek.values()),
+                30, List.of(new TimetableClassroom("6층", "601")));
+
+        TimetableSet saved = adapter.save(set);
+        Optional<TimetableSet> found = adapter.findById(saved.getId());
+
+        assertThat(found).isPresent();
+        assertThat(found.get().getOperatingDays()).containsExactlyInAnyOrder(DayOfWeek.values());
+    }
+
+    @Test
     void deletesTimetableSetById() {
         TimetableSet set = TimetableSet.create(
                 "삭제될 세트", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16),
