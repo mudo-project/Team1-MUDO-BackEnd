@@ -32,7 +32,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Tag(name = "구글 연동", description = "학원 명의 구글 계정 연동(OAuth) 관리 API")
 @RestController
 @RequestMapping("/api/google/connections")
@@ -68,18 +70,27 @@ public class GoogleAccountConnectionController {
     @Operation(summary = "구글 OAuth 콜백", description = "구글 동의 화면 완료 후 브라우저가 돌아오는 리다이렉트 대상입니다. "
             + "인가 코드를 토큰으로 교환해 연동을 저장하고 프론트엔드로 리다이렉트합니다.")
     @GetMapping("/callback")
+    // 실패 원인(Google 오류/파라미터 누락/연동 처리 예외)을 구분해 로그에 남기되, code·state(토큰·인가코드가
+    // 실린 값)는 절대 로그에 남기지 않는다.
     public ResponseEntity<Void> completeConnection(
             @RequestParam(required = false) String code,
             @RequestParam(required = false) String state,
             @RequestParam(required = false) String error) {
         String redirectUri;
-        if (error != null || code == null || state == null) {
+        if (error != null) {
+            log.warn("event=google_oauth_callback_google_error error={}", error);
+            redirectUri = frontendRedirectUri + "?googleConnection=failed";
+        } else if (code == null || state == null) {
+            log.warn("event=google_oauth_callback_missing_params codePresent={} statePresent={}",
+                    code != null, state != null);
             redirectUri = frontendRedirectUri + "?googleConnection=failed";
         } else {
             try {
                 completeGoogleAccountConnectionUseCase.complete(new CompleteGoogleConnectionCommand(code, state));
                 redirectUri = frontendRedirectUri + "?googleConnection=success";
             } catch (RuntimeException e) {
+                log.warn("event=google_oauth_callback_failed exceptionType={} message={}",
+                        e.getClass().getSimpleName(), e.getMessage());
                 redirectUri = frontendRedirectUri + "?googleConnection=failed";
             }
         }
