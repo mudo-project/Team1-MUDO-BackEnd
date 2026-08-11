@@ -29,7 +29,9 @@ class AttendanceRecordRepositoryImplDataJpaTest {
         attendanceRecordRepository.save(AttendanceRecord.checkIn(
                 2L, today.atTime(8, 40), LocalTime.of(9, 0), 10, null));
         attendanceRecordRepository.save(AttendanceRecord.checkIn(
-                3L, yesterday.atTime(8, 40), LocalTime.of(9, 0), 10, null));
+                1L, yesterday.atTime(8, 40), LocalTime.of(9, 0), 10, null));
+        attendanceRecordRepository.save(AttendanceRecord.checkIn(
+                3L, today.atTime(8, 40), LocalTime.of(9, 0), 10, null));
 
         List<AttendanceRecord> result = attendanceRecordRepository
                 .findAllByUserIdsAndWorkDate(List.of(1L, 2L), today);
