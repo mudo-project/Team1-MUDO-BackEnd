@@ -50,7 +50,8 @@
   `SecurityConfig`에서 이 경로만 `permitAll`로 열어 뒀고, 위조·재사용은 `state`(HMAC 서명, 10분 유효)로 막는다.
 - "재연결"과 "계정 교체"는 별도 엔드포인트가 아니라 `authorize-url?switchAccount=true|false` 하나로 처리한다.
   `switchAccount=true`면 구글 계정 선택 화면을 강제로 띄운다(`prompt=select_account consent`).
-- 재연결/계정 교체 성공 시 기존 리프레시 토큰은 구글에 폐기(revoke) 요청한 뒤 기존 행을 삭제하고 새 행을 만든다(교체이지 갱신이 아님).
+- 재연결/계정 교체 성공 시 기존 행을 삭제하고 새 행을 만든다(교체이지 갱신이 아님). 기존 리프레시 토큰의 구글 측 폐기(revoke)는 즉시 실행하지 않고, DB 트랜잭션 커밋이 확정된 뒤 `OldGoogleRefreshTokenRevocationRequestedEvent`로 미룬다 — DB 쓰기가 실패해 롤백돼도 이미 폐기된 토큰이 남는 불일치를 막기 위함이다. 연동 해제도 동일하다.
+- 연결 성공(최초 연결/재연결/계정 교체) 시 `GoogleAccountConnectedEvent`를 발행한다. 현재 구독자는 없다 — 공유파일 도메인이 구현되면 AFTER_COMMIT으로 수신해 시스템 루트를 자동 생성할 예정이다.
 
 ## 다음 단계(공유파일 기능)를 위한 참고
 
@@ -73,3 +74,4 @@
 
 - [GOOGLE_API.md](GOOGLE_API.md): 요청·응답 형식
 - [GOOGLE_PERMISSIONS.md](GOOGLE_PERMISSIONS.md): 권한 코드 정의
+- [REVISION.md](REVISION.md): 변경 이력
