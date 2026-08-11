@@ -21,9 +21,13 @@ import com.academy.mudogroupware.google.domain.repository.GoogleAccountConnectio
 
 import lombok.RequiredArgsConstructor;
 
+// noRollbackFor: 영구 오류 감지 시 markCheckResult(false)를 save()한 뒤
+// GoogleAccountConnectionInvalidException을 던지는데, 기본 롤백 규칙(RuntimeException 전체
+// 롤백)이면 그 save()까지 함께 롤백돼 failed=true가 유실된다. 이 예외로는 롤백하지 않아야
+// 자기 치유 감지 결과가 실제로 저장된다.
 @Service
 @RequiredArgsConstructor
-@Transactional
+@Transactional(noRollbackFor = GoogleAccountConnectionInvalidException.class)
 public class GetGoogleAccessTokenService implements GetGoogleAccessTokenUseCase {
 
     private final GoogleAccountConnectionRepository googleAccountConnectionRepository;
