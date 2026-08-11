@@ -526,6 +526,42 @@ Query Parameter
 
 ---
 
+## 15. 내 정보 조회
+
+`GET /api/users/me`
+권한: 없음 (로그인만 되면 호출 가능, 본인 정보만 조회)
+
+### Request
+
+없음
+
+### Response · `200 OK`
+
+```json
+{
+  "status": 200,
+  "code": "USER_200_5",
+  "message": "내 정보 조회에 성공했습니다.",
+  "data": {
+    "userId": 10,
+    "name": "최현우",
+    "email": null,
+    "phone": null,
+    "roleId": 8,
+    "roleName": "강사",
+    "joinedAt": "2023-03-02T00:00:00",
+    "status": "ACTIVE"
+  }
+}
+```
+
+### 검증 및 정책
+
+- `roleId`가 없는 계정(예: 역할 미배정)은 `roleId`/`roleName` 모두 `null`로 내려갑니다.
+- 실패 케이스 없음(본인 조회라 대상 없음 케이스가 없고, 인증 실패만 401).
+
+---
+
 ## ⚠️ 주요 오류
 
 | HTTP | 코드 | 상황 |

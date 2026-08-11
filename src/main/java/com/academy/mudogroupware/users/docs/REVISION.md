@@ -7,6 +7,29 @@
 
 ---
 
+## ✅ 2026-08-11 · 내 정보 조회 추가
+
+### 배경
+
+users 도메인에는 계정 발급/역할 변경/목록 조회/검색만 있고, 로그인한 사용자가 자기 자신의 정보를 조회하는 API가 없었다. 구성원 상세조회·수정·재직상태 변경·비밀번호 변경으로 이어지는 작업(#353)의 첫 단계다.
+
+### 확정된 정책
+
+- `/api/users/me` 경로를 사용한다 — attendance 도메인이 이미 쓰던 `/api/attendance/me` 컨벤션과 맞춘 것이다.
+- 응답을 만드는 `GetUserDetailService`/`UserDetailResult`/`UserDetailResponse`는 이후 관리자용 구성원 상세조회(`GET /api/users/{userId}`)에서도 그대로 재사용할 수 있도록 설계했다.
+
+### 완료 기준
+
+- [x] `GetMyProfileUseCase`/`GetUserDetailService` 구현(TDD)
+- [x] `UserController`에 `GET /api/users/me` 반영
+- [x] `./gradlew build` 통과
+
+### 범위 밖 (명시적으로 미룸)
+
+- 정보 수정, 비밀번호 변경, 관리자용 상세조회/수정/재직상태변경 — 각각 별도 PR(#362~#366)에서 이어간다.
+
+---
+
 ## ✅ 2026-08-11 · 학원 신청/승인 기능 폐기
 
 ### 배경
