@@ -98,4 +98,17 @@ class GoogleAccountConnectionTest {
         assertThat(connection.getLastCheckedAt()).isEqualTo(checkedAt);
         assertThat(connection.isFailed()).isFalse();
     }
+
+    @Test
+    void markCheckAttemptedUpdatesLastCheckedAtWithoutChangingFailedFlag() {
+        GoogleAccountConnection connection = GoogleAccountConnection.connect(
+                "a@b.com", 7L, "scope", "token", CONNECTED_AT, null);
+        connection.markCheckResult(CONNECTED_AT.plusDays(1), false);
+        LocalDateTime attemptedAt = CONNECTED_AT.plusDays(2);
+
+        connection.markCheckAttempted(attemptedAt);
+
+        assertThat(connection.getLastCheckedAt()).isEqualTo(attemptedAt);
+        assertThat(connection.isFailed()).isTrue();
+    }
 }

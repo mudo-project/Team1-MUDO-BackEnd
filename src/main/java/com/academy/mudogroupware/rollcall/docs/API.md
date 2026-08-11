@@ -140,7 +140,54 @@ Content-Disposition: attachment; filename="attendance_1_2026-08-06.xlsx"
 
 - 출결 상태가 저장된 학생만 후보에 포함한다.
 - 학생 출결 상태에 맞는 문자 템플릿이 있으면 `eligible=true`다.
-- 실제 SMS 발송은 이 API에서 하지 않는다.
+- 실제 SMS 발송은 이 API에서 하지 않는다(4-1번 API 참고).
+
+---
+
+## 4-1. 출결 안내 문자 발송
+
+`POST /api/rollcall/lectures/{lectureId}/attendance/message-candidates/send?date=2026-08-06`
+
+인증: 필요
+권한: `ROLLCALL:MANAGE`
+
+#### Request
+
+```json
+{
+  "studentIds": [101, 102]
+}
+```
+
+#### Response - `200 OK`
+
+```json
+{
+  "status": 200,
+  "code": "ROLLCALL_200_5",
+  "message": "문자 발송을 완료했습니다.",
+  "data": [
+    {
+      "studentId": 101,
+      "studentName": "김민수",
+      "sent": true,
+      "failureReason": null
+    },
+    {
+      "studentId": 102,
+      "studentName": "이서연",
+      "sent": false,
+      "failureReason": "발송 대상이 아닙니다(출결 미입력 또는 매칭되는 템플릿 없음)."
+    }
+  ]
+}
+```
+
+#### 규칙
+
+- 요청한 `studentIds` 각각에 대해 발송을 시도하고, 학생별 성공/실패를 반환한다(일부 실패해도 전체 요청은 200으로 응답).
+- 발송 대상 조회(4번 API)에서 `eligible=false`였던 학생은 실제 발송 없이 실패로 처리된다.
+- 외부 SMS 공급자는 [솔라피(SOLAPI)](https://solapi.com/)를 사용한다. 학생 1명당 API 호출 1건(배치 발송 아님).
 
 ---
 
@@ -249,10 +296,13 @@ Content-Disposition: attachment; filename="attendance_1_2026-08-06.xlsx"
 | code | HTTP | 메시지 |
 |---|---:|---|
 | `ROLLCALL_400_1` | 400 | 기타 사유를 입력해야 합니다. |
+| `ROLLCALL_400_2` | 400 | 발송할 학생을 최소 1명 이상 선택해야 합니다. |
 | `ROLLCALL_404_1` | 404 | 문자 템플릿을 찾을 수 없습니다. |
 | `ROLLCALL_404_2` | 404 | 강의를 찾을 수 없습니다. |
 | `ROLLCALL_409_1` | 409 | 이미 해당 출결 상태의 템플릿이 있습니다. |
 
 ## SMS 발송 상태
 
-현재 실제 SMS 발송 API는 없다. SMS 공급자, 발신번호, API 키, 실패 재시도 정책이 정해지면 별도 Port/Adapter와 발송 API를 추가한다.
+솔라피(SOLAPI) REST API로 실제 발송을 구현했다(2026-08-10). 실제 발송 테스트로 정상 접수(`statusCode: "2000"`)와 실제 수신까지 확인했다. 발송 이력 저장, 실패 자동 재시도, 과금 정책은 아직 없다 — 요청/응답으로만 성공·실패를 즉시 확인한다.
+
+필요한 환경변수: `SOLAPI_API_KEY`, `SOLAPI_API_SECRET`, `SOLAPI_SENDER_NUMBER`(사전에 솔라피에 등록된 발신번호).

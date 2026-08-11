@@ -1,5 +1,11 @@
 # 출결 Changelog
 
+## 2026-08-10 - 출결 안내 문자 실제 발송 구현
+
+- 솔라피(SOLAPI) API로 학부모에게 출결 안내 SMS를 실제로 발송하는 기능을 추가했다.
+- `POST /api/rollcall/lectures/{lectureId}/attendance/message-candidates/send`로 선택한 학생들에게 발송하고, 학생별 성공/실패 결과를 즉시 반환한다.
+- 발송 대상 조회(`eligible=false`)였던 학생은 실제 발송 없이 실패로 처리된다.
+
 ## 2026-08-08 - 출결/문자 템플릿 권한 분리
 
 - 출결관리 탭 접근, 출결 조회/저장, 엑셀 다운로드, 문자 발송 대상 후보 조회를 `ROLLCALL:MANAGE`로 묶었다.
