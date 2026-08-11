@@ -38,13 +38,17 @@ public class CreateLectureService implements CreateLectureUseCase {
     public Long createLecture(CreateLectureCommand command) {
         LocalDateTime now = LocalDateTime.now(clock);
 
-        Long termId = hasText(command.termName()) ? findOrCreateTerm(command.termName(), now) : null;
-        Long subjectId = hasText(command.subjectName()) ? findOrCreateSubject(command.subjectName(), now) : null;
-        Long classroomId = findOrCreateClassroom(command.classroomCode(), now);
-
         List<LectureSchedule> schedules = command.schedules().stream()
                 .map(this::toSchedule)
                 .toList();
+
+        // 요청 안에서 이미 겹치는 게 확인되면, term/subject/classroom을 find-or-create하는
+        // 부수효과(신규 생성 시 저장)를 만들기 전에 먼저 걸러낸다.
+        validateNoInternalOverlap(schedules);
+
+        Long termId = hasText(command.termName()) ? findOrCreateTerm(command.termName(), now) : null;
+        Long subjectId = hasText(command.subjectName()) ? findOrCreateSubject(command.subjectName(), now) : null;
+        Long classroomId = findOrCreateClassroom(command.classroomCode(), now);
 
         for (LectureSchedule schedule : schedules) {
             if (lectureRepository.existsOverlap(command.classroomCode(), schedule.getDayOfWeek(),
@@ -64,6 +68,18 @@ public class CreateLectureService implements CreateLectureUseCase {
         return LectureSchedule.create(input.dayOfWeek(), input.startTime(), input.endTime());
     }
 
+    // 아직 저장 전인 일정끼리는 existsOverlap(저장된 일정 대상 조회)로 못 잡는다. 한 요청 안에
+    // 같은 요일에 겹치는 일정이 두 개 이상 들어오면 여기서 먼저 막는다.
+    private void validateNoInternalOverlap(List<LectureSchedule> schedules) {
+        for (int i = 0; i < schedules.size(); i++) {
+            for (int j = i + 1; j < schedules.size(); j++) {
+                if (schedules.get(i).overlaps(schedules.get(j))) {
+                    throw new ClassroomTimeConflictException();
+                }
+            }
+        }
+    }
+
     private boolean hasText(String value) {
         return value != null && !value.isBlank();
     }
@@ -80,8 +96,10 @@ public class CreateLectureService implements CreateLectureUseCase {
                 .orElseGet(() -> subjectRepository.save(Subject.create(name, now)).getId());
     }
 
+    // 존재하는 강의실이면 findByNameForUpdate로 행을 잠가서, 그 뒤에 이어지는 시간 충돌 검사와
+    // 강의 저장이 같은 트랜잭션 안에서 원자적으로 처리되게 한다(동시 등록 race condition 방지).
     private Long findOrCreateClassroom(String name, LocalDateTime now) {
-        return classroomRepository.findByName(name)
+        return classroomRepository.findByNameForUpdate(name)
                 .map(Classroom::getId)
                 .orElseGet(() -> classroomRepository.save(Classroom.create(name, now)).getId());
     }
