@@ -1,5 +1,30 @@
 # 🔄 공유파일 도메인 변경 이력
 
+## ✅ 2026-08-12 · HTTP API·권한·문서 구현 (Task6)
+
+### 변경 목적
+
+`2026-08-10-sharedfile-implementation.md` 계획서의 Task6(HTTP API·권한·문서·통합 검증)을 구현한다. 이 라운드가 끝나면 Task1~6 계획이 모두 완료된다.
+
+### 구현 변경
+
+- `SharedFileController`에 설계서의 11개 엔드포인트를 전부 구현했다. `SHAREDFILE:MANAGE`가 콘텐츠 API(3~11번)를, `SHAREDFILE:ROOT_MANAGE`가 재생성(2번)만 보호한다.
+- **설계 갭 해결**: `POST /api/shared-files/root/recreation`을 담당할 `RecreateSharedFileRootUseCase`/`RecreateSharedFileRootService`를 신설했다. AFTER_COMMIT 이벤트 리스너인 `SharedFileRootInitializer`와 달리 Drive 호출 실패를 삼키지 않고 그대로 던져 요청자에게 알리며, 이미 `READY`인 루트에 재생성을 요청하면 `IllegalStateException`(→ `COMMON_409_1`)으로 거부한다.
+- 요청 DTO(`CreateSharedFolderRequest`, `CreateGoogleWorkspaceFileRequest`, `UpdateSharedFileItemRequest`)와 응답 DTO(`SharedFileRootResponse`, `SharedFileItemResponse`, `SharedFileItemsResponse`)를 추가했다. `SharedFileItemsResponse`는 다른 도메인의 offset 기반 공통 페이지 응답 대신 Drive page token 그대로인 `cursor`/`hasNext`/`nextCursor`를 쓴다.
+- PATCH(이름 변경·이동)는 `name`·`parentId`를 하나의 요청으로 받아 있는 필드만 순서대로(이름 변경 → 이동) 적용한다. 둘 다 없으면 `IllegalArgumentException`(→ `COMMON_400_2`)으로 거부한다.
+- 업로드는 `dataimport` 도메인과 동일하게 `@RequestPart MultipartFile` + `consumes = MULTIPART_FORM_DATA_VALUE`로 받아 `byte[]`로 변환해 `UploadSharedFileUseCase`에 위임한다.
+- 다운로드는 `timetable` 도메인의 export 엔드포인트와 동일하게 `ResponseEntity<byte[]>` + `Content-Disposition: attachment`로 응답하며, `GlobalApiResponse`로 감싸지 않는다.
+- `GetGoogleAccessTokenUseCase`가 던지는 google 도메인 예외(`GOOGLE_409_1` 등)는 별도 `SHAREDFILE_409_2`로 감싸지 않고 그대로 전파한다 — `ApplicationException`을 상속하므로 `GlobalExceptionHandler`가 자동으로 처리한다. Task2~3에서 남겨뒀던 "Task4에서 추가 예정" 메모는 실제로는 필요 없었다.
+
+### 계획서와 다르게 처리한 부분
+
+- `SharedFileSecurityIntegrationTest`(전체 컨텍스트 통합 테스트)를 별도로 만들지 않고, `@WebMvcTest` + `@Import(@EnableMethodSecurity 설정)` 슬라이스 테스트(`SharedFileControllerTest`) 안에서 `SHAREDFILE:MANAGE`/`SHAREDFILE:ROOT_MANAGE` 상호 배제와 미인증 401을 함께 검증했다. `WorkspaceController` 계열은 이미 이 방식으로 `@PreAuthorize`를 검증해왔고(`WorkspaceControllerTest`), 별도 `@SpringBootTest` 통합 테스트를 추가하는 것은 이 프로젝트의 `@EnableMethodSecurity`가 슬라이스 컨텍스트에서도 동일하게 동작하는 한 중복이라 생략했다(YAGNI).
+
+### 검증
+
+- 신규 테스트 19개(`RecreateSharedFileRootServiceTest` 3, `SharedFileControllerTest` 16).
+- 전체 `./gradlew compileJava compileTestJava test --tests "com.academy.mudogroupware.sharedfile.*"` 통과(115개), `--tests "com.academy.mudogroupware.google.*"` 통과(회귀 없음).
+
 ## ✅ 2026-08-12 · V3.1.8 마이그레이션을 테이블·권한 시딩으로 분리
 
 ### 변경 목적
