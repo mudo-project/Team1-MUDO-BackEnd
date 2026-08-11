@@ -3,7 +3,9 @@ package com.academy.mudogroupware.lecture.application.service;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -98,9 +100,23 @@ public class CreateLectureService implements CreateLectureUseCase {
 
     // 존재하는 강의실이면 findByNameForUpdate로 행을 잠가서, 그 뒤에 이어지는 시간 충돌 검사와
     // 강의 저장이 같은 트랜잭션 안에서 원자적으로 처리되게 한다(동시 등록 race condition 방지).
+    //
+    // 완전히 새 강의실이면 잠글 행이 아직 없어, 두 트랜잭션이 동시에 "없음"을 보고 둘 다 save를
+    // 시도할 수 있다. 이때 DB 유니크 제약(uk_classroom_name)에 걸려 진 쪽은
+    // DataIntegrityViolationException을 받는데, 그대로 두면 도메인과 무관한 409 에러로
+    // 새어나간다. 다시 findByNameForUpdate로 조회하면 먼저 커밋된 강의실 행을 정상적으로
+    // 찾아 잠그고, 이어지는 흐름(시간 충돌 검사)을 그대로 타게 된다.
     private Long findOrCreateClassroom(String name, LocalDateTime now) {
-        return classroomRepository.findByNameForUpdate(name)
-                .map(Classroom::getId)
-                .orElseGet(() -> classroomRepository.save(Classroom.create(name, now)).getId());
+        Optional<Classroom> existing = classroomRepository.findByNameForUpdate(name);
+        if (existing.isPresent()) {
+            return existing.get().getId();
+        }
+        try {
+            return classroomRepository.save(Classroom.create(name, now)).getId();
+        } catch (DataIntegrityViolationException e) {
+            return classroomRepository.findByNameForUpdate(name)
+                    .map(Classroom::getId)
+                    .orElseThrow(() -> e);
+        }
     }
 }

@@ -70,6 +70,20 @@ class ClassroomOverlapConcurrencyMySqlIntegrationTest {
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     void onlyOneOfTwoConcurrentOverlappingRegistrationsSucceeds() throws Exception {
         insertClassroom("601호");
+        runConcurrentOverlappingRegistrations("601호");
+    }
+
+    // 강의실이 아직 없는 상태(첫 등록)에서 동시에 겹치는 시간대로 등록하면, findByNameForUpdate가
+    // 잠글 행이 없어 두 트랜잭션 모두 save를 시도할 수 있다. uk_classroom_name 유니크 제약에 걸려
+    // 진 쪽이 DataIntegrityViolationException 대신 정상적으로 ClassroomTimeConflictException을
+    // 받는지 검증한다(findOrCreateClassroom의 재조회 재시도 경로).
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void onlyOneOfTwoConcurrentOverlappingRegistrationsForBrandNewClassroomSucceeds() throws Exception {
+        runConcurrentOverlappingRegistrations("701호");
+    }
+
+    private void runConcurrentOverlappingRegistrations(String classroomCode) throws Exception {
         CountDownLatch ready = new CountDownLatch(2);
         CountDownLatch start = new CountDownLatch(1);
         ExecutorService executor = Executors.newFixedThreadPool(2);
@@ -77,9 +91,9 @@ class ClassroomOverlapConcurrencyMySqlIntegrationTest {
         AtomicInteger conflictCount = new AtomicInteger();
 
         try {
-            Future<?> first = submitCreate(executor, ready, start,
+            Future<?> first = submitCreate(executor, ready, start, classroomCode,
                     LocalTime.of(19, 0), LocalTime.of(21, 0), successCount, conflictCount);
-            Future<?> second = submitCreate(executor, ready, start,
+            Future<?> second = submitCreate(executor, ready, start, classroomCode,
                     LocalTime.of(20, 0), LocalTime.of(22, 0), successCount, conflictCount);
 
             assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
@@ -93,18 +107,18 @@ class ClassroomOverlapConcurrencyMySqlIntegrationTest {
         assertThat(successCount.get()).isEqualTo(1);
         assertThat(conflictCount.get()).isEqualTo(1);
         Integer savedLectures = jdbcTemplate.queryForObject(
-                "select count(*) from lecture where classroom_code = ?", Integer.class, "601호");
+                "select count(*) from lecture where classroom_code = ?", Integer.class, classroomCode);
         assertThat(savedLectures).isEqualTo(1);
     }
 
     private Future<?> submitCreate(ExecutorService executor, CountDownLatch ready, CountDownLatch start,
-                                    LocalTime startTime, LocalTime endTime,
+                                    String classroomCode, LocalTime startTime, LocalTime endTime,
                                     AtomicInteger successCount, AtomicInteger conflictCount) {
         return executor.submit(() -> {
             ready.countDown();
             start.await();
             try {
-                createLectureService.createLecture(command(startTime, endTime));
+                createLectureService.createLecture(command(classroomCode, startTime, endTime));
                 successCount.incrementAndGet();
             } catch (ClassroomTimeConflictException exception) {
                 conflictCount.incrementAndGet();
@@ -113,9 +127,9 @@ class ClassroomOverlapConcurrencyMySqlIntegrationTest {
         });
     }
 
-    private CreateLectureCommand command(LocalTime startTime, LocalTime endTime) {
-        return new CreateLectureCommand("동시 등록 테스트", ClassType.CLASS, "601호", null, null, null, null, null, null,
-                List.of(new ScheduleInput(DayOfWeek.MONDAY, startTime, endTime)), 99L, null);
+    private CreateLectureCommand command(String classroomCode, LocalTime startTime, LocalTime endTime) {
+        return new CreateLectureCommand("동시 등록 테스트", ClassType.CLASS, classroomCode, null, null, null, null, null,
+                null, List.of(new ScheduleInput(DayOfWeek.MONDAY, startTime, endTime)), 99L, null);
     }
 
     private void insertClassroom(String name) {

@@ -59,6 +59,11 @@ public class SolapiSmsAdapter implements SmsSenderPort {
         } catch (RestClientException e) {
             log.warn("event=solapi_sms_send_실패 receiver={}, reason={}", maskPhone(receiver), e.getMessage());
             return SmsSendResult.failed("SMS 발송 API 호출에 실패했습니다: " + e.getMessage());
+        } catch (IllegalStateException e) {
+            // authorizationHeader() -> hmacSha256Hex()의 서명 생성 실패. SmsSenderPort는 예외를
+            // 던지지 않고 실패 결과를 반환한다고 명시하므로, 여기서도 그 계약을 지킨다.
+            log.warn("event=solapi_sms_send_실패 receiver={}, reason={}", maskPhone(receiver), e.getMessage());
+            return SmsSendResult.failed("SMS 발송 인증 처리에 실패했습니다.");
         }
 
         log.info("event=solapi_sms_send_완료 receiver={}, responseLength={}", maskPhone(receiver),
