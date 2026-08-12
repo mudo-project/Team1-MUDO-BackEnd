@@ -27,17 +27,17 @@ class GetUserDetailServiceTest {
     private final RoleRepository roleRepository = mock(RoleRepository.class);
     private final GetUserDetailService service = new GetUserDetailService(userRepository, roleRepository);
 
-    private User user(long id, long academyId, Long roleId, AccountType accountType) {
+    private User user(long id, Long roleId, AccountType accountType) {
         LocalDateTime now = LocalDateTime.now();
-        return User.restore(id, academyId, "user" + id, "hash", "이름" + id, "010-0000-0000",
+        return User.restore(id, "user" + id, "hash", "이름" + id, "010-0000-0000",
                 "user" + id + "@example.com", roleId, UserStatus.ACTIVE, false, accountType, null, now, now, now);
     }
 
     @Test
     void getMyProfileReturnsOwnDetailWithRoleName() {
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user(1L, 1L, 5L, AccountType.MEMBER)));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user(1L, 5L, AccountType.MEMBER)));
         when(roleRepository.findById(5L)).thenReturn(
-                Optional.of(Role.restore(5L, 1L, "강사", null, LocalDateTime.now(), Set.of())));
+                Optional.of(Role.restore(5L, "강사", null, LocalDateTime.now(), Set.of())));
 
         UserDetailResult result = service.getMyProfile(1L);
 
@@ -47,7 +47,7 @@ class GetUserDetailServiceTest {
 
     @Test
     void getMyProfileReturnsNullRoleNameWhenNoRoleAssigned() {
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user(1L, 1L, null, AccountType.ADMIN)));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user(1L, null, AccountType.ADMIN)));
 
         UserDetailResult result = service.getMyProfile(1L);
 
@@ -64,12 +64,12 @@ class GetUserDetailServiceTest {
     }
 
     @Test
-    void getMemberDetailReturnsDetailWhenSameAcademyMember() {
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user(1L, 1L, 5L, AccountType.MEMBER)));
+    void getMemberDetailReturnsDetailWhenMember() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user(1L, 5L, AccountType.MEMBER)));
         when(roleRepository.findById(5L)).thenReturn(
-                Optional.of(Role.restore(5L, 1L, "강사", null, LocalDateTime.now(), Set.of())));
+                Optional.of(Role.restore(5L, "강사", null, LocalDateTime.now(), Set.of())));
 
-        UserDetailResult result = service.getMemberDetail(1L, 1L);
+        UserDetailResult result = service.getMemberDetail(1L);
 
         assertThat(result.userId()).isEqualTo(1L);
         assertThat(result.roleName()).isEqualTo("강사");
@@ -79,25 +79,16 @@ class GetUserDetailServiceTest {
     void getMemberDetailThrowsWhenUserNotFound() {
         when(userRepository.findById(1L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.getMemberDetail(1L, 1L))
-                .isInstanceOf(UserException.class)
-                .hasFieldOrPropertyWithValue("errorCode", UserErrorCode.USER_NOT_FOUND);
-    }
-
-    @Test
-    void getMemberDetailThrowsWhenDifferentAcademy() {
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user(1L, 2L, 5L, AccountType.MEMBER)));
-
-        assertThatThrownBy(() -> service.getMemberDetail(1L, 1L))
+        assertThatThrownBy(() -> service.getMemberDetail(1L))
                 .isInstanceOf(UserException.class)
                 .hasFieldOrPropertyWithValue("errorCode", UserErrorCode.USER_NOT_FOUND);
     }
 
     @Test
     void getMemberDetailThrowsWhenTargetIsAdminAccount() {
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user(1L, 1L, null, AccountType.ADMIN)));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user(1L, null, AccountType.ADMIN)));
 
-        assertThatThrownBy(() -> service.getMemberDetail(1L, 1L))
+        assertThatThrownBy(() -> service.getMemberDetail(1L))
                 .isInstanceOf(UserException.class)
                 .hasFieldOrPropertyWithValue("errorCode", UserErrorCode.USER_NOT_FOUND);
     }

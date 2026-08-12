@@ -21,9 +21,9 @@ public interface UserRepository {
 
     void changePassword(Long userId, String encodedPassword);
 
-    List<User> searchByAcademyId(Long academyId, String keyword);
+    List<User> search(String keyword);
 
-    List<User> findAllByAcademyId(Long academyId);
+    List<User> findAll();
 
     Map<Long, Long> countActiveByRoleIds(Set<Long> roleIds);
 

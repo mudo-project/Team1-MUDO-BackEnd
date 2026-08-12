@@ -21,9 +21,8 @@ public class ChangeUserStatusService implements ChangeUserStatusUseCase {
     private final UserRepository userRepository;
 
     @Override
-    public void changeStatus(Long academyId, Long userId, UserStatus status) {
+    public void changeStatus(Long userId, UserStatus status) {
         User user = userRepository.findById(userId)
-                .filter(u -> u.getAcademyId().equals(academyId))
                 .filter(u -> u.getAccountType() == AccountType.MEMBER)
                 .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
         userRepository.changeStatus(user.getId(), status);

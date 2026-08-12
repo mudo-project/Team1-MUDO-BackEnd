@@ -30,11 +30,10 @@ public class AssignRolePermissionsService implements AssignRolePermissionsUseCas
 
     @Override
     public void assignPermissions(AssignRolePermissionsCommand command) {
-        log.info("event=role_permission_assign_시작 roleId={}, academyId={}, permissionCount={}", command.roleId(),
-                command.academyId(), command.permissionCodes().size());
+        log.info("event=role_permission_assign_시작 roleId={}, permissionCount={}", command.roleId(),
+                command.permissionCodes().size());
         try {
             Role role = roleRepository.findById(command.roleId())
-                    .filter(r -> r.getAcademyId().equals(command.academyId()))
                     .orElseThrow(RoleNotFoundException::new);
 
             Set<String> foundCodes = permissionRepository.findAllByCodeIn(command.permissionCodes()).stream()
@@ -50,8 +49,8 @@ public class AssignRolePermissionsService implements AssignRolePermissionsUseCas
             log.info("event=role_permission_assign_완료 roleId={}, permissionCount={}", role.getId(),
                     command.permissionCodes().size());
         } catch (RuntimeException e) {
-            log.warn("event=role_permission_assign_실패 roleId={}, academyId={}, reason={}", command.roleId(),
-                    command.academyId(), e.getMessage(), e);
+            log.warn("event=role_permission_assign_실패 roleId={}, reason={}", command.roleId(),
+                    e.getMessage(), e);
             throw e;
         }
     }

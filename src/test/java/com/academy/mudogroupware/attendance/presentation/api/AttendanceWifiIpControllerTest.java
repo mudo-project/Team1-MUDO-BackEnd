@@ -56,7 +56,7 @@ class AttendanceWifiIpControllerTest {
         AttendanceWifiIpController controller = new AttendanceWifiIpController(
                 registerWifiIpUseCase, deleteWifiIpUseCase,
                 getWifiIpsUseCase, clientIpResolver);
-        AuthUser authUser = new AuthUser(10L, "owner", 1L, 1L, "OWNER");
+        AuthUser authUser = new AuthUser(10L, "owner", 1L, "OWNER");
         LocalDateTime createdAt = LocalDateTime.of(2026, 8, 5, 10, 30);
         when(getWifiIpsUseCase.getAll(10L)).thenReturn(List.of(
                 AcademyWifiIp.restore(
@@ -81,7 +81,7 @@ class AttendanceWifiIpControllerTest {
         AttendanceWifiIpController controller = new AttendanceWifiIpController(
                 registerWifiIpUseCase, deleteWifiIpUseCase,
                 getWifiIpsUseCase, clientIpResolver);
-        AuthUser authUser = new AuthUser(10L, "owner", 1L, 1L, "OWNER");
+        AuthUser authUser = new AuthUser(10L, "owner", 1L, "OWNER");
         when(getWifiIpsUseCase.getAll(10L)).thenReturn(List.of());
 
         GlobalApiResponse<List<AcademyWifiIpResponse>> response = controller.getAll(authUser);
@@ -98,7 +98,7 @@ class AttendanceWifiIpControllerTest {
         AttendanceWifiIpController controller = new AttendanceWifiIpController(
                 registerWifiIpUseCase, deleteWifiIpUseCase,
                 getWifiIpsUseCase, clientIpResolver);
-        AuthUser authUser = new AuthUser(10L, "owner", 1L, 1L, "OWNER");
+        AuthUser authUser = new AuthUser(10L, "owner", 1L, "OWNER");
 
         ResponseEntity<GlobalApiResponse<Void>> response = controller.delete(authUser, 5L);
 

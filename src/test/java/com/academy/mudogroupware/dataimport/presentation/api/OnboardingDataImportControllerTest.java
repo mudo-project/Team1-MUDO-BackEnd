@@ -43,7 +43,7 @@ import com.academy.mudogroupware.global.presentation.security.JwtAuthenticationC
 @WebMvcTest(OnboardingDataImportController.class)
 class OnboardingDataImportControllerTest {
 
-    private static final AuthUser AUTH_USER = new AuthUser(7L, "user", 1L, 3L, "OWNER");
+    private static final AuthUser AUTH_USER = new AuthUser(7L, "user", 3L, "OWNER");
 
     @Autowired
     private MockMvc mockMvc;

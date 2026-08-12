@@ -27,7 +27,7 @@ class RoleRepositoryImplDataJpaTest {
         permissionJpaRepository.save(
                 PermissionEntity.builder().code("NOTICE:READ").resource("NOTICE").action("READ")
                         .description("공지 조회").build());
-        Role saved = roleRepository.save(Role.create(1L, "강사", "설명", LocalDateTime.now()));
+        Role saved = roleRepository.save(Role.create("강사", "설명", LocalDateTime.now()));
 
         roleRepository.updatePermissions(saved.getId(), Set.of("NOTICE:READ"));
         Role found = roleRepository.findById(saved.getId()).orElseThrow();
@@ -41,7 +41,7 @@ class RoleRepositoryImplDataJpaTest {
                 PermissionEntity.builder().code("NOTICE:READ").resource("NOTICE").action("READ").build());
         permissionJpaRepository.save(
                 PermissionEntity.builder().code("CHAT:SEND").resource("CHAT").action("SEND").build());
-        Role saved = roleRepository.save(Role.create(1L, "강사", "설명", LocalDateTime.now()));
+        Role saved = roleRepository.save(Role.create("강사", "설명", LocalDateTime.now()));
 
         roleRepository.updatePermissions(saved.getId(), Set.of("NOTICE:READ", "CHAT:SEND"));
         Role afterFirstAssign = roleRepository.findById(saved.getId()).orElseThrow();
@@ -56,7 +56,7 @@ class RoleRepositoryImplDataJpaTest {
     void updatePermissionsCanClearAllPermissions() {
         permissionJpaRepository.save(
                 PermissionEntity.builder().code("NOTICE:READ").resource("NOTICE").action("READ").build());
-        Role saved = roleRepository.save(Role.create(1L, "강사", "설명", LocalDateTime.now()));
+        Role saved = roleRepository.save(Role.create("강사", "설명", LocalDateTime.now()));
         roleRepository.updatePermissions(saved.getId(), Set.of("NOTICE:READ"));
 
         roleRepository.updatePermissions(saved.getId(), Set.of());
@@ -67,7 +67,7 @@ class RoleRepositoryImplDataJpaTest {
 
     @Test
     void updateNameAndDescriptionUpdatesManagedEntity() {
-        Role saved = roleRepository.save(Role.create(1L, "강사", "설명", LocalDateTime.now()));
+        Role saved = roleRepository.save(Role.create("강사", "설명", LocalDateTime.now()));
 
         roleRepository.updateNameAndDescription(saved.getId(), "조교", "새 설명", "#FFFFFF");
         Role found = roleRepository.findById(saved.getId()).orElseThrow();

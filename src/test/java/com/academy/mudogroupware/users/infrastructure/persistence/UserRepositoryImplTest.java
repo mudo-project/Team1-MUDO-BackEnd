@@ -85,7 +85,7 @@ class UserRepositoryImplTest {
         DataIntegrityViolationException violation = new DataIntegrityViolationException(
                 "Duplicate entry 'teacher01' for key 'users.uk_users_username'");
         when(jpaRepository.saveAndFlush(any(UserEntity.class))).thenThrow(violation);
-        User newUser = User.create(1L, "teacher01", "hashed", "김강사", "010-1111-2222", "teacher01@example.com",
+        User newUser = User.create("teacher01", "hashed", "김강사", "010-1111-2222", "teacher01@example.com",
                 5L, AccountType.MEMBER, null, LocalDateTime.now());
 
         assertThatThrownBy(() -> adapter.save(newUser))
@@ -99,7 +99,7 @@ class UserRepositoryImplTest {
         UserRepositoryImpl adapter = new UserRepositoryImpl(jpaRepository);
         DataIntegrityViolationException violation = new DataIntegrityViolationException("some unrelated constraint");
         when(jpaRepository.saveAndFlush(any(UserEntity.class))).thenThrow(violation);
-        User newUser = User.create(1L, "teacher01", "hashed", "김강사", "010-1111-2222", "teacher01@example.com",
+        User newUser = User.create("teacher01", "hashed", "김강사", "010-1111-2222", "teacher01@example.com",
                 5L, AccountType.MEMBER, null, LocalDateTime.now());
 
         assertThatThrownBy(() -> adapter.save(newUser)).isSameAs(violation);
@@ -135,7 +135,7 @@ class UserRepositoryImplTest {
 
     private UserEntity userEntity() {
         return UserEntity.builder()
-                .id(1L).academyId(10L).username("member01").password("hashed").name("구성원")
+                .id(1L).username("member01").password("hashed").name("구성원")
                 .roleId(3L).phone("010-0000-0000").email("member@example.com").status(UserStatus.ACTIVE)
                 .mustChangePw(false).accountType(AccountType.MEMBER).adminScope(null)
                 .joinedAt(LocalDateTime.now()).createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now())

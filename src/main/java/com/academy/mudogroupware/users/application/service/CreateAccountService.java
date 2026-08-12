@@ -34,26 +34,23 @@ public class CreateAccountService implements CreateAccountUseCase {
 
     @Override
     public CreateAccountResult createAccount(CreateAccountCommand command) {
-        log.info("event=account_create_시작 academyId={}, roleId={}", command.academyId(), command.roleId());
+        log.info("event=account_create_시작 roleId={}", command.roleId());
         try {
             if (userRepository.existsByUsername(command.username())) {
                 throw new UsernameDuplicateException();
             }
             Role role = roleRepository.findById(command.roleId())
-                    .filter(r -> r.getAcademyId().equals(command.academyId()))
                     .orElseThrow(RoleNotFoundException::new);
 
             LocalDateTime now = LocalDateTime.now(clock);
-            IssuedAccount issuedAccount = accountIssuer.issue(command.academyId(), command.username(),
+            IssuedAccount issuedAccount = accountIssuer.issue(command.username(),
                     command.name(), command.phone(), command.email(), role.getId(), AccountType.MEMBER, null, now);
 
-            log.info("event=account_create_완료 academyId={}, userId={}", command.academyId(),
-                    issuedAccount.user().getId());
+            log.info("event=account_create_완료 userId={}", issuedAccount.user().getId());
             return new CreateAccountResult(issuedAccount.user().getId(), issuedAccount.user().getUsername(),
                     issuedAccount.passwordSetupLink());
         } catch (RuntimeException e) {
-            log.warn("event=account_create_실패 academyId={}, roleId={}, reason={}", command.academyId(),
-                    command.roleId(), e.getMessage(), e);
+            log.warn("event=account_create_실패 roleId={}, reason={}", command.roleId(), e.getMessage(), e);
             throw e;
         }
     }

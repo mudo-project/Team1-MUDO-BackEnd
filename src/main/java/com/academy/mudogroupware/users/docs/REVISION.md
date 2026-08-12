@@ -7,6 +7,35 @@
 
 ---
 
+## ✅ 2026-08-11 · academyId 스코핑 제거 (Phase 2)
+
+### 배경
+
+실제 운영 배포 모델이 "학원마다 별도 EC2 프로세스 + 별도 RDS 스키마"로 확정되면서(Phase 1의 학원 신청/승인 기능 폐기와 같은 배경), 이미 각 프로세스가 정확히 하나의 학원 데이터만 볼 수 있는 구조인데도 `users`/`role` 도메인과 JWT 인증 체인 전체가 여전히 `academyId`로 앱 레벨 스코핑을 하고 있었다. 상세 설계는 `docs/superpowers/specs/2026-08-11-academy-removal-design.md`의 Phase 2 섹션 참고.
+
+### 확정된 정책
+
+- **JWT/인증 체인**: `JwtClaims`/`JwtTokenProvider`/`AuthUser`/`JwtAuthenticationConverter`, `auth` 도메인의 `TokenIssuerUseCase`/`TokenService`에서 `academyId`를 완전히 제거했다. 새로 발급되는 토큰에는 `academyId` 클레임이 없다. `PLATFORM:SUPER_ADMIN` 권한 부여 로직은 그대로 유지했다.
+- **`User`/`Role` 도메인 모델**: `academyId` 필드/생성자 파라미터를 제거했다. `UserRepository`/`RoleRepository`의 academyId 기반 메서드를 academyId 없는 버전으로 교체했다(`searchByAcademyId`→`search`, `findAllByAcademyId`→`findAll`, `existsByAcademyIdAndName`→`existsByName` 등).
+- **크로스-BC 예외**: `UserRepository.findActiveUserIds(Long academyId, Set<Long> userIds)`는 시그니처를 그대로 유지했다 — messenger(`ChatMemberDirectoryPortAdapter`)와 workspace(`WorkspaceMemberDirectoryAdapter`/`AddWorkspaceMembersService`)가 이 포트를 academyId 인자와 함께 호출하고 있어서, 시그니처를 바꾸면 두 도메인의 컴파일이 깨진다. 내부 구현(`UserRepositoryImpl`)에서는 academyId 파라미터를 받아만 두고 실제 필터링에는 쓰지 않는다.
+- **workspace의 다른 두 지점**: `AuthUser.academyId()` 접근자를 지우면서 workspace의 `AddWorkspaceMembersRequest`/`CreateWorkspaceRequest`가 `authUser.academyId()`를 호출하던 부분이 컴파일이 깨졌다 — 이 두 파일은 이미 죽은 파라미터를 전달만 하고 있었고(workspace 자체 CHANGELOG에 그렇게 기록돼 있음), 로직 변경 없이 `null`을 넘기도록 최소한으로 고쳤다. `AddWorkspaceMembersCommand`/`CreateWorkspaceCommand`/`WorkspaceService`/`AddWorkspaceMembersService` 등 workspace의 나머지 파일은 건드리지 않았다 — 그쪽 정리는 workspace 담당자의 후속 작업으로 남긴다.
+- **테스트 전반**: `AuthUser`의 5-args 편의 생성자가 academyId를 받던 것을 없애면서, attendance/calendar/dataimport/google/memo/timetable/workspace 등 7개 도메인의 컨트롤러 테스트 약 19개가 `new AuthUser(...)` 호출에서 인자 1개를 제거하는 기계적 수정이 필요했다(로직 변경 없음).
+- **DB 마이그레이션(`V4.1.8`)**: `users.academy_id`/`role.academy_id` 컬럼은 이번에 DROP하지 않고 nullable로만 바꿨다. messenger의 `ChatMemberInfoEntity`가 여전히 `users` 테이블의 `academy_id`에 매핑된 shim이라, 지금 컬럼을 지우면 messenger가 즉시 깨진다. `role`의 유니크 제약은 `(academy_id, name)`에서 `name` 단일 컬럼(`uk_role_name`)으로 바꿨다. 컬럼 실제 DROP은 messenger 쪽 shim 정리가 끝난 뒤 별도 후속 마이그레이션에서 진행한다.
+- **범위 밖(명시적으로 보류)**: `file_metadata.academy_id`, messenger의 `ChatMemberInfoEntity`/`ChatMemberInfo`/`ChatMemberDirectoryPortAdapter` 정리는 이 작업에 포함하지 않고 messenger 담당자에게 크로스 도메인 요청으로 전달한다.
+
+### 완료 기준
+
+- [x] `JwtClaims`/`JwtTokenProvider`/`AuthUser`/`JwtAuthenticationConverter`/`TokenIssuerUseCase`/`TokenService`에서 academyId 제거
+- [x] `User`/`Role` 도메인 모델 및 `UserRepository`/`RoleRepository`/구현체/서비스/컨트롤러/요청 DTO 전체에서 academyId 제거
+- [x] `V4.1.8` 마이그레이션(컬럼 nullable화 + role 유니크 제약 변경), messenger shim과의 공존 확인
+- [x] 로컬 e2e: 로그인 후 JWT에 academyId 클레임 없음 확인, 내 정보 조회/구성원 목록/검색/역할 목록 정상 동작 확인
+- [x] `./gradlew build` 전체 통과(1150+ 테스트)
+- [ ] messenger 담당자에게 `ChatMemberInfoEntity` shim 정리 요청 전달
+- [ ] workspace 담당자에게 `AddWorkspaceMembersCommand`/`CreateWorkspaceCommand`의 죽은 academyId 파라미터 정리 요청 전달(선택, 급하지 않음)
+- [ ] messenger/workspace 정리가 끝난 뒤 `users.academy_id`/`role.academy_id` 컬럼 실제 DROP (별도 후속 작업)
+
+---
+
 ## ✅ 2026-08-11 · 구성원 재직 상태 변경 추가
 
 ### 배경

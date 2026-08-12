@@ -33,10 +33,9 @@ public class UpdateUserProfileService implements UpdateMyProfileUseCase, UpdateM
     }
 
     @Override
-    public void updateMemberProfile(Long academyId, Long userId, String name, String phone, String email,
+    public void updateMemberProfile(Long userId, String name, String phone, String email,
                                      LocalDateTime joinedAt) {
         User user = userRepository.findById(userId)
-                .filter(u -> u.getAcademyId().equals(academyId))
                 .filter(u -> u.getAccountType() == AccountType.MEMBER)
                 .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
         userRepository.updateProfile(user.getId(),

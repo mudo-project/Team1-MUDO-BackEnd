@@ -32,7 +32,7 @@ class AttendanceCheckInControllerTest {
         HttpServletRequest servletRequest = mock(HttpServletRequest.class);
         AttendanceCheckInController controller =
                 new AttendanceCheckInController(checkInUseCase, clientIpResolver);
-        AuthUser authUser = new AuthUser(10L, "employee", 1L, 2L, "EMPLOYEE");
+        AuthUser authUser = new AuthUser(10L, "employee", 2L, "EMPLOYEE");
         LocalDateTime clockInAt = LocalDateTime.of(2026, 8, 5, 9, 11);
         CheckInCommand command = new CheckInCommand(
                 10L, "203.0.113.10", "교통 정체");

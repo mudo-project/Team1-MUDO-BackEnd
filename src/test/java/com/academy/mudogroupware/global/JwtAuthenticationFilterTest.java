@@ -33,7 +33,7 @@ class JwtAuthenticationFilterTest {
                 Set::of));
     MockHttpServletRequest request = new MockHttpServletRequest();
     request.addHeader(
-        "Authorization", "Bearer " + provider.createAccessToken(7L, "teacher", 1L, 1L, AccountType.MEMBER, null));
+        "Authorization", "Bearer " + provider.createAccessToken(7L, "teacher", 1L, AccountType.MEMBER, null));
     filter.doFilter(request, new MockHttpServletResponse(), (q, s) -> {});
 
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();

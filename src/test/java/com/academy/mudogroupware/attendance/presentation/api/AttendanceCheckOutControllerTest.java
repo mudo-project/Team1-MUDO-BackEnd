@@ -52,7 +52,7 @@ import jakarta.servlet.http.HttpServletRequest;
 class AttendanceCheckOutControllerTest {
 
     private static final AuthUser AUTH_USER =
-            new AuthUser(10L, "employee", 1L, 2L, "EMPLOYEE");
+            new AuthUser(10L, "employee", 2L, "EMPLOYEE");
 
     @Autowired
     private MockMvc mockMvc;
@@ -73,7 +73,7 @@ class AttendanceCheckOutControllerTest {
         HttpServletRequest servletRequest = mock(HttpServletRequest.class);
         AttendanceCheckOutController controller =
                 new AttendanceCheckOutController(checkOutUseCase, clientIpResolver);
-        AuthUser authUser = new AuthUser(10L, "employee", 1L, 2L, "EMPLOYEE");
+        AuthUser authUser = new AuthUser(10L, "employee", 2L, "EMPLOYEE");
         LocalDateTime clockInAt = LocalDateTime.of(2026, 8, 5, 22, 0);
         LocalDateTime clockOutAt = LocalDateTime.of(2026, 8, 6, 2, 0);
         CheckOutCommand command = new CheckOutCommand(

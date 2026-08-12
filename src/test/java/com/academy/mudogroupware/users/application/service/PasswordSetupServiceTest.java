@@ -23,7 +23,7 @@ import com.academy.mudogroupware.users.domain.repository.UserRepository;
 class PasswordSetupServiceTest {
 
     private User pendingUser(String hash) {
-        return User.restore(1L, 1L, "teacher01", hash, "김강사", "010-1111-2222", "teacher01@example.com", null,
+        return User.restore(1L, "teacher01", hash, "김강사", "010-1111-2222", "teacher01@example.com", null,
                 UserStatus.ACTIVE, true, AccountType.MEMBER, null, LocalDateTime.now(), LocalDateTime.now(),
                 LocalDateTime.now());
     }
@@ -45,7 +45,7 @@ class PasswordSetupServiceTest {
     void throwsWhenPasswordAlreadySetUp() {
         UserRepository userRepository = mock(UserRepository.class);
         PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
-        User alreadySetUp = User.restore(1L, 1L, "teacher01", "hash", "김강사", "010-1111-2222",
+        User alreadySetUp = User.restore(1L, "teacher01", "hash", "김강사", "010-1111-2222",
                 "teacher01@example.com", null, UserStatus.ACTIVE, false, AccountType.MEMBER, null,
                 LocalDateTime.now(), LocalDateTime.now(), LocalDateTime.now());
         when(userRepository.findByUsername("teacher01")).thenReturn(Optional.of(alreadySetUp));

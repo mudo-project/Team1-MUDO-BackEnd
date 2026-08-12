@@ -22,7 +22,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class RoleRepositoryImpl implements RoleRepository {
 
-    private static final String ACADEMY_NAME_UNIQUE_CONSTRAINT = "uk_role_academy_name";
+    private static final String ROLE_NAME_UNIQUE_CONSTRAINT = "uk_role_name";
     private static final String USERS_ROLE_FK_CONSTRAINT = "fk_users_role";
 
     private final RoleJpaRepository roleJpaRepository;
@@ -35,7 +35,6 @@ public class RoleRepositoryImpl implements RoleRepository {
                     "save()는 역할 생성 전용이며 권한을 저장하지 않습니다. 권한 조립은 updatePermissions()를 사용하세요.");
         }
         RoleEntity entity = RoleEntity.builder()
-                .academyId(role.getAcademyId())
                 .name(role.getName())
                 .description(role.getDescription())
                 .color(role.getColor())
@@ -45,7 +44,7 @@ public class RoleRepositoryImpl implements RoleRepository {
         try {
             return toDomain(roleJpaRepository.saveAndFlush(entity));
         } catch (DataIntegrityViolationException exception) {
-            if (containsConstraint(exception, ACADEMY_NAME_UNIQUE_CONSTRAINT)) {
+            if (containsConstraint(exception, ROLE_NAME_UNIQUE_CONSTRAINT)) {
                 throw new RoleNameDuplicateException(exception);
             }
             throw exception;
@@ -53,8 +52,8 @@ public class RoleRepositoryImpl implements RoleRepository {
     }
 
     @Override
-    public boolean existsByAcademyIdAndName(Long academyId, String name) {
-        return roleJpaRepository.existsByAcademyIdAndName(academyId, name);
+    public boolean existsByName(String name) {
+        return roleJpaRepository.existsByName(name);
     }
 
     @Override
@@ -72,15 +71,15 @@ public class RoleRepositoryImpl implements RoleRepository {
     }
 
     @Override
-    public List<Role> findAllByAcademyId(Long academyId) {
-        return roleJpaRepository.findAllByAcademyIdOrderByIdAsc(academyId).stream()
+    public List<Role> findAll() {
+        return roleJpaRepository.findAllByOrderByIdAsc().stream()
                 .map(this::toDomainWithoutPermissions)
                 .toList();
     }
 
     @Override
-    public boolean existsByAcademyIdAndNameAndIdNot(Long academyId, String name, Long excludedRoleId) {
-        return roleJpaRepository.existsByAcademyIdAndNameAndIdNot(academyId, name, excludedRoleId);
+    public boolean existsByNameAndIdNot(String name, Long excludedRoleId) {
+        return roleJpaRepository.existsByNameAndIdNot(name, excludedRoleId);
     }
 
     @Override
@@ -91,7 +90,7 @@ public class RoleRepositoryImpl implements RoleRepository {
         try {
             roleJpaRepository.flush();
         } catch (DataIntegrityViolationException exception) {
-            if (containsConstraint(exception, ACADEMY_NAME_UNIQUE_CONSTRAINT)) {
+            if (containsConstraint(exception, ROLE_NAME_UNIQUE_CONSTRAINT)) {
                 throw new RoleNameDuplicateException(exception);
             }
             throw exception;
@@ -113,7 +112,7 @@ public class RoleRepositoryImpl implements RoleRepository {
 
     private Role toDomainWithoutPermissions(RoleEntity entity) {
         return Role.restore(
-                entity.getId(), entity.getAcademyId(), entity.getName(), entity.getDescription(), entity.getColor(),
+                entity.getId(), entity.getName(), entity.getDescription(), entity.getColor(),
                 entity.getCreatedAt(), Set.of());
     }
 
@@ -122,7 +121,7 @@ public class RoleRepositoryImpl implements RoleRepository {
                 .map(PermissionEntity::getCode)
                 .collect(Collectors.toSet());
         return Role.restore(
-                entity.getId(), entity.getAcademyId(), entity.getName(), entity.getDescription(), entity.getColor(),
+                entity.getId(), entity.getName(), entity.getDescription(), entity.getColor(),
                 entity.getCreatedAt(), permissionCodes);
     }
 

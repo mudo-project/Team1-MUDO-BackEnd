@@ -23,6 +23,9 @@ public record CreateWorkspaceRequest(
 ) {
 
   public CreateWorkspaceCommand toCommand(AuthUser authUser) {
-    return new CreateWorkspaceCommand(authUser.academyId(), authUser.userId(), name, memberIds);
+    // academyId는 users 도메인이 Phase 2(academyId 스코핑 제거)를 진행하면서 더 이상 쓰지 않는
+    // 죽은 파라미터가 됐다(REVISION.md 참고). Command/Service/Port 시그니처까지 걷어내는 정리는
+    // workspace 담당자의 후속 작업으로 남겨둔다.
+    return new CreateWorkspaceCommand(null, authUser.userId(), name, memberIds);
   }
 }

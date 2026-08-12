@@ -42,7 +42,7 @@ import com.academy.mudogroupware.timetable.domain.model.Grade;
 @WebMvcTest(TimetableSlotController.class)
 class TimetableSlotControllerTest {
 
-    private static final AuthUser AUTH_USER = new AuthUser(7L, "user", 1L, 3L, "MEMBER");
+    private static final AuthUser AUTH_USER = new AuthUser(7L, "user", 3L, "MEMBER");
 
     @Autowired private MockMvc mockMvc;
 

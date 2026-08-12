@@ -10,15 +10,15 @@ public interface RoleRepository {
 
     Role save(Role role);
 
-    boolean existsByAcademyIdAndName(Long academyId, String name);
+    boolean existsByName(String name);
 
     Optional<Role> findById(Long id);
 
     void updatePermissions(Long roleId, Set<String> permissionCodes);
 
-    List<Role> findAllByAcademyId(Long academyId);
+    List<Role> findAll();
 
-    boolean existsByAcademyIdAndNameAndIdNot(Long academyId, String name, Long excludedRoleId);
+    boolean existsByNameAndIdNot(String name, Long excludedRoleId);
 
     void updateNameAndDescription(Long roleId, String name, String description, String color);
 

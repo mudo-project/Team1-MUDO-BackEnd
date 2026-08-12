@@ -14,7 +14,7 @@ public record CreateAccountRequest(
         @NotNull Long roleId
 ) {
 
-    public CreateAccountCommand toCommand(Long academyId) {
-        return new CreateAccountCommand(academyId, username, name, phone, email, roleId);
+    public CreateAccountCommand toCommand() {
+        return new CreateAccountCommand(username, name, phone, email, roleId);
     }
 }

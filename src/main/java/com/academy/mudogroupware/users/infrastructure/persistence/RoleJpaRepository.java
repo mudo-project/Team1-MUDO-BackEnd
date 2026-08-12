@@ -20,9 +20,9 @@ public interface RoleJpaRepository extends JpaRepository<RoleEntity, Long> {
     @Query("select r from RoleEntity r where r.id = :roleId")
     Optional<RoleEntity> findWithPermissionsByIdForUpdate(Long roleId);
 
-    boolean existsByAcademyIdAndName(Long academyId, String name);
+    boolean existsByName(String name);
 
-    List<RoleEntity> findAllByAcademyIdOrderByIdAsc(Long academyId);
+    List<RoleEntity> findAllByOrderByIdAsc();
 
-    boolean existsByAcademyIdAndNameAndIdNot(Long academyId, String name, Long id);
+    boolean existsByNameAndIdNot(String name, Long id);
 }

@@ -26,7 +26,7 @@ class WorkspaceUserInfoAdapterTest {
     WorkspaceUserInfoAdapter adapter = new WorkspaceUserInfoAdapter(userRepository);
     User user =
         User.restore(
-            10L, 1L, "u10", "pw", "김지수", "010", "a@a.com", 1L, UserStatus.ACTIVE, false, AccountType.MEMBER,
+            10L, "u10", "pw", "김지수", "010", "a@a.com", 1L, UserStatus.ACTIVE, false, AccountType.MEMBER,
             null, LocalDateTime.now(), LocalDateTime.now(), LocalDateTime.now());
     when(userRepository.findAllById(Set.of(10L))).thenReturn(List.of(user));
 

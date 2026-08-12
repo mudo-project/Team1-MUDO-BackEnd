@@ -25,7 +25,7 @@ class ChangeMyPasswordServiceTest {
 
     private User user(long id) {
         LocalDateTime now = LocalDateTime.now();
-        return User.restore(id, 1L, "user" + id, "old-hash", "이름", "010-0000-0000",
+        return User.restore(id, "user" + id, "old-hash", "이름", "010-0000-0000",
                 "user@example.com", 5L, UserStatus.ACTIVE, false, AccountType.MEMBER, null, now, now, now);
     }
 

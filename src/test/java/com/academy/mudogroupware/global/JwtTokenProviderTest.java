@@ -25,16 +25,16 @@ class JwtTokenProviderTest {
 
   @Test
   void accessTokenRoundTrip() {
-    String t = provider.createAccessToken(1L, "academy-user", 10L, 20L, AccountType.MEMBER, null);
+    String t = provider.createAccessToken(1L, "academy-user", 10L, AccountType.MEMBER, null);
     assertThat(provider.parseAccessToken(t))
-        .isEqualTo(new JwtClaims(1L, "academy-user", 10L, 20L, AccountType.MEMBER, null));
+        .isEqualTo(new JwtClaims(1L, "academy-user", 10L, AccountType.MEMBER, null));
   }
 
   @Test
   void accessTokenRoundTripForPlatformAdmin() {
-    String t = provider.createAccessToken(9L, "super-admin", null, 99L, AccountType.ADMIN, AdminScope.PLATFORM);
+    String t = provider.createAccessToken(9L, "super-admin", null, AccountType.ADMIN, AdminScope.PLATFORM);
     assertThat(provider.parseAccessToken(t))
-        .isEqualTo(new JwtClaims(9L, "super-admin", null, 99L, AccountType.ADMIN, AdminScope.PLATFORM));
+        .isEqualTo(new JwtClaims(9L, "super-admin", null, AccountType.ADMIN, AdminScope.PLATFORM));
   }
 
   @Test
@@ -52,7 +52,7 @@ class JwtTokenProviderTest {
         .compact();
 
     assertThat(provider.parseAccessToken(legacyToken))
-        .isEqualTo(new JwtClaims(5L, "legacy-user", 7L, 3L, AccountType.MEMBER, null));
+        .isEqualTo(new JwtClaims(5L, "legacy-user", 7L, AccountType.MEMBER, null));
   }
 
   @Test
