@@ -54,11 +54,6 @@ public class LectureRepositoryImpl implements LectureRepository {
     }
 
     @Override
-    public List<Lecture> findAll() {
-        return lectureJpaRepository.findAll().stream().map(this::toDomain).toList();
-    }
-
-    @Override
     public PageResult<Lecture> findAll(LectureFilter filter, int page, int size) {
         Slice<LectureEntity> slice = lectureJpaRepository.findAllByFilter(filter.termId(),
                 filter.grade(), filter.subjectId(), filter.teacherId(), filter.classroomId(), filter.dayOfWeek(),

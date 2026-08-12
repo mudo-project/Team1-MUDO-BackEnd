@@ -7,5 +7,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface PaymentJpaRepository extends JpaRepository<PaymentEntity, Long> {
 
-    List<PaymentEntity> findAllByPaidAtBetween(LocalDateTime from, LocalDateTime to);
+    List<PaymentEntity> findAllByPaidAtGreaterThanEqualAndPaidAtLessThan(LocalDateTime from, LocalDateTime to);
 }

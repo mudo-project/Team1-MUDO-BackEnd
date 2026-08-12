@@ -4,6 +4,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -14,6 +16,7 @@ import com.academy.mudogroupware.global.presentation.api.common.SliceResponse;
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
 import com.academy.mudogroupware.notification.application.usecase.CountUnreadNotificationsUseCase;
 import com.academy.mudogroupware.notification.application.usecase.ListNotificationsUseCase;
+import com.academy.mudogroupware.notification.application.usecase.MarkNotificationAsReadUseCase;
 import com.academy.mudogroupware.notification.domain.model.Notification;
 import com.academy.mudogroupware.notification.presentation.api.common.NotificationResponseCode;
 import com.academy.mudogroupware.notification.presentation.api.response.NotificationItemResponse;
@@ -34,6 +37,7 @@ public class NotificationController {
 
     private final ListNotificationsUseCase listNotificationsUseCase;
     private final CountUnreadNotificationsUseCase countUnreadNotificationsUseCase;
+    private final MarkNotificationAsReadUseCase markNotificationAsReadUseCase;
 
     @Operation(summary = "알림 목록 조회", description = "본인에게 온 알림을 생성일 최신순으로 페이지네이션 조회합니다.")
     @GetMapping
@@ -55,5 +59,13 @@ public class NotificationController {
         long unreadCount = countUnreadNotificationsUseCase.countUnread(authUser.userId());
         return ResponseEntity.ok(GlobalApiResponse.ok(
                 NotificationResponseCode.UNREAD_COUNT_RETRIEVED, new UnreadNotificationCountResponse(unreadCount)));
+    }
+
+    @Operation(summary = "알림 읽음 처리", description = "본인 소유 알림만 처리할 수 있습니다.")
+    @PatchMapping("/{notificationId}/read")
+    public ResponseEntity<GlobalApiResponse<Void>> markAsRead(
+            @AuthenticationPrincipal AuthUser authUser, @PathVariable Long notificationId) {
+        markNotificationAsReadUseCase.markAsRead(notificationId, authUser.userId());
+        return ResponseEntity.ok(GlobalApiResponse.ok(NotificationResponseCode.NOTIFICATION_READ));
     }
 }

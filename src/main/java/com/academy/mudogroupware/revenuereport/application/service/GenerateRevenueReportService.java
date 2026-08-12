@@ -3,29 +3,22 @@ package com.academy.mudogroupware.revenuereport.application.service;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
-import com.academy.mudogroupware.revenuereport.application.port.ActiveEnrollmentCountPort;
-import com.academy.mudogroupware.revenuereport.application.port.EnrollmentLectureLookupPort;
-import com.academy.mudogroupware.revenuereport.application.port.ExpenseSummary;
-import com.academy.mudogroupware.revenuereport.application.port.ExpenseSummaryPort;
-import com.academy.mudogroupware.revenuereport.application.port.LectureRevenueInfo;
-import com.academy.mudogroupware.revenuereport.application.port.LectureRevenuePort;
 import com.academy.mudogroupware.revenuereport.application.port.RevenueReportAiPort;
+import com.academy.mudogroupware.revenuereport.application.port.RevenueSnapshot;
 import com.academy.mudogroupware.revenuereport.application.usecase.GenerateRevenueReportUseCase;
-import com.academy.mudogroupware.revenuereport.domain.model.Payment;
 import com.academy.mudogroupware.revenuereport.domain.model.RevenueReport;
-import com.academy.mudogroupware.revenuereport.domain.repository.PaymentRepository;
 import com.academy.mudogroupware.revenuereport.domain.repository.RevenueReportRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -37,46 +30,40 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 public class GenerateRevenueReportService implements GenerateRevenueReportUseCase {
 
-    private final LectureRevenuePort lectureRevenuePort;
-    private final ActiveEnrollmentCountPort activeEnrollmentCountPort;
-    private final PaymentRepository paymentRepository;
-    private final ExpenseSummaryPort expenseSummaryPort;
+    private final RevenueReportAggregationReader aggregationReader;
     private final RevenueReportAiPort revenueReportAiPort;
-    private final EnrollmentLectureLookupPort enrollmentLectureLookupPort;
     private final RevenueReportRepository revenueReportRepository;
     private final RevenueSnapshotCalculator calculator;
     private final Clock clock;
     private final ObjectMapper objectMapper;
+    private final MeterRegistry meterRegistry;
 
-    public GenerateRevenueReportService(LectureRevenuePort lectureRevenuePort,
-                                        ActiveEnrollmentCountPort activeEnrollmentCountPort,
-                                        PaymentRepository paymentRepository,
-                                        ExpenseSummaryPort expenseSummaryPort,
+    public GenerateRevenueReportService(RevenueReportAggregationReader aggregationReader,
                                         RevenueReportAiPort revenueReportAiPort,
-                                        EnrollmentLectureLookupPort enrollmentLectureLookupPort,
                                         RevenueReportRepository revenueReportRepository,
                                         RevenueSnapshotCalculator calculator,
-                                        Clock clock) {
-        this.lectureRevenuePort = lectureRevenuePort;
-        this.activeEnrollmentCountPort = activeEnrollmentCountPort;
-        this.paymentRepository = paymentRepository;
-        this.expenseSummaryPort = expenseSummaryPort;
+                                        Clock clock,
+                                        ObjectMapper objectMapper,
+                                        MeterRegistry meterRegistry) {
+        this.aggregationReader = aggregationReader;
         this.revenueReportAiPort = revenueReportAiPort;
-        this.enrollmentLectureLookupPort = enrollmentLectureLookupPort;
         this.revenueReportRepository = revenueReportRepository;
         this.calculator = calculator;
         this.clock = clock;
-        // WRITE_DATES_AS_TIMESTAMPS를 꺼야 targetMonth가 [2026,7,1] 배열이 아니라
-        // "2026-07-01" ISO 문자열로 저장/직렬화된다 — DB의 data_snapshot과 FastAPI 응답
-        // 구조를 그대로 프론트에 내려주는 상세 조회 API가 이 형식에 의존한다.
-        this.objectMapper = new ObjectMapper()
-                .registerModule(new JavaTimeModule())
-                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        this.meterRegistry = meterRegistry;
+        // Spring이 구성한 ObjectMapper(날짜를 [2026,7,1] 배열이 아니라 "2026-07-01" ISO
+        // 문자열로 직렬화)를 그대로 복사해 쓴다. 직접 new ObjectMapper()를 만들면 이 설정이
+        // 빠져서 실제로 날짜 직렬화 버그를 겪었다. FAIL_ON_UNKNOWN_PROPERTIES도 꺼서, 나중에
+        // RevenueSnapshot에 필드를 추가/제거해도 예전 달의 data_snapshot을 읽다가 전월비교가
+        // 원인 없이 조용히 사라지는 일이 없게 한다.
+        this.objectMapper = objectMapper.copy()
+                .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     }
 
     @Override
     public void generate(LocalDate targetMonth) {
         log.info("event=revenue_report_generate_시작 targetMonth={}", targetMonth);
+        Timer.Sample sample = Timer.start(meterRegistry);
         try {
             if (revenueReportRepository.findByTargetMonth(targetMonth).isPresent()) {
                 log.info("event=revenue_report_already_exists targetMonth={}", targetMonth);
@@ -86,31 +73,49 @@ public class GenerateRevenueReportService implements GenerateRevenueReportUseCas
             LocalDateTime from = targetMonth.atStartOfDay();
             LocalDateTime to = targetMonth.plusMonths(1).atStartOfDay();
 
-            List<LectureRevenueInfo> lectures = lectureRevenuePort.findAll();
-            List<Long> lectureIds = lectures.stream().map(LectureRevenueInfo::lectureId).toList();
-            Map<Long, Long> activeEnrollmentCounts = activeEnrollmentCountPort.countActiveByLectureIds(lectureIds);
-            List<Payment> payments = paymentRepository.findAllByPaidAtBetween(from, to);
-            ExpenseSummary expenseSummary = expenseSummaryPort.summarize(from, to);
-
-            List<Long> enrollmentIds = payments.stream().map(Payment::getEnrollmentId).distinct().toList();
-            Map<Long, Long> enrollmentIdToLectureId =
-                    enrollmentLectureLookupPort.findLectureIdsByEnrollmentIds(enrollmentIds);
-
+            RevenueReportAggregation aggregation = aggregationReader.read(from, to);
             Optional<RevenueSnapshot> previousSnapshot = fetchPreviousSnapshot(targetMonth);
 
-            RevenueSnapshot snapshot = calculator.calculate(targetMonth, lectures, activeEnrollmentCounts, payments,
-                    enrollmentIdToLectureId, expenseSummary, previousSnapshot);
+            RevenueSnapshot snapshot = calculator.calculate(targetMonth, aggregation.lectures(),
+                    aggregation.activeEnrollmentCounts(), aggregation.payments(),
+                    aggregation.enrollmentIdToLectureId(), aggregation.expenseSummary(), previousSnapshot);
 
             String reportText = revenueReportAiPort.generateReport(snapshot);
 
             RevenueReport report = RevenueReport.create(
                     targetMonth, reportText, toJson(snapshot), LocalDateTime.now(clock));
-            RevenueReport saved = revenueReportRepository.save(report);
+            RevenueReport saved;
+            try {
+                saved = revenueReportRepository.save(report);
+            } catch (DataIntegrityViolationException e) {
+                // findByTargetMonth 확인과 save 사이의 경쟁 조건 — 다른 인스턴스가 그 사이 먼저
+                // 저장을 마쳤다. target_month unique 제약 위반은 여기서만 발생할 수 있으므로
+                // 놀란 실패 로그 대신 "이미 처리됨"과 동일하게 조용히 넘어간다(AI를 두 번 부른
+                // 비용은 감수하되, 데이터 정합성과 배치 관측성은 지킨다).
+                log.info("event=revenue_report_generate_중복_스킵 targetMonth={}", targetMonth);
+                return;
+            }
 
             log.info("event=revenue_report_generate_완료 targetMonth={}, reportId={}", targetMonth, saved.getId());
+            recordMetric(sample, "success");
         } catch (RuntimeException e) {
             log.warn("event=revenue_report_generate_실패 targetMonth={}, reason={}", targetMonth, e.getMessage(), e);
+            recordMetric(sample, "failure");
             throw e;
+        }
+    }
+
+    /**
+     * 월 1회만 실행되는 배치라 실패를 놓치면 다음 달까지 리포트가 없다 — 성공/실패 카운터와
+     * 소요시간을 남겨서 알림에 연결할 수 있게 한다. 메트릭 기록 자체가 실패해도 배치 결과에는
+     * 영향을 주면 안 되므로 예외를 흡수한다.
+     */
+    private void recordMetric(Timer.Sample sample, String result) {
+        try {
+            meterRegistry.counter("mudo.revenue.report.generate", "result", result).increment();
+            sample.stop(meterRegistry.timer("mudo.revenue.report.generate.duration"));
+        } catch (RuntimeException metricError) {
+            log.warn("event=revenue_report_metric_기록_실패 reason={}", metricError.getMessage(), metricError);
         }
     }
 

@@ -61,6 +61,12 @@ app:
     max-concurrency: ${APP_HEAVY_JOB_MAX_CONCURRENCY:2}
   revenue-report:
     batch-cron: "${REVENUE_REPORT_BATCH_CRON:0 30 0 1 * *}"
+    ai:
+      base-url: ${REVENUE_REPORT_AI_BASE_URL:}
+      generate-path: ${REVENUE_REPORT_AI_PATH:/api/revenue-report/generate}
+      api-key: ${REVENUE_REPORT_AI_API_KEY:}
+      connect-timeout-ms: ${REVENUE_REPORT_AI_CONNECT_TIMEOUT_MS:2000}
+      read-timeout-ms: ${REVENUE_REPORT_AI_READ_TIMEOUT_MS:15000}
 
 platform:
   dashboard:

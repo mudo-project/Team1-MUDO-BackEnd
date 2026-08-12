@@ -1,9 +1,14 @@
 package com.academy.mudogroupware.notification.presentation.api;
 
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -24,6 +29,9 @@ import com.academy.mudogroupware.global.presentation.security.AuthUser;
 import com.academy.mudogroupware.global.presentation.security.JwtAuthenticationConverter;
 import com.academy.mudogroupware.notification.application.usecase.CountUnreadNotificationsUseCase;
 import com.academy.mudogroupware.notification.application.usecase.ListNotificationsUseCase;
+import com.academy.mudogroupware.notification.application.usecase.MarkNotificationAsReadUseCase;
+import com.academy.mudogroupware.notification.domain.exception.NotificationErrorCode;
+import com.academy.mudogroupware.notification.domain.exception.NotificationException;
 import com.academy.mudogroupware.notification.domain.model.Notification;
 import com.academy.mudogroupware.notification.domain.model.NotificationType;
 
@@ -39,6 +47,8 @@ class NotificationControllerTest {
     private ListNotificationsUseCase listNotificationsUseCase;
     @MockitoBean
     private CountUnreadNotificationsUseCase countUnreadNotificationsUseCase;
+    @MockitoBean
+    private MarkNotificationAsReadUseCase markNotificationAsReadUseCase;
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
     @MockitoBean
@@ -129,5 +139,30 @@ class NotificationControllerTest {
                 .andExpect(status().isUnauthorized());
 
         verifyNoInteractions(countUnreadNotificationsUseCase);
+    }
+
+    @Test
+    void markAsReadReturnsOk() throws Exception {
+        mockMvc.perform(patch("/api/notifications/1/read").with(authentication(auth())).with(csrf()))
+                .andExpect(status().isOk());
+
+        verify(markNotificationAsReadUseCase).markAsRead(1L, 10L);
+    }
+
+    @Test
+    void markAsReadOfOthersNotificationReturnsNotFound() throws Exception {
+        doThrow(new NotificationException(NotificationErrorCode.NOT_FOUND))
+                .when(markNotificationAsReadUseCase).markAsRead(eq(1L), eq(10L));
+
+        mockMvc.perform(patch("/api/notifications/1/read").with(authentication(auth())).with(csrf()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void markAsReadReturns401WhenUnauthenticated() throws Exception {
+        mockMvc.perform(patch("/api/notifications/1/read").with(csrf()))
+                .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(markNotificationAsReadUseCase);
     }
 }

@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import com.academy.mudogroupware.revenuereport.application.port.ExpenseCategoryAmount;
 import com.academy.mudogroupware.revenuereport.application.port.ExpenseSummary;
 import com.academy.mudogroupware.revenuereport.application.port.LectureRevenueInfo;
+import com.academy.mudogroupware.revenuereport.application.port.RevenueSnapshot;
 import com.academy.mudogroupware.revenuereport.domain.model.Payment;
 import com.academy.mudogroupware.revenuereport.domain.model.PaymentMethod;
 import com.academy.mudogroupware.revenuereport.domain.model.PaymentStatus;
@@ -48,6 +49,30 @@ class RevenueSnapshotCalculatorTest {
         assertThat(snapshot.byLecture()).hasSize(1); // 강의1만 실 매출 있음
         assertThat(snapshot.byLecture().get(0).actualRevenue()).isEqualTo(250000);
         assertThat(snapshot.byTeacher()).extracting("teacherName").containsExactly("김강사");
+    }
+
+    @Test
+    void includesUnmappedPaymentsInActualRevenueTotalButNotInBreakdown() {
+        LocalDate targetMonth = LocalDate.of(2026, 8, 1);
+        List<LectureRevenueInfo> lectures = List.of(
+                new LectureRevenueInfo(1L, "중등 수학 심화반", "김강사", 300000));
+        Map<Long, Long> activeEnrollmentCounts = Map.of(1L, 10L);
+        List<Payment> payments = List.of(
+                Payment.restore(1L, 100L, 300000, java.time.LocalDateTime.of(2026, 8, 5, 10, 0),
+                        PaymentMethod.CARD, PaymentStatus.PAID, null, null),
+                // enrollmentId=999는 매핑 테이블에 없음(삭제된 수강 등) — 그래도 총액에는 포함되어야 한다
+                Payment.restore(2L, 999L, 100000, java.time.LocalDateTime.of(2026, 8, 6, 10, 0),
+                        PaymentMethod.CARD, PaymentStatus.PAID, null, null));
+        Map<Long, Long> enrollmentToLecture = Map.of(100L, 1L);
+        ExpenseSummary expense = new ExpenseSummary(0L, List.of());
+
+        RevenueSnapshot snapshot = calculator.calculate(
+                targetMonth, lectures, activeEnrollmentCounts, payments, enrollmentToLecture, expense,
+                java.util.Optional.empty());
+
+        assertThat(snapshot.revenue().actual()).isEqualTo(400000); // 300000 + 100000, 매핑 안 된 결제도 총액엔 포함
+        assertThat(snapshot.byLecture()).hasSize(1); // breakdown에는 매핑된 강의만
+        assertThat(snapshot.byLecture().get(0).actualRevenue()).isEqualTo(300000);
     }
 
     @Test
