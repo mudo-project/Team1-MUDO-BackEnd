@@ -96,14 +96,16 @@ class UserRepositoryImplDataJpaTest {
     }
 
     @Test
-    void completePasswordSetupReplacesPasswordAndClearsMustChangePw() {
+    void completePasswordSetupReplacesPasswordContactAndClearsMustChangePw() {
         insertUserWithPasswordAndMustChangePw(1L, "pending", "old-hash", true);
 
-        boolean updated = userRepository.completePasswordSetup(1L, "new-hash");
+        boolean updated = userRepository.completePasswordSetup(1L, "new-hash", "010-1234-5678", "new1@example.com");
 
         assertThat(updated).isTrue();
         User found = userRepository.findById(1L).orElseThrow();
         assertThat(found.getPassword()).isEqualTo("new-hash");
+        assertThat(found.getPhone()).isEqualTo("010-1234-5678");
+        assertThat(found.getEmail()).isEqualTo("new1@example.com");
         assertThat(found.isMustChangePw()).isFalse();
     }
 
@@ -111,7 +113,7 @@ class UserRepositoryImplDataJpaTest {
     void completePasswordSetupReturnsFalseWhenAlreadyCompleted() {
         insertUserWithPasswordAndMustChangePw(2L, "done", "already-hash", false);
 
-        boolean updated = userRepository.completePasswordSetup(2L, "new-hash");
+        boolean updated = userRepository.completePasswordSetup(2L, "new-hash", "010-1234-5678", "new2@example.com");
 
         assertThat(updated).isFalse();
         User found = userRepository.findById(2L).orElseThrow();
@@ -132,8 +134,8 @@ class UserRepositoryImplDataJpaTest {
     }
 
     @Test
-    void savesUserWithNullPhoneAndEmail() {
-        User user = User.create("no-contact", "hashed", "연락처없음", null, null,
+    void createdUserHasNullPhoneAndEmailUntilProfileIsUpdated() {
+        User user = User.create("no-contact", "hashed", "연락처없음",
                 null, com.academy.mudogroupware.global.domain.auth.AccountType.MEMBER, null,
                 java.time.LocalDateTime.now());
 

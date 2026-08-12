@@ -87,7 +87,7 @@ class UserRepositoryImplTest {
         DataIntegrityViolationException violation = new DataIntegrityViolationException(
                 "Duplicate entry 'teacher01' for key 'users.uk_users_username'");
         when(jpaRepository.saveAndFlush(any(UserEntity.class))).thenThrow(violation);
-        User newUser = User.create("teacher01", "hashed", "김강사", "010-1111-2222", "teacher01@example.com",
+        User newUser = User.create("teacher01", "hashed", "김강사",
                 5L, AccountType.MEMBER, null, LocalDateTime.now());
 
         assertThatThrownBy(() -> adapter.save(newUser))
@@ -101,10 +101,36 @@ class UserRepositoryImplTest {
         UserRepositoryImpl adapter = new UserRepositoryImpl(jpaRepository);
         DataIntegrityViolationException violation = new DataIntegrityViolationException("some unrelated constraint");
         when(jpaRepository.saveAndFlush(any(UserEntity.class))).thenThrow(violation);
-        User newUser = User.create("teacher01", "hashed", "김강사", "010-1111-2222", "teacher01@example.com",
+        User newUser = User.create("teacher01", "hashed", "김강사",
                 5L, AccountType.MEMBER, null, LocalDateTime.now());
 
         assertThatThrownBy(() -> adapter.save(newUser)).isSameAs(violation);
+    }
+
+    @Test
+    void convertsEmailUniqueConstraintViolationOnCompletePasswordSetupToEmailDuplicateException() {
+        UserJpaRepository jpaRepository = mock(UserJpaRepository.class);
+        UserRepositoryImpl adapter = new UserRepositoryImpl(jpaRepository);
+        DataIntegrityViolationException violation = new DataIntegrityViolationException(
+                "Duplicate entry 'taken@example.com' for key 'users.uk_users_email'");
+        when(jpaRepository.completePasswordSetupIfMustChange(1L, "new-hash", "010-0000-0000", "taken@example.com"))
+                .thenThrow(violation);
+
+        assertThatThrownBy(() -> adapter.completePasswordSetup(1L, "new-hash", "010-0000-0000", "taken@example.com"))
+                .isInstanceOf(com.academy.mudogroupware.users.domain.exception.EmailDuplicateException.class)
+                .hasCause(violation);
+    }
+
+    @Test
+    void preservesUnrelatedDataIntegrityViolationOnCompletePasswordSetup() {
+        UserJpaRepository jpaRepository = mock(UserJpaRepository.class);
+        UserRepositoryImpl adapter = new UserRepositoryImpl(jpaRepository);
+        DataIntegrityViolationException violation = new DataIntegrityViolationException("some unrelated constraint");
+        when(jpaRepository.completePasswordSetupIfMustChange(1L, "new-hash", "010-0000-0000", "new@example.com"))
+                .thenThrow(violation);
+
+        assertThatThrownBy(() -> adapter.completePasswordSetup(1L, "new-hash", "010-0000-0000", "new@example.com"))
+                .isSameAs(violation);
     }
 
     @Test

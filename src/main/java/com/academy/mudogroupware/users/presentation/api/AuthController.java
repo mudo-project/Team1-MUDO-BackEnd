@@ -8,9 +8,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.academy.mudogroupware.auth.application.result.TokenPair;
 import com.academy.mudogroupware.global.presentation.api.common.GlobalApiResponse;
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
+import com.academy.mudogroupware.users.application.result.LoginResult;
 import com.academy.mudogroupware.users.application.usecase.LoginUseCase;
 import com.academy.mudogroupware.users.application.usecase.LogoutUseCase;
 import com.academy.mudogroupware.users.presentation.api.common.UserResponseCode;
@@ -37,10 +37,11 @@ public class AuthController {
             description = "아이디/비밀번호로 로그인합니다. 액세스 토큰은 응답 바디로, 리프레시 토큰은 HttpOnly 쿠키로 내려갑니다.")
     @PostMapping("/login")
     public ResponseEntity<GlobalApiResponse<LoginResponse>> login(@Valid @RequestBody LoginRequest request) {
-        TokenPair tokenPair = loginUseCase.login(request.toCommand());
-        LoginResponse data = LoginResponse.from(tokenPair);
+        LoginResult loginResult = loginUseCase.login(request.toCommand());
+        LoginResponse data = LoginResponse.from(loginResult);
         return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, refreshTokenCookieFactory.create(tokenPair.refreshToken()).toString())
+                .header(HttpHeaders.SET_COOKIE,
+                        refreshTokenCookieFactory.create(loginResult.tokenPair().refreshToken()).toString())
                 .body(GlobalApiResponse.ok(UserResponseCode.LOGIN_SUCCEEDED, data));
     }
 

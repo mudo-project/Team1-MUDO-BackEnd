@@ -15,5 +15,3 @@ spring:
 JWT_SECRET: test-only-jwt-secret-value
 GOOGLE_TOKEN_ENCRYPTION_KEY: test-only-token-encryption-key-value
 
-app:
-  frontend-url: http://localhost:3000

@@ -26,7 +26,7 @@ class JwtAuthenticationConverterTest {
                 () -> Set.of("ROLE:MANAGE", "ACCOUNT:CREATE"));
 
         Authentication authentication = converter.toAuthentication(
-                new JwtClaims(1L, "super-admin", null, AccountType.ADMIN, AdminScope.PLATFORM));
+                new JwtClaims(1L, "super-admin", null, AccountType.ADMIN, AdminScope.PLATFORM, false));
 
         assertThat(authentication.getAuthorities())
                 .extracting(GrantedAuthority::getAuthority)
@@ -46,7 +46,7 @@ class JwtAuthenticationConverterTest {
                 () -> Set.of("ROLE:MANAGE"));
 
         Authentication authentication = converter.toAuthentication(
-                new JwtClaims(1L, "super-admin", null, AccountType.ADMIN, AdminScope.PLATFORM));
+                new JwtClaims(1L, "super-admin", null, AccountType.ADMIN, AdminScope.PLATFORM, false));
 
         assertThat(authentication.getAuthorities())
                 .extracting(GrantedAuthority::getAuthority)
@@ -62,7 +62,7 @@ class JwtAuthenticationConverterTest {
                 });
 
         Authentication authentication = converter.toAuthentication(
-                new JwtClaims(2L, "teacher", 10L, AccountType.MEMBER, null));
+                new JwtClaims(2L, "teacher", 10L, AccountType.MEMBER, null, false));
 
         assertThat(authentication.getAuthorities())
                 .extracting(GrantedAuthority::getAuthority)
@@ -78,7 +78,7 @@ class JwtAuthenticationConverterTest {
                 });
 
         Authentication authentication = converter.toAuthentication(
-                new JwtClaims(2L, "teacher", 10L, AccountType.MEMBER, null));
+                new JwtClaims(2L, "teacher", 10L, AccountType.MEMBER, null, false));
 
         assertThat(authentication.getAuthorities())
                 .extracting(GrantedAuthority::getAuthority)
@@ -97,10 +97,25 @@ class JwtAuthenticationConverterTest {
                 });
 
         Authentication authentication = converter.toAuthentication(
-                new JwtClaims(3L, "academy-admin", 5L, AccountType.ADMIN, AdminScope.ACADEMY));
+                new JwtClaims(3L, "academy-admin", 5L, AccountType.ADMIN, AdminScope.ACADEMY, false));
 
         assertThat(authentication.getAuthorities())
                 .extracting(GrantedAuthority::getAuthority)
                 .containsExactlyInAnyOrder("ACCOUNT:CREATE", "ACADEMY:OWNER");
+    }
+
+    @Test
+    void carriesMustChangePwThroughToAuthUser() {
+        JwtAuthenticationConverter converter = new JwtAuthenticationConverter(
+                roleId -> new RolePermissionInfo("TEACHER", Set.of("WORKSPACE:READ")),
+                () -> {
+                    throw new AssertionError("일반 사용자는 플랫폼 권한 포트를 호출하면 안 됨");
+                });
+
+        Authentication authentication = converter.toAuthentication(
+                new JwtClaims(4L, "new-hire", 10L, AccountType.MEMBER, null, true));
+
+        AuthUser principal = (AuthUser) authentication.getPrincipal();
+        assertThat(principal.mustChangePw()).isTrue();
     }
 }

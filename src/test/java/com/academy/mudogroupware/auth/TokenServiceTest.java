@@ -21,10 +21,23 @@ class TokenServiceTest {
     RefreshTokenRepository r = mock(RefreshTokenRepository.class);
     RefreshTokenJpaEntity saved = new RefreshTokenJpaEntity(1L, "old");
     when(r.findByUserId(1L)).thenReturn(Optional.of(saved));
-    TokenPair pair = new TokenService(provider, r).issue(1L, "user", 2L, AccountType.MEMBER, null);
+    TokenPair pair = new TokenService(provider, r).issue(1L, "user", 2L, AccountType.MEMBER, null, false);
     assertThat(saved.getRefreshToken()).isEqualTo(pair.refreshToken());
     verify(r, never()).save(any());
     assertThat(provider.parseAccessToken(pair.accessToken()))
-        .isEqualTo(new JwtClaims(1L, "user", 2L, AccountType.MEMBER, null));
+        .isEqualTo(new JwtClaims(1L, "user", 2L, AccountType.MEMBER, null, false));
+  }
+
+  @Test
+  void issuesAccessTokenWithMustChangePwTrue() {
+    JwtProperties p = new JwtProperties();
+    p.setSecret("test-secret-key-that-is-at-least-32-bytes-long");
+    JwtTokenProvider provider = new JwtTokenProvider(p);
+    RefreshTokenRepository r = mock(RefreshTokenRepository.class);
+    when(r.findByUserId(1L)).thenReturn(Optional.empty());
+
+    TokenPair pair = new TokenService(provider, r).issue(1L, "user", 2L, AccountType.MEMBER, null, true);
+
+    assertThat(provider.parseAccessToken(pair.accessToken()).mustChangePw()).isTrue();
   }
 }

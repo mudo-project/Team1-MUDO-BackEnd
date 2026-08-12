@@ -1,9 +1,9 @@
 package com.academy.mudogroupware.users.application.usecase;
 
-import com.academy.mudogroupware.auth.application.result.TokenPair;
 import com.academy.mudogroupware.users.application.command.LoginCommand;
+import com.academy.mudogroupware.users.application.result.LoginResult;
 
 public interface LoginUseCase {
 
-    TokenPair login(LoginCommand command);
+    LoginResult login(LoginCommand command);
 }
