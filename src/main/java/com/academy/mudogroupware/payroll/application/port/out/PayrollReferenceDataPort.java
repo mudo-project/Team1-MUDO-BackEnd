@@ -15,7 +15,11 @@ public interface PayrollReferenceDataPort {
   List<CompensationData> findAllCompensations(Long userId);
   CompensationData replaceCompensation(Long userId, CompensationData compensation);
   List<AllowanceData> findAllowances(Long userId, YearMonth month);
-  Optional<BigDecimal> findOrdinaryHourlyWage(Long userId, LocalDate date);
+  List<AllowanceData> findAllAllowances(Long userId);
+  List<AllowanceData> saveAllowances(Long userId, List<AllowanceData> allowances);
+  List<PayBasisData> findPayBases(Long userId, YearMonth month);
+  List<PayBasisData> findAllPayBases(Long userId);
+  PayBasisData savePayBasis(Long userId, PayBasisData payBasis);
   Optional<LaborScopeData> findLaborScope(YearMonth month);
   Optional<RuleData> findRules(LocalDate date);
   Optional<InsuranceData> findInsurance(Long userId, YearMonth month);
@@ -34,7 +38,10 @@ public interface PayrollReferenceDataPort {
       SalaryType salaryType, BigDecimal baseSalary, BigDecimal hourlyWage,
       BigDecimal weeklyContractHours, LocalDate effectiveFrom, LocalDate effectiveTo) {}
 
-  record AllowanceData(String type, String name, BigDecimal amount) {}
+  record AllowanceData(Long id, Long employeeId, String type, String name, BigDecimal amount,
+      LocalDate effectiveFrom, LocalDate effectiveTo) {}
+  record PayBasisData(Long id, Long employeeId, BigDecimal ordinaryHourlyWage,
+      LocalDate effectiveFrom, LocalDate effectiveTo) {}
   record LaborScopeData(Long id, boolean fiveOrMore) {}
   record RuleData(BigDecimal overtimeMultiplier, BigDecimal nightMultiplier,
       BigDecimal holidayUnder8Multiplier, BigDecimal holidayOver8Multiplier) {}

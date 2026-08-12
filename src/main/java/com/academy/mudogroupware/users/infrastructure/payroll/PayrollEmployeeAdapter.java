@@ -17,6 +17,12 @@ public class PayrollEmployeeAdapter implements PayrollEmployeePort {
   /** Consumer: payroll. Purpose: 월 급여 생성 및 조회를 위한 직원 정보 조회. */
   @Override
   public Optional<EmployeeView> findById(Long userId) {
+    return repository.findById(userId).map(this::toView);
+  }
+
+  /** Consumer: payroll. Purpose: 활성 직원의 급여 생성 및 급여 설정 변경 검증. */
+  @Override
+  public Optional<EmployeeView> findActiveById(Long userId) {
     return repository.findById(userId).filter(user -> user.getStatus() == UserStatus.ACTIVE)
         .map(this::toView);
   }

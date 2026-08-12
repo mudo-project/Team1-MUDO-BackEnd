@@ -28,18 +28,19 @@ public class PayrollService {
   private final PayrollReferenceDataPort referenceData;
   private final PayrollEmployeePort employeePort;
   private final PayrollAttendancePort attendancePort;
+  private final PayrollStatementPort statementPort;
   private final PayrollCalculator calculator;
   private final PayrollConfirmationExecutor confirmationExecutor;
 
   public PayrollDetailResult create(Long employeeId, YearMonth month) {
-    EmployeeView employee = employee(employeeId);
+    EmployeeView employee = activeEmployee(employeeId);
     if (payrollRepository.existsInitial(employeeId, month)) {
       throw new PayrollException(PayrollErrorCode.PAYROLL_ALREADY_EXISTS);
     }
     PayrollPolicyData policy = referenceData.findPolicy()
         .orElseThrow(() -> new PayrollException(PayrollErrorCode.PAYROLL_POLICY_NOT_FOUND));
     Payroll saved = payrollRepository.save(Payroll.draft(employeeId, month, policy.scheduledDate(month)));
-    return PayrollDetailResult.of(saved, employee, null);
+    return PayrollDetailResult.of(saved, employee, null, null);
   }
 
   public PayrollDetailResult calculate(Long payrollId, long expectedVersion) {
@@ -48,12 +49,14 @@ public class PayrollService {
     List<CompensationData> contracts = referenceData.findCompensations(
         payroll.getUserId(), payroll.getYearMonth());
     if (contracts.isEmpty()) throw new PayrollException(PayrollErrorCode.COMPENSATION_NOT_FOUND);
-    BigDecimal wage = referenceData.findOrdinaryHourlyWage(payroll.getUserId(),
-        payroll.getYearMonth().atEndOfMonth()).orElseThrow(
-            () -> new PayrollException(PayrollErrorCode.PAYROLL_REFERENCE_DATA_MISSING,
-                "통상시급 기준이 없습니다."));
+    List<PayBasisData> payBases = referenceData.findPayBases(
+        payroll.getUserId(), payroll.getYearMonth());
+    if (payBases.isEmpty()) {
+      throw new PayrollException(PayrollErrorCode.PAYROLL_REFERENCE_DATA_MISSING,
+          "통상시급 기준이 없습니다.");
+    }
     var calculation = calculator.calculate(payroll.getYearMonth(), contracts,
-        referenceData.findAllowances(payroll.getUserId(), payroll.getYearMonth()), wage,
+        referenceData.findAllowances(payroll.getUserId(), payroll.getYearMonth()), payBases,
         attendancePort.getMonthlyAttendance(payroll.getUserId(), payroll.getYearMonth()),
         referenceData.findLaborScope(payroll.getYearMonth()).orElse(null),
         referenceData.findRules(payroll.getYearMonth().atEndOfMonth()).orElse(null),
@@ -110,6 +113,11 @@ public class PayrollService {
   public PayrollDetailResult createRevision(Long payrollId, long expectedVersion) {
     Payroll original = payroll(payrollId);
     checkVersion(original, expectedVersion);
+    Payroll latest = payrollRepository.findLatest(original.getUserId(), original.getYearMonth())
+        .orElseThrow(() -> new PayrollException(PayrollErrorCode.PAYROLL_NOT_FOUND));
+    if (!latest.getId().equals(original.getId())) {
+      throw new PayrollException(PayrollErrorCode.PAYROLL_REVISION_CONFLICT);
+    }
     Payroll revision = payrollRepository.save(original.revision());
     payrollRepository.replaceSnapshots(revision.getId(), snapshots(original));
     return detail(revision, snapshots(revision));
@@ -140,13 +148,18 @@ public class PayrollService {
   @Transactional(readOnly = true)
   public PayrollListResult list(YearMonth month, EmploymentType employmentType, String status,
       String name, int page, int size) {
+    if (status != null && !status.isBlank()
+        && !Set.of("NOT_CREATED", "DRAFT", "CALCULATED", "CONFIRMED").contains(status)) {
+      throw new PayrollException(PayrollErrorCode.INVALID_PAYROLL_REQUEST,
+          "급여 준비 상태가 올바르지 않습니다.");
+    }
     List<EmployeeView> employees = employeePort.findAllActive(name);
     Map<Long, Payroll> payrolls = payrollRepository.findLatestByMonth(month).stream()
         .collect(Collectors.toMap(Payroll::getUserId, Function.identity()));
     List<PayrollListResult.Row> filteredRows = employees.stream().map(employee -> {
       Payroll p = payrolls.get(employee.id());
       EmploymentType type = referenceData.findCompensations(employee.id(), month).stream()
-          .findFirst().map(CompensationData::employmentType).orElse(null);
+          .reduce((first, second) -> second).map(CompensationData::employmentType).orElse(null);
       return new PayrollListResult.Row(employee.id(), employee.name(), type,
           p == null ? null : p.getId(), p == null ? "NOT_CREATED" : p.getStatus().name(),
           p == null ? null : p.getTotalEarnings(), p == null ? null : p.getTotalDeductions(),
@@ -169,7 +182,11 @@ public class PayrollService {
   }
 
   public PayrollPolicyData updatePolicy(PayrollPolicyData policy) {
-    if (policy.payDayType() == PayDayType.FIXED_DAY && policy.payDay() == null) {
+    if (policy == null || policy.payDayType() == null
+        || policy.payDayType() == PayDayType.FIXED_DAY
+            && (policy.payDay() == null || policy.payDay() < 1 || policy.payDay() > 31)
+        || policy.payDayType() == PayDayType.MONTH_END && policy.payDay() != null
+        || policy.paymentMonthOffset() < 0 || policy.paymentMonthOffset() > 12) {
       throw new PayrollException(PayrollErrorCode.INVALID_PAYROLL_REQUEST);
     }
     return referenceData.savePolicy(policy);
@@ -178,22 +195,60 @@ public class PayrollService {
     return referenceData.findPolicy().orElseThrow(
         () -> new PayrollException(PayrollErrorCode.PAYROLL_POLICY_NOT_FOUND));
   }
-  public CompensationData saveCompensation(Long employeeId, CompensationData compensation) {
-    employee(employeeId);
-    validateCompensation(compensation);
-    return referenceData.replaceCompensation(employeeId, compensation);
+  public EmployeePayrollSettingsResult saveEmployeeSettings(Long employeeId,
+      CompensationData compensation, List<AllowanceData> allowances, PayBasisData payBasis) {
+    activeEmployee(employeeId);
+    if (compensation != null) {
+      validateCompensation(compensation);
+      referenceData.replaceCompensation(employeeId, compensation);
+    }
+    if (allowances != null) {
+      allowances.forEach(this::validateAllowance);
+      referenceData.saveAllowances(employeeId, allowances);
+    }
+    if (payBasis != null) {
+      validatePayBasis(payBasis);
+      referenceData.savePayBasis(employeeId, payBasis);
+    }
+    return employeeSettings(employeeId);
   }
-  @Transactional(readOnly = true) public List<CompensationData> compensations(Long employeeId) {
+  @Transactional(readOnly = true)
+  public EmployeePayrollSettingsResult employeeSettings(Long employeeId) {
     employee(employeeId);
-    return referenceData.findAllCompensations(employeeId);
+    return new EmployeePayrollSettingsResult(employeeId,
+        referenceData.findAllCompensations(employeeId),
+        referenceData.findAllAllowances(employeeId),
+        referenceData.findAllPayBases(employeeId));
   }
 
   private void validateCompensation(CompensationData c) {
-    boolean invalidMonthly = c.salaryType() == SalaryType.MONTHLY && c.baseSalary() == null;
-    boolean invalidHourly = c.salaryType() == SalaryType.HOURLY && c.hourlyWage() == null;
-    if (invalidMonthly || invalidHourly || c.weeklyContractHours() == null
-        || c.weeklyContractHours().signum() < 0 || c.effectiveFrom() == null
+    boolean invalidMonthly = c.salaryType() == SalaryType.MONTHLY
+        && (c.baseSalary() == null || c.baseSalary().signum() < 0);
+    boolean invalidHourly = c.salaryType() == SalaryType.HOURLY
+        && (c.hourlyWage() == null || c.hourlyWage().signum() < 0);
+    if (c.employmentType() == null || c.salaryType() == null || invalidMonthly || invalidHourly
+        || c.weeklyContractHours() == null
+        || c.weeklyContractHours().signum() < 0
+        || c.weeklyContractHours().compareTo(BigDecimal.valueOf(168)) > 0
+        || c.effectiveFrom() == null
         || c.effectiveTo() != null && c.effectiveTo().isBefore(c.effectiveFrom())) {
+      throw new PayrollException(PayrollErrorCode.INVALID_PAYROLL_REQUEST);
+    }
+  }
+  private void validateAllowance(AllowanceData allowance) {
+    Set<String> types = Set.of("MEAL", "POSITION", "DUTY", "TRANSPORTATION", "OTHER");
+    if (!types.contains(allowance.type()) || allowance.name() == null || allowance.name().isBlank()
+        || allowance.name().length() > 100 || allowance.amount() == null
+        || allowance.amount().signum() < 0 || allowance.effectiveFrom() == null
+        || allowance.effectiveTo() != null
+            && allowance.effectiveTo().isBefore(allowance.effectiveFrom())) {
+      throw new PayrollException(PayrollErrorCode.INVALID_PAYROLL_REQUEST);
+    }
+  }
+  private void validatePayBasis(PayBasisData payBasis) {
+    if (payBasis.ordinaryHourlyWage() == null || payBasis.ordinaryHourlyWage().signum() <= 0
+        || payBasis.effectiveFrom() == null || payBasis.effectiveTo() != null
+            && payBasis.effectiveTo().isBefore(payBasis.effectiveFrom())) {
       throw new PayrollException(PayrollErrorCode.INVALID_PAYROLL_REQUEST);
     }
   }
@@ -201,6 +256,9 @@ public class PayrollService {
       .orElseThrow(() -> new PayrollException(PayrollErrorCode.PAYROLL_NOT_FOUND)); }
   private EmployeeView employee(Long id) { return employeePort.findById(id)
       .orElseThrow(() -> new PayrollException(PayrollErrorCode.PAYROLL_NOT_FOUND, "직원을 찾을 수 없습니다.")); }
+  private EmployeeView activeEmployee(Long id) { return employeePort.findActiveById(id)
+      .orElseThrow(() -> new PayrollException(PayrollErrorCode.PAYROLL_NOT_FOUND,
+          "활성 직원을 찾을 수 없습니다.")); }
   private void checkVersion(Payroll payroll, long expected) {
     if (payroll.getVersion() != expected) throw new PayrollException(PayrollErrorCode.PAYROLL_VERSION_CONFLICT);
   }
@@ -208,7 +266,8 @@ public class PayrollService {
     return payrollRepository.findSnapshots(payroll.getId());
   }
   private PayrollDetailResult detail(Payroll payroll, PayrollRepository.SnapshotBundle snapshots) {
-    return PayrollDetailResult.of(payroll, employee(payroll.getUserId()), snapshots);
+    return PayrollDetailResult.of(payroll, employee(payroll.getUserId()), snapshots,
+        statementPort.findByPayrollId(payroll.getId()).orElse(null));
   }
   private BigDecimal sum(List<PayrollListResult.Row> rows,
       Function<PayrollListResult.Row, BigDecimal> getter) {

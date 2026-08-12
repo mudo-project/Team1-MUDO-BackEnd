@@ -52,6 +52,11 @@ public class PayrollReferenceDataAdapter implements PayrollReferenceDataPort {
   }
 
   @Override public CompensationData replaceCompensation(Long userId, CompensationData c) {
+    if (c.id() == null) {
+      jdbc.update("update employee_compensation set effective_to=? where user_id=? "
+          + "and effective_to is null and effective_from < ?", c.effectiveFrom().minusDays(1),
+          userId, c.effectiveFrom());
+    }
     Integer overlaps = jdbc.queryForObject("select count(*) from employee_compensation where user_id=? "
         + "and effective_from <= coalesce(?, '9999-12-31') "
         + "and coalesce(effective_to, '9999-12-31') >= ? and (? is null or compensation_id <> ?)",
@@ -66,27 +71,104 @@ public class PayrollReferenceDataAdapter implements PayrollReferenceDataPort {
           c.salaryType().name(), c.baseSalary(), c.hourlyWage(), c.weeklyContractHours(),
           c.effectiveFrom(), c.effectiveTo());
     } else {
-      jdbc.update("update employee_compensation set employment_type=?, salary_type=?, base_salary=?, "
+      int changed = jdbc.update("update employee_compensation set employment_type=?, salary_type=?, base_salary=?, "
           + "hourly_wage=?, weekly_contract_hours=?, effective_from=?, effective_to=? "
           + "where compensation_id=? and user_id=?", c.employmentType().name(), c.salaryType().name(),
           c.baseSalary(), c.hourlyWage(), c.weeklyContractHours(), c.effectiveFrom(), c.effectiveTo(),
           c.id(), userId);
+      if (changed == 0) {
+        throw new PayrollException(PayrollErrorCode.PAYROLL_REFERENCE_DATA_MISSING,
+            "급여 계약을 찾을 수 없습니다.");
+      }
     }
     return findAllCompensations(userId).stream()
         .filter(saved -> saved.effectiveFrom().equals(c.effectiveFrom())).findFirst().orElseThrow();
   }
 
   @Override public List<AllowanceData> findAllowances(Long userId, YearMonth month) {
-    return jdbc.query("select allowance_type, allowance_name, amount from employee_fixed_allowance "
+    return jdbc.query("select * from employee_fixed_allowance "
         + "where employee_id=? and effective_from <= ? and (effective_to is null or effective_to >= ?)",
-        (rs, row) -> new AllowanceData(rs.getString(1), rs.getString(2), rs.getBigDecimal(3)),
+        this::allowance,
         userId, month.atEndOfMonth(), month.atDay(1));
   }
 
-  @Override public Optional<BigDecimal> findOrdinaryHourlyWage(Long userId, LocalDate date) {
-    return one("select ordinary_hourly_wage from employee_pay_basis where employee_id=? "
+  @Override public List<AllowanceData> findAllAllowances(Long userId) {
+    return jdbc.query("select * from employee_fixed_allowance where employee_id=? "
+        + "order by effective_from desc, allowance_id desc", this::allowance, userId);
+  }
+
+  @Override public List<AllowanceData> saveAllowances(Long userId, List<AllowanceData> allowances) {
+    for (AllowanceData allowance : allowances) {
+      Integer overlaps = jdbc.queryForObject("select count(*) from employee_fixed_allowance "
+          + "where employee_id=? and allowance_type=? and allowance_name=? "
+          + "and effective_from <= coalesce(?, '9999-12-31') "
+          + "and coalesce(effective_to, '9999-12-31') >= ? "
+          + "and (? is null or allowance_id <> ?)", Integer.class, userId, allowance.type(),
+          allowance.name(), allowance.effectiveTo(), allowance.effectiveFrom(),
+          allowance.id(), allowance.id());
+      if (overlaps != null && overlaps > 0) {
+        throw new PayrollException(PayrollErrorCode.COMPENSATION_PERIOD_OVERLAP,
+            "같은 고정수당의 적용 기간이 겹칩니다.");
+      }
+      if (allowance.id() == null) {
+        jdbc.update("insert into employee_fixed_allowance (employee_id, allowance_type, "
+            + "allowance_name, amount, effective_from, effective_to) values (?, ?, ?, ?, ?, ?)",
+            userId, allowance.type(), allowance.name(), allowance.amount(),
+            allowance.effectiveFrom(), allowance.effectiveTo());
+      } else {
+        int changed = jdbc.update("update employee_fixed_allowance set allowance_type=?, "
+            + "allowance_name=?, amount=?, effective_from=?, effective_to=? "
+            + "where allowance_id=? and employee_id=?", allowance.type(), allowance.name(),
+            allowance.amount(), allowance.effectiveFrom(), allowance.effectiveTo(),
+            allowance.id(), userId);
+        if (changed == 0) throw new PayrollException(PayrollErrorCode.PAYROLL_REFERENCE_DATA_MISSING,
+            "고정수당을 찾을 수 없습니다.");
+      }
+    }
+    return findAllAllowances(userId);
+  }
+
+  @Override public List<PayBasisData> findPayBases(Long userId, YearMonth month) {
+    return jdbc.query("select * from employee_pay_basis where employee_id=? "
         + "and effective_from <= ? and (effective_to is null or effective_to >= ?) "
-        + "order by effective_from desc limit 1", (rs, row) -> rs.getBigDecimal(1), userId, date, date);
+        + "order by effective_from", this::payBasis, userId, month.atEndOfMonth(), month.atDay(1));
+  }
+
+  @Override public List<PayBasisData> findAllPayBases(Long userId) {
+    return jdbc.query("select * from employee_pay_basis where employee_id=? "
+        + "order by effective_from desc", this::payBasis, userId);
+  }
+
+  @Override public PayBasisData savePayBasis(Long userId, PayBasisData payBasis) {
+    if (payBasis.id() == null) {
+      jdbc.update("update employee_pay_basis set effective_to=? where employee_id=? "
+          + "and effective_to is null and effective_from < ?", payBasis.effectiveFrom().minusDays(1),
+          userId, payBasis.effectiveFrom());
+    }
+    Integer overlaps = jdbc.queryForObject("select count(*) from employee_pay_basis where employee_id=? "
+        + "and effective_from <= coalesce(?, '9999-12-31') "
+        + "and coalesce(effective_to, '9999-12-31') >= ? "
+        + "and (? is null or pay_basis_id <> ?)", Integer.class, userId, payBasis.effectiveTo(),
+        payBasis.effectiveFrom(), payBasis.id(), payBasis.id());
+    if (overlaps != null && overlaps > 0) {
+      throw new PayrollException(PayrollErrorCode.COMPENSATION_PERIOD_OVERLAP,
+          "통상시급 적용 기간이 겹칩니다.");
+    }
+    if (payBasis.id() == null) {
+      jdbc.update("insert into employee_pay_basis (employee_id, ordinary_hourly_wage, "
+          + "effective_from, effective_to) values (?, ?, ?, ?)", userId,
+          payBasis.ordinaryHourlyWage(), payBasis.effectiveFrom(), payBasis.effectiveTo());
+    } else {
+      int changed = jdbc.update("update employee_pay_basis set ordinary_hourly_wage=?, "
+          + "effective_from=?, effective_to=? where pay_basis_id=? and employee_id=?",
+          payBasis.ordinaryHourlyWage(), payBasis.effectiveFrom(), payBasis.effectiveTo(),
+          payBasis.id(), userId);
+      if (changed == 0) throw new PayrollException(PayrollErrorCode.PAYROLL_REFERENCE_DATA_MISSING,
+          "통상시급 기준을 찾을 수 없습니다.");
+    }
+    return findAllPayBases(userId).stream()
+        .filter(saved -> saved.effectiveFrom().equals(payBasis.effectiveFrom()))
+        .findFirst().orElseThrow();
   }
 
   @Override public Optional<LaborScopeData> findLaborScope(YearMonth month) {
@@ -147,6 +229,17 @@ public class PayrollReferenceDataAdapter implements PayrollReferenceDataPort {
         SalaryType.valueOf(rs.getString("salary_type")), rs.getBigDecimal("base_salary"),
         rs.getBigDecimal("hourly_wage"), rs.getBigDecimal("weekly_contract_hours"),
         rs.getDate("effective_from").toLocalDate(),
+        rs.getDate("effective_to") == null ? null : rs.getDate("effective_to").toLocalDate());
+  }
+  private AllowanceData allowance(ResultSet rs, int row) throws SQLException {
+    return new AllowanceData(rs.getLong("allowance_id"), rs.getLong("employee_id"),
+        rs.getString("allowance_type"), rs.getString("allowance_name"), rs.getBigDecimal("amount"),
+        rs.getDate("effective_from").toLocalDate(),
+        rs.getDate("effective_to") == null ? null : rs.getDate("effective_to").toLocalDate());
+  }
+  private PayBasisData payBasis(ResultSet rs, int row) throws SQLException {
+    return new PayBasisData(rs.getLong("pay_basis_id"), rs.getLong("employee_id"),
+        rs.getBigDecimal("ordinary_hourly_wage"), rs.getDate("effective_from").toLocalDate(),
         rs.getDate("effective_to") == null ? null : rs.getDate("effective_to").toLocalDate());
   }
   private BigDecimal rate(List<PolicyRate> rates, String type) {

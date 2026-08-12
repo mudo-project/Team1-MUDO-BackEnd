@@ -113,7 +113,10 @@ public final class Payroll {
   public boolean confirm(LocalDateTime now) {
     if (status == PayrollStatus.CONFIRMED) return false;
     require(PayrollStatus.CALCULATED);
-    if (items.isEmpty() || totalEarnings == null || totalDeductions == null || netPay == null) {
+    boolean hasBaseEarning = items.stream().anyMatch(item -> item.category() == ItemCategory.EARNING
+        && (item.type() == ItemType.BASE_SALARY || item.type() == ItemType.HOURLY_PAY));
+    if (!hasBaseEarning || totalEarnings == null || totalDeductions == null || netPay == null
+        || scheduledPayDate == null) {
       throw new PayrollException(PayrollErrorCode.INVALID_PAYROLL_STATE);
     }
     status = PayrollStatus.CONFIRMED;
@@ -122,6 +125,12 @@ public final class Payroll {
   }
 
   public void updateMemo(String memo) {
+    if (status == PayrollStatus.DRAFT) {
+      throw new PayrollException(PayrollErrorCode.INVALID_PAYROLL_STATE);
+    }
+    if (memo != null && memo.length() > 1000) {
+      throw new PayrollException(PayrollErrorCode.INVALID_PAYROLL_REQUEST);
+    }
     this.memo = memo == null || memo.isBlank() ? null : memo.trim();
   }
 

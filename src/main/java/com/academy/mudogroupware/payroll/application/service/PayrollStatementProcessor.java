@@ -2,6 +2,7 @@ package com.academy.mudogroupware.payroll.application.service;
 
 import com.academy.mudogroupware.global.infrastructure.observability.InstanceMetadataProperties;
 import com.academy.mudogroupware.payroll.application.event.PayrollConfirmedEvent;
+import com.academy.mudogroupware.payroll.application.event.PayrollStatementRetryRequestedEvent;
 import com.academy.mudogroupware.payroll.application.port.out.*;
 import java.security.MessageDigest;
 import java.time.LocalDateTime;
@@ -31,8 +32,9 @@ public class PayrollStatementProcessor {
   }
 
   @Async
-  public void retry(Long payrollId) {
-    generate(payrollId);
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+  public void onRetry(PayrollStatementRetryRequestedEvent event) {
+    generate(event.payrollId());
   }
 
   private void generate(Long payrollId) {

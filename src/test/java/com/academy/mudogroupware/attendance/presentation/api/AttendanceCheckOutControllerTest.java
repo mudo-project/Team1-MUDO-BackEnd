@@ -2,6 +2,7 @@ package com.academy.mudogroupware.attendance.presentation.api;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -106,6 +107,27 @@ class AttendanceCheckOutControllerTest {
                 .andExpect(jsonPath("$.code").value("COMMON_401_1"));
 
         verifyNoInteractions(webCheckOutUseCase, webClientIpResolver);
+    }
+
+    @Test
+    void allowsAuthenticatedCheckOutWithoutDedicatedAuthority() throws Exception {
+        LocalDateTime clockInAt = LocalDateTime.of(2026, 8, 12, 8, 55);
+        LocalDateTime clockOutAt = LocalDateTime.of(2026, 8, 12, 18, 0);
+        CheckOutCommand command = new CheckOutCommand(
+                10L, "203.0.113.10", ClockOutType.NORMAL, null);
+        when(webClientIpResolver.resolve(any(HttpServletRequest.class)))
+                .thenReturn("203.0.113.10");
+        when(webCheckOutUseCase.checkOut(command)).thenReturn(new CheckOutResult(
+                5L, LocalDate.of(2026, 8, 12), clockInAt,
+                clockOutAt, ClockOutType.NORMAL, null, AttendanceStatus.NORMAL));
+
+        mockMvc.perform(post("/api/attendance/check-outs")
+                        .with(authentication(authenticatedUser()))
+                        .contentType("application/json")
+                        .content("{\"clockOutType\":\"NORMAL\"}"))
+                .andExpect(status().isOk());
+
+        verify(webCheckOutUseCase).checkOut(command);
     }
 
     @Test

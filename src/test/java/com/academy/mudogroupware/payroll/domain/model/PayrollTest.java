@@ -2,6 +2,7 @@ package com.academy.mudogroupware.payroll.domain.model;
 
 import static com.academy.mudogroupware.payroll.domain.model.PayrollTypes.*;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -9,6 +10,7 @@ import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import com.academy.mudogroupware.payroll.domain.exception.PayrollException;
 
 class PayrollTest {
   @Test
@@ -37,6 +39,25 @@ class PayrollTest {
 
     assertThat(changed).isFalse();
     assertThat(payroll.getConfirmedAt()).isEqualTo(confirmedAt);
+  }
+
+  @Test
+  void 초안은_메모를_수정할_수_없다() {
+    Payroll payroll = Payroll.draft(10L, YearMonth.of(2026, 8), LocalDate.of(2026, 9, 5));
+
+    assertThatThrownBy(() -> payroll.updateMemo("메모"))
+        .isInstanceOf(PayrollException.class);
+  }
+
+  @Test
+  void 기본_지급항목이_없으면_확정할_수_없다() {
+    Payroll payroll = Payroll.restore(1L, 10L, YearMonth.of(2026, 8),
+        LocalDate.of(2026, 9, 5), PayrollStatus.CALCULATED, new BigDecimal("100000"),
+        BigDecimal.ZERO, new BigDecimal("100000"), 1, null, null,
+        LocalDateTime.now(), null, 0, List.of(manual("특별수당", "100000")));
+
+    assertThatThrownBy(() -> payroll.confirm(LocalDateTime.now()))
+        .isInstanceOf(PayrollException.class);
   }
 
   private PayrollItem manual(String name, String amount) {

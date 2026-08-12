@@ -27,10 +27,10 @@ public class PayrollStatementPersistenceAdapter implements PayrollStatementPort 
           "select * from payroll_statement where payroll_id=?", this::map, payrollId));
     } catch (EmptyResultDataAccessException e) { return Optional.empty(); }
   }
-  @Override public StatementData markPending(Long payrollId) {
-    jdbc.update("update payroll_statement set status='PENDING', failure_reason=null where payroll_id=?",
-        payrollId);
-    return findByPayrollId(payrollId).orElseThrow();
+  @Override public Optional<StatementData> markPendingIfFailed(Long payrollId) {
+    int changed = jdbc.update("update payroll_statement set status='PENDING', failure_reason=null "
+        + "where payroll_id=? and status='FAILED'", payrollId);
+    return changed == 0 ? Optional.empty() : findByPayrollId(payrollId);
   }
   @Override public void markReady(Long payrollId, String key, long size, String checksum,
       LocalDateTime generatedAt) {

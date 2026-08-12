@@ -7,7 +7,7 @@ import java.util.Optional;
 public interface PayrollStatementPort {
   StatementData createPendingIfAbsent(Long payrollId);
   Optional<StatementData> findByPayrollId(Long payrollId);
-  StatementData markPending(Long payrollId);
+  Optional<StatementData> markPendingIfFailed(Long payrollId);
   void markReady(Long payrollId, String objectKey, long fileSize, String checksum,
       LocalDateTime generatedAt);
   void markFailed(Long payrollId, String reason);

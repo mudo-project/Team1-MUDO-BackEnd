@@ -51,7 +51,8 @@ public class PayrollAttendanceAdapter implements PayrollAttendancePort {
       night += nightMinutes(record.getClockInAt(), record.getClockOutAt());
       if (!isWorkday(policy, record.getWorkDate())) {
         holiday += actual;
-        daily.add(new DailyAttendance(record.getWorkDate(), 0, actual));
+        daily.add(new DailyAttendance(record.getWorkDate(), 0, 0,
+            nightMinutes(record.getClockInAt(), record.getClockOutAt()), actual));
         continue;
       }
       workDays++;
@@ -64,7 +65,8 @@ public class PayrollAttendanceAdapter implements PayrollAttendancePort {
       }
       overtime += recordOvertime;
       work += Math.max(0, actual - recordOvertime);
-      daily.add(new DailyAttendance(record.getWorkDate(), Math.max(0, actual - recordOvertime), 0));
+      daily.add(new DailyAttendance(record.getWorkDate(), Math.max(0, actual - recordOvertime),
+          recordOvertime, nightMinutes(record.getClockInAt(), record.getClockOutAt()), 0));
     }
 
     long paidLeave = 0;
@@ -72,19 +74,19 @@ public class PayrollAttendanceAdapter implements PayrollAttendancePort {
     for (LocalDate date = monthStart; !date.isAfter(monthEnd); date = date.plusDays(1)) {
       if (paidLeaveDates.contains(date) && isWorkday(policy, date)) paidLeave += scheduledMinutes(policy, date);
     }
-    long weeklyHoliday = weeklyHolidayMinutes(policy, records, paidLeaveDates, queryStart, queryEnd,
+    List<WeeklyHoliday> weeklyHolidays = weeklyHolidays(policy, records, paidLeaveDates, queryStart, queryEnd,
         monthStart, monthEnd);
-    return new AttendanceResult(workDays, work, overtime, night, holiday, paidLeave, weeklyHoliday,
+    return new AttendanceResult(workDays, work, overtime, night, holiday, paidLeave, weeklyHolidays,
         List.copyOf(daily));
   }
 
-  private long weeklyHolidayMinutes(AttendancePolicy policy, List<AttendanceRecord> records,
+  private List<WeeklyHoliday> weeklyHolidays(AttendancePolicy policy, List<AttendanceRecord> records,
       Set<LocalDate> paidLeaves, LocalDate start, LocalDate end,
       LocalDate monthStart, LocalDate monthEnd) {
     Set<LocalDate> completed = new HashSet<>();
     records.stream().filter(r -> r.getClockOutAt() != null).map(AttendanceRecord::getWorkDate)
         .forEach(completed::add);
-    long total = 0;
+    List<WeeklyHoliday> result = new ArrayList<>();
     for (LocalDate monday = start; !monday.isAfter(end); monday = monday.plusWeeks(1)) {
       LocalDate sunday = monday.plusDays(6);
       if (sunday.isBefore(monthStart) || sunday.isAfter(monthEnd)) continue;
@@ -99,10 +101,10 @@ public class PayrollAttendanceAdapter implements PayrollAttendancePort {
         if (!completed.contains(date) && !paidLeaves.contains(date)) fulfilled = false;
       }
       if (fulfilled && scheduledDays > 0 && scheduledMinutes >= 15 * 60L) {
-        total += scheduledMinutes / scheduledDays;
+        result.add(new WeeklyHoliday(sunday, scheduledMinutes / scheduledDays));
       }
     }
-    return total;
+    return List.copyOf(result);
   }
 
   private Set<LocalDate> approvedDates(List<LeaveRequest> leaves) {

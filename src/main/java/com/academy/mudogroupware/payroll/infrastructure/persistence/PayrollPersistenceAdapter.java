@@ -17,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.dao.DataIntegrityViolationException;
 
 @Component
 @RequiredArgsConstructor
@@ -47,6 +48,11 @@ public class PayrollPersistenceAdapter implements PayrollRepository {
       return toDomain(repository.saveAndFlush(entity));
     } catch (ObjectOptimisticLockingFailureException e) {
       throw new PayrollException(PayrollErrorCode.PAYROLL_VERSION_CONFLICT);
+    } catch (DataIntegrityViolationException e) {
+      PayrollErrorCode code = payroll.getRevisionNo() > 1
+          ? PayrollErrorCode.PAYROLL_REVISION_CONFLICT
+          : PayrollErrorCode.PAYROLL_ALREADY_EXISTS;
+      throw new PayrollException(code);
     }
   }
 

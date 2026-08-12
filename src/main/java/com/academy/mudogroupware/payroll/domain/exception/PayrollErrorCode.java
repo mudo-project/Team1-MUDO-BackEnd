@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 public enum PayrollErrorCode implements ErrorCode {
   PAYROLL_NOT_FOUND(HttpStatus.NOT_FOUND, "PAYROLL_NOT_FOUND", "급여를 찾을 수 없습니다."),
   PAYROLL_ALREADY_EXISTS(HttpStatus.CONFLICT, "PAYROLL_ALREADY_EXISTS", "해당 직원의 급여가 이미 존재합니다."),
+  PAYROLL_REVISION_CONFLICT(HttpStatus.CONFLICT, "PAYROLL_REVISION_CONFLICT", "최신 급여에서만 정정본을 생성할 수 있습니다."),
   INVALID_PAYROLL_STATE(HttpStatus.CONFLICT, "INVALID_PAYROLL_STATE", "현재 급여 상태에서는 요청을 처리할 수 없습니다."),
   PAYROLL_VERSION_CONFLICT(HttpStatus.CONFLICT, "PAYROLL_VERSION_CONFLICT", "급여가 다른 요청에 의해 변경되었습니다."),
   PAYROLL_POLICY_NOT_FOUND(HttpStatus.UNPROCESSABLE_ENTITY, "PAYROLL_POLICY_NOT_FOUND", "급여 정책이 없습니다."),

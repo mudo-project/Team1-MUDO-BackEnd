@@ -1,9 +1,11 @@
 package com.academy.mudogroupware.payroll.application.service;
 
+import com.academy.mudogroupware.payroll.application.event.PayrollStatementRetryRequestedEvent;
 import com.academy.mudogroupware.payroll.application.port.out.*;
 import com.academy.mudogroupware.payroll.domain.exception.*;
 import com.academy.mudogroupware.payroll.domain.model.PayrollTypes.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,7 +16,7 @@ public class PayrollStatementService {
   private final PayrollService payrollService;
   private final PayrollStatementPort statements;
   private final PayrollStatementStoragePort storage;
-  private final PayrollStatementProcessor processor;
+  private final ApplicationEventPublisher events;
 
   @Transactional(readOnly = true)
   public DownloadResult download(Long payrollId) {
@@ -37,13 +39,10 @@ public class PayrollStatementService {
     if (payroll.status() != PayrollStatus.CONFIRMED) {
       throw new PayrollException(PayrollErrorCode.PAYROLL_STATEMENT_RETRY_NOT_ALLOWED);
     }
-    var current = statements.findByPayrollId(payrollId)
-        .orElseThrow(() -> new PayrollException(PayrollErrorCode.PAYROLL_STATEMENT_RETRY_NOT_ALLOWED));
-    if (current.status() != StatementStatus.FAILED) {
-      throw new PayrollException(PayrollErrorCode.PAYROLL_STATEMENT_RETRY_NOT_ALLOWED);
-    }
-    var pending = statements.markPending(payrollId);
-    processor.retry(payrollId);
+    var pending = statements.markPendingIfFailed(payrollId)
+        .orElseThrow(() -> new PayrollException(
+            PayrollErrorCode.PAYROLL_STATEMENT_RETRY_NOT_ALLOWED));
+    events.publishEvent(new PayrollStatementRetryRequestedEvent(payrollId));
     return new StatementResult(pending.id(), pending.payrollId(), pending.status(), pending.failureReason());
   }
 

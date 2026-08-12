@@ -2,6 +2,7 @@ package com.academy.mudogroupware.payroll.application.result;
 
 import com.academy.mudogroupware.payroll.application.port.out.PayrollEmployeePort.EmployeeView;
 import com.academy.mudogroupware.payroll.application.port.out.PayrollRepository.SnapshotBundle;
+import com.academy.mudogroupware.payroll.application.port.out.PayrollStatementPort.StatementData;
 import com.academy.mudogroupware.payroll.domain.model.Payroll;
 import com.academy.mudogroupware.payroll.domain.model.PayrollItem;
 import com.academy.mudogroupware.payroll.domain.model.PayrollTypes.*;
@@ -25,9 +26,11 @@ public record PayrollDetailResult(
     BigDecimal totalDeductions,
     BigDecimal netPay,
     String memo,
+    Statement statement,
     long version) {
 
-  public static PayrollDetailResult of(Payroll payroll, EmployeeView employee, SnapshotBundle snapshots) {
+  public static PayrollDetailResult of(Payroll payroll, EmployeeView employee,
+      SnapshotBundle snapshots, StatementData statement) {
     List<Item> earnings = payroll.getItems().stream()
         .filter(i -> i.category() == ItemCategory.EARNING).map(i -> Item.from(i, payroll)).toList();
     List<Item> deductions = payroll.getItems().stream()
@@ -38,19 +41,27 @@ public record PayrollDetailResult(
         new Employee(employee.id(), employee.name(), employmentType), payroll.getYearMonth(),
         payroll.getScheduledPayDate(), payroll.getStatus(), payroll.getRevisionNo(),
         payroll.getOriginalPayrollId(), snapshots, earnings, deductions, payroll.getTotalEarnings(),
-        payroll.getTotalDeductions(), payroll.getNetPay(), payroll.getMemo(), payroll.getVersion());
+        payroll.getTotalDeductions(), payroll.getNetPay(), payroll.getMemo(),
+        statement == null ? null : Statement.from(statement), payroll.getVersion());
   }
 
   public record Employee(Long employeeId, String name, EmploymentType employmentType) {}
   public record Item(Long itemId, ItemType type, String name, SourceType sourceType,
       BigDecimal amount, BigDecimal originalAmount, boolean adjusted, String adjustmentReason,
-      String calculationFormula, boolean editable) {
+      String calculationFormula, String calculationBasis, boolean editable) {
     static Item from(PayrollItem item, Payroll payroll) {
       boolean editable = payroll.getStatus() == PayrollStatus.CALCULATED
           && item.category() == ItemCategory.EARNING;
       return new Item(item.id(), item.type(), item.name(), item.sourceType(), item.amount(),
           item.originalAmount(), item.adjusted(), item.adjustmentReason(),
-          item.calculationFormula(), editable);
+          item.calculationFormula(), item.calculationBasis(), editable);
+    }
+  }
+  public record Statement(Long statementId, StatementStatus status, Long fileSize,
+      java.time.LocalDateTime generatedAt, String failureReason) {
+    static Statement from(StatementData data) {
+      return new Statement(data.id(), data.status(), data.fileSize(), data.generatedAt(),
+          data.failureReason());
     }
   }
 }

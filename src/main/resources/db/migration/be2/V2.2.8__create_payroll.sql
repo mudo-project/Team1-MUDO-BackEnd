@@ -7,7 +7,10 @@ CREATE TABLE payroll_policy (
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (payroll_policy_id),
     CONSTRAINT chk_payroll_policy_day_type CHECK (pay_day_type IN ('FIXED_DAY', 'MONTH_END')),
-    CONSTRAINT chk_payroll_policy_day CHECK (pay_day IS NULL OR pay_day BETWEEN 1 AND 31),
+    CONSTRAINT chk_payroll_policy_day CHECK (
+        (pay_day_type = 'FIXED_DAY' AND pay_day BETWEEN 1 AND 31)
+        OR (pay_day_type = 'MONTH_END' AND pay_day IS NULL)
+    ),
     CONSTRAINT chk_payroll_policy_offset CHECK (payment_month_offset BETWEEN 0 AND 12)
 );
 
@@ -24,7 +27,8 @@ CREATE TABLE statutory_policy (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (policy_id),
-    CONSTRAINT uk_statutory_policy_type_from UNIQUE (policy_type, effective_from)
+    CONSTRAINT uk_statutory_policy_type_from UNIQUE (policy_type, effective_from),
+    CONSTRAINT chk_statutory_policy_period CHECK (effective_to IS NULL OR effective_to >= effective_from)
 );
 
 CREATE TABLE workplace_labor_scope (
@@ -36,7 +40,8 @@ CREATE TABLE workplace_labor_scope (
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (labor_scope_id),
     CONSTRAINT uk_workplace_labor_scope_month UNIQUE (year_month),
-    CONSTRAINT chk_workplace_labor_scope_count CHECK (regular_employee_count >= 0)
+    CONSTRAINT chk_workplace_labor_scope_count CHECK (regular_employee_count >= 0),
+    CONSTRAINT chk_workplace_labor_scope_first_day CHECK (DAYOFMONTH(year_month) = 1)
 );
 
 CREATE TABLE employee_compensation (
@@ -56,6 +61,12 @@ CREATE TABLE employee_compensation (
     CONSTRAINT uk_employee_compensation_user_from UNIQUE (user_id, effective_from),
     CONSTRAINT chk_employee_compensation_employment CHECK (employment_type IN ('REGULAR', 'FIXED_TERM', 'PART_TIME')),
     CONSTRAINT chk_employee_compensation_salary_type CHECK (salary_type IN ('MONTHLY', 'HOURLY')),
+    CONSTRAINT chk_employee_compensation_amount CHECK (
+        (salary_type = 'MONTHLY' AND base_salary IS NOT NULL AND base_salary >= 0)
+        OR (salary_type = 'HOURLY' AND hourly_wage IS NOT NULL AND hourly_wage >= 0)
+    ),
+    CONSTRAINT chk_employee_compensation_weekly_hours CHECK
+        (weekly_contract_hours >= 0 AND weekly_contract_hours <= 168),
     CONSTRAINT chk_employee_compensation_period CHECK (effective_to IS NULL OR effective_to >= effective_from)
 );
 
@@ -74,6 +85,11 @@ CREATE TABLE employee_fixed_allowance (
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (allowance_id),
     CONSTRAINT fk_employee_fixed_allowance_user FOREIGN KEY (employee_id) REFERENCES users (id),
+    CONSTRAINT uk_employee_fixed_allowance_from UNIQUE
+        (employee_id, allowance_type, allowance_name, effective_from),
+    CONSTRAINT chk_employee_fixed_allowance_type CHECK
+        (allowance_type IN ('MEAL', 'POSITION', 'DUTY', 'TRANSPORTATION', 'OTHER')),
+    CONSTRAINT chk_employee_fixed_allowance_amount CHECK (amount >= 0),
     CONSTRAINT chk_employee_fixed_allowance_period CHECK (effective_to IS NULL OR effective_to >= effective_from)
 );
 
@@ -88,6 +104,7 @@ CREATE TABLE employee_pay_basis (
     PRIMARY KEY (pay_basis_id),
     CONSTRAINT fk_employee_pay_basis_user FOREIGN KEY (employee_id) REFERENCES users (id),
     CONSTRAINT uk_employee_pay_basis_user_from UNIQUE (employee_id, effective_from),
+    CONSTRAINT chk_employee_pay_basis_wage CHECK (ordinary_hourly_wage > 0),
     CONSTRAINT chk_employee_pay_basis_period CHECK (effective_to IS NULL OR effective_to >= effective_from)
 );
 
@@ -123,7 +140,12 @@ CREATE TABLE social_insurance_assessment (
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (assessment_id),
     CONSTRAINT fk_social_insurance_assessment_user FOREIGN KEY (employee_id) REFERENCES users (id),
-    CONSTRAINT uk_social_insurance_assessment_month UNIQUE (employee_id, year_month)
+    CONSTRAINT uk_social_insurance_assessment_month UNIQUE (employee_id, year_month),
+    CONSTRAINT chk_social_insurance_assessment_first_day CHECK (DAYOFMONTH(year_month) = 1),
+    CONSTRAINT chk_social_insurance_assessment_amounts CHECK (
+        national_pension_amount >= 0 AND health_insurance_amount >= 0
+        AND long_term_care_amount >= 0 AND employment_insurance_amount >= 0
+    )
 );
 
 CREATE TABLE tax_assessment (
@@ -136,7 +158,10 @@ CREATE TABLE tax_assessment (
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (tax_assessment_id),
     CONSTRAINT fk_tax_assessment_user FOREIGN KEY (employee_id) REFERENCES users (id),
-    CONSTRAINT uk_tax_assessment_month UNIQUE (employee_id, year_month)
+    CONSTRAINT uk_tax_assessment_month UNIQUE (employee_id, year_month),
+    CONSTRAINT chk_tax_assessment_first_day CHECK (DAYOFMONTH(year_month) = 1),
+    CONSTRAINT chk_tax_assessment_amounts CHECK
+        (income_tax_amount >= 0 AND local_income_tax_amount >= 0)
 );
 
 CREATE TABLE payroll (
@@ -160,7 +185,9 @@ CREATE TABLE payroll (
     CONSTRAINT fk_payroll_user FOREIGN KEY (user_id) REFERENCES users (id),
     CONSTRAINT fk_payroll_original FOREIGN KEY (original_payroll_id) REFERENCES payroll (payroll_id),
     CONSTRAINT uk_payroll_user_month_revision UNIQUE (user_id, payroll_year_month, revision_no),
-    CONSTRAINT chk_payroll_status CHECK (status IN ('DRAFT', 'CALCULATED', 'CONFIRMED'))
+    CONSTRAINT chk_payroll_status CHECK (status IN ('DRAFT', 'CALCULATED', 'CONFIRMED')),
+    CONSTRAINT chk_payroll_year_month_first_day CHECK (DAYOFMONTH(payroll_year_month) = 1),
+    CONSTRAINT chk_payroll_revision CHECK (revision_no >= 1)
 );
 
 CREATE INDEX idx_payroll_month_status ON payroll (payroll_year_month, status);
@@ -182,7 +209,11 @@ CREATE TABLE payroll_item (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (payroll_item_id),
-    CONSTRAINT fk_payroll_item_payroll FOREIGN KEY (payroll_id) REFERENCES payroll (payroll_id)
+    CONSTRAINT fk_payroll_item_payroll FOREIGN KEY (payroll_id) REFERENCES payroll (payroll_id),
+    CONSTRAINT chk_payroll_item_amount CHECK (amount >= 0),
+    CONSTRAINT chk_payroll_item_category CHECK (item_category IN ('EARNING', 'DEDUCTION')),
+    CONSTRAINT chk_payroll_item_source CHECK
+        (source_type IN ('CONTRACT', 'ATTENDANCE', 'MOCK_INSURANCE', 'MOCK_TAX', 'MANUAL'))
 );
 
 CREATE TABLE payroll_attendance_snapshot (
