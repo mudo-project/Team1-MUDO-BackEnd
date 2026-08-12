@@ -39,22 +39,30 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
       }
     }
     if (StompCommand.SUBSCRIBE.equals(a.getCommand())) {
-      Long targetUserId = extractUserTopicId(a.getDestination());
-      if (targetUserId != null) {
-        AuthUser me = (AuthUser) ((Authentication) a.getUser()).getPrincipal();
-        if (!targetUserId.equals(me.userId())) {
-          throw new MessageDeliveryException(m, "Forbidden: cannot subscribe to another user's topic");
-        }
+      String destination = a.getDestination();
+      Matcher matcher = destination == null ? null : USER_TOPIC_PATTERN.matcher(destination);
+      if (matcher != null && matcher.matches()) {
+        authorizePersonalTopicSubscription(m, a, matcher.group(1));
       }
     }
     return m;
   }
 
-  private static Long extractUserTopicId(String destination) {
-    if (destination == null) {
-      return null;
+  private static void authorizePersonalTopicSubscription(
+      Message<?> m, StompHeaderAccessor a, String rawUserId) {
+    Long targetUserId;
+    try {
+      targetUserId = Long.valueOf(rawUserId);
+    } catch (NumberFormatException e) {
+      throw new MessageDeliveryException(m, "Forbidden: invalid user topic id", e);
     }
-    Matcher matcher = USER_TOPIC_PATTERN.matcher(destination);
-    return matcher.matches() ? Long.valueOf(matcher.group(1)) : null;
+    if (!(a.getUser() instanceof Authentication authentication)
+        || !authentication.isAuthenticated()
+        || !(authentication.getPrincipal() instanceof AuthUser me)) {
+      throw new MessageDeliveryException(m, "Forbidden: authentication required");
+    }
+    if (!targetUserId.equals(me.userId())) {
+      throw new MessageDeliveryException(m, "Forbidden: cannot subscribe to another user's topic");
+    }
   }
 }
