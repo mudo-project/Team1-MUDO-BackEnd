@@ -1,11 +1,14 @@
 package com.academy.mudogroupware.users.application.service;
 
+import java.util.List;
+
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.academy.mudogroupware.auth.application.result.TokenPair;
 import com.academy.mudogroupware.auth.application.usecase.TokenIssuerUseCase;
+import com.academy.mudogroupware.global.domain.auth.EffectivePermissionResolver;
 import com.academy.mudogroupware.users.application.command.LoginCommand;
 import com.academy.mudogroupware.users.application.result.LoginResult;
 import com.academy.mudogroupware.users.application.usecase.LoginUseCase;
@@ -26,6 +29,7 @@ public class LoginService implements LoginUseCase {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final TokenIssuerUseCase tokenIssuerUseCase;
+    private final EffectivePermissionResolver effectivePermissionResolver;
 
     @Override
     public LoginResult login(LoginCommand command) {
@@ -42,8 +46,10 @@ public class LoginService implements LoginUseCase {
 
             TokenPair tokenPair = tokenIssuerUseCase.issue(user.getId(), user.getUsername(), user.getRoleId(),
                     user.getAccountType(), user.getAdminScope(), user.isMustChangePw());
+            List<String> permissions = effectivePermissionResolver.resolve(
+                    user.getRoleId(), user.getAccountType(), user.getAdminScope());
             log.info("event=auth_login_완료 username={}, userId={}", command.username(), user.getId());
-            return new LoginResult(tokenPair, user.isMustChangePw());
+            return new LoginResult(tokenPair, user.isMustChangePw(), permissions);
         } catch (RuntimeException e) {
             log.warn("event=auth_login_실패 username={}, reason={}", command.username(), e.getMessage(), e);
             throw e;
