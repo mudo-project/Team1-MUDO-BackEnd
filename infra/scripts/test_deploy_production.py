@@ -19,6 +19,7 @@ class DeploymentManifestTest(unittest.TestCase):
         cells = copy.deepcopy(self.cells)
         tenants[0]["enabled"] = True
         tenants[0]["s3_bucket"] = "mudo-prod-staff-123456789012"
+        tenants[0]["finance_s3_bucket"] = "mudo-prod-finance-123456789012"
         cells["cell-1"]["ecs_registered_cpu"] = 4096
         cells["cell-1"]["ecs_registered_memory_mib"] = 8192
         cells["cell-1"]["rds_max_connections"] = 100
@@ -54,6 +55,8 @@ class DeploymentManifestTest(unittest.TestCase):
         secret_names = {item["name"] for item in container["secrets"]}
 
         self.assertEqual("academy-a", environment["TENANT_ID"])
+        self.assertEqual("mudo-prod-staff-123456789012", environment["AWS_S3_STAFF_BUCKET_NAME"])
+        self.assertEqual("mudo-prod-finance-123456789012", environment["AWS_S3_FINANCE_BUCKET_NAME"])
         self.assertEqual("basic", environment["TENANT_PLAN"])
         self.assertEqual("30", environment["SERVER_TOMCAT_THREADS_MAX"])
         self.assertEqual(500, container["cpu"])

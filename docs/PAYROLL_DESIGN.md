@@ -4,7 +4,8 @@
 
 학원 그룹웨어의 직원 월 급여 관리 기능을 구현한다.
 
-현재 단계에서는 실제 급여 지급, PDF 급여명세서 생성, 이메일 발송 기능을 구현하지 않는다.
+현재 단계에서는 실제 급여 지급과 이메일 발송 기능은 구현하지 않는다.
+확정된 급여의 PDF 급여명세서는 생성하여 Finance S3 버킷에 저장한다.
 
 이번 구현의 범위는 다음과 같다.
 
@@ -58,6 +59,9 @@
 * 확정 급여 정정 Revision
 * 월별 급여 목록 조회
 * 급여 데이터 미리보기
+* 확정 급여명세서 PDF 생성
+* Finance S3 버킷 저장
+* 급여명세서 다운로드 URL 발급
 
 ---
 
@@ -76,9 +80,6 @@
 
 국세청 실제 API 연동
 
-PDF 급여명세서 생성
-PDF 다운로드
-
 이메일 급여명세서 발송
 
 자동 발송
@@ -94,15 +95,13 @@ PDF 다운로드
 PAID
 paid_at
 
-STATEMENT_ISSUED
-statement_issued_at
-
-payroll_statement
 payroll_statement_delivery
 payroll_auto_delivery_setting
 ```
 
-이 기능들은 향후 급여명세서 발급 기능 구현 시 별도로 추가한다.
+급여명세서 생성 여부는 Payroll 상태에 추가하지 않고 `payroll_statement.status`로 관리한다.
+
+이메일 발송과 자동 발송 기능은 향후 별도로 추가한다.
 
 ---
 
@@ -2309,6 +2308,162 @@ status = CONFIRMED
 confirmed_at = CURRENT_TIMESTAMP
 ```
 
+## 급여 확정과 급여명세서 생성
+
+급여가 `CONFIRMED`가 되면 해당 Payroll Revision의 급여명세서 PDF를 자동 생성한다.
+
+급여 확정 DB 트랜잭션 안에서는 다음까지만 처리한다.
+
+```text
+payroll.status = CONFIRMED
+payroll.confirmed_at 기록
+payroll_statement.status = PENDING 생성
+```
+
+트랜잭션 커밋 이후 급여명세서 생성 처리를 시작한다.
+
+```text
+Payroll 확정 커밋
+→ PayrollConfirmedEvent
+→ PDF 생성
+→ Finance S3 버킷 업로드
+→ payroll_statement.status = READY
+```
+
+PDF 생성 또는 S3 업로드가 실패해도 이미 확정된 Payroll을 `CALCULATED`로 되돌리지 않는다.
+
+```text
+생성 또는 업로드 실패
+→ payroll_statement.status = FAILED
+→ failure_reason 기록
+→ 권한 있는 사용자가 재시도 가능
+```
+
+중복 Confirm 요청으로 동일 Payroll의 급여명세서를 추가 생성하지 않는다.
+Payroll 한 건당 하나의 `payroll_statement`만 존재하도록 Unique Constraint를 둔다.
+
+확정 Payroll을 Revision으로 정정하면 Revision Payroll은 별도 `payroll_id`를 가지므로,
+새 Revision이 확정될 때 새로운 급여명세서를 생성한다.
+기존 Revision의 PDF는 덮어쓰거나 삭제하지 않는다.
+
+## payroll_statement
+
+```text
+payroll_statement
+
+statement_id
+payroll_id
+
+status
+
+object_key
+content_type
+file_size
+checksum
+
+generated_at
+failure_reason
+
+created_at
+updated_at
+```
+
+상태:
+
+```text
+PENDING
+READY
+FAILED
+```
+
+제약조건:
+
+```text
+UNIQUE(payroll_id)
+```
+
+S3 presigned URL은 저장하지 않는다.
+DB에는 Finance 버킷의 `object_key`만 저장한다.
+
+## Finance / Staff S3 버킷 분기
+
+S3 버킷은 다음 두 종류로 구분한다.
+
+```text
+FINANCE
+STAFF
+```
+
+환경변수:
+
+```text
+AWS_S3_FINANCE_BUCKET_NAME
+AWS_S3_STAFF_BUCKET_NAME
+```
+
+급여명세서는 개인정보와 급여정보를 포함하는 민감 문서이므로 항상 `FINANCE` 버킷에 저장한다.
+클라이언트가 저장 버킷을 선택하거나 버킷명을 요청으로 전달할 수 없다.
+
+급여명세서는 백엔드가 생성한 PDF이므로 백엔드가 Finance 버킷에 직접 업로드한다.
+일반 사용자 파일의 presigned 직접 업로드 흐름과 구분한다.
+
+```text
+PayrollStatementStoragePort
+→ FinanceS3PayrollStatementAdapter
+→ FINANCE 버킷
+```
+
+학원별 DB 스키마를 사용하더라도 S3 버킷은 공유하므로 `tenantId` Prefix를 유지한다.
+
+```text
+tenants/{tenantId}/payroll-statements/{yyyy}/{mm}/{uuid}.pdf
+```
+
+S3 Key에는 직원 이름, 이메일, 주민번호, 급여액 등 개인정보를 넣지 않는다.
+
+## 급여명세서 다운로드
+
+```http
+GET /api/payrolls/{payrollId}/statement/download-url
+```
+
+`payrollId`가 식별하는 특정 직원, 급여 귀속월, Revision의 확정 급여명세서를 대상으로 한다.
+
+최소 다음 조건을 모두 확인한 뒤 Finance 버킷의 짧은 만료시간 presigned URL을 발급한다.
+
+```text
+요청자에게 PAYROLL:MANAGE 권한이 있는가
+Payroll이 존재하는가
+Payroll.status = CONFIRMED인가
+연결된 payroll_statement가 존재하는가
+payroll_statement.status = READY인가
+```
+
+직원 본인 여부는 접근 허용 조건이 아니다.
+권한이 없는 직원은 자기 급여명세서도 다운로드할 수 없다.
+
+응답에는 S3 `object_key`나 버킷명을 노출하지 않는다.
+
+```json
+{
+  "statementId": 300,
+  "payrollId": 100,
+  "fileName": "2026년 8월 급여명세서.pdf",
+  "downloadUrl": "https://...",
+  "expiresInSeconds": 300
+}
+```
+
+## 급여명세서 생성 재시도
+
+```http
+PATCH /api/payrolls/{payrollId}/statement/retry
+```
+
+`FAILED` 상태에서만 재시도할 수 있다.
+재시도 시작 시 `PENDING`으로 변경하고 성공하면 `READY`, 실패하면 다시 `FAILED`로 변경한다.
+`PAYROLL:MANAGE` 권한이 필요하다.
+
 ---
 
 # 64. 급여 확정 전 Validation
@@ -2532,13 +2687,13 @@ CONFIRMED
 
 # 73. 급여 미리보기
 
-PDF는 구현하지 않지만 디자인의 "명세서 미리보기" 화면을 위해 View DTO를 제공할 수 있다.
+급여 확정 전에도 명세서 형태를 확인할 수 있도록 View DTO를 제공한다.
 
 ```http
 GET /api/payrolls/{payrollId}/preview
 ```
 
-PDF 파일을 반환하는 API가 아니다.
+미리보기 API는 S3에 저장된 PDF 파일을 반환하는 API가 아니다.
 
 JSON 데이터를 반환한다.
 
@@ -2737,34 +2892,51 @@ Revision 생성 또한 중복 생성에 주의한다.
 
 급여 데이터는 권한이 있는 사용자만 접근할 수 있다.
 
-기존 권한 시스템이 존재한다면 그것을 사용한다.
-
-예:
+급여와 급여명세서에 관련된 권한은 다음 하나만 사용한다.
 
 ```text
-PAYROLL_READ
-PAYROLL_MANAGE
+PAYROLL:MANAGE
 ```
 
-### PAYROLL_READ
+권한 카탈로그:
+
+```text
+code = PAYROLL:MANAGE
+resource = PAYROLL
+action = MANAGE
+description = 급여 및 급여명세서 조회·계산·확정·관리
+```
+
+`PAYROLL:READ`, `PAYROLL_READ`, `PAYROLL_MANAGE`, `PAYROLL:STATEMENT_MANAGE`처럼
+조회·관리·명세서를 나눈 별도 권한은 만들지 않는다.
+
+`PAYROLL:MANAGE` 적용 범위:
 
 ```text
 월 급여 목록
 급여 상세
 급여 미리보기
-Revision 조회
-```
-
-### PAYROLL_MANAGE
-
-```text
 급여 생성
 급여 계산
 급여 수정
 급여 확정
 급여 Revision 생성
+급여 Revision 조회
 급여 정책 관리
 직원 급여 계약 관리
+급여명세서 상태 조회
+급여명세서 다운로드 URL 발급
+실패한 급여명세서 생성 재시도
+```
+
+직원 본인 여부로 급여명세서 접근을 허용하지 않는다.
+자기 급여명세서라도 `PAYROLL:MANAGE` 권한이 없으면 조회하거나 다운로드할 수 없다.
+본인 전용 `/api/me/payrolls/...` API는 만들지 않는다.
+
+모든 Payroll Controller와 급여명세서 Controller는 다음 권한을 검사한다.
+
+```java
+@PreAuthorize("hasAuthority('PAYROLL:MANAGE')")
 ```
 
 ---
@@ -2870,6 +3042,12 @@ GET
 
 GET
 /api/payrolls/{payrollId}/preview
+
+GET
+/api/payrolls/{payrollId}/statement/download-url
+
+PATCH
+/api/payrolls/{payrollId}/statement/retry
 ```
 
 급여 정책:
@@ -2901,16 +3079,12 @@ POST /statements/send
 
 POST /statements/resend
 
-GET /statements/pdf
-
-GET /statements/download
-
 POST /auto-delivery
 
-PUT /auto-delivery
+PATCH /auto-delivery
 ```
 
-이메일 / PDF / 자동발송 관련 API는 구현하지 않는다.
+이메일 발송 / 재발송 / 자동발송 관련 API는 구현하지 않는다.
 
 ---
 
@@ -3090,7 +3264,19 @@ STATEMENT_ISSUED
 
 ### Rule 16
 
-PDF / 이메일 / 자동발송은 현재 Payroll Domain 범위에 포함하지 않는다.
+급여명세서 PDF는 `CONFIRMED` 이후 생성하고 Finance S3 버킷에 저장한다.
+
+### Rule 17
+
+급여명세서 생성 실패가 확정된 Payroll 상태를 되돌리지 않는다.
+
+### Rule 18
+
+급여와 급여명세서 접근 권한은 `PAYROLL:MANAGE` 하나만 사용한다.
+
+### Rule 19
+
+이메일 발송과 자동발송은 현재 Payroll Domain 범위에 포함하지 않는다.
 
 ---
 
@@ -3126,13 +3312,13 @@ payroll_attendance_snapshot
 payroll_compensation_snapshot
 
 payroll_rule_snapshot
+
+payroll_statement
 ```
 
-향후 PDF/메일 기능 구현 시 별도로 추가:
+향후 이메일/자동발송 기능 구현 시 별도로 추가:
 
 ```text
-payroll_statement
-
 payroll_statement_delivery
 
 payroll_auto_delivery_setting
@@ -3170,6 +3356,14 @@ CALCULATED
 급여 확정
    ↓
 CONFIRMED
+   ↓
+PayrollStatement PENDING 생성
+   ↓
+트랜잭션 커밋 후 PDF 생성
+   ↓
+Finance S3 업로드
+   ↓
+READY
 ```
 
 확정 후 오류가 발견되면:
@@ -3184,6 +3378,18 @@ CALCULATED
 수정
    ↓
 CONFIRMED
+```
+
+급여명세서 생성 또는 업로드가 실패하면:
+
+```text
+PENDING
+   ↓
+FAILED
+   ↓
+권한 있는 사용자 재시도
+   ↓
+READY
 ```
 
 ---
@@ -3261,6 +3467,19 @@ Revision 구현.
 
 목록 / 상세 / 미리보기 API 구현.
 
+### 11단계
+
+```text
+Finance / Staff S3 버킷 분기
+PayrollStatementStoragePort
+payroll_statement
+확정 후 PDF 생성
+Finance S3 저장
+다운로드 URL / 재시도 API
+```
+
+급여명세서 기능 구현.
+
 ---
 
 # 91. 현재 단계의 최종 목표
@@ -3301,6 +3520,18 @@ Mock 세금
         ↓
 
 확정 이후 Revision 이력 관리
+
+        ↓
+
+확정 급여명세서 PDF 생성
+
+        ↓
+
+Finance S3 저장
+
+        ↓
+
+권한 기반 다운로드
 ```
 
-PDF 생성, 파일 다운로드, 이메일 전송, 자동 발송은 이 급여 계산 도메인이 안정화된 이후 별도의 기능으로 확장한다.
+이메일 전송과 자동 발송은 급여 및 급여명세서 기능이 안정화된 이후 별도 기능으로 확장한다.
