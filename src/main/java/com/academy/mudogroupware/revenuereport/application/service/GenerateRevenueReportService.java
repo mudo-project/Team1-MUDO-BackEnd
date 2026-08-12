@@ -10,6 +10,7 @@ import java.util.Optional;
 import org.springframework.stereotype.Service;
 
 import com.academy.mudogroupware.revenuereport.application.port.ActiveEnrollmentCountPort;
+import com.academy.mudogroupware.revenuereport.application.port.EnrollmentLectureLookupPort;
 import com.academy.mudogroupware.revenuereport.application.port.ExpenseSummary;
 import com.academy.mudogroupware.revenuereport.application.port.ExpenseSummaryPort;
 import com.academy.mudogroupware.revenuereport.application.port.LectureRevenueInfo;
@@ -40,6 +41,7 @@ public class GenerateRevenueReportService implements GenerateRevenueReportUseCas
     private final PaymentRepository paymentRepository;
     private final ExpenseSummaryPort expenseSummaryPort;
     private final RevenueReportAiPort revenueReportAiPort;
+    private final EnrollmentLectureLookupPort enrollmentLectureLookupPort;
     private final RevenueReportRepository revenueReportRepository;
     private final RevenueSnapshotCalculator calculator;
     private final Clock clock;
@@ -50,6 +52,7 @@ public class GenerateRevenueReportService implements GenerateRevenueReportUseCas
                                         PaymentRepository paymentRepository,
                                         ExpenseSummaryPort expenseSummaryPort,
                                         RevenueReportAiPort revenueReportAiPort,
+                                        EnrollmentLectureLookupPort enrollmentLectureLookupPort,
                                         RevenueReportRepository revenueReportRepository,
                                         RevenueSnapshotCalculator calculator,
                                         Clock clock) {
@@ -58,6 +61,7 @@ public class GenerateRevenueReportService implements GenerateRevenueReportUseCas
         this.paymentRepository = paymentRepository;
         this.expenseSummaryPort = expenseSummaryPort;
         this.revenueReportAiPort = revenueReportAiPort;
+        this.enrollmentLectureLookupPort = enrollmentLectureLookupPort;
         this.revenueReportRepository = revenueReportRepository;
         this.calculator = calculator;
         this.clock = clock;
@@ -82,10 +86,9 @@ public class GenerateRevenueReportService implements GenerateRevenueReportUseCas
             List<Payment> payments = paymentRepository.findAllByPaidAtBetween(from, to);
             ExpenseSummary expenseSummary = expenseSummaryPort.summarize(from, to);
 
-            // enrollmentId -> lectureId 매핑은 이번 스코프에선 payment.enrollmentId로부터 강의별
-            // 실 매출을 계산할 때 필요하지만, 별도 조회 포트를 새로 두지 않고 student 도메인의
-            // 기존 조회를 재사용한다 — Task 13에서 필요 시 추가 포트로 보강.
-            Map<Long, Long> enrollmentIdToLectureId = Map.of();
+            List<Long> enrollmentIds = payments.stream().map(Payment::getEnrollmentId).distinct().toList();
+            Map<Long, Long> enrollmentIdToLectureId =
+                    enrollmentLectureLookupPort.findLectureIdsByEnrollmentIds(enrollmentIds);
 
             Optional<RevenueSnapshot> previousSnapshot = fetchPreviousSnapshot(targetMonth);
 

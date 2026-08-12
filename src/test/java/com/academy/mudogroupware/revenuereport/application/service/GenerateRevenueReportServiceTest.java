@@ -19,6 +19,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 import com.academy.mudogroupware.revenuereport.application.port.ActiveEnrollmentCountPort;
+import com.academy.mudogroupware.revenuereport.application.port.EnrollmentLectureLookupPort;
 import com.academy.mudogroupware.revenuereport.application.port.ExpenseSummary;
 import com.academy.mudogroupware.revenuereport.application.port.ExpenseSummaryPort;
 import com.academy.mudogroupware.revenuereport.application.port.LectureRevenueInfo;
@@ -35,12 +36,13 @@ class GenerateRevenueReportServiceTest {
     private final PaymentRepository paymentRepository = mock(PaymentRepository.class);
     private final ExpenseSummaryPort expenseSummaryPort = mock(ExpenseSummaryPort.class);
     private final RevenueReportAiPort revenueReportAiPort = mock(RevenueReportAiPort.class);
+    private final EnrollmentLectureLookupPort enrollmentLectureLookupPort = mock(EnrollmentLectureLookupPort.class);
     private final RevenueReportRepository revenueReportRepository = mock(RevenueReportRepository.class);
     private final RevenueSnapshotCalculator calculator = new RevenueSnapshotCalculator();
     private final Clock clock = Clock.fixed(Instant.parse("2026-09-01T00:30:00Z"), ZoneId.of("Asia/Seoul"));
     private final GenerateRevenueReportService service = new GenerateRevenueReportService(
             lectureRevenuePort, activeEnrollmentCountPort, paymentRepository, expenseSummaryPort,
-            revenueReportAiPort, revenueReportRepository, calculator, clock);
+            revenueReportAiPort, enrollmentLectureLookupPort, revenueReportRepository, calculator, clock);
 
     @Test
     void skipsWhenReportAlreadyExistsForTargetMonth() {
@@ -64,6 +66,7 @@ class GenerateRevenueReportServiceTest {
         when(activeEnrollmentCountPort.countActiveByLectureIds(List.of(1L))).thenReturn(Map.of(1L, 10L));
         when(paymentRepository.findAllByPaidAtBetween(any(), any())).thenReturn(List.of());
         when(expenseSummaryPort.summarize(any(), any())).thenReturn(new ExpenseSummary(0L, List.of()));
+        when(enrollmentLectureLookupPort.findLectureIdsByEnrollmentIds(any())).thenReturn(Map.of());
         when(revenueReportAiPort.generateReport(any())).thenReturn("8월 매출 리포트 텍스트");
         when(revenueReportRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
