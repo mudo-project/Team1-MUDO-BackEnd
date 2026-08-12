@@ -40,6 +40,10 @@ import com.academy.mudogroupware.lecture.domain.model.ClassType;
 // 강의실 시간 충돌 검사(existsOverlap)와 강의 저장 사이의 race condition을 검증한다.
 // findByNameForUpdate가 강의실 행을 잠그지 않으면, 동시에 들어온 두 요청이 모두 existsOverlap에서
 // false를 보고 겹치는 시간대를 둘 다 저장할 수 있다.
+//
+// 이미 존재하는 강의실에 동시 등록하는 시나리오만 다룬다. 완전히 새 강의실을 동시에 처음
+// 만드는 경우는 findOrCreateClassroom의 주석 참고 — 알려진 한계로 남겨뒀다(갭 락 데드락과
+// Hibernate 1차 캐시로 인한 잠금 우회를 둘 다 직접 재현해본 뒤 내린 결정).
 @DataJpaTest(properties = "spring.jpa.hibernate.ddl-auto=create-drop")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
@@ -70,20 +74,6 @@ class ClassroomOverlapConcurrencyMySqlIntegrationTest {
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     void onlyOneOfTwoConcurrentOverlappingRegistrationsSucceeds() throws Exception {
         insertClassroom("601호");
-        runConcurrentOverlappingRegistrations("601호");
-    }
-
-    // 강의실이 아직 없는 상태(첫 등록)에서 동시에 겹치는 시간대로 등록하면, findByNameForUpdate가
-    // 잠글 행이 없어 두 트랜잭션 모두 save를 시도할 수 있다. uk_classroom_name 유니크 제약에 걸려
-    // 진 쪽이 DataIntegrityViolationException 대신 정상적으로 ClassroomTimeConflictException을
-    // 받는지 검증한다(findOrCreateClassroom의 재조회 재시도 경로).
-    @Test
-    @Transactional(propagation = Propagation.NOT_SUPPORTED)
-    void onlyOneOfTwoConcurrentOverlappingRegistrationsForBrandNewClassroomSucceeds() throws Exception {
-        runConcurrentOverlappingRegistrations("701호");
-    }
-
-    private void runConcurrentOverlappingRegistrations(String classroomCode) throws Exception {
         CountDownLatch ready = new CountDownLatch(2);
         CountDownLatch start = new CountDownLatch(1);
         ExecutorService executor = Executors.newFixedThreadPool(2);
@@ -91,9 +81,9 @@ class ClassroomOverlapConcurrencyMySqlIntegrationTest {
         AtomicInteger conflictCount = new AtomicInteger();
 
         try {
-            Future<?> first = submitCreate(executor, ready, start, classroomCode,
+            Future<?> first = submitCreate(executor, ready, start,
                     LocalTime.of(19, 0), LocalTime.of(21, 0), successCount, conflictCount);
-            Future<?> second = submitCreate(executor, ready, start, classroomCode,
+            Future<?> second = submitCreate(executor, ready, start,
                     LocalTime.of(20, 0), LocalTime.of(22, 0), successCount, conflictCount);
 
             assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
@@ -107,18 +97,18 @@ class ClassroomOverlapConcurrencyMySqlIntegrationTest {
         assertThat(successCount.get()).isEqualTo(1);
         assertThat(conflictCount.get()).isEqualTo(1);
         Integer savedLectures = jdbcTemplate.queryForObject(
-                "select count(*) from lecture where classroom_code = ?", Integer.class, classroomCode);
+                "select count(*) from lecture where classroom_code = ?", Integer.class, "601호");
         assertThat(savedLectures).isEqualTo(1);
     }
 
     private Future<?> submitCreate(ExecutorService executor, CountDownLatch ready, CountDownLatch start,
-                                    String classroomCode, LocalTime startTime, LocalTime endTime,
+                                    LocalTime startTime, LocalTime endTime,
                                     AtomicInteger successCount, AtomicInteger conflictCount) {
         return executor.submit(() -> {
             ready.countDown();
             start.await();
             try {
-                createLectureService.createLecture(command(classroomCode, startTime, endTime));
+                createLectureService.createLecture(command(startTime, endTime));
                 successCount.incrementAndGet();
             } catch (ClassroomTimeConflictException exception) {
                 conflictCount.incrementAndGet();
@@ -127,9 +117,9 @@ class ClassroomOverlapConcurrencyMySqlIntegrationTest {
         });
     }
 
-    private CreateLectureCommand command(String classroomCode, LocalTime startTime, LocalTime endTime) {
-        return new CreateLectureCommand("동시 등록 테스트", ClassType.CLASS, classroomCode, null, null, null, null, null,
-                null, List.of(new ScheduleInput(DayOfWeek.MONDAY, startTime, endTime)), 99L, null);
+    private CreateLectureCommand command(LocalTime startTime, LocalTime endTime) {
+        return new CreateLectureCommand("동시 등록 테스트", ClassType.CLASS, "601호", null, null, null, null, null, null,
+                List.of(new ScheduleInput(DayOfWeek.MONDAY, startTime, endTime)), 99L, null);
     }
 
     private void insertClassroom(String name) {
