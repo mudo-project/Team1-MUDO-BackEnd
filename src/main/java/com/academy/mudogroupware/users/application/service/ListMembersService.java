@@ -34,9 +34,9 @@ public class ListMembersService implements ListMembersUseCase {
     private final TodayAttendanceStatusPort todayAttendanceStatusPort;
 
     @Override
-    public MemberPage list(String keyword, Long roleId, int page, int size) {
-        log.info("event=member_list_시작 keywordPresent={}, roleId={}, page={}, size={}",
-                keyword != null && !keyword.isBlank(), roleId, page, size);
+    public MemberPage list(String keyword, Long roleId, UserStatus status, int page, int size) {
+        log.info("event=member_list_시작 keywordPresent={}, roleId={}, status={}, page={}, size={}",
+                keyword != null && !keyword.isBlank(), roleId, status, page, size);
 
         List<User> users = userRepository.findAll();
 
@@ -49,6 +49,7 @@ public class ListMembersService implements ListMembersUseCase {
                 .map(user -> toItem(user, roleNamesById.get(user.getRoleId())))
                 .filter(item -> matchesKeyword(item, normalizedKeyword))
                 .filter(item -> matchesRole(item, roleId))
+                .filter(item -> matchesStatus(item, status))
                 .sorted(Comparator
                         .comparing(MemberListItem::roleName, Comparator.nullsLast(String::compareTo))
                         .thenComparing(MemberListItem::name)
@@ -97,5 +98,9 @@ public class ListMembersService implements ListMembersUseCase {
 
     private boolean matchesRole(MemberListItem item, Long roleId) {
         return roleId == null || roleId.equals(item.roleId());
+    }
+
+    private boolean matchesStatus(MemberListItem item, UserStatus status) {
+        return status == null || status == item.status();
     }
 }

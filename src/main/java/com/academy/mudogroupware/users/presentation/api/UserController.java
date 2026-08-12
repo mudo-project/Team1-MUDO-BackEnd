@@ -29,6 +29,7 @@ import com.academy.mudogroupware.users.application.usecase.PasswordSetupUseCase;
 import com.academy.mudogroupware.users.application.usecase.SearchUsersUseCase;
 import com.academy.mudogroupware.users.application.usecase.UpdateMemberProfileUseCase;
 import com.academy.mudogroupware.users.application.usecase.UpdateMyProfileUseCase;
+import com.academy.mudogroupware.users.domain.model.UserStatus;
 import com.academy.mudogroupware.users.presentation.api.common.UserResponseCode;
 import com.academy.mudogroupware.users.presentation.api.request.ChangeMyPasswordRequest;
 import com.academy.mudogroupware.users.presentation.api.request.ChangeUserStatusRequest;
@@ -96,6 +97,7 @@ public class UserController {
             summary = "구성원 목록 조회(관리자)",
             description = "구성원 전체(퇴사자 포함)를 이름/이메일/전화번호/역할명/입사일/계정상태/오늘 근태상태와 함께 조회합니다. "
                     + "keyword는 이름 또는 역할명에 부분 일치합니다. roleId를 지정하면 해당 역할 구성원만 반환합니다(조직도 화면에서 역할 탭별로 호출하는 용도). "
+                    + "status를 지정하면 해당 재직 상태 구성원만 반환합니다(재직/휴직/퇴사 탭 필터링용). "
                     + "결과는 역할명, 이름 순으로 정렬됩니다.")
     @GetMapping("/members")
     public ResponseEntity<GlobalApiResponse<MemberPageResponse<MemberListResponse>>> listMembers(
@@ -103,12 +105,14 @@ public class UserController {
             @RequestParam(required = false) String keyword,
             @Parameter(description = "특정 역할의 구성원만 조회. 없으면 전체 역할 포함")
             @RequestParam(required = false) Long roleId,
+            @Parameter(description = "특정 재직 상태(ACTIVE/RESIGNED/INACTIVE)의 구성원만 조회. 없으면 전체 상태 포함")
+            @RequestParam(required = false) UserStatus status,
             @Parameter(description = "페이지 번호(0부터 시작)")
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @Parameter(description = "페이지 크기(1~100)")
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
         MemberPageResponse<MemberListResponse> data = MemberPageResponse.from(
-                listMembersUseCase.list(keyword, roleId, page, size),
+                listMembersUseCase.list(keyword, roleId, status, page, size),
                 MemberListResponse::from);
         return ResponseEntity.ok(GlobalApiResponse.ok(UserResponseCode.MEMBERS_LISTED, data));
     }

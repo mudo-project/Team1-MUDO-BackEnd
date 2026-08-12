@@ -1,9 +1,41 @@
 > 작성일: 2026-08-04
-> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청/승인 워크플로우(PR 1·2·3/3, "계정 발급 체계" 2단계) 완료, 역할 관리 API 7개(생성/목록/상세/수정/삭제/권한 조립/권한 카탈로그 조회) 완료, 학원 구성원 검색 API 완료, 역할 색상/인원수 완료, CodeRabbit 피드백 반영 + 로깅 컨벤션 전체 도메인(Service 17개) 적용 완료, 직원 계정 발급 API 완료("계정 발급 체계" 3단계 완료), 학원 신청 접수 API 완료(최소 스코프, "계정 발급 체계" 2단계 최종 완결), 학원 신청 접수 시점 requestedLoginId 중복확인 완료, 비밀번호 설정 링크 + 계정 발급 흐름 통합 완료(원장 역할 자동 생성·전체 권한 배정 포함), 관리자용 구성원 목록 조회 API 완료(오늘 근태 상태·페이지네이션·역할 필터 포함), 사용자 역할 변경 API를 구성원 정보 수정 API로 병합 완료 · 후속 작업: 이메일 발송, 사업자등록증 검증(OCR·국세청 API), 비밀번호 설정 링크 재발급 흐름
+> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청/승인 워크플로우(PR 1·2·3/3, "계정 발급 체계" 2단계) 완료, 역할 관리 API 7개(생성/목록/상세/수정/삭제/권한 조립/권한 카탈로그 조회) 완료, 학원 구성원 검색 API 완료, 역할 색상/인원수 완료, CodeRabbit 피드백 반영 + 로깅 컨벤션 전체 도메인(Service 17개) 적용 완료, 직원 계정 발급 API 완료("계정 발급 체계" 3단계 완료), 학원 신청 접수 API 완료(최소 스코프, "계정 발급 체계" 2단계 최종 완결), 학원 신청 접수 시점 requestedLoginId 중복확인 완료, 비밀번호 설정 링크 + 계정 발급 흐름 통합 완료(원장 역할 자동 생성·전체 권한 배정 포함), 관리자용 구성원 목록 조회 API 완료(오늘 근태 상태·페이지네이션·역할/재직상태 필터 포함), 사용자 역할 변경 API를 구성원 정보 수정 API로 병합 완료 · 후속 작업: 이메일 발송, 사업자등록증 검증(OCR·국세청 API), 비밀번호 설정 링크 재발급 흐름
 
 ## 🎯 변경 목적
 
 계정·권한(users) 도메인을 신설하고, 로그인과 액세스 토큰 재발급을 구현한다. 초기세팅 때 approval 도메인이 참조용으로 임시로 만들어둔 `users` 테이블을 팀이 확정한 ERD에 맞게 정합화하고, 그 위에서 인증 흐름을 짠다.
+
+---
+
+## ✅ 2026-08-12 · 구성원 목록 조회 재직 상태 필터 추가
+
+### 배경
+
+`GET /api/users/members` 응답에는 구성원별 `status`(`ACTIVE`/`RESIGNED`/`INACTIVE`)가 이미 내려가고 있었는데, 조회 쪽에는 이를 걸러낼 파라미터가 없었다. 이 API는 인메모리 필터링 + 인메모리 페이지네이션 구조라(`ListMembersService.list()`가 `userRepository.findAll()`로 전체를 가져온 뒤 필터·정렬·슬라이스), 프론트가 클라이언트 사이드에서 `status`로 걸러내려 하면 서버 페이지네이션과 구조적으로 맞물리지 않는다(한 페이지 안에서 원하는 상태만 추려내면 페이지당 개수가 들쭉날쭉해지고 `totalElements`/`totalPages`도 실제 필터 결과와 어긋난다). 재직/휴직/퇴사 탭 필터링을 서버에서 처리하도록 `status` 쿼리 파라미터를 추가하기로 했다.
+
+### 확정된 정책
+
+- **`keyword`/`roleId`와 동일한 패턴으로 구현한다.** `ListMembersUseCase.list()`/`ListMembersService.list()`에 `UserStatus status` 파라미터를 추가하고, 기존 스트림 체인에 `matchesStatus()` 필터를 하나 더 끼워 넣는다 — `keyword`/`roleId`/`status` 셋 다 AND 조건으로 함께 적용된 뒤 정렬·페이지네이션이 이루어진다.
+- **DB 레벨 필터링으로 전환하지 않는다.** 이 API가 인메모리 방식을 유지하기로 한 기존 결정(2026-08-12 "구성원 목록 조회 번호 기반 페이지네이션" 항목 참고)을 그대로 따른다. `status` 필터도 이미 메모리에 올라온 리스트에 조건 하나를 추가하는 것뿐이라 추가 DB 조회 비용이 없다.
+- **잘못된 값은 Spring 기본 enum 바인딩 검증에 맡긴다.** `@RequestParam(required = false) UserStatus status`로 선언하면 `ACTIVE`/`RESIGNED`/`INACTIVE` 외의 값이 들어왔을 때 `MethodArgumentTypeMismatchException`이 발생하고, 기존 `GlobalExceptionHandler`가 이를 `400 COMMON_400_1`로 변환한다 — 별도의 커스텀 검증 로직을 추가하지 않았다. (참고: 이 API는 매핑된 라우트이므로, 별개로 존재하는 "매핑 안 된 경로가 404 대신 500을 반환하는" 기존 버그와는 무관하다.)
+
+### 완료 기준
+
+- [x] `ListMembersUseCase.list()`/`ListMembersService.list()`에 `status` 파라미터 추가, `matchesStatus()` 필터 구현
+- [x] `UserController.listMembers`에 `status` 쿼리 파라미터 추가, Swagger `@Operation` description 갱신
+- [x] `ListMembersServiceTest`에 `status` 단독 필터, 필터 미지정 시 전체 반환, `keyword`+`roleId`+`status` 동시 조합 3케이스 추가(TDD)
+- [x] `./gradlew test --max-workers=1` 전체 통과
+- [x] 로컬 curl e2e: 구성원 2명을 각각 `RESIGNED`/`INACTIVE`로 상태 변경 후 `status=ACTIVE`/`RESIGNED`/`INACTIVE`/미지정/잘못된 값(`NOT_A_STATUS`) 5가지 시나리오 확인 — 각각 올바른 `totalElements`와 대상, 미지정 시 전체 반환, 잘못된 값은 `400 COMMON_400_1` 확인
+- [x] 문서 갱신(API.md/README.md/CHANGELOG.md/REVISION.md/Notion)
+
+### 🧩 영향 범위
+
+| 계층 | 변경 내용 |
+| --- | --- |
+| Application(users) | `ListMembersUseCase`(`status` 파라미터 추가), `ListMembersService`(`matchesStatus()` 필터 추가) |
+| Presentation(users) | `UserController.listMembers`(`status` 쿼리 파라미터 추가) |
+| 삭제 | 없음 |
+| Migration | 없음(기존 `status` 컬럼 재사용) |
 
 ---
 
