@@ -425,8 +425,13 @@ Query Parameter
       }
     ],
     "page": 0,
-    "size": 20,
-    "hasNext": false
+    "size": 2,
+    "totalElements": 12,
+    "totalPages": 6,
+    "first": true,
+    "last": false,
+    "hasNext": true,
+    "hasPrevious": false
   }
 }
 ```
@@ -438,6 +443,7 @@ Query Parameter
 - 결과는 `roleName`, `name` 순으로 정렬됩니다 — 역할별로 묶어 보여주는 조직도 화면에서, `roleId`를 지정해 역할 탭마다 별도로 호출하는 방식을 전제로 합니다.
 - `page`/`size` 범위를 벗어나면(`page<0`, `size`가 1~100 밖) `400`으로 실패합니다.
 - `attendanceStatus`는 `ACTIVE` 구성원만 `PRESENT`/`ABSENT`/`OFF`/`LEAVE` 중 하나로 채워지고, `RESIGNED`/`INACTIVE` 구성원은 `null`입니다. 근태 정책(`AttendancePolicy`)이 등록되어 있지 않으면 이 API 전체가 `404 ATTENDANCE_404_1`로 실패합니다. 근태 조회는 현재 페이지에 포함된 구성원만 대상으로 합니다.
+- (2026-08-12) 응답이 공용 `SliceResponse`(`content`/`page`/`size`/`hasNext`)에서 이 API 전용 `totalElements`/`totalPages`/`first`/`last`/`hasPrevious`를 추가한 형태로 바뀌었습니다 — `1 2 3 4` 번호 기반 페이지네이션 UI를 프론트에서 그릴 수 있게 하기 위함입니다. `totalElements`는 이미 인메모리에 올라와 있는 필터링된 전체 리스트의 크기를 그대로 쓰므로 추가 DB 조회 비용이 없습니다(DB 레벨 페이지네이션 전환은 여전히 보류 상태, 아래 REVISION.md 참고).
 
 ---
 
@@ -463,7 +469,7 @@ Query Parameter
 | `username` | String | true | 로그인 아이디, 최대 50자, 전역 유니크 |
 | `name` | String | true | 이름, 최대 50자 |
 | `phone` | String | false | 전화번호, 최대 20자. 비워두면 본인이 나중에 `PATCH /api/users/me`(15-1번 항목)로 채워 넣을 수 있다(`V4.1.7`) |
-| `email` | String | false | 이메일, 최대 100자. 비워두면 본인이 나중에 채워 넣을 수 있다(`V4.1.7`) |
+| `email` | String | false | 이메일, 최대 100자, 형식 검증(`@Email`). 비워두면 본인이 나중에 채워 넣을 수 있다(`V4.1.7`) |
 | `roleId` | Long | true | 배정할 역할 ID |
 
 ### Response · `201 Created`
@@ -577,7 +583,7 @@ Query Parameter
 | name | type | required | 설명 |
 | --- | --- | --- | --- |
 | `phone` | String | false | 전화번호, 최대 20자. 보내지 않으면 기존 값 유지 |
-| `email` | String | false | 이메일, 최대 100자. 보내지 않으면 기존 값 유지 |
+| `email` | String | false | 이메일, 최대 100자, 형식 검증(`@Email`). 보내지 않으면 기존 값 유지 |
 
 ### Response · `204 No Content`
 
@@ -587,7 +593,9 @@ Query Parameter
 
 - `phone`/`email`만 수정 가능합니다 — 이름·역할·입사일은 본인이 바꿀 수 없고 관리자만 바꿀 수 있습니다(관리자용 구성원 정보 수정은 별도 PR에서 이어집니다).
 - 값을 보내지 않은 필드는 기존 값을 그대로 유지하는 부분 수정(partial update)입니다 — PATCH를 보낼 때마다 전체 필드를 다시 채울 필요가 없습니다.
-- `email`이 다른 계정과 중복되면 `409 USER_409_7`로 거절합니다. 그 외 실패 케이스 없음(인증 실패만 401).
+- `email`은 형식 검증(`@Email`)을 통과해야 합니다(`null`은 부분 수정 의미로 계속 허용). 형식이 안 맞으면 `400 COMMON_400_1`로 거절합니다.
+- `email`이 다른 계정과 중복되면 `409 USER_409_7`로 거절합니다.
+- 같은 계정을 동시에 수정하는 두 요청이 겹치면(예: 본인이 `/me`로 수정하는 중 관리자가 같은 계정을 수정) `409 USER_409_8`로 나중 요청이 실패합니다(2026-08-12, `@Version` 낙관적 락 도입). 그 외 실패 케이스 없음(인증 실패만 401).
 
 ---
 
@@ -678,7 +686,7 @@ Query Parameter
 | --- | --- | --- | --- |
 | `name` | String | false | 이름, 최대 50자. 보내지 않으면 기존 값 유지 |
 | `phone` | String | false | 전화번호, 최대 20자. 보내지 않으면 기존 값 유지 |
-| `email` | String | false | 이메일, 최대 100자. 보내지 않으면 기존 값 유지 |
+| `email` | String | false | 이메일, 최대 100자, 형식 검증(`@Email`). 보내지 않으면 기존 값 유지 |
 | `joinedAt` | LocalDateTime | false | 입사일. 보내지 않으면 기존 값 유지 |
 
 ### Response · `204 No Content`
@@ -690,6 +698,8 @@ Query Parameter
 - 내 정보 수정(15-1번 항목)과 동일하게 값을 보내지 않은 필드는 기존 값을 그대로 유지하는 부분 수정(partial update)입니다.
 - 본인 수정과 달리 `name`/`joinedAt`도 관리자 권한으로 바꿀 수 있습니다 — 역할(`roleId`)은 이 API로 바꿀 수 없고, 사용자 역할 변경(11번 항목)을 씁니다.
 - `userId`가 존재하지 않거나 `accountType != MEMBER`이면 전부 동일하게 `404 USER_404_1`로 응답합니다(구성원 상세 조회와 동일한 정책).
+- `email`은 형식 검증(`@Email`)을 통과해야 합니다(`null`은 부분 수정 의미로 계속 허용). 형식이 안 맞으면 `400 COMMON_400_1`로 거절합니다.
+- 내 정보 수정(15-1번 항목)과 동일하게, 같은 계정을 동시에 수정하는 요청이 겹치면 `409 USER_409_8`로 나중 요청이 실패합니다(`@Version` 낙관적 락).
 - `email`이 다른 계정과 중복되면 `409 USER_409_7`로 거절합니다.
 
 ---
@@ -738,6 +748,7 @@ Query Parameter
 | `409` | `USER_409_6` | 이미 사용 중인 아이디로 직원 계정 발급 시도 |
 | `409` | `USER_409_7` | 내 정보 수정(15-1번 항목) 또는 구성원 정보 수정(15-4번 항목) 시 이미 사용 중인 이메일로 변경 시도 |
 | `400` | `USER_400_3` | 내 비밀번호 변경(15-2번 항목) 시 현재 비밀번호가 일치하지 않음 |
+| `409` | `USER_409_8` | 내 정보 수정(15-1번 항목) 또는 구성원 정보 수정(15-4번 항목) 시 동시 수정 충돌(다른 요청이 먼저 반영됨) |
 | `401` | `AUTH_401_1` | 리프레시 토큰 자체가 위조되었거나 형식이 올바르지 않음 |
 | `401` | `AUTH_401_2` | 리프레시 토큰이 만료됨 |
 | `401` | `AUTH_401_6` | 서버에 저장된 리프레시 토큰이 없음 |

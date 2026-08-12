@@ -57,6 +57,7 @@
 - `PATCH /api/users/me/password`는 `POST /api/users/password-setup`(최초 1회 설정 전용)과 별개다 — 이미 인증된 본인 요청이라 계정 존재 여부를 숨기지 않고, 현재 비밀번호가 틀리면 구체적인 오류 메시지(`USER_400_3`)를 반환한다.
 - 계정 생성 시 `phone`/`email`은 선택 입력이다(`V4.1.7`). 비워두면 본인이 나중에 `PATCH /api/users/me`로 채워 넣을 수 있다.
 - **academyId 스코핑 제거(Phase 2, `V4.1.8`)**: 실제 배포가 학원마다 별도 EC2·DB 스키마를 쓰는 구조라, 앱 코드 레벨의 academyId 필터링이 불필요해졌다. `User`/`Role` 도메인 모델, JWT 클레임(`JwtClaims`/`AuthUser`/`JwtTokenProvider`/`JwtAuthenticationConverter`), `users`/`role` 리포지토리 전체에서 academyId를 제거했다. `users.academy_id`/`role.academy_id` 컬럼은 DROP하지 않고 nullable로만 바꿨다 — messenger의 `ChatMemberInfoEntity`가 여전히 `users` 테이블의 `academy_id`에 매핑돼 있어서(shim), 지금 컬럼을 지우면 messenger가 깨진다. `UserRepository.findActiveUserIds(academyId, userIds)`는 messenger/workspace가 호출하는 크로스-BC 포트라 시그니처를 그대로 유지했고, 내부적으로는 academyId 파라미터를 무시한다. 상세 배경은 `REVISION.md` 참고.
+- **`GET /api/users/members` 번호 기반 페이지네이션(2026-08-12)**: 응답을 공용 `SliceResponse`(`content`/`page`/`size`/`hasNext`)에서 users 도메인 전용 `MemberPageResponse`(`totalElements`/`totalPages`/`first`/`last`/`hasPrevious` 추가)로 바꿨다. 다른 9개 도메인이 같이 쓰는 공용 `PageResult`/`SliceResponse`는 건드리지 않고, `MemberPage`(application 결과)와 `MemberPageResponse`(presentation DTO)를 users 도메인 안에 새로 만들어서 이 엔드포인트에만 적용했다 — 크로스 도메인 컴파일 영향을 없애기 위함. `totalElements`는 이미 인메모리에 올라온 필터링된 리스트의 크기라 추가 DB 조회가 없다. 참고 프로젝트: 로컬 `module03-gymjjak`의 `PageResponse` 패턴(Spring Data `Page<T>` + DB 레벨 `Pageable`/`@Query(countQuery=...)`)을 필드 구성만 참고했고, DB 레벨 전환은 하지 않았다 — 인메모리 페이지네이션 유지 결정은 여전히 유효하다(`REVISION.md` 참고).
 
 ## 문서
 

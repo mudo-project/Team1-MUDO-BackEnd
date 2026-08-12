@@ -7,6 +7,54 @@
 
 ---
 
+## ✅ 2026-08-12 · 프로필 수정 동시성 방어 + 이메일 형식 검증 (CodeRabbit 피드백 반영)
+
+### 배경
+
+PR #374(구성원 정보 수정) 리뷰에서 CodeRabbit이 남긴 미해결 지적 3건을 반영했다: (1) `UpdateUserProfileService`가 조회한 기존 값으로 모든 프로필 필드를 다시 저장하는 방식이라 동시 수정 시 필드 유실 위험이 있음, (2) 프로필/계정발급 요청의 `email` 필드가 `@Size`만 있고 `@Email`이 없어 형식이 안 맞는 값도 저장됨, (3) 테스트가 `UserException` 타입만 검증하고 구체적 에러코드는 검증하지 않음.
+
+### 확정된 정책
+
+- **동시성 방어**: `UserEntity`에 `@Version`(JPA 낙관적 락)을 추가했다(`V4.1.9` 마이그레이션, `users.version BIGINT NOT NULL DEFAULT 0`). `UserRepositoryImpl.updateProfile`이 `flush()` 중 `OptimisticLockingFailureException`을 받으면 `ProfileUpdateConflictException`(`409 USER_409_8`)으로 변환한다. `shared_file_root`(`SharedFileRootEntity`)에 이미 있던 `@Version` 패턴을 그대로 따랐다.
+- **이메일 형식 검증**: `UpdateMemberProfileRequest`/`UpdateMyProfileRequest`/`CreateAccountRequest`의 `email` 필드에 `@Email`을 추가했다. `null`은 부분 수정 의미로 계속 허용되고(Bean Validation은 null을 유효한 값으로 취급), 형식이 안 맞는 비어있지 않은 값만 `400 COMMON_400_1`로 거절된다.
+- **테스트 보강**: `UpdateUserProfileServiceTest`의 두 실패 케이스가 `.extracting(e -> ((UserException) e).getErrorCode()).isEqualTo(UserErrorCode.USER_NOT_FOUND)`로 구체적 에러코드까지 검증하도록 바꿨고, `findById`가 `Optional.empty()`를 반환하는(대상이 진짜로 존재하지 않는) 케이스를 `updateMyProfile`/`updateMemberProfile` 양쪽에 추가했다.
+- **범위 밖**: PR #367에서 CodeRabbit이 지적했던 나머지 1건은 이미 해당 PR 안에서 해결된 상태였다(코멘트에 "Addressed in commit decb792" 표시 확인). PR #371/#372/#373/#375에는 CodeRabbit 리뷰가 rate limit으로 아예 실행되지 않았고, 이미 머지된 PR이라 `@coderabbitai review`로도 재실행이 안 된다("This command is applicable only when automatic reviews are paused") — 재검토가 필요하면 해당 코드를 건드리는 새 PR을 열어야 리뷰가 트리거된다.
+
+### 완료 기준
+
+- [x] `UserEntity.version`(`@Version`) + `V4.1.9` 마이그레이션
+- [x] `ProfileUpdateConflictException`/`UserErrorCode.PROFILE_UPDATE_CONFLICT`(`USER_409_8`) + `UserRepositoryImpl.updateProfile` 예외 변환(TDD)
+- [x] `UpdateMemberProfileRequest`/`UpdateMyProfileRequest`/`CreateAccountRequest`에 `@Email` 추가(TDD)
+- [x] `UpdateUserProfileServiceTest` 에러코드 구체화 + `Optional.empty()` 케이스 추가
+- [x] `./gradlew build` 전체 통과
+- [x] 문서 갱신(API.md/CHANGELOG.md/REVISION.md)
+
+---
+
+## ✅ 2026-08-12 · 구성원 목록 조회 번호 기반 페이지네이션
+
+### 배경
+
+`GET /api/users/members`가 공용 `SliceResponse`(`content`/`page`/`size`/`hasNext`)를 쓰고 있어서, 프론트가 "다음 페이지 있는지"만 알 수 있고 전체 페이지 수를 몰라 "1 2 3 4" 번호 버튼 UI를 그릴 수 없었다. 사용자가 로컬에 갖고 있던 이전 프로젝트(`module03-gymjjak`)의 `PageResponse`(`totalElements`/`totalPages`/`first`/`last`/`hasPrevious`) 패턴을 참고해서 반영했다.
+
+### 확정된 정책
+
+- **인메모리 유지, DB 레벨 전환은 안 함**: 이 API는 이미 전체 구성원을 메모리에 올린 뒤 필터·정렬·슬라이스하는 방식이라(`ListMembersService`), `totalElements`는 그 필터링된 리스트의 `size()`를 그대로 쓰면 돼서 추가 DB 조회 비용이 없다. 아래 "구성원 목록 조회 페이지네이션·역할 필터" 절에서 DB 레벨 페이지네이션(Pageable/LIMIT-OFFSET)을 보류하기로 한 결정은 이번에도 그대로 유지한다 — gymjjak처럼 `Pageable`+`@Query(countQuery=...)`로 가는 전환은 하지 않았다.
+- **공용 `PageResult`/`SliceResponse`는 건드리지 않음**: 이 둘은 lecture/attendance/approval/notice/student/workspace 등 9개 이상의 다른 도메인이 함께 쓰는 공용 컴포넌트라, 필드를 추가하면 모든 소비처의 생성자 호출이 깨진다(이번 세션에서 겪은 `AuthUser` 5-args 생성자 변경과 같은 종류의 리스크). 대신 users 도메인 안에 `MemberPage`(application 결과 레코드)와 `MemberPageResponse`(presentation DTO, gymjjak `PageResponse`와 필드 순서까지 동일: `content`/`page`/`size`/`totalElements`/`totalPages`/`first`/`last`/`hasNext`/`hasPrevious`)를 새로 만들어 이 엔드포인트에만 적용했다.
+- **`ListMembersUseCase.list(...)`의 반환 타입**을 `PageResult<MemberListItem>`에서 `MemberPage`로 바꿨다 — users 도메인 내부(usecase/service/controller/테스트)에만 영향이 있고, 다른 도메인 컴파일에는 영향이 없다.
+- Swagger `@Operation` description에 남아있던 "같은 학원 소속 구성원 전체" 문구도 이번에 발견해서 제거했다(Phase 2에서 놓친 잔여 참조).
+
+### 완료 기준
+
+- [x] `MemberPage`(TDD: totalElements/totalPages 계산 검증, `ListMembersServiceTest`)
+- [x] `ListMembersUseCase`/`ListMembersService` 반환 타입 교체
+- [x] `MemberPageResponse` + `UserController.listMembers` 반영
+- [x] 로컬 e2e: Swagger UI에서 `GET /api/users/members?page=0&size=2` 호출해 `totalElements=12`/`totalPages=6`/`first`/`last`/`hasPrevious` 확인
+- [x] `./gradlew build` 전체 통과(1150+ 테스트)
+- [x] 문서 갱신(API.md/README.md/CHANGELOG.md/REVISION.md/Notion)
+
+---
+
 ## ✅ 2026-08-11 · academyId 스코핑 제거 (Phase 2)
 
 ### 배경
