@@ -9,9 +9,11 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Repository;
 
 import com.academy.mudogroupware.users.domain.exception.EmailDuplicateException;
+import com.academy.mudogroupware.users.domain.exception.ProfileUpdateConflictException;
 import com.academy.mudogroupware.users.domain.exception.RoleNotFoundException;
 import com.academy.mudogroupware.users.domain.exception.UserErrorCode;
 import com.academy.mudogroupware.users.domain.exception.UserException;
@@ -74,7 +76,16 @@ public class UserRepositoryImpl implements UserRepository {
                 throw new EmailDuplicateException(exception);
             }
             throw exception;
+        } catch (OptimisticLockingFailureException exception) {
+            throw new ProfileUpdateConflictException(exception);
         }
+    }
+
+    @Override
+    public void changeStatus(Long userId, UserStatus status) {
+        UserEntity entity = userJpaRepository.findById(userId)
+                .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+        entity.changeStatus(status);
     }
 
     @Override
@@ -85,23 +96,30 @@ public class UserRepositoryImpl implements UserRepository {
     }
 
     @Override
-    public boolean completePasswordSetup(Long userId, String newPasswordHash) {
-        return userJpaRepository.completePasswordSetupIfMustChange(userId, newPasswordHash) > 0;
+    public boolean completePasswordSetup(Long userId, String newPasswordHash, String phone, String email) {
+        try {
+            return userJpaRepository.completePasswordSetupIfMustChange(userId, newPasswordHash, phone, email) > 0;
+        } catch (DataIntegrityViolationException exception) {
+            if (containsConstraint(exception, EMAIL_UNIQUE_CONSTRAINT)) {
+                throw new EmailDuplicateException(exception);
+            }
+            throw exception;
+        }
     }
 
     @Override
-    public List<User> searchByAcademyId(Long academyId, String keyword) {
+    public List<User> search(String keyword) {
         String normalizedKeyword = keyword == null ? "" : keyword.trim();
         List<UserEntity> entities = normalizedKeyword.isEmpty()
-                ? userJpaRepository.findAllByAcademyIdAndStatus(academyId, UserStatus.ACTIVE)
-                : userJpaRepository.findAllByAcademyIdAndStatusAndNameContainingIgnoreCase(
-                        academyId, UserStatus.ACTIVE, normalizedKeyword);
+                ? userJpaRepository.findAllByStatus(UserStatus.ACTIVE)
+                : userJpaRepository.findAllByStatusAndNameContainingIgnoreCase(
+                        UserStatus.ACTIVE, normalizedKeyword);
         return entities.stream().map(this::toDomain).toList();
     }
 
     @Override
-    public List<User> findAllByAcademyId(Long academyId) {
-        return userJpaRepository.findAllByAcademyId(academyId).stream().map(this::toDomain).toList();
+    public List<User> findAll() {
+        return userJpaRepository.findAll().stream().map(this::toDomain).toList();
     }
 
     @Override
@@ -116,7 +134,6 @@ public class UserRepositoryImpl implements UserRepository {
     @Override
     public User save(User user) {
         UserEntity entity = UserEntity.builder()
-                .academyId(user.getAcademyId())
                 .username(user.getUsername())
                 .password(user.getPassword())
                 .name(user.getName())
@@ -153,10 +170,13 @@ public class UserRepositoryImpl implements UserRepository {
 
     @Override
     public Set<Long> findActiveUserIds(Long academyId, Set<Long> userIds) {
+        // academyId는 사용하지 않는다 — 학원마다 별도 DB 스키마를 쓰는 배포 구조라 users 도메인은
+        // 더 이상 academyId로 스코핑하지 않지만, messenger/workspace가 이 시그니처로 호출하고
+        // 있어서(크로스 BC 파라미터) 그쪽 정리가 끝나기 전까지는 그대로 받아만 두고 무시한다.
         if (userIds.isEmpty()) {
             return Set.of();
         }
-        return userJpaRepository.findActiveIdsByAcademyIdAndIdIn(academyId, userIds);
+        return userJpaRepository.findActiveIdsByIdIn(userIds);
     }
 
     @Override
@@ -169,7 +189,7 @@ public class UserRepositoryImpl implements UserRepository {
 
     private User toDomain(UserEntity entity) {
         return User.restore(
-                entity.getId(), entity.getAcademyId(), entity.getUsername(), entity.getPassword(), entity.getName(),
+                entity.getId(), entity.getUsername(), entity.getPassword(), entity.getName(),
                 entity.getPhone(), entity.getEmail(), entity.getRoleId(), entity.getStatus(), entity.isMustChangePw(),
                 entity.getAccountType(), entity.getAdminScope(), entity.getJoinedAt(), entity.getCreatedAt(),
                 entity.getUpdatedAt());

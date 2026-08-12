@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
+import jakarta.persistence.EntityManager;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
@@ -25,6 +27,9 @@ class TimetableSetPersistenceAdapterDataJpaTest {
     @Autowired
     private TimetableSetPersistenceAdapter adapter;
 
+    @Autowired
+    private EntityManager entityManager;
+
     @Test
     void savesAndFindsTimetableSetWithClassrooms() {
         TimetableSet set = TimetableSet.create(
@@ -38,6 +43,22 @@ class TimetableSetPersistenceAdapterDataJpaTest {
         assertThat(found).isPresent();
         assertThat(found.get().getName()).isEqualTo("2026 여름특강");
         assertThat(found.get().getClassrooms()).containsExactly(new TimetableClassroom("6층", "601"));
+    }
+
+    @Test
+    void savesTimetableSetWithAllSevenOperatingDays() {
+        TimetableSet set = TimetableSet.create(
+                "매일 운영", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16),
+                LocalTime.of(8, 30), LocalTime.of(22, 0), Set.of(DayOfWeek.values()),
+                30, List.of(new TimetableClassroom("6층", "601")));
+
+        TimetableSet saved = adapter.save(set);
+        entityManager.flush();
+        entityManager.clear();
+        Optional<TimetableSet> found = adapter.findById(saved.getId());
+
+        assertThat(found).isPresent();
+        assertThat(found.get().getOperatingDays()).containsExactlyInAnyOrder(DayOfWeek.values());
     }
 
     @Test

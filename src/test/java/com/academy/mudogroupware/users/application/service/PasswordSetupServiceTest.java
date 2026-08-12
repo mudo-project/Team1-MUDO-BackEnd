@@ -23,7 +23,7 @@ import com.academy.mudogroupware.users.domain.repository.UserRepository;
 class PasswordSetupServiceTest {
 
     private User pendingUser(String hash) {
-        return User.restore(1L, 1L, "teacher01", hash, "김강사", "010-1111-2222", "teacher01@example.com", null,
+        return User.restore(1L, "teacher01", hash, "김강사", "010-1111-2222", "teacher01@example.com", null,
                 UserStatus.ACTIVE, true, AccountType.MEMBER, null, LocalDateTime.now(), LocalDateTime.now(),
                 LocalDateTime.now());
     }
@@ -32,71 +32,60 @@ class PasswordSetupServiceTest {
     void throwsWhenUserNotFound() {
         UserRepository userRepository = mock(UserRepository.class);
         PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
-        when(userRepository.findByUsername("teacher01")).thenReturn(Optional.empty());
+        when(userRepository.findById(1L)).thenReturn(Optional.empty());
         PasswordSetupService service = new PasswordSetupService(userRepository, passwordEncoder);
 
-        assertThatThrownBy(() -> service.setup(new PasswordSetupCommand("teacher01", "temp", "newPassword1!")))
+        assertThatThrownBy(() -> service.setup(
+                new PasswordSetupCommand(1L, "newPassword1!", "new@example.com", "010-1234-5678")))
                 .isInstanceOf(PasswordSetupFailedException.class);
 
-        verify(userRepository, never()).completePasswordSetup(any(), any());
+        verify(userRepository, never()).completePasswordSetup(any(), any(), any(), any());
     }
 
     @Test
     void throwsWhenPasswordAlreadySetUp() {
         UserRepository userRepository = mock(UserRepository.class);
         PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
-        User alreadySetUp = User.restore(1L, 1L, "teacher01", "hash", "김강사", "010-1111-2222",
+        User alreadySetUp = User.restore(1L, "teacher01", "hash", "김강사", "010-1111-2222",
                 "teacher01@example.com", null, UserStatus.ACTIVE, false, AccountType.MEMBER, null,
                 LocalDateTime.now(), LocalDateTime.now(), LocalDateTime.now());
-        when(userRepository.findByUsername("teacher01")).thenReturn(Optional.of(alreadySetUp));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(alreadySetUp));
         PasswordSetupService service = new PasswordSetupService(userRepository, passwordEncoder);
 
-        assertThatThrownBy(() -> service.setup(new PasswordSetupCommand("teacher01", "temp", "newPassword1!")))
+        assertThatThrownBy(() -> service.setup(
+                new PasswordSetupCommand(1L, "newPassword1!", "new@example.com", "010-1234-5678")))
                 .isInstanceOf(PasswordSetupFailedException.class);
 
-        verify(userRepository, never()).completePasswordSetup(any(), any());
+        verify(userRepository, never()).completePasswordSetup(any(), any(), any(), any());
     }
 
     @Test
-    void throwsWhenTempPasswordDoesNotMatch() {
+    void completesPasswordSetupWhenUserMustChangePassword() {
         UserRepository userRepository = mock(UserRepository.class);
         PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
-        when(userRepository.findByUsername("teacher01")).thenReturn(Optional.of(pendingUser("hash")));
-        when(passwordEncoder.matches("wrong-temp", "hash")).thenReturn(false);
-        PasswordSetupService service = new PasswordSetupService(userRepository, passwordEncoder);
-
-        assertThatThrownBy(() -> service.setup(new PasswordSetupCommand("teacher01", "wrong-temp", "newPassword1!")))
-                .isInstanceOf(PasswordSetupFailedException.class);
-
-        verify(userRepository, never()).completePasswordSetup(any(), any());
-    }
-
-    @Test
-    void completesPasswordSetupWhenTempPasswordMatches() {
-        UserRepository userRepository = mock(UserRepository.class);
-        PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
-        when(userRepository.findByUsername("teacher01")).thenReturn(Optional.of(pendingUser("hash")));
-        when(passwordEncoder.matches("correct-temp", "hash")).thenReturn(true);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(pendingUser("hash")));
         when(passwordEncoder.encode("newPassword1!")).thenReturn("new-hash");
-        when(userRepository.completePasswordSetup(1L, "new-hash")).thenReturn(true);
+        when(userRepository.completePasswordSetup(1L, "new-hash", "010-1234-5678", "new@example.com"))
+                .thenReturn(true);
         PasswordSetupService service = new PasswordSetupService(userRepository, passwordEncoder);
 
-        service.setup(new PasswordSetupCommand("teacher01", "correct-temp", "newPassword1!"));
+        service.setup(new PasswordSetupCommand(1L, "newPassword1!", "new@example.com", "010-1234-5678"));
 
-        verify(userRepository).completePasswordSetup(1L, "new-hash");
+        verify(userRepository).completePasswordSetup(1L, "new-hash", "010-1234-5678", "new@example.com");
     }
 
     @Test
     void throwsWhenCompletePasswordSetupLosesConcurrentRace() {
         UserRepository userRepository = mock(UserRepository.class);
         PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
-        when(userRepository.findByUsername("teacher01")).thenReturn(Optional.of(pendingUser("hash")));
-        when(passwordEncoder.matches("correct-temp", "hash")).thenReturn(true);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(pendingUser("hash")));
         when(passwordEncoder.encode("newPassword1!")).thenReturn("new-hash");
-        when(userRepository.completePasswordSetup(1L, "new-hash")).thenReturn(false);
+        when(userRepository.completePasswordSetup(1L, "new-hash", "010-1234-5678", "new@example.com"))
+                .thenReturn(false);
         PasswordSetupService service = new PasswordSetupService(userRepository, passwordEncoder);
 
-        assertThatThrownBy(() -> service.setup(new PasswordSetupCommand("teacher01", "correct-temp", "newPassword1!")))
+        assertThatThrownBy(() -> service.setup(
+                new PasswordSetupCommand(1L, "newPassword1!", "new@example.com", "010-1234-5678")))
                 .isInstanceOf(PasswordSetupFailedException.class);
     }
 }

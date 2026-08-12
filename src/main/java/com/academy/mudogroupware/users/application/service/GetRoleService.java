@@ -25,18 +25,17 @@ public class GetRoleService implements GetRoleUseCase {
     private final UserRepository userRepository;
 
     @Override
-    public RoleView getRole(Long roleId, Long academyId) {
-        log.info("event=role_get_시작 roleId={}, academyId={}", roleId, academyId);
+    public RoleView getRole(Long roleId) {
+        log.info("event=role_get_시작 roleId={}", roleId);
         try {
             Role role = roleRepository.findById(roleId)
-                    .filter(r -> r.getAcademyId().equals(academyId))
                     .orElseThrow(RoleNotFoundException::new);
             long memberCount = userRepository.countActiveByRoleIds(Set.of(role.getId()))
                     .getOrDefault(role.getId(), 0L);
             log.info("event=role_get_완료 roleId={}, memberCount={}", roleId, memberCount);
             return new RoleView(role, memberCount);
         } catch (RuntimeException e) {
-            log.warn("event=role_get_실패 roleId={}, academyId={}, reason={}", roleId, academyId, e.getMessage(), e);
+            log.warn("event=role_get_실패 roleId={}, reason={}", roleId, e.getMessage(), e);
             throw e;
         }
     }

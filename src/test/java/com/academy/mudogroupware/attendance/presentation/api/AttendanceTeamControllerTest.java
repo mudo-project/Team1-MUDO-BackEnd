@@ -24,7 +24,7 @@ class AttendanceTeamControllerTest {
     void getsTodayTeamAttendanceWithAuthenticatedUser() {
         GetTodayTeamAttendanceUseCase useCase = mock(GetTodayTeamAttendanceUseCase.class);
         AttendanceTeamController controller = new AttendanceTeamController(useCase);
-        AuthUser authUser = new AuthUser(1L, "owner", 10L, 2L, "OWNER");
+        AuthUser authUser = new AuthUser(1L, "owner", 2L, "OWNER");
         TodayTeamAttendanceView view = new TodayTeamAttendanceView(
                 LocalDate.of(2026, 8, 5),
                 "수",

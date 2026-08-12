@@ -65,7 +65,7 @@ import org.springframework.test.web.servlet.MockMvc;
 @Import(WorkspaceControllerTest.MethodSecurityConfiguration.class)
 class WorkspaceControllerTest {
 
-  private static final AuthUser AUTH_USER = new AuthUser(10L, "user", 1L, 3L, "MEMBER");
+  private static final AuthUser AUTH_USER = new AuthUser(10L, "user", 3L, "MEMBER");
 
   @Autowired private MockMvc mockMvc;
 
@@ -410,7 +410,7 @@ class WorkspaceControllerTest {
   @Test
   void addsMembersAndReturns200WithOnlyNewlyAddedIds() throws Exception {
     when(addWorkspaceMembersUseCase.addMembers(
-            new AddWorkspaceMembersCommand(1L, 10L, 100L, List.of(20L, 30L))))
+            new AddWorkspaceMembersCommand(null, 10L, 100L, List.of(20L, 30L))))
         .thenReturn(Set.of(30L));
 
     mockMvc

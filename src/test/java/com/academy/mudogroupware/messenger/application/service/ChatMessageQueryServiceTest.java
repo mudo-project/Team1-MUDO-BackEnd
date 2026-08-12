@@ -62,7 +62,7 @@ class ChatMessageQueryServiceTest {
         when(chatRoomRepository.findById(1L)).thenReturn(Optional.of(chatRoom));
         when(chatMessageRepository.findByChatRoomId(1L, null, null, 20)).thenReturn(List.of(first, second));
         when(chatMemberDirectoryPort.getMembers(List.of(1L))).thenReturn(
-                Map.of(1L, new ChatMemberInfo(1L, "sender", 10L)));
+                Map.of(1L, new ChatMemberInfo(1L, "sender")));
         when(chatMessageRepository.countUnreadByMessageIds(1L, List.of(10L, 11L)))
                 .thenReturn(Map.of(10L, 1L, 11L, 2L));
 
@@ -86,8 +86,8 @@ class ChatMessageQueryServiceTest {
         when(chatMessageRepository.findByChatRoomId(1L, null, null, 20))
                 .thenReturn(List.of(textMessage, imageMessage));
         when(chatMemberDirectoryPort.getMembers(List.of(1L))).thenReturn(
-                Map.of(1L, new ChatMemberInfo(1L, "sender", 10L)));
-        when(chatMemberDirectoryPort.getMember(1L)).thenReturn(new ChatMemberInfo(1L, "sender", 10L));
+                Map.of(1L, new ChatMemberInfo(1L, "sender")));
+        when(chatMemberDirectoryPort.getMember(1L)).thenReturn(new ChatMemberInfo(1L, "sender"));
         when(chatMessageRepository.countUnreadByMessageIds(1L, List.of(10L, 11L)))
                 .thenReturn(Map.of(10L, 1L, 11L, 1L));
         when(getFileDownloadUrlUseCase.getDownloadUrls(List.of(99L)))
@@ -115,8 +115,8 @@ class ChatMessageQueryServiceTest {
         when(chatMessageRepository.findByChatRoomId(1L, null, null, 20))
                 .thenReturn(List.of(deletedImageMessage, activeImageMessage));
         when(chatMemberDirectoryPort.getMembers(List.of(1L))).thenReturn(
-                Map.of(1L, new ChatMemberInfo(1L, "sender", 10L)));
-        when(chatMemberDirectoryPort.getMember(1L)).thenReturn(new ChatMemberInfo(1L, "sender", 10L));
+                Map.of(1L, new ChatMemberInfo(1L, "sender")));
+        when(chatMemberDirectoryPort.getMember(1L)).thenReturn(new ChatMemberInfo(1L, "sender"));
         when(chatMessageRepository.countUnreadByMessageIds(1L, List.of(10L, 11L)))
                 .thenReturn(Map.of(10L, 1L, 11L, 1L));
         when(getFileDownloadUrlUseCase.getDownloadUrls(List.of(99L)))
@@ -138,7 +138,7 @@ class ChatMessageQueryServiceTest {
         when(chatRoomRepository.findById(1L)).thenReturn(Optional.of(chatRoom));
         when(chatMessageRepository.findByChatRoomId(1L, null, null, 20)).thenReturn(List.of(message));
         when(chatMemberDirectoryPort.getMembers(List.of(1L))).thenReturn(
-                Map.of(1L, new ChatMemberInfo(1L, "sender", 10L)));
+                Map.of(1L, new ChatMemberInfo(1L, "sender")));
         when(chatMessageRepository.countUnreadByMessageIds(1L, List.of(10L))).thenReturn(Map.of(10L, 1L));
 
         service.getMessages(1L, 2L, null, null, 20);

@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.rollcall.application.service;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -54,7 +55,8 @@ public class SendAttendanceMessagesService implements SendAttendanceMessagesUseC
 
         Set<Long> requestedStudentIds = Set.copyOf(command.studentIds());
         List<MessageSendResultView> results = requestedStudentIds.stream()
-                .map(studentId -> sendToStudent(studentId, candidatesByStudentId.get(studentId), templatesById))
+                .map(studentId -> sendToStudent(studentId, candidatesByStudentId.get(studentId), templatesById,
+                        command.date()))
                 .toList();
 
         long sentCount = results.stream().filter(MessageSendResultView::sent).count();
@@ -64,7 +66,7 @@ public class SendAttendanceMessagesService implements SendAttendanceMessagesUseC
     }
 
     private MessageSendResultView sendToStudent(Long studentId, MessageSendCandidateView candidate,
-                                                 Map<Long, MessageTemplate> templatesById) {
+                                                 Map<Long, MessageTemplate> templatesById, LocalDate date) {
         if (candidate == null || !candidate.eligible()) {
             return new MessageSendResultView(studentId, candidate != null ? candidate.studentName() : null,
                     false, "발송 대상이 아닙니다(출결 미입력 또는 매칭되는 템플릿 없음).");
@@ -75,8 +77,28 @@ public class SendAttendanceMessagesService implements SendAttendanceMessagesUseC
                     "문자 템플릿을 찾을 수 없습니다.");
         }
 
-        SmsSendResult result = smsSenderPort.send(candidate.parentPhone(), template.getContent());
+        SmsSendResult result;
+        String message = renderMessage(template.getContent(), candidate, date);
+        try {
+            result = smsSenderPort.send(candidate.parentPhone(), message);
+        } catch (RuntimeException e) {
+            log.warn("event=attendance_message_send_student_실패 studentId={}, reason={}",
+                    studentId, e.getMessage(), e);
+            return new MessageSendResultView(studentId, candidate.studentName(), false,
+                    "SMS 발송 처리 중 오류가 발생했습니다.");
+        }
         return new MessageSendResultView(studentId, candidate.studentName(), result.success(),
                 result.success() ? null : result.failureReason());
+    }
+
+    private String renderMessage(String content, MessageSendCandidateView candidate, LocalDate date) {
+        return content
+                .replace("{학생명}", valueOrBlank(candidate.studentName()))
+                .replace("{강의명}", valueOrBlank(candidate.lectureName()))
+                .replace("{날짜}", date != null ? date.toString() : "");
+    }
+
+    private String valueOrBlank(String value) {
+        return value != null ? value : "";
     }
 }

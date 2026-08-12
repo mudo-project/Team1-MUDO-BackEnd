@@ -24,26 +24,21 @@ public interface UserJpaRepository extends JpaRepository<UserEntity, Long> {
     void clearRoleId(@Param("roleId") Long roleId);
 
     @Modifying(clearAutomatically = true)
-    @Query("update UserEntity u set u.password = :passwordHash, u.mustChangePw = false "
-            + "where u.id = :userId and u.mustChangePw = true")
-    int completePasswordSetupIfMustChange(@Param("userId") Long userId, @Param("passwordHash") String passwordHash);
+    @Query("update UserEntity u set u.password = :passwordHash, u.phone = :phone, u.email = :email, "
+            + "u.mustChangePw = false where u.id = :userId and u.mustChangePw = true")
+    int completePasswordSetupIfMustChange(@Param("userId") Long userId, @Param("passwordHash") String passwordHash,
+                                           @Param("phone") String phone, @Param("email") String email);
 
     @Query("select u.id from UserEntity u "
-            + "where u.academyId = :academyId "
-            + "and u.status = com.academy.mudogroupware.users.domain.model.UserStatus.ACTIVE "
+            + "where u.status = com.academy.mudogroupware.users.domain.model.UserStatus.ACTIVE "
             + "and u.id in :userIds")
-    Set<Long> findActiveIdsByAcademyIdAndIdIn(
-            @Param("academyId") Long academyId,
-            @Param("userIds") Set<Long> userIds);
+    Set<Long> findActiveIdsByIdIn(@Param("userIds") Set<Long> userIds);
 
     List<UserEntity> findAllByStatusAndJoinedAtIsNotNull(UserStatus status);
 
-    List<UserEntity> findAllByAcademyIdAndStatusAndNameContainingIgnoreCase(
-            Long academyId, UserStatus status, String keyword);
+    List<UserEntity> findAllByStatusAndNameContainingIgnoreCase(UserStatus status, String keyword);
 
-    List<UserEntity> findAllByAcademyIdAndStatus(Long academyId, UserStatus status);
-
-    List<UserEntity> findAllByAcademyId(Long academyId);
+    List<UserEntity> findAllByStatus(UserStatus status);
 
     @Query("select u.roleId as roleId, count(u) as count from UserEntity u "
             + "where u.status = com.academy.mudogroupware.users.domain.model.UserStatus.ACTIVE "

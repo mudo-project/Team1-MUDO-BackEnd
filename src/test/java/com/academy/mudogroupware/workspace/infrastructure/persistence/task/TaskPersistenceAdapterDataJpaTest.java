@@ -2,13 +2,13 @@ package com.academy.mudogroupware.workspace.infrastructure.persistence.task;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.academy.mudogroupware.global.infrastructure.config.TimeConfig;
 import com.academy.mudogroupware.workspace.domain.model.task.Task;
 import com.academy.mudogroupware.workspace.domain.model.task.TaskStatus;
 import com.academy.mudogroupware.workspace.domain.model.task.TaskStatusHistory;
 import com.academy.mudogroupware.workspace.domain.repository.task.RecurringTaskSkipRepository;
 import com.academy.mudogroupware.workspace.domain.repository.task.TaskRepository;
 import com.academy.mudogroupware.workspace.domain.repository.task.TaskStatusHistoryRepository;
+import com.academy.mudogroupware.workspace.infrastructure.persistence.WorkspacePersistenceTestConfig;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -19,13 +19,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 @DataJpaTest(properties = "spring.jpa.hibernate.ddl-auto=create-drop")
-@Import({
-  TimeConfig.class,
-  TaskPersistenceAdapter.class,
-  TaskStatusHistoryPersistenceAdapter.class,
-  RecurringTaskSkipPersistenceAdapter.class,
-  TaskPersistenceMapperImpl.class
-})
+@Import(WorkspacePersistenceTestConfig.class)
 class TaskPersistenceAdapterDataJpaTest {
 
   private static final long WORKSPACE_ID = 1L;

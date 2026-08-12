@@ -25,10 +25,9 @@ public class DeleteRoleService implements DeleteRoleUseCase {
 
     @Override
     public void deleteRole(DeleteRoleCommand command) {
-        log.info("event=role_delete_시작 roleId={}, academyId={}", command.roleId(), command.academyId());
+        log.info("event=role_delete_시작 roleId={}", command.roleId());
         try {
             Role role = roleRepository.findById(command.roleId())
-                    .filter(r -> r.getAcademyId().equals(command.academyId()))
                     .orElseThrow(RoleNotFoundException::new);
 
             if (userRepository.existsActiveByRoleId(role.getId())) {
@@ -39,8 +38,7 @@ public class DeleteRoleService implements DeleteRoleUseCase {
             roleRepository.deleteById(role.getId());
             log.info("event=role_delete_완료 roleId={}", role.getId());
         } catch (RuntimeException e) {
-            log.warn("event=role_delete_실패 roleId={}, academyId={}, reason={}", command.roleId(),
-                    command.academyId(), e.getMessage(), e);
+            log.warn("event=role_delete_실패 roleId={}, reason={}", command.roleId(), e.getMessage(), e);
             throw e;
         }
     }

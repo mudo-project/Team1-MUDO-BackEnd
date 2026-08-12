@@ -14,6 +14,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -28,9 +29,6 @@ public class UserEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Column(name = "academy_id", nullable = false)
-    private Long academyId;
 
     @Column(nullable = false, length = 50)
     private String username;
@@ -74,13 +72,16 @@ public class UserEntity {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
     @Builder
-    private UserEntity(Long id, Long academyId, String username, String password, String name, Long roleId,
+    private UserEntity(Long id, String username, String password, String name, Long roleId,
                         String phone, String email, UserStatus status, boolean mustChangePw, AccountType accountType,
                         AdminScope adminScope, LocalDateTime joinedAt, LocalDateTime createdAt,
                         LocalDateTime updatedAt) {
         this.id = id;
-        this.academyId = academyId;
         this.username = username;
         this.password = password;
         this.name = name;
@@ -105,6 +106,10 @@ public class UserEntity {
         this.phone = phone;
         this.email = email;
         this.joinedAt = joinedAt;
+    }
+
+    void changeStatus(UserStatus status) {
+        this.status = status;
     }
 
     void changePassword(String password) {

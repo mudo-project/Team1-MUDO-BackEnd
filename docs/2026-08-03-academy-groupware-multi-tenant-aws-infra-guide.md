@@ -33,14 +33,14 @@
 ```text
 사용자 브라우저
     ↓
-Route 53: *.groupware.example.com
+Route 53: *.ieum.store
     ↓
 AWS WAF: 악성 요청·과다 요청 차단
     ↓
 Application Load Balancer: HTTPS 종료, Host 기반 학원 분기
-    ├─ academy-a.groupware.example.com → academy-a Target Group
-    ├─ academy-b.groupware.example.com → academy-b Target Group
-    └─ academy-c.groupware.example.com → academy-c Target Group
+    ├─ academy-a.ieum.store → academy-a Target Group
+    ├─ academy-b.ieum.store → academy-b Target Group
+    └─ academy-c.ieum.store → academy-c Target Group
                                                 ↓
 ECS Cluster on EC2 Auto Scaling Group
     ├─ academy-a Service → Task 1개
@@ -207,7 +207,7 @@ ECS Capacity Provider가 제공하는 배치와 확장을 우선 사용하고, �
 | IAM 관리 제약 | 별도 관리자 역할 사용 | 루트·관리자 접근 및 요청 불가. `iam:ListUsers`·`iam:ListUserPolicies`·`kms:CreateKey`·`cloudtrail:LookupEvents` 등 일부 액션도 계정 정책상 차단됨 |
 | GitHub 조직/사용자 | `team-mudo` | `mudo-project` |
 | GitHub 저장소 | `Team1-MUDO-BackEnd` | `Team1-MUDO-BackEnd` |
-| 서비스 기본 도메인 | `groupware.example.com` | `ieum.store` |
+| 서비스 기본 도메인 | `ieum.store` | `ieum.store` |
 | 첫 학원 코드 | `academy-a` | `academy-a` |
 | 첫 학원 표시 이름 | `A학원` | `테스트학원A` |
 | 운영 DB 엔진 버전 | `MySQL 8.0.x` | `MySQL 8.4.5` (8.0 라인 Extended Support 전환으로 8.4 LTS 사용) |
@@ -215,7 +215,7 @@ ECS Capacity Provider가 제공하는 배치와 확장을 우선 사용하고, �
 | 시작 인스턴스 유형 | `m7i.large` 예시 | `t3.small` (계정 정책상 인스턴스 크기 제한, `db.t3.small`/`t3.small`만 허용됨) |
 | ASG 최대 인스턴스 수 | `4` 예시 | `2` (min/desired 1, max 2 — binpack·오토스케일링 데모 목적) |
 | RDS 시작 클래스 | 부하 테스트 후 결정 | `db.t3.small`, Multi-AZ |
-| 모니터링 도메인 | `monitoring.groupware.example.com` | `<MONITORING_DOMAIN>` |
+| 모니터링 도메인 | `monitoring.ieum.store` | `monitoring.ieum.store` |
 | 모니터링 EC2 | `t4g.medium` 예시 | `<MONITORING_INSTANCE_TYPE>` |
 | 모니터링 EBS | gp3 100 GiB 예시 | `<MONITORING_VOLUME_SIZE>` |
 | Prometheus 보존 기간 | 15일 | `<PROMETHEUS_RETENTION>` |
@@ -634,8 +634,8 @@ TCP 9090, 3100과 Alloy 디버그 포트 12345를 인터넷에 공개하지 않�
 5. Domain names에 다음 두 개 입력
 
 ```text
-groupware.example.com
-*.groupware.example.com
+ieum.store
+*.ieum.store
 ```
 
 6. Validation method → DNS validation
@@ -644,7 +644,7 @@ groupware.example.com
 9. 인증서 상세 화면 → **Create records in Route 53**
 10. Status가 Issued가 될 때까지 기다린다.
 
-Wildcard 인증서는 한 단계 하위 도메인만 보호한다. `a.groupware.example.com`은 가능하지만 `api.a.groupware.example.com`은 별도 인증서가 필요하다.
+Wildcard 인증서는 한 단계 하위 도메인만 보호한다. `academy-a.ieum.store`는 가능하지만 `api.academy-a.ieum.store`는 별도 인증서가 필요하다.
 
 ### 8-2. DNS 준비
 
@@ -653,7 +653,7 @@ Route 53 → Hosted zones에서 `<BASE_DOMAIN>` Hosted Zone이 존재하는지 �
 ALB를 만든 뒤 다음 Alias를 추가한다.
 
 ```text
-*.groupware.example.com → mudo-prod-alb
+*.ieum.store → mudo-prod-alb
 ```
 
 학원마다 DNS 레코드를 만들지 않고 wildcard 레코드 하나를 사용하되, ALB Host 규칙은 등록된 학원만 허용한다.
@@ -750,7 +750,7 @@ CloudWatch → Logs → Log groups → Create log group:
 DB_URL=jdbc:mysql://<cell-1-endpoint>:3306/mudo_tenant_academy_a?useSSL=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
 DB_USERNAME=academy_a_app
 MIGRATOR_DB_USERNAME=academy_a_migrator
-FRONTEND_ORIGINS=https://academy-a.groupware.example.com
+FRONTEND_ORIGINS=https://academy-a.ieum.store
 ```
 
 JWT Secret과 DB 비밀번호는 예시 문자열을 재사용하지 말고 비밀번호 관리 도구 또는 안전한 난수 생성기로 학원별 생성한다.
@@ -1213,7 +1213,7 @@ tenants:
     cell: cell-1
     service: mudo-prod-svc-academy-a
     task_family: mudo-prod-tenant-academy-a
-    health_url: https://academy-a.groupware.example.com/actuator/health
+    health_url: https://academy-a.ieum.store/actuator/health
     s3_bucket: mudo-prod-staff-<account-suffix>
 ```
 
@@ -1436,10 +1436,10 @@ ALB → Listeners and rules:
 - Action → Fixed response 403
 
 - Priority 100
-- Condition → Host header → `academy-a.groupware.example.com`
+- Condition → Host header → `academy-a.ieum.store`
 - Action → Forward → `mudo-prod-tg-academy-a`
 
-등록되지 않은 Host는 기본 404를 반환해야 한다. 외부에서 `https://academy-a.groupware.example.com/actuator/prometheus`를 호출해 403이고, Alloy에서는 같은 Task의 내부 주소로 수집이 성공하는지 모두 확인한다.
+등록되지 않은 Host는 기본 404를 반환해야 한다. 외부에서 `https://academy-a.ieum.store/actuator/prometheus`를 호출해 403이고, Alloy에서는 같은 Task의 내부 주소로 수집이 성공하는지 모두 확인한다.
 
 학원마다 Target Group과 Listener Rule이 하나씩 늘어나므로 **Service Quotas** 콘솔에서 ALB 규칙·Target Group 한도를 확인한다. 현재 한도의 70~80%에 도달하기 전에 한도 상향을 요청하거나 새 ALB Cell을 만든다.
 
@@ -1765,7 +1765,7 @@ tenants:
     billing_plan: basic
     runtime_profile: shared-default
     cell: cell-1
-    health_url: https://academy-a.groupware.example.com/actuator/health
+    health_url: https://academy-a.ieum.store/actuator/health
 ```
 
 CI는 학원별 값을 직접 하드코딩하지 않고 다음 순서로 처리한다.
@@ -1954,6 +1954,47 @@ Session Manager에서 Docker Engine과 Docker Compose Plugin을 설치하고 Doc
 
 `docker-compose.monitoring.yml`의 기본 구조:
 
+### 21-5-1. 운영 반영: 데이터 볼륨 권한과 502 복구
+
+모니터링 서버는 호스트 디렉터리를 컨테이너에 바인드 마운트한다. 따라서 최초 생성자 또는 이전 컨테이너가 `root` 소유로 남긴 파일 때문에 Grafana, Prometheus, Loki, Alertmanager가 시작 직후 종료될 수 있다. 이 경우 ALB 대상이 비정상이 되어 `https://monitoring.ieum.store`에서 `502 Bad Gateway`가 발생한다.
+
+`deploy-monitoring-stack.sh`는 배포 전에 아래 데이터 디렉터리와 SSM에서 렌더링한 `alertmanager/alertmanager.yml`의 소유권을 매번 보정한다. 기존에 잘못 생성된 파일도 다음 재배포에서 함께 복구된다.
+
+| 디렉터리 | 컨테이너 | 소유권 |
+| --- | --- | --- |
+| `data/grafana` | Grafana | `472:472` |
+| `data/prometheus` | Prometheus | `65534:65534` |
+| `data/loki` | Loki | `10001:10001` |
+| `data/alertmanager` | Alertmanager | `65534:65534` |
+| `alertmanager/alertmanager.yml` | Alertmanager 설정 | `65534:65534`, mode `600` |
+
+복구 시에는 다음 순서로 확인한다.
+
+1. ALB 대상 그룹 `mudo-prod-tg-monitoring`의 대상 상태가 `Healthy`인지 확인한다.
+2. 모니터링 EC2에서 `docker ps -a`와 각 컨테이너 로그를 확인한다. `not writable`, `permission denied`가 보이면 볼륨 소유권 문제다.
+3. 수정된 배포 스크립트가 main에 반영된 뒤 모니터링 GitHub Actions를 다시 실행한다.
+4. `docker ps -a`에서 Grafana, Prometheus, Loki, Alertmanager가 모두 `Up`인지 확인하고, 최근 로그에 오류가 없는지 확인한다.
+
+   ```bash
+   docker logs --tail 50 mudo-observability-grafana-1
+   docker logs --tail 50 mudo-observability-prometheus-1
+   docker logs --tail 50 mudo-observability-loki-1
+   docker logs --tail 50 mudo-observability-alertmanager-1
+   ```
+
+5. 모니터링 EC2에서 각 서비스의 준비 상태를 확인한다.
+
+   ```bash
+   curl -fsS http://127.0.0.1:3000/api/health
+   curl -fsS http://127.0.0.1:9090/-/ready
+   curl -fsS http://127.0.0.1:3100/ready
+   curl -fsS http://127.0.0.1:9093/-/ready
+   ```
+
+6. 마지막으로 `https://monitoring.ieum.store/api/health`가 `HTTP 200`인지 확인한다. ALB는 Grafana 포트 3000만 검사하므로, 이 응답만으로 Prometheus·Loki·Alertmanager까지 정상이라고 판단하지 않는다.
+
+`chmod 777`로 우회하지 않는다. 이미지 버전을 변경할 때는 각 이미지의 실행 UID/GID를 다시 확인해 위 소유권 값을 함께 검토한다.
+
 ```yaml
 name: mudo-observability
 
@@ -2031,11 +2072,13 @@ networks:
 `.env.monitoring`은 서버에서 SSM 값을 받아 생성하고 권한을 `600`으로 제한한다. Git에는 올리지 않는다.
 
 ```text
-MONITORING_DOMAIN=monitoring.groupware.example.com
+MONITORING_DOMAIN=monitoring.ieum.store
 GRAFANA_ADMIN_USER=<SSM에서 받은 값>
 GRAFANA_ADMIN_PASSWORD=<SSM에서 받은 값>
 PROMETHEUS_RETENTION=15d
 ```
+
+`MONITORING_DOMAIN`은 Grafana의 실제 외부 주소다. 모니터링 EC2의 사설 IP(`10.40.10.33`)는 VPC 내부 통신용이므로 브라우저 접속 주소로 사용하지 않는다.
 
 Alertmanager의 실제 `alertmanager.yml`도 SSM의 Slack Webhook을 주입해 서버에서 렌더링한다. Webhook이 포함된 결과 파일은 Git에 올리지 않고 권한을 `600`으로 제한한다.
 
@@ -2216,11 +2259,11 @@ EC2 → Target Groups → Create target group:
 기존 ALB HTTPS Listener에 다음 규칙을 추가한다.
 
 ```text
-Host = monitoring.groupware.example.com
+Host = monitoring.ieum.store
 → mudo-prod-tg-monitoring
 ```
 
-Route 53 wildcard가 없다면 `monitoring.groupware.example.com` Alias Record를 기존 ALB로 추가한다. 별도 ALB를 만들지 않는다.
+Route 53 wildcard가 없다면 `monitoring.ieum.store` Alias Record를 기존 ALB로 추가한다. 별도 ALB를 만들지 않는다.
 
 공유 계정 제약 때문에 초기 Grafana는 공유 로컬 계정 `groupware-grafana` 하나를 사용한다. Anonymous access와 self sign-up은 끄고 비밀번호는 SSM에서 관리한다. 이 방식 역시 실제 사용자를 감사 로그로 구분할 수 없으므로 운영 변경 이슈 기록 절차를 동일하게 적용한다.
 

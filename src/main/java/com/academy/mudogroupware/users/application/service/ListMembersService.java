@@ -9,10 +9,10 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.academy.mudogroupware.global.domain.common.page.PageResult;
 import com.academy.mudogroupware.users.application.port.MemberTodayAttendanceStatus;
 import com.academy.mudogroupware.users.application.port.TodayAttendanceStatusPort;
 import com.academy.mudogroupware.users.application.result.MemberListItem;
+import com.academy.mudogroupware.users.application.result.MemberPage;
 import com.academy.mudogroupware.users.application.usecase.ListMembersUseCase;
 import com.academy.mudogroupware.users.domain.model.Role;
 import com.academy.mudogroupware.users.domain.model.User;
@@ -34,13 +34,13 @@ public class ListMembersService implements ListMembersUseCase {
     private final TodayAttendanceStatusPort todayAttendanceStatusPort;
 
     @Override
-    public PageResult<MemberListItem> list(Long academyId, String keyword, Long roleId, int page, int size) {
-        log.info("event=member_list_시작 academyId={}, keywordPresent={}, roleId={}, page={}, size={}", academyId,
+    public MemberPage list(String keyword, Long roleId, int page, int size) {
+        log.info("event=member_list_시작 keywordPresent={}, roleId={}, page={}, size={}",
                 keyword != null && !keyword.isBlank(), roleId, page, size);
 
-        List<User> users = userRepository.findAllByAcademyId(academyId);
+        List<User> users = userRepository.findAll();
 
-        Map<Long, String> roleNamesById = roleRepository.findAllByAcademyId(academyId).stream()
+        Map<Long, String> roleNamesById = roleRepository.findAll().stream()
                 .collect(Collectors.toMap(Role::getId, Role::getName));
 
         String normalizedKeyword = keyword == null ? "" : keyword.trim().toLowerCase(Locale.ROOT);
@@ -68,8 +68,8 @@ public class ListMembersService implements ListMembersUseCase {
                 .map(item -> withAttendanceStatus(item, attendanceStatusByUserId))
                 .toList();
 
-        log.info("event=member_list_완료 academyId={}, count={}", academyId, result.size());
-        return PageResult.of(result, page, size, to < filtered.size());
+        log.info("event=member_list_완료 count={}", result.size());
+        return MemberPage.of(result, page, size, filtered.size(), to < filtered.size());
     }
 
     private MemberListItem toItem(User user, String roleName) {

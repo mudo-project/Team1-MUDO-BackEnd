@@ -14,7 +14,7 @@ public record AssignRolePermissionsRequest(
         @NotNull Set<String> permissionCodes
 ) {
 
-    public AssignRolePermissionsCommand toCommand(Long roleId, Long academyId) {
-        return new AssignRolePermissionsCommand(roleId, academyId, permissionCodes);
+    public AssignRolePermissionsCommand toCommand(Long roleId) {
+        return new AssignRolePermissionsCommand(roleId, permissionCodes);
     }
 }

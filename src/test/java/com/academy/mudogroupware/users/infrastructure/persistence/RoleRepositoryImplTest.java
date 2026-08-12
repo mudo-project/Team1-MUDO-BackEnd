@@ -24,7 +24,7 @@ class RoleRepositoryImplTest {
         RoleRepositoryImpl adapter = new RoleRepositoryImpl(jpaRepository, permissionJpaRepository);
         Role role = role();
         DataIntegrityViolationException violation =
-                new DataIntegrityViolationException("Duplicate entry for key 'uk_role_academy_name'");
+                new DataIntegrityViolationException("Duplicate entry for key 'uk_role_name'");
         when(jpaRepository.saveAndFlush(any(RoleEntity.class))).thenThrow(violation);
 
         assertThatThrownBy(() -> adapter.save(role))
@@ -51,7 +51,7 @@ class RoleRepositoryImplTest {
         RoleRepositoryImpl adapter = new RoleRepositoryImpl(jpaRepository, permissionJpaRepository);
         when(jpaRepository.findWithPermissionsById(1L)).thenReturn(Optional.of(roleEntity()));
         DataIntegrityViolationException violation =
-                new DataIntegrityViolationException("Duplicate entry for key 'uk_role_academy_name'");
+                new DataIntegrityViolationException("Duplicate entry for key 'uk_role_name'");
         doThrow(violation).when(jpaRepository).flush();
 
         assertThatThrownBy(() -> adapter.updateNameAndDescription(1L, "조교", "새 설명", "#FFFFFF"))
@@ -97,11 +97,11 @@ class RoleRepositoryImplTest {
     }
 
     private Role role() {
-        return Role.create(1L, "강사", "설명", LocalDateTime.now());
+        return Role.create("강사", "설명", LocalDateTime.now());
     }
 
     private RoleEntity roleEntity() {
         return RoleEntity.builder()
-                .id(1L).academyId(10L).name("강사").description("설명").createdAt(LocalDateTime.now()).build();
+                .id(1L).name("강사").description("설명").createdAt(LocalDateTime.now()).build();
     }
 }

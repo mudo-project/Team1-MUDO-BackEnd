@@ -2,8 +2,8 @@ package com.academy.mudogroupware.workspace.infrastructure.persistence.task;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.academy.mudogroupware.global.infrastructure.config.TimeConfig;
 import com.academy.mudogroupware.workspace.domain.model.task.TaskStatus;
+import com.academy.mudogroupware.workspace.infrastructure.persistence.WorkspacePersistenceTestConfig;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -14,7 +14,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 @DataJpaTest(properties = "spring.jpa.hibernate.ddl-auto=create-drop")
-@Import(TimeConfig.class)
+@Import(WorkspacePersistenceTestConfig.class)
 class TaskJpaRepositoryOverdueQueryDataJpaTest {
 
   private static final LocalDate TODAY = LocalDate.of(2026, 8, 5);

@@ -15,7 +15,7 @@ public record UpdateRoleRequest(
         @Size(max = 20) String color
 ) {
 
-    public UpdateRoleCommand toCommand(Long roleId, Long academyId) {
-        return new UpdateRoleCommand(roleId, academyId, name, description, color);
+    public UpdateRoleCommand toCommand(Long roleId) {
+        return new UpdateRoleCommand(roleId, name, description, color);
     }
 }

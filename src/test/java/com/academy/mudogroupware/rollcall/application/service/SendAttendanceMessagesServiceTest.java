@@ -77,6 +77,34 @@ class SendAttendanceMessagesServiceTest {
     }
 
     @Test
+    void replacesTemplateVariablesBeforeSendingSms() {
+        MessageTemplate template = MessageTemplate.restore(
+                7L,
+                "결석 안내",
+                AttendanceStatus.ABSENT,
+                "[학원명] 오늘 {학생명} 학생이 {강의명} 강의에 결석했습니다. 기준일 {날짜}.",
+                1L,
+                NOW,
+                NOW);
+        MessageSendCandidateView candidate = new MessageSendCandidateView(
+                10L, "이준호", AttendanceStatus.ABSENT, "010-1111-1111", 7L, "결석 안내", true,
+                "수학 기초반");
+        when(getMessageSendCandidatesUseCase.getCandidates(LECTURE_ID, DATE))
+                .thenReturn(List.of(candidate));
+        when(messageTemplateRepository.findById(7L)).thenReturn(Optional.of(template));
+        when(smsSenderPort.send("010-1111-1111",
+                "[학원명] 오늘 이준호 학생이 수학 기초반 강의에 결석했습니다. 기준일 2026-08-05."))
+                .thenReturn(SmsSendResult.succeeded());
+
+        List<MessageSendResultView> results = service.send(
+                new SendAttendanceMessagesCommand(LECTURE_ID, DATE, List.of(10L)));
+
+        assertThat(results.get(0).sent()).isTrue();
+        verify(smsSenderPort).send("010-1111-1111",
+                "[학원명] 오늘 이준호 학생이 수학 기초반 강의에 결석했습니다. 기준일 2026-08-05.");
+    }
+
+    @Test
     void doesNotCallSmsPortForIneligibleStudent() {
         MessageSendCandidateView candidate = new MessageSendCandidateView(
                 10L, "이준호", AttendanceStatus.ABSENT, "010-1111-1111", null, null, false);
@@ -141,6 +169,37 @@ class SendAttendanceMessagesServiceTest {
                 });
         verify(smsSenderPort).send("010-1111-1111", "결석했습니다");
         verify(smsSenderPort).send("010-2222-2222", "결석했습니다");
+    }
+
+    @Test
+    void continuesToNextStudentWhenSmsPortThrows() {
+        MessageTemplate template = MessageTemplate.restore(
+                7L, "결석 안내", AttendanceStatus.ABSENT, "결석했습니다", 1L, NOW, NOW);
+        MessageSendCandidateView firstCandidate = new MessageSendCandidateView(
+                10L, "이준호", AttendanceStatus.ABSENT, "010-1111-1111", 7L, "결석 안내", true);
+        MessageSendCandidateView secondCandidate = new MessageSendCandidateView(
+                11L, "김서윤", AttendanceStatus.ABSENT, "010-2222-2222", 7L, "결석 안내", true);
+        when(getMessageSendCandidatesUseCase.getCandidates(LECTURE_ID, DATE))
+                .thenReturn(List.of(firstCandidate, secondCandidate));
+        when(messageTemplateRepository.findById(7L)).thenReturn(Optional.of(template));
+        when(smsSenderPort.send("010-1111-1111", "결석했습니다"))
+                .thenThrow(new IllegalStateException("HMAC 서명 생성에 실패했습니다."));
+        when(smsSenderPort.send("010-2222-2222", "결석했습니다")).thenReturn(SmsSendResult.succeeded());
+
+        List<MessageSendResultView> results = service.send(
+                new SendAttendanceMessagesCommand(LECTURE_ID, DATE, List.of(10L, 11L)));
+
+        assertThat(results).hasSize(2);
+        assertThat(results).filteredOn(result -> result.studentId().equals(10L))
+                .allSatisfy(result -> {
+                    assertThat(result.sent()).isFalse();
+                    assertThat(result.failureReason()).contains("SMS 발송 처리 중 오류가 발생했습니다.");
+                });
+        assertThat(results).filteredOn(result -> result.studentId().equals(11L))
+                .allSatisfy(result -> {
+                    assertThat(result.sent()).isTrue();
+                    assertThat(result.failureReason()).isNull();
+                });
     }
 
     @Test

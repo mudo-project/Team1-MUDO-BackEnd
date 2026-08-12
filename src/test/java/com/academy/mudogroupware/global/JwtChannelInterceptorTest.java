@@ -26,7 +26,7 @@ class JwtChannelInterceptorTest {
     JwtTokenProvider provider = new JwtTokenProvider(p);
     StompHeaderAccessor headers = StompHeaderAccessor.create(StompCommand.CONNECT);
     headers.setSessionAttributes(
-        Map.of("accessToken", provider.createAccessToken(3L, "staff", 5L, 1L, AccountType.MEMBER, null)));
+        Map.of("accessToken", provider.createAccessToken(3L, "staff", 5L, AccountType.MEMBER, null, false)));
     Message<byte[]> message =
         MessageBuilder.createMessage(new byte[0], headers.getMessageHeaders());
     Message<?> result =

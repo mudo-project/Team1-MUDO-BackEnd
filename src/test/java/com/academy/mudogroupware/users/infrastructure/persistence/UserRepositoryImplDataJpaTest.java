@@ -38,20 +38,18 @@ class UserRepositoryImplDataJpaTest {
     private UserRepositoryImpl userRepository;
 
     @Test
-    void returnsOnlyRequestedActiveUserIdsInTheSameAcademy() {
+    void returnsOnlyRequestedActiveUserIds() {
         long includedId = 10L;
-        long otherAcademyId = 20L;
         long inactiveId = 30L;
         long resignedId = 40L;
         long notRequestedId = 50L;
-        insertUser(includedId, 1L, "included", UserStatus.ACTIVE);
-        insertUser(otherAcademyId, 2L, "other-academy", UserStatus.ACTIVE);
-        insertUser(inactiveId, 1L, "inactive", UserStatus.INACTIVE);
-        insertUser(resignedId, 1L, "resigned", UserStatus.RESIGNED);
-        insertUser(notRequestedId, 1L, "not-requested", UserStatus.ACTIVE);
+        insertUser(includedId, "included", UserStatus.ACTIVE);
+        insertUser(inactiveId, "inactive", UserStatus.INACTIVE);
+        insertUser(resignedId, "resigned", UserStatus.RESIGNED);
+        insertUser(notRequestedId, "not-requested", UserStatus.ACTIVE);
 
         Set<Long> activeUserIds = userRepository.findActiveUserIds(
-                1L, Set.of(includedId, otherAcademyId, inactiveId, resignedId));
+                1L, Set.of(includedId, inactiveId, resignedId));
 
         assertThat(activeUserIds).containsExactly(includedId);
         assertThat(activeUserIds).doesNotContain(notRequestedId);
@@ -59,8 +57,8 @@ class UserRepositoryImplDataJpaTest {
 
     @Test
     void findAllByIdReturnsOnlyExistingUsersAndIgnoresUnknownIds() {
-        insertUser(1L, 1L, "one", UserStatus.ACTIVE);
-        insertUser(2L, 1L, "two", UserStatus.ACTIVE);
+        insertUser(1L, "one", UserStatus.ACTIVE);
+        insertUser(2L, "two", UserStatus.ACTIVE);
 
         List<User> result = userRepository.findAllById(Set.of(1L, 2L, 999L));
 
@@ -75,12 +73,12 @@ class UserRepositoryImplDataJpaTest {
 
     @Test
     void countActiveByRoleIdsCountsOnlyActiveUsersGroupedByRole() {
-        insertUserWithRole(1L, 1L, "role5-active-1", UserStatus.ACTIVE, 5L);
-        insertUserWithRole(2L, 1L, "role5-active-2", UserStatus.ACTIVE, 5L);
-        insertUserWithRole(3L, 1L, "role5-resigned", UserStatus.RESIGNED, 5L);
-        insertUserWithRole(6L, 1L, "role5-inactive", UserStatus.INACTIVE, 5L);
-        insertUserWithRole(4L, 1L, "role7-active", UserStatus.ACTIVE, 7L);
-        insertUserWithRole(5L, 1L, "role9-active-not-requested", UserStatus.ACTIVE, 9L);
+        insertUserWithRole(1L, "role5-active-1", UserStatus.ACTIVE, 5L);
+        insertUserWithRole(2L, "role5-active-2", UserStatus.ACTIVE, 5L);
+        insertUserWithRole(3L, "role5-resigned", UserStatus.RESIGNED, 5L);
+        insertUserWithRole(6L, "role5-inactive", UserStatus.INACTIVE, 5L);
+        insertUserWithRole(4L, "role7-active", UserStatus.ACTIVE, 7L);
+        insertUserWithRole(5L, "role9-active-not-requested", UserStatus.ACTIVE, 9L);
 
         Map<Long, Long> result = userRepository.countActiveByRoleIds(Set.of(5L, 7L));
 
@@ -89,8 +87,8 @@ class UserRepositoryImplDataJpaTest {
 
     @Test
     void countActiveByRoleIdsReturnsEmptyMapWhenNoActiveUsersForRequestedRoles() {
-        insertUserWithRole(1L, 1L, "role5-resigned", UserStatus.RESIGNED, 5L);
-        insertUserWithRole(2L, 1L, "role5-inactive", UserStatus.INACTIVE, 5L);
+        insertUserWithRole(1L, "role5-resigned", UserStatus.RESIGNED, 5L);
+        insertUserWithRole(2L, "role5-inactive", UserStatus.INACTIVE, 5L);
 
         Map<Long, Long> result = userRepository.countActiveByRoleIds(Set.of(5L));
 
@@ -98,22 +96,24 @@ class UserRepositoryImplDataJpaTest {
     }
 
     @Test
-    void completePasswordSetupReplacesPasswordAndClearsMustChangePw() {
-        insertUserWithPasswordAndMustChangePw(1L, 1L, "pending", "old-hash", true);
+    void completePasswordSetupReplacesPasswordContactAndClearsMustChangePw() {
+        insertUserWithPasswordAndMustChangePw(1L, "pending", "old-hash", true);
 
-        boolean updated = userRepository.completePasswordSetup(1L, "new-hash");
+        boolean updated = userRepository.completePasswordSetup(1L, "new-hash", "010-1234-5678", "new1@example.com");
 
         assertThat(updated).isTrue();
         User found = userRepository.findById(1L).orElseThrow();
         assertThat(found.getPassword()).isEqualTo("new-hash");
+        assertThat(found.getPhone()).isEqualTo("010-1234-5678");
+        assertThat(found.getEmail()).isEqualTo("new1@example.com");
         assertThat(found.isMustChangePw()).isFalse();
     }
 
     @Test
     void completePasswordSetupReturnsFalseWhenAlreadyCompleted() {
-        insertUserWithPasswordAndMustChangePw(2L, 1L, "done", "already-hash", false);
+        insertUserWithPasswordAndMustChangePw(2L, "done", "already-hash", false);
 
-        boolean updated = userRepository.completePasswordSetup(2L, "new-hash");
+        boolean updated = userRepository.completePasswordSetup(2L, "new-hash", "010-1234-5678", "new2@example.com");
 
         assertThat(updated).isFalse();
         User found = userRepository.findById(2L).orElseThrow();
@@ -122,21 +122,20 @@ class UserRepositoryImplDataJpaTest {
     }
 
     @Test
-    void findAllByAcademyIdReturnsAllStatusesIncludingResignedButExcludesOtherAcademies() {
-        insertUserWithRole(1L, 1L, "active", UserStatus.ACTIVE, 5L);
-        insertUserWithRole(2L, 1L, "resigned", UserStatus.RESIGNED, 5L);
-        insertUserWithRole(3L, 1L, "inactive", UserStatus.INACTIVE, 7L);
-        insertUserWithRole(4L, 2L, "other-academy", UserStatus.ACTIVE, 5L);
+    void findAllReturnsAllUsersRegardlessOfStatus() {
+        insertUserWithRole(1L, "active", UserStatus.ACTIVE, 5L);
+        insertUserWithRole(2L, "resigned", UserStatus.RESIGNED, 5L);
+        insertUserWithRole(3L, "inactive", UserStatus.INACTIVE, 7L);
 
-        List<User> result = userRepository.findAllByAcademyId(1L);
+        List<User> result = userRepository.findAll();
 
         assertThat(result).extracting(User::getId)
                 .containsExactlyInAnyOrder(1L, 2L, 3L);
     }
 
     @Test
-    void savesUserWithNullPhoneAndEmail() {
-        User user = User.create(1L, "no-contact", "hashed", "연락처없음", null, null,
+    void createdUserHasNullPhoneAndEmailUntilProfileIsUpdated() {
+        User user = User.create("no-contact", "hashed", "연락처없음",
                 null, com.academy.mudogroupware.global.domain.auth.AccountType.MEMBER, null,
                 java.time.LocalDateTime.now());
 
@@ -148,7 +147,7 @@ class UserRepositoryImplDataJpaTest {
 
     @Test
     void updateProfileReplacesNameContactAndJoinedAt() {
-        insertUserWithRole(1L, 1L, "before", UserStatus.ACTIVE, null);
+        insertUserWithRole(1L, "before", UserStatus.ACTIVE, null);
         java.time.LocalDateTime newJoinedAt = java.time.LocalDateTime.of(2026, 1, 1, 0, 0);
 
         userRepository.updateProfile(1L, "새이름", "010-9999-0000", "new@example.com", newJoinedAt);
@@ -162,35 +161,46 @@ class UserRepositoryImplDataJpaTest {
 
     @Test
     void changePasswordReplacesPasswordHash() {
-        insertUserWithRole(1L, 1L, "before", UserStatus.ACTIVE, null);
+        insertUserWithRole(1L, "before", UserStatus.ACTIVE, null);
 
         userRepository.changePassword(1L, "new-encoded-hash");
 
         assertThat(userRepository.findById(1L).orElseThrow().getPassword()).isEqualTo("new-encoded-hash");
     }
 
-    private void insertUserWithPasswordAndMustChangePw(long id, long academyId, String suffix, String password,
+    @Test
+    void changesStatusBidirectionally() {
+        insertUserWithRole(1L, "before", UserStatus.ACTIVE, null);
+
+        userRepository.changeStatus(1L, UserStatus.RESIGNED);
+        assertThat(userRepository.findById(1L).orElseThrow().getStatus()).isEqualTo(UserStatus.RESIGNED);
+
+        userRepository.changeStatus(1L, UserStatus.ACTIVE);
+        assertThat(userRepository.findById(1L).orElseThrow().getStatus()).isEqualTo(UserStatus.ACTIVE);
+    }
+
+    private void insertUserWithPasswordAndMustChangePw(long id, String suffix, String password,
                                                          boolean mustChangePw) {
         jdbcTemplate.update("""
                 insert into users (
-                    id, academy_id, role_id, username, password, name, phone_number, email, status,
-                    must_change_pw, account_type, admin_scope, created_at, updated_at
+                    id, role_id, username, password, name, phone_number, email, status,
+                    must_change_pw, account_type, admin_scope, version, created_at, updated_at
                 ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, current_timestamp, current_timestamp)
-                """, id, academyId, null, "user-" + suffix, password, "사용자-" + suffix,
-                "010-0000-0000", suffix + "@example.com", UserStatus.ACTIVE.name(), mustChangePw, "MEMBER", null);
+                """, id, null, "user-" + suffix, password, "사용자-" + suffix,
+                "010-0000-0000", suffix + "@example.com", UserStatus.ACTIVE.name(), mustChangePw, "MEMBER", null, 0L);
     }
 
-    private void insertUser(long id, long academyId, String suffix, UserStatus status) {
-        insertUserWithRole(id, academyId, suffix, status, null);
+    private void insertUser(long id, String suffix, UserStatus status) {
+        insertUserWithRole(id, suffix, status, null);
     }
 
-    private void insertUserWithRole(long id, long academyId, String suffix, UserStatus status, Long roleId) {
+    private void insertUserWithRole(long id, String suffix, UserStatus status, Long roleId) {
         jdbcTemplate.update("""
                 insert into users (
-                    id, academy_id, role_id, username, password, name, phone_number, email, status,
-                    must_change_pw, account_type, admin_scope, created_at, updated_at
+                    id, role_id, username, password, name, phone_number, email, status,
+                    must_change_pw, account_type, admin_scope, version, created_at, updated_at
                 ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, current_timestamp, current_timestamp)
-                """, id, academyId, roleId, "user-" + suffix, "password", "사용자-" + suffix,
-                "010-0000-0000", suffix + "@example.com", status.name(), false, "MEMBER", null);
+                """, id, roleId, "user-" + suffix, "password", "사용자-" + suffix,
+                "010-0000-0000", suffix + "@example.com", status.name(), false, "MEMBER", null, 0L);
     }
 }

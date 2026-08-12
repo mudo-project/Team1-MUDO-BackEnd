@@ -1,9 +1,8 @@
 package com.academy.mudogroupware.users.application.usecase;
 
-import com.academy.mudogroupware.global.domain.common.page.PageResult;
-import com.academy.mudogroupware.users.application.result.MemberListItem;
+import com.academy.mudogroupware.users.application.result.MemberPage;
 
 public interface ListMembersUseCase {
 
-    PageResult<MemberListItem> list(Long academyId, String keyword, Long roleId, int page, int size);
+    MemberPage list(String keyword, Long roleId, int page, int size);
 }
