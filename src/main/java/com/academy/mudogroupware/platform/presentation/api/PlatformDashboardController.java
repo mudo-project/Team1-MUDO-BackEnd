@@ -5,6 +5,7 @@ import com.academy.mudogroupware.platform.application.service.PlatformDashboardQ
 import com.academy.mudogroupware.platform.domain.model.DashboardPeriod;
 import com.academy.mudogroupware.platform.domain.model.DashboardScope;
 import com.academy.mudogroupware.platform.presentation.api.common.PlatformResponseCode;
+import com.academy.mudogroupware.platform.presentation.api.response.AcademyApiCallFrequencyResponse;
 import com.academy.mudogroupware.platform.presentation.api.response.AcademyResponse;
 import com.academy.mudogroupware.platform.presentation.api.response.MemberCountResponse;
 import com.academy.mudogroupware.platform.presentation.api.response.OperationalMetricsResponse;
@@ -51,6 +52,19 @@ public class PlatformDashboardController {
       @RequestParam(defaultValue = "LAST_HOUR") DashboardPeriod period) {
     return ResponseEntity.ok(GlobalApiResponse.ok(PlatformResponseCode.OPERATIONAL_METRICS_READ,
         OperationalMetricsResponse.from(queryService.operationalMetrics(scope, academyCode, period))));
+  }
+
+  @GetMapping("/api-call-frequency")
+  @Operation(summary = "학원별 API 호출 빈도 비교 조회",
+      description = "전체 또는 선택 학원의 주요 업무 API 호출 빈도를 학원별로 조회한다.")
+  @ApiResponses(@ApiResponse(responseCode = "200", description = "학원별 API 호출 빈도 조회 성공"))
+  public ResponseEntity<GlobalApiResponse<List<AcademyApiCallFrequencyResponse>>> apiCallFrequency(
+      @RequestParam(defaultValue = "ALL") DashboardScope scope,
+      @RequestParam(required = false) String academyCode,
+      @RequestParam(defaultValue = "LAST_HOUR") DashboardPeriod period) {
+    return ResponseEntity.ok(GlobalApiResponse.ok(PlatformResponseCode.API_CALL_FREQUENCY_READ,
+        queryService.apiCallFrequency(scope, academyCode, period).stream()
+            .map(AcademyApiCallFrequencyResponse::from).toList()));
   }
 
   @GetMapping("/academies/{academyCode}/member-count")

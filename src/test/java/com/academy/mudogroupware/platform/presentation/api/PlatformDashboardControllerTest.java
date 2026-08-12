@@ -5,10 +5,12 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.academy.mudogroupware.platform.application.service.PlatformDashboardQueryService;
+import com.academy.mudogroupware.platform.domain.model.AcademyApiCallMetrics;
 import com.academy.mudogroupware.platform.domain.model.ApiCallMetric;
 import com.academy.mudogroupware.platform.domain.model.DashboardPeriod;
 import com.academy.mudogroupware.platform.domain.model.DashboardScope;
 import com.academy.mudogroupware.platform.domain.model.OperationalMetrics;
+import com.academy.mudogroupware.platform.presentation.api.response.AcademyApiCallFrequencyResponse;
 import com.academy.mudogroupware.platform.presentation.api.response.OperationalMetricsResponse;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -41,5 +43,24 @@ class PlatformDashboardControllerTest {
     assertThat(body.rdsConnectionBudget().safeBudget()).isEqualTo(100);
     assertThat(body.ecsHostHeadrooms()).hasSize(1);
     assertThat(body.ecsHostHeadrooms().get(0).academyCodes()).containsExactly("academy-a");
+  }
+
+  @Test
+  void apiCallFrequencyReturnsPerAcademyResponseList() {
+    PlatformDashboardQueryService queryService = mock(PlatformDashboardQueryService.class);
+    PlatformDashboardController controller = new PlatformDashboardController(queryService);
+    when(queryService.apiCallFrequency(DashboardScope.ALL, null, DashboardPeriod.LAST_HOUR))
+        .thenReturn(List.of(
+            new AcademyApiCallMetrics("academy-a", List.of(new ApiCallMetric("ACCOUNT_ISSUANCE", 3L))),
+            new AcademyApiCallMetrics("academy-b", List.of())));
+
+    var response = controller.apiCallFrequency(DashboardScope.ALL, null, DashboardPeriod.LAST_HOUR);
+
+    List<AcademyApiCallFrequencyResponse> body = response.getBody().data();
+    assertThat(body).hasSize(2);
+    assertThat(body.get(0).academyCode()).isEqualTo("academy-a");
+    assertThat(body.get(0).apiCallMetrics()).hasSize(1);
+    assertThat(body.get(1).academyCode()).isEqualTo("academy-b");
+    assertThat(body.get(1).apiCallMetrics()).isEmpty();
   }
 }

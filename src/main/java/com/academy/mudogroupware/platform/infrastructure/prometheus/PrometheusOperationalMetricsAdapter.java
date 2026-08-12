@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.platform.infrastructure.prometheus;
 
+import com.academy.mudogroupware.platform.application.port.ApiCallFrequencyPort;
 import com.academy.mudogroupware.platform.application.port.OperationalMetricsPort;
 import com.academy.mudogroupware.platform.domain.exception.PlatformErrorCode;
 import com.academy.mudogroupware.platform.domain.exception.PlatformException;
@@ -13,7 +14,10 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -23,7 +27,7 @@ import org.springframework.web.client.RestClient;
 
 @Component
 @ConditionalOnProperty(prefix = "platform.dashboard", name = "enabled", havingValue = "true")
-public class PrometheusOperationalMetricsAdapter implements OperationalMetricsPort {
+public class PrometheusOperationalMetricsAdapter implements OperationalMetricsPort, ApiCallFrequencyPort {
   private static final List<ApiCategory> API_CATEGORIES = categories();
   private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
@@ -46,6 +50,25 @@ public class PrometheusOperationalMetricsAdapter implements OperationalMetricsPo
                 .formatted(tenantMatcher, category.methodPattern(), category.uriPattern(), window)))), executor))
         .toList();
     return futures.stream().map(CompletableFuture::join).toList();
+  }
+
+  @Override
+  public Map<String, List<ApiCallMetric>> apiCallMetricsByAcademy(List<AcademyRuntime> academies, DashboardPeriod period) {
+    String tenantMatcher = tenantMatcher(academies);
+    String window = window(period);
+    Map<String, List<ApiCallMetric>> byAcademy = new ConcurrentHashMap<>();
+    List<CompletableFuture<Void>> futures = API_CATEGORIES.stream()
+        .map(category -> CompletableFuture.runAsync(() -> {
+          Map<String, Long> countsByTenant = scalarByTenant(
+              "sum by (tenant) (increase(http_server_requests_seconds_count{tenant=~\"%s\",method=~\"%s\",uri=~\"%s\"}[%s]))"
+                  .formatted(tenantMatcher, category.methodPattern(), category.uriPattern(), window));
+          countsByTenant.forEach((tenant, count) -> byAcademy
+              .computeIfAbsent(tenant, ignored -> new CopyOnWriteArrayList<>())
+              .add(new ApiCallMetric(category.name(), count)));
+        }, executor))
+        .toList();
+    futures.forEach(CompletableFuture::join);
+    return byAcademy;
   }
 
   @Override
@@ -74,6 +97,23 @@ public class PrometheusOperationalMetricsAdapter implements OperationalMetricsPo
       JsonNode result = root.path("data").path("result");
       if (!"success".equals(root.path("status").asText()) || result.isEmpty()) return 0;
       return result.get(0).path("value").get(1).asDouble(0);
+    } catch (Exception exception) {
+      throw new PlatformException(PlatformErrorCode.METRICS_UNAVAILABLE, exception);
+    }
+  }
+
+  private Map<String, Long> scalarByTenant(String query) {
+    try {
+      JsonNode root = RestClient.create(properties.getPrometheusUrl())
+          .get().uri(uri -> uri.path("/api/v1/query").queryParam("query", query).build())
+          .retrieve().body(JsonNode.class);
+      JsonNode result = root.path("data").path("result");
+      if (!"success".equals(root.path("status").asText()) || result.isEmpty()) return Map.of();
+      Map<String, Long> counts = new java.util.LinkedHashMap<>();
+      result.forEach(row -> counts.put(
+          row.path("metric").path("tenant").asText(),
+          Math.round(row.path("value").get(1).asDouble(0))));
+      return counts;
     } catch (Exception exception) {
       throw new PlatformException(PlatformErrorCode.METRICS_UNAVAILABLE, exception);
     }

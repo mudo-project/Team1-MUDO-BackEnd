@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.academy.mudogroupware.platform.application.port.ApiCallFrequencyPort;
 import com.academy.mudogroupware.platform.application.port.DatabaseUsageMetricsPort;
 import com.academy.mudogroupware.platform.application.port.EcsHeadroomPort;
 import com.academy.mudogroupware.platform.application.port.MemberCountMetricsPort;
@@ -14,12 +15,15 @@ import com.academy.mudogroupware.platform.application.port.OperationalMetricsPor
 import com.academy.mudogroupware.platform.application.port.StorageUsagePort;
 import com.academy.mudogroupware.platform.domain.exception.PlatformErrorCode;
 import com.academy.mudogroupware.platform.domain.exception.PlatformException;
+import com.academy.mudogroupware.platform.domain.model.AcademyApiCallMetrics;
 import com.academy.mudogroupware.platform.domain.model.AcademyRuntime;
+import com.academy.mudogroupware.platform.domain.model.ApiCallMetric;
 import com.academy.mudogroupware.platform.domain.model.DashboardPeriod;
 import com.academy.mudogroupware.platform.domain.model.DashboardScope;
 import com.academy.mudogroupware.platform.domain.model.StorageUsage;
 import com.academy.mudogroupware.platform.infrastructure.PlatformTenantRegistry;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Executors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -31,6 +35,7 @@ class PlatformDashboardQueryServiceTest {
   private final StorageUsagePort storageUsagePort = mock(StorageUsagePort.class);
   private final DatabaseUsageMetricsPort databaseUsageMetricsPort = mock(DatabaseUsageMetricsPort.class);
   private final EcsHeadroomPort ecsHeadroomPort = mock(EcsHeadroomPort.class);
+  private final ApiCallFrequencyPort apiCallFrequencyPort = mock(ApiCallFrequencyPort.class);
 
   private PlatformDashboardQueryService service;
 
@@ -43,7 +48,25 @@ class PlatformDashboardQueryServiceTest {
         storageUsagePort,
         databaseUsageMetricsPort,
         ecsHeadroomPort,
+        apiCallFrequencyPort,
         Runnable::run);
+  }
+
+  @Test
+  void apiCallFrequencyIncludesEveryAcademyEvenWithoutData() {
+    AcademyRuntime academyA = academy("academy-a");
+    AcademyRuntime academyB = academy("academy-b");
+    when(tenantRegistry.findAll()).thenReturn(List.of(academyA, academyB));
+    when(apiCallFrequencyPort.apiCallMetricsByAcademy(List.of(academyA, academyB), DashboardPeriod.LAST_HOUR))
+        .thenReturn(Map.of("academy-a", List.of(new ApiCallMetric("ACCOUNT_ISSUANCE", 3L))));
+
+    List<AcademyApiCallMetrics> result =
+        service.apiCallFrequency(DashboardScope.ALL, null, DashboardPeriod.LAST_HOUR);
+
+    assertThat(result).extracting(AcademyApiCallMetrics::academyCode)
+        .containsExactly("academy-a", "academy-b");
+    assertThat(result.get(0).apiCallMetrics()).containsExactly(new ApiCallMetric("ACCOUNT_ISSUANCE", 3L));
+    assertThat(result.get(1).apiCallMetrics()).isEmpty();
   }
 
   @Test
@@ -63,7 +86,7 @@ class PlatformDashboardQueryServiceTest {
         .thenAnswer(invocation -> sleepThenReturn(delayMillis, List.<com.academy.mudogroupware.platform.domain.model.OperationalMetrics.EcsHostHeadroom>of()));
     PlatformDashboardQueryService parallelService = new PlatformDashboardQueryService(
         tenantRegistry, operationalMetricsPort, memberCountMetricsPort, storageUsagePort,
-        databaseUsageMetricsPort, ecsHeadroomPort, Executors.newFixedThreadPool(5));
+        databaseUsageMetricsPort, ecsHeadroomPort, apiCallFrequencyPort, Executors.newFixedThreadPool(5));
 
     long start = System.currentTimeMillis();
     parallelService.operationalMetrics(DashboardScope.ALL, null, DashboardPeriod.LAST_HOUR);

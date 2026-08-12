@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.platform.application.service;
 
+import com.academy.mudogroupware.platform.application.port.ApiCallFrequencyPort;
 import com.academy.mudogroupware.platform.application.port.EcsHeadroomPort;
 import com.academy.mudogroupware.platform.application.port.DatabaseUsageMetricsPort;
 import com.academy.mudogroupware.platform.application.port.MemberCountMetricsPort;
@@ -7,6 +8,7 @@ import com.academy.mudogroupware.platform.application.port.OperationalMetricsPor
 import com.academy.mudogroupware.platform.application.port.StorageUsagePort;
 import com.academy.mudogroupware.platform.domain.exception.PlatformErrorCode;
 import com.academy.mudogroupware.platform.domain.exception.PlatformException;
+import com.academy.mudogroupware.platform.domain.model.AcademyApiCallMetrics;
 import com.academy.mudogroupware.platform.domain.model.AcademyRuntime;
 import com.academy.mudogroupware.platform.domain.model.ApiCallMetric;
 import com.academy.mudogroupware.platform.domain.model.DashboardPeriod;
@@ -16,6 +18,7 @@ import com.academy.mudogroupware.platform.domain.model.StorageUsage;
 import com.academy.mudogroupware.platform.infrastructure.PlatformTenantRegistry;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
@@ -32,6 +35,7 @@ public class PlatformDashboardQueryService {
   private final StorageUsagePort storageUsagePort;
   private final DatabaseUsageMetricsPort databaseUsageMetricsPort;
   private final EcsHeadroomPort ecsHeadroomPort;
+  private final ApiCallFrequencyPort apiCallFrequencyPort;
   private final Executor executor;
 
   public PlatformDashboardQueryService(
@@ -41,6 +45,7 @@ public class PlatformDashboardQueryService {
       StorageUsagePort storageUsagePort,
       DatabaseUsageMetricsPort databaseUsageMetricsPort,
       EcsHeadroomPort ecsHeadroomPort,
+      ApiCallFrequencyPort apiCallFrequencyPort,
       @Qualifier("applicationTaskExecutor") Executor executor) {
     this.tenantRegistry = tenantRegistry;
     this.operationalMetricsPort = operationalMetricsPort;
@@ -48,11 +53,20 @@ public class PlatformDashboardQueryService {
     this.storageUsagePort = storageUsagePort;
     this.databaseUsageMetricsPort = databaseUsageMetricsPort;
     this.ecsHeadroomPort = ecsHeadroomPort;
+    this.apiCallFrequencyPort = apiCallFrequencyPort;
     this.executor = executor;
   }
 
   public List<AcademyRuntime> academies() {
     return tenantRegistry.findAll();
+  }
+
+  public List<AcademyApiCallMetrics> apiCallFrequency(DashboardScope scope, String academyCode, DashboardPeriod period) {
+    List<AcademyRuntime> academies = select(scope, academyCode);
+    Map<String, List<ApiCallMetric>> byAcademy = apiCallFrequencyPort.apiCallMetricsByAcademy(academies, period);
+    return academies.stream()
+        .map(academy -> new AcademyApiCallMetrics(academy.code(), byAcademy.getOrDefault(academy.code(), List.of())))
+        .toList();
   }
 
   public OperationalMetrics operationalMetrics(DashboardScope scope, String academyCode, DashboardPeriod period) {

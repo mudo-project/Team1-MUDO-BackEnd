@@ -50,6 +50,12 @@ class PlatformDashboardControllerPermissionIntegrationTest {
         .andExpect(status().isForbidden());
   }
 
+  @Test
+  void apiCallFrequencyReturns403WhenMissingPlatformSuperAdminAuthority() throws Exception {
+    mockMvc.perform(get("/api/platform/api-call-frequency").with(authentication(authenticatedUser())))
+        .andExpect(status().isForbidden());
+  }
+
   private Authentication authenticatedUser(String... authorities) {
     return new UsernamePasswordAuthenticationToken(
         "platform-admin",
