@@ -16,27 +16,27 @@
 > 작성일: 2026-08-11
 > 상태: 구현 완료, 테스트 통과.
 
-## (예정) academyId 완전 제거 — users 쪽 인터페이스 변경 대기 중
+## 2026-08-12 · academyId 완전 제거 완료
 
 ### 배경
 
-academy 테이블 자체를 시스템 전체에서 없애기로 해서, messenger에 남아있는 academyId 관련 코드도 전부 없앨 계획이다. 단, 아래 두 곳은 messenger 소유가 아니라 다른 도메인의 public 계약이라 그쪽이 먼저 academyId를 빼야 messenger도 뺄 수 있다.
+academy 테이블 자체를 시스템 전체에서 없애기로 해서, messenger에 남아있는 academyId 관련 코드도 전부 없애기로 했었다. 남은 건 `UserDirectoryUseCase.findActiveUserIds(Long academyId, Set<Long> userIds)` — users 도메인 소유의 public 계약이라 그쪽이 먼저 정리해야 messenger도 뺄 수 있는 상태였음.
 
-- `UserDirectoryUseCase.findActiveUserIds(Long academyId, Set<Long> userIds)` — users 도메인 소유. **아직 대기 중.**
-- ~~`GetFileDownloadUrlUseCase.getDownloadUrls(List<Long> fileIds, Long academyId)` — file 도메인 소유(minseo0327).~~ **2026-08-11 해소됨.** file 모듈이 `file_metadata`의 academyId를 제거하면서(`V1.5.14`) `getDownloadUrl(fileId)`/`getDownloadUrls(fileIds)`로 시그니처가 바뀌었다. `SendMessageService`/`ChatMessageQueryService`의 호출부(`chatMemberDirectoryPort.getMember(...).academyId()` 넘기던 부분)는 컴파일이 깨져서 file 담당자가 같이 제거해뒀다 — 아래 "진행 예정" 목록 중 이 항목만 이미 완료됨.
+- `GetFileDownloadUrlUseCase.getDownloadUrls(...)` 쪽 academyId는 2026-08-11에 이미 해소됨(file 모듈이 `file_metadata`의 academyId를 제거하며 시그니처 변경, file 담당자가 messenger 호출부까지 같이 정리).
+- users 도메인은 2026-08-12 `[FEAT] academyId 스코핑 전체 제거 (Phase 2)`(jaewon9804)로 JWT/auth/users/role 전체에서 academyId를 제거함. **다만 애초 계획과 다르게 `findActiveUserIds`의 시그니처 자체는 유지**됐다 — messenger/workspace가 같이 호출하는 크로스-BC 포트라 시그니처를 유지하고 `UserRepositoryImpl` 내부에서만 academyId 파라미터를 무시하도록 처리함(users.academy_id/role.academy_id 컬럼도 DROP 대신 nullable로만 변경). 해당 커밋에서 "messenger 쪽 shim 정리는 크로스 도메인 요청으로 별도 전달"이라고 명시해 messenger 쪽 정리를 넘겨받음.
 
-`UserDirectoryUseCase` 쪽 인터페이스가 여전히 academyId를 필수로 받기 때문에, `ChatMemberDirectoryPortAdapter`와 `ChatMemberInfo`/`ChatMemberInfoEntity`의 academyId를 먼저 없애면 컴파일이 깨진다.
-
-### 진행 예정
-
-users 도메인 쪽에서 `findActiveUserIds`의 academyId 파라미터를 제거하면(develop 병합 확인), 그다음 messenger에서:
+### 변경 내용
 
 - `ChatMemberInfo`/`ChatMemberInfoEntity`의 `academyId` 필드 제거.
-- `ChatMemberDirectoryPortAdapter`가 `findActiveUserIds` 호출 시 넘기던 academyId 제거.
-- ~~`SendMessageService`/`ChatMessageQueryService`가 `getDownloadUrls` 호출 시 넘기던 academyId 제거.~~ 완료(2026-08-11, file 쪽 변경에 맞춰 함께 처리됨).
+- `ChatMemberDirectoryPortAdapter`가 `findActiveUserIds` 호출 시 넘기던 academyId 제거 — 파라미터는 어차피 users 쪽에서 무시하므로 `null`로 호출. 기존에 academyId별로 그룹핑해서 여러 번 호출하던 로직도 더 이상 필요 없어져 단일 호출로 단순화(`findActiveUserIds(List<ChatMemberInfoEntity>)`).
+- `ChatMemberInfoEntity`가 매핑하던 `users.academy_id` 컬럼 매핑 제거(컬럼 자체는 users 도메인 소유라 그대로 둠, messenger는 더 이상 읽지 않음).
 
-> 작성일: 2026-08-10
-> 상태: 부분 완료 (file 쪽은 해소, users 도메인 인터페이스 변경만 남음)
+### 남은 것
+
+`ChatMemberInfoEntity`는 이름 조회용 shim으로 그대로 남는다(users 도메인에 이름 조회 전용 공개 계약이 생기기 전까지) — 이번에 없앤 건 academyId 부분뿐이다.
+
+> 작성일: 2026-08-12
+> 상태: 구현 완료.
 
 ## 2026-08-10 · 채팅방 academy_id 제거
 

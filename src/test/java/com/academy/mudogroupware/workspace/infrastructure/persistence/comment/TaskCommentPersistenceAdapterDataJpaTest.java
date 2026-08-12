@@ -3,9 +3,9 @@ package com.academy.mudogroupware.workspace.infrastructure.persistence.comment;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.academy.mudogroupware.global.domain.common.page.PageResult;
-import com.academy.mudogroupware.global.infrastructure.config.TimeConfig;
 import com.academy.mudogroupware.workspace.domain.model.comment.TaskComment;
 import com.academy.mudogroupware.workspace.domain.model.task.TaskStatus;
+import com.academy.mudogroupware.workspace.infrastructure.persistence.WorkspacePersistenceTestConfig;
 import com.academy.mudogroupware.workspace.infrastructure.persistence.task.TaskJpaEntity;
 import com.academy.mudogroupware.workspace.infrastructure.persistence.task.TaskJpaRepository;
 import com.academy.mudogroupware.workspace.infrastructure.persistence.workspace.WorkspaceJpaEntity;
@@ -22,7 +22,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 @DataJpaTest(properties = "spring.jpa.hibernate.ddl-auto=create-drop")
-@Import(TimeConfig.class)
+@Import(WorkspacePersistenceTestConfig.class)
 class TaskCommentPersistenceAdapterDataJpaTest {
 
   @Autowired private WorkspaceJpaRepository workspaceJpaRepository;
