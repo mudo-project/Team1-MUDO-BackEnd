@@ -57,6 +57,6 @@ public class SubmitLeaveRequestService implements SubmitLeaveRequestUseCase {
         leaveRequestRepository.save(LeaveRequest.submit(command.userId(),
                 command.documentId(), command.startDate(), command.endDate(), usedDays, command.submittedAt()));
         log.info("event=attendance_leave_request_submit_완료 userId={}, documentId={}, usedDays={}", command.userId(), command.documentId(), usedDays);
-        } catch (RuntimeException e) { log.warn("event=attendance_leave_request_submit_실패 userId={}, reason={}", command.userId(), e.getMessage()); throw e; }
+        } catch (RuntimeException e) { log.warn("event=attendance_leave_request_submit_실패 userId={}, errorType={}", command.userId(), e.getClass().getSimpleName()); throw e; }
     }
 }

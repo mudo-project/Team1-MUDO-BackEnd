@@ -44,7 +44,8 @@ public class WeeklyEmployeeAttendanceQueryService implements GetWeeklyEmployeeAt
     public WeeklyEmployeeAttendanceView getWeekly(
             Long requesterId, LocalDate date, String keyword,
             MyAttendanceDayStatus status, int page, int size) {
-        log.info("event=attendance_employee_weekly_read_시작 requesterId={}={}, date={}, page={}, size={}", requesterId, date, page, size);
+        log.info("event=attendance_employee_weekly_read_시작 requesterId={}, date={}, page={}, size={}", requesterId, date, page, size);
+        try {
         if (date == null || page < 0 || size < 1 || size > 100) {
             throw new AttendanceException(AttendanceErrorCode.INVALID_ATTENDANCE_QUERY_PERIOD);
         }
@@ -79,6 +80,7 @@ public class WeeklyEmployeeAttendanceQueryService implements GetWeeklyEmployeeAt
         for (Map.Entry<Long, List<WeeklyAttendanceEmployee>> entry : rows.entrySet()) {
             List<WeeklyAttendanceEmployee> employeeRows = entry.getValue();
             String name = employeeRows.get(0).name();
+            String roleName = employeeRows.get(0).roleName();
             if (!normalizedKeyword.isEmpty() && !name.contains(normalizedKeyword)) {
                 continue;
             }
@@ -104,7 +106,7 @@ public class WeeklyEmployeeAttendanceQueryService implements GetWeeklyEmployeeAt
                             || day.status() == MyAttendanceDayStatus.LATE)
                     .count();
             filtered.add(new WeeklyEmployeeAttendanceView.Employee(
-                    entry.getKey(), name, attendedDays, scheduledWorkDays, days));
+                    entry.getKey(), name, roleName, attendedDays, scheduledWorkDays, days));
         }
 
         int from = Math.min(page * size, filtered.size());
@@ -113,6 +115,11 @@ public class WeeklyEmployeeAttendanceQueryService implements GetWeeklyEmployeeAt
                 PageResult.of(filtered.subList(from, to), page, size, to < filtered.size()));
         log.info("event=attendance_employee_weekly_read_완료 count={}", filtered.size());
         return result;
+        } catch (RuntimeException e) {
+            log.warn("event=attendance_employee_weekly_read_실패 requesterId={}, errorType={}",
+                    requesterId, e.getClass().getSimpleName());
+            throw e;
+        }
     }
 
     private MyAttendanceDayStatus resolveStatus(Long userId, LocalDate date,

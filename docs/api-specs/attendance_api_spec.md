@@ -2,6 +2,95 @@
 
 이 문서는 `role.name`을 응답의 `roleName`으로 반환하는 근태 조회 API를 실제 Controller와 Response DTO 기준으로 정리합니다.
 
+## 전 직원 주간 출결 현황 조회
+
+`GET /api/attendance/employees/weekly`
+
+필요 권한: `ATTENDANCE:READ`
+
+### Request Header
+
+| name | description |
+| --- | --- |
+| `Authorization` | `Bearer {AccessToken}` 형식의 인증 토큰입니다. |
+
+### Request Query Parameter
+
+| name | type | required | description |
+| --- | --- | --- | --- |
+| `date` | `LocalDate` | `true` | 조회할 주에 포함된 날짜입니다. `yyyy-MM-dd` 형식입니다. |
+| `keyword` | `String` | `false` | 직원 이름 검색어입니다. |
+| `status` | `MyAttendanceDayStatus` | `false` | 해당 상태가 하루 이상 존재하는 직원만 조회합니다. |
+| `page` | `int` | `false` | 0부터 시작하며 기본값은 `0`입니다. |
+| `size` | `int` | `false` | 1~100이며 기본값은 `20`입니다. |
+
+### Response Body
+
+```json
+{
+  "status": 200,
+  "code": "ATTENDANCE_200_16",
+  "message": "주간 전 직원 출결 현황을 조회했습니다.",
+  "data": {
+    "week": {
+      "startDate": "2026-08-10",
+      "endDate": "2026-08-16"
+    },
+    "scheduledWorkDays": 5,
+    "employees": {
+      "content": [
+        {
+          "userId": 10,
+          "name": "홍길동",
+          "roleName": "강사",
+          "attendedDays": 1,
+          "scheduledWorkDays": 5,
+          "days": [
+            {
+              "date": "2026-08-11",
+              "status": "NORMAL",
+              "clockInAt": "2026-08-11T09:00:00",
+              "clockOutAt": "2026-08-11T18:00:00"
+            }
+          ]
+        }
+      ],
+      "page": 0,
+      "size": 20,
+      "hasNext": false
+    }
+  }
+}
+```
+
+### Response Field
+
+| name | description |
+| --- | --- |
+| `data.week.startDate` | 조회 주의 시작일입니다. |
+| `data.week.endDate` | 조회 주의 종료일입니다. |
+| `data.scheduledWorkDays` | 해당 주의 예정 근무일 수입니다. |
+| `data.employees.content[].userId` | 직원 ID입니다. |
+| `data.employees.content[].name` | 직원 이름입니다. |
+| `data.employees.content[].roleName` | 직원에게 배정된 `role.name`이며, 역할이 없으면 `null`입니다. |
+| `data.employees.content[].attendedDays` | 해당 주의 출근일 수입니다. |
+| `data.employees.content[].scheduledWorkDays` | 해당 직원에게 표시되는 예정 근무일 수입니다. |
+| `data.employees.content[].days[].date` | 근태 날짜입니다. |
+| `data.employees.content[].days[].status` | 일별 근태 상태입니다. |
+| `data.employees.content[].days[].clockInAt` | 출근 시각이며 기록이 없으면 `null`입니다. |
+| `data.employees.content[].days[].clockOutAt` | 퇴근 시각이며 기록이 없으면 `null`입니다. |
+| `data.employees.page` | 현재 페이지입니다. |
+| `data.employees.size` | 페이지 크기입니다. |
+| `data.employees.hasNext` | 다음 페이지 존재 여부입니다. |
+
+### 실패 코드
+
+| HTTP 상태 | code | message | description |
+| --- | --- | --- | --- |
+| `400 Bad Request` | `ATTENDANCE_400_12` | 조회할 연도와 월이 올바르지 않습니다. | 날짜 또는 페이지 조건이 유효하지 않은 경우입니다. |
+| `403 Forbidden` | - | 접근 권한이 없습니다. | `ATTENDANCE:READ` 권한이 없는 경우입니다. |
+| `404 Not Found` | `ATTENDANCE_404_1` | 학원의 근무시간 정책을 찾을 수 없습니다. | 현재 근무시간 정책이 없는 경우입니다. |
+
 ## 직원 주간 출결 상세 조회
 
 `GET /api/attendance/employees/{userId}/weekly`

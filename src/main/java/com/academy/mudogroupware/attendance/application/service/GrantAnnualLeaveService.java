@@ -42,7 +42,7 @@ public class GrantAnnualLeaveService implements GrantAnnualLeaveUseCase {
         }
         log.info("event=attendance_annual_leave_grant_완료 grantDate={}, count={}", today, grantedCount);
         return grantedCount;
-        } catch (RuntimeException e) { log.warn("event=attendance_annual_leave_grant_실패 grantDate={}, reason={}", now.toLocalDate(), e.getMessage()); throw e; }
+        } catch (RuntimeException e) { log.warn("event=attendance_annual_leave_grant_실패 grantDate={}, errorType={}", now.toLocalDate(), e.getClass().getSimpleName()); throw e; }
     }
 
     private LocalDate currentGrantDate(LocalDate joinedDate, LocalDate today) {

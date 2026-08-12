@@ -26,11 +26,12 @@ public record WeeklyEmployeeAttendanceResponse(
     public record Employee(
             Long userId,
             String name,
+            String roleName,
             int attendedDays,
             int scheduledWorkDays,
             List<Day> days) {
         private static Employee from(WeeklyEmployeeAttendanceView.Employee employee) {
-            return new Employee(employee.userId(), employee.name(), employee.attendedDays(),
+            return new Employee(employee.userId(), employee.name(), employee.roleName(), employee.attendedDays(),
                     employee.scheduledWorkDays(), employee.days().stream().map(Day::from).toList());
         }
     }

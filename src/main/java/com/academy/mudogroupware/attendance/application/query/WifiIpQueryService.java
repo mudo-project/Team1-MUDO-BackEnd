@@ -23,8 +23,14 @@ public class WifiIpQueryService implements GetWifiIpsUseCase {
     @Override
     public List<AcademyWifiIp> getAll(Long requesterId) {
         log.info("event=attendance_wifi_ip_list_read_시작 requesterId={}", requesterId);
+        try {
         List<AcademyWifiIp> result = academyWifiIpRepository.findAll();
         log.info("event=attendance_wifi_ip_list_read_완료 count={}", result.size());
         return result;
+        } catch (RuntimeException e) {
+            log.warn("event=attendance_wifi_ip_list_read_실패 requesterId={}, errorType={}",
+                    requesterId, e.getClass().getSimpleName());
+            throw e;
+        }
     }
 }

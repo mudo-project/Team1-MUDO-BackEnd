@@ -23,7 +23,8 @@ public class PayrollServiceLogAspect {
       log.info("event=payroll_{}_완료 requestKey={}, result=success", action, key);
       return result;
     } catch (Throwable e) {
-      log.warn("event=payroll_{}_실패 requestKey={}, reason={}", action, key, e.getMessage(), e);
+      log.warn("event=payroll_{}_실패 requestKey={}, errorType={}",
+          action, key, e.getClass().getSimpleName());
       throw e;
     }
   }
