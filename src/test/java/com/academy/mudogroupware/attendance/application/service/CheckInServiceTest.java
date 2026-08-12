@@ -102,19 +102,26 @@ class CheckInServiceTest {
     }
 
     @Test
-    void rejectsCheckInOnConfiguredNonWorkday() {
+    void allowsCheckInOnConfiguredNonWorkdayForHolidayWorkRecording() {
         AttendancePolicy policy = AttendancePolicy.restore(
                 1L, LocalTime.of(9, 0), LocalTime.of(18, 0),
                 10, true, List.of(new AttendancePolicyWeekday(3, false, null, null)),
                 NOW.minusDays(1), NOW.minusDays(1));
         allowIpAndPolicy(policy);
+        when(attendanceRecordRepository.existsByUserIdAndWorkDate(
+                10L, NOW.toLocalDate())).thenReturn(false);
+        when(attendanceRecordRepository.save(any(AttendanceRecord.class)))
+                .thenAnswer(invocation -> {
+                    AttendanceRecord record = invocation.getArgument(0);
+                    return AttendanceRecord.restore(
+                            5L, record.getUserId(), record.getWorkDate(), record.getClockInAt(),
+                            record.getClockInNote(), null, null, null, record.getStatus(),
+                            record.getCreatedAt(), record.getUpdatedAt());
+                });
 
-        AttendanceException exception = assertThrows(
-                AttendanceException.class,
-                () -> service.checkIn(command("사유")));
+        var result = service.checkIn(command("휴일 근무"));
 
-        assertSame(AttendanceErrorCode.ATTENDANCE_NON_WORKDAY, exception.getErrorCode());
-        verifyNoInteractions(attendanceRecordRepository);
+        assertEquals(5L, result.attendanceId());
     }
 
     @Test

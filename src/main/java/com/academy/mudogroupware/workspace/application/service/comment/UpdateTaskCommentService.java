@@ -3,6 +3,7 @@ package com.academy.mudogroupware.workspace.application.service.comment;
 import com.academy.mudogroupware.global.infrastructure.logging.AfterCommitLogger;
 import com.academy.mudogroupware.workspace.application.command.comment.UpdateTaskCommentCommand;
 import com.academy.mudogroupware.workspace.application.usecase.comment.UpdateTaskCommentUseCase;
+import com.academy.mudogroupware.workspace.domain.event.TaskCommentMentionedEvent;
 import com.academy.mudogroupware.workspace.domain.exception.comment.InvalidMentionedUserException;
 import com.academy.mudogroupware.workspace.domain.exception.comment.TaskCommentNotFoundException;
 import com.academy.mudogroupware.workspace.domain.exception.task.TaskNotFoundException;
@@ -10,14 +11,19 @@ import com.academy.mudogroupware.workspace.domain.exception.workspace.WorkspaceA
 import com.academy.mudogroupware.workspace.domain.exception.workspace.WorkspaceNotFoundException;
 import com.academy.mudogroupware.workspace.domain.model.task.Task;
 import com.academy.mudogroupware.workspace.domain.model.comment.TaskComment;
+import com.academy.mudogroupware.workspace.domain.model.comment.TaskCommentMention;
 import com.academy.mudogroupware.workspace.domain.model.workspace.Workspace;
 import com.academy.mudogroupware.workspace.domain.repository.comment.TaskCommentRepository;
 import com.academy.mudogroupware.workspace.domain.repository.task.TaskRepository;
 import com.academy.mudogroupware.workspace.domain.repository.workspace.WorkspaceRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +35,7 @@ public class UpdateTaskCommentService implements UpdateTaskCommentUseCase {
   private final WorkspaceRepository workspaceRepository;
   private final TaskRepository taskRepository;
   private final TaskCommentRepository taskCommentRepository;
+  private final ApplicationEventPublisher applicationEventPublisher;
   private final Clock clock;
 
   @Override
@@ -67,10 +74,33 @@ public class UpdateTaskCommentService implements UpdateTaskCommentUseCase {
       throw new InvalidMentionedUserException();
     }
 
-    TaskComment updated =
-        comment.updateContent(command.content(), command.mentionedUserIds(), LocalDateTime.now(clock));
+    Set<Long> previousMentionedUserIds =
+        comment.getMentions().stream()
+            .map(TaskCommentMention::getMentionedUserId)
+            .collect(Collectors.toSet());
 
+    LocalDateTime occurredAt = LocalDateTime.now(clock);
+    TaskComment updated =
+        comment.updateContent(command.content(), command.mentionedUserIds(), occurredAt);
     TaskComment saved = taskCommentRepository.save(updated);
+    List<Long> recipientUserIds =
+        command.mentionedUserIds().stream()
+            .filter(userId -> !previousMentionedUserIds.contains(userId))
+            .filter(userId -> !userId.equals(command.requesterId()))
+            .distinct()
+            .toList();
+
+    if (!recipientUserIds.isEmpty()) {
+      applicationEventPublisher.publishEvent(
+          new TaskCommentMentionedEvent(
+              command.workspaceId(),
+              command.taskId(),
+              task.getTitle(),
+              saved.getId(),
+              command.requesterId(),
+              recipientUserIds,
+              occurredAt));
+    }
 
     AfterCommitLogger.run(
         () ->

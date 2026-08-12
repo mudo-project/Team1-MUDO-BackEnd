@@ -21,7 +21,7 @@ public class S3FileStorageAdapter implements FileStoragePort {
         .presignPutObject(
             PutObjectPresignRequest.builder()
                 .signatureDuration(Duration.ofMinutes(15))
-                .putObjectRequest(b -> b.bucket(p.bucket()).key(k).contentType(type))
+                .putObjectRequest(b -> b.bucket(p.staffBucket()).key(k).contentType(type))
                 .build())
         .url()
         .toString();
@@ -32,7 +32,7 @@ public class S3FileStorageAdapter implements FileStoragePort {
         .presignGetObject(
             GetObjectPresignRequest.builder()
                 .signatureDuration(Duration.ofHours(1))
-                .getObjectRequest(b -> b.bucket(p.bucket()).key(k))
+                .getObjectRequest(b -> b.bucket(p.staffBucket()).key(k))
                 .build())
         .url()
         .toString();
@@ -41,7 +41,7 @@ public class S3FileStorageAdapter implements FileStoragePort {
   public byte[] download(String k) {
     try {
       return client
-          .getObjectAsBytes(GetObjectRequest.builder().bucket(p.bucket()).key(k).build())
+          .getObjectAsBytes(GetObjectRequest.builder().bucket(p.staffBucket()).key(k).build())
           .asByteArray();
     } catch (S3Exception e) {
       throw new S3StorageException(e);
@@ -50,7 +50,7 @@ public class S3FileStorageAdapter implements FileStoragePort {
 
   public void delete(String k) {
     try {
-      client.deleteObject(DeleteObjectRequest.builder().bucket(p.bucket()).key(k).build());
+      client.deleteObject(DeleteObjectRequest.builder().bucket(p.staffBucket()).key(k).build());
     } catch (S3Exception e) {
       throw new S3StorageException(e);
     }

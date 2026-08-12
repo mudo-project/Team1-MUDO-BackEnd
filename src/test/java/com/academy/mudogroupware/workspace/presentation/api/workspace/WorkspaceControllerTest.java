@@ -143,15 +143,18 @@ class WorkspaceControllerTest {
   }
 
   @Test
-  void rejectsAllBeforePermissionModuleIntegrationEvenWithReadAllAuthority() throws Exception {
+  void allowsAllWithReadAllAuthority() throws Exception {
+    when(workspaceQueryUseCase.getWorkspaces(10L, WorkspaceListScope.ALL))
+        .thenReturn(List.of());
+
     mockMvc
         .perform(
             get("/api/workspaces")
                 .param("scope", "ALL")
                 .with(authentication(authenticatedUser("WORKSPACE:READ_ALL"))))
-        .andExpect(status().isForbidden());
+        .andExpect(status().isOk());
 
-    verifyNoInteractions(workspaceQueryUseCase);
+    verify(workspaceQueryUseCase).getWorkspaces(10L, WorkspaceListScope.ALL);
   }
 
   @Test

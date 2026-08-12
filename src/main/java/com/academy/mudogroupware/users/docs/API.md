@@ -26,7 +26,8 @@
   "message": "로그인에 성공했습니다.",
   "data": {
     "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
-    "mustChangePw": true
+    "mustChangePw": true,
+    "permissions": ["ATTENDANCE:CHECK_IN", "STUDENT:MANAGE"]
   }
 }
 ```
@@ -40,6 +41,7 @@
 - 계정 상태(`status`)가 `ACTIVE`가 아니면(`RESIGNED`/`INACTIVE`) 로그인할 수 없습니다.
 - refreshToken 쿠키의 만료 시간은 `jwt.refresh-token-expiration` 설정값과 동일합니다(기본 14일).
 - (2026-08-12) `mustChangePw`가 응답 바디와 `accessToken`(JWT) 클레임 양쪽에 모두 담깁니다. 임시 비밀번호로 발급된 계정이 아직 최초 비밀번호 설정(14번 항목)을 마치지 않았으면 `true`입니다. 응답 바디는 로그인 시점에만 내려오는 1회성 신호이고, 이후 새로고침 등으로 다시 확인해야 할 때는 프론트가 로컬에 저장된 JWT를 디코드해서 같은 클레임을 읽으면 됩니다 — 백엔드가 이 값으로 다른 API 호출을 막는 필터·체크를 두지는 않으므로, 화면 전환은 전적으로 프론트의 책임입니다.
+- (2026-08-12) `permissions`는 이 계정이 최종적으로 갖는 권한 코드 전체입니다 — `@PreAuthorize`가 실제로 검사하는 것과 완전히 동일한 값(역할의 권한 코드 + `PLATFORM:SUPER_ADMIN`/`ACADEMY:OWNER` 같은 합성 권한 포함)이 내려갑니다. 프론트는 이 배열에 특정 코드가 포함돼있는지만 보고 권한 없는 탭/메뉴를 숨기면 됩니다. 역할의 `permissionCodes`만 내려주면 안 됩니다 — 플랫폼 관리자는 `roleId`가 없어서 그렇게 하면 권한이 빈 배열로 잘못 나갑니다.
 
 ---
 
@@ -378,6 +380,7 @@ Query Parameter
 | --- | --- | --- | --- |
 | `keyword` | String | false | 이름 또는 역할명 부분 일치 검색어(대소문자 무관). 없으면 전체 반환 |
 | `roleId` | Long | false | 특정 역할의 구성원만 조회. 없으면 전체 역할 포함 |
+| `status` | String | false | 특정 재직 상태(`ACTIVE`/`RESIGNED`/`INACTIVE`)의 구성원만 조회. 없으면 전체 상태 포함 |
 | `page` | int | false | 페이지 번호(0부터 시작). 기본값 0 |
 | `size` | int | false | 페이지 크기(1~100). 기본값 20 |
 
@@ -416,7 +419,9 @@ Query Parameter
 
 ### 검증 및 정책
 
-- 기존 "학원 구성원 검색"(12번 항목)과 달리 `ACTIVE`뿐 아니라 `RESIGNED`/`INACTIVE`도 포함한 전체 구성원을 반환합니다 — 관리자 전용 관리 화면 API이기 때문입니다. "재직/비활성" 탭 분류(비활성 = RESIGNED+INACTIVE)는 프론트에서 처리합니다.
+- 기존 "학원 구성원 검색"(12번 항목)과 달리 `ACTIVE`뿐 아니라 `RESIGNED`/`INACTIVE`도 포함한 전체 구성원을 반환합니다 — 관리자 전용 관리 화면 API이기 때문입니다. `status` 파라미터로 재직/휴직/퇴사 탭별 필터링이 가능하며, 지정하지 않으면 전체 상태를 반환합니다.
+- `status`에 `ACTIVE`/`RESIGNED`/`INACTIVE` 외의 값을 넘기면 `400 COMMON_400_1`로 실패합니다.
+- `keyword`/`roleId`/`status`는 서버에서 AND 조건으로 함께 적용된 뒤 정렬·페이지네이션이 이루어집니다.
 - `roleId`가 없는 계정(예: 역할 미배정)은 `roleId`/`roleName` 모두 `null`로 내려갑니다.
 - 결과는 `roleName`, `name` 순으로 정렬됩니다 — 역할별로 묶어 보여주는 조직도 화면에서, `roleId`를 지정해 역할 탭마다 별도로 호출하는 방식을 전제로 합니다.
 - `page`/`size` 범위를 벗어나면(`page<0`, `size`가 1~100 밖) `400`으로 실패합니다.

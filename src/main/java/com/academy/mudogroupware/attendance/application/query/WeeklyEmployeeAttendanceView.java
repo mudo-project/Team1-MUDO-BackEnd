@@ -24,6 +24,7 @@ public record WeeklyEmployeeAttendanceView(
     public record Day(
             LocalDate date,
             MyAttendanceDayStatus status,
-            LocalDateTime clockInAt) {
+            LocalDateTime clockInAt,
+            LocalDateTime clockOutAt) {
     }
 }

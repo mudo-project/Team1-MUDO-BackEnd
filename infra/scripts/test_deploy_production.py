@@ -19,6 +19,7 @@ class DeploymentManifestTest(unittest.TestCase):
         cells = copy.deepcopy(self.cells)
         tenants[0]["enabled"] = True
         tenants[0]["s3_bucket"] = "mudo-prod-staff-123456789012"
+        tenants[0]["finance_s3_bucket"] = "mudo-prod-finance-123456789012"
         cells["cell-1"]["ecs_registered_cpu"] = 4096
         cells["cell-1"]["ecs_registered_memory_mib"] = 8192
         cells["cell-1"]["rds_max_connections"] = 100
@@ -51,9 +52,12 @@ class DeploymentManifestTest(unittest.TestCase):
         )
         container = task["containerDefinitions"][0]
         environment = {item["name"]: item["value"] for item in container["environment"]}
-        secret_names = {item["name"] for item in container["secrets"]}
+        secrets = {item["name"]: item["valueFrom"] for item in container["secrets"]}
+        secret_names = set(secrets)
 
         self.assertEqual("academy-a", environment["TENANT_ID"])
+        self.assertEqual("mudo-prod-staff-123456789012", environment["AWS_S3_STAFF_BUCKET_NAME"])
+        self.assertEqual("mudo-prod-finance-123456789012", environment["AWS_S3_FINANCE_BUCKET_NAME"])
         self.assertEqual("basic", environment["TENANT_PLAN"])
         self.assertEqual("30", environment["SERVER_TOMCAT_THREADS_MAX"])
         self.assertEqual(500, container["cpu"])
@@ -67,6 +71,10 @@ class DeploymentManifestTest(unittest.TestCase):
         self.assertIn("GOOGLE_REDIRECT_URI", secret_names)
         self.assertIn("GOOGLE_OAUTH_FRONTEND_REDIRECT_URI", secret_names)
         self.assertIn("GEMINI_API_KEY", secret_names)
+        self.assertEqual(
+            "arn:aws:ssm:ap-northeast-2:123456789012:parameter/mudo/prod/shared/SENTRY_DSN",
+            secrets["SENTRY_DSN"],
+        )
         self.assertNotIn("DB_PASSWORD", environment)
 
     def test_billing_plan_does_not_change_runtime_resources(self):
