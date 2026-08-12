@@ -24,20 +24,19 @@ class ChatMemberDirectoryPortAdapterTest {
 
     @Test
     void getMembersReturnsOnlyActiveUsers() {
-        ChatMemberInfoEntity active = member(1L, 10L, "active");
-        ChatMemberInfoEntity inactive = member(2L, 10L, "inactive");
+        ChatMemberInfoEntity active = member(1L, "active");
+        ChatMemberInfoEntity inactive = member(2L, "inactive");
         when(chatMemberInfoJpaRepository.findAllById(List.of(1L, 2L))).thenReturn(List.of(active, inactive));
-        when(userDirectoryUseCase.findActiveUserIds(10L, Set.of(1L, 2L))).thenReturn(Set.of(1L));
+        when(userDirectoryUseCase.findActiveUserIds(null, Set.of(1L, 2L))).thenReturn(Set.of(1L));
 
         Map<Long, ChatMemberInfo> members = adapter.getMembers(List.of(1L, 2L));
 
         assertThat(members).containsOnlyKeys(1L);
     }
 
-    private ChatMemberInfoEntity member(Long id, Long academyId, String name) {
+    private ChatMemberInfoEntity member(Long id, String name) {
         ChatMemberInfoEntity entity = new ChatMemberInfoEntity();
         ReflectionTestUtils.setField(entity, "id", id);
-        ReflectionTestUtils.setField(entity, "academyId", academyId);
         ReflectionTestUtils.setField(entity, "name", name);
         return entity;
     }

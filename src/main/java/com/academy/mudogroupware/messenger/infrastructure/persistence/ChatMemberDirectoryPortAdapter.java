@@ -42,22 +42,16 @@ public class ChatMemberDirectoryPortAdapter implements ChatMemberDirectoryPort {
     }
 
     private boolean isActive(ChatMemberInfoEntity entity) {
-        return userDirectoryUseCase.findActiveUserIds(entity.getAcademyId(), Set.of(entity.getId()))
+        return userDirectoryUseCase.findActiveUserIds(null, Set.of(entity.getId()))
                 .contains(entity.getId());
     }
 
     private Set<Long> findActiveUserIds(List<ChatMemberInfoEntity> members) {
-        return members.stream()
-                .collect(Collectors.groupingBy(
-                        ChatMemberInfoEntity::getAcademyId,
-                        Collectors.mapping(ChatMemberInfoEntity::getId, Collectors.toSet())))
-                .entrySet()
-                .stream()
-                .flatMap(entry -> userDirectoryUseCase.findActiveUserIds(entry.getKey(), entry.getValue()).stream())
-                .collect(Collectors.toSet());
+        Set<Long> memberIds = members.stream().map(ChatMemberInfoEntity::getId).collect(Collectors.toSet());
+        return userDirectoryUseCase.findActiveUserIds(null, memberIds);
     }
 
     private ChatMemberInfo toMemberInfo(ChatMemberInfoEntity entity) {
-        return new ChatMemberInfo(entity.getId(), entity.getName(), entity.getAcademyId());
+        return new ChatMemberInfo(entity.getId(), entity.getName());
     }
 }

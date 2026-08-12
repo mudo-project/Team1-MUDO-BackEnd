@@ -23,7 +23,4 @@ public class ChatMemberInfoEntity {
 
     @Column(nullable = false, length = 50)
     private String name;
-
-    @Column(name = "academy_id", nullable = false)
-    private Long academyId;
 }
