@@ -20,6 +20,7 @@ import com.academy.mudogroupware.platform.domain.model.DashboardScope;
 import com.academy.mudogroupware.platform.domain.model.StorageUsage;
 import com.academy.mudogroupware.platform.infrastructure.PlatformTenantRegistry;
 import java.util.List;
+import java.util.concurrent.Executors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -41,7 +42,39 @@ class PlatformDashboardQueryServiceTest {
         memberCountMetricsPort,
         storageUsagePort,
         databaseUsageMetricsPort,
-        ecsHeadroomPort);
+        ecsHeadroomPort,
+        Runnable::run);
+  }
+
+  @Test
+  void operationalMetricsRunsPortCallsConcurrentlyNotSequentially() {
+    AcademyRuntime academyA = academy("academy-a");
+    when(tenantRegistry.findAll()).thenReturn(List.of(academyA));
+    long delayMillis = 150;
+    when(operationalMetricsPort.activeDatabaseConnections(List.of(academyA)))
+        .thenAnswer(invocation -> sleepThenReturn(delayMillis, 1));
+    when(operationalMetricsPort.apiCallMetrics(List.of(academyA), DashboardPeriod.LAST_HOUR))
+        .thenAnswer(invocation -> sleepThenReturn(delayMillis, List.<com.academy.mudogroupware.platform.domain.model.ApiCallMetric>of()));
+    when(operationalMetricsPort.p95ResponseMilliseconds(List.of(academyA), DashboardPeriod.LAST_HOUR))
+        .thenAnswer(invocation -> sleepThenReturn(delayMillis, 10.0));
+    when(operationalMetricsPort.errorRatePercent(List.of(academyA), DashboardPeriod.LAST_HOUR))
+        .thenAnswer(invocation -> sleepThenReturn(delayMillis, 1.0));
+    when(ecsHeadroomPort.findHeadrooms(List.of(academyA)))
+        .thenAnswer(invocation -> sleepThenReturn(delayMillis, List.<com.academy.mudogroupware.platform.domain.model.OperationalMetrics.EcsHostHeadroom>of()));
+    PlatformDashboardQueryService parallelService = new PlatformDashboardQueryService(
+        tenantRegistry, operationalMetricsPort, memberCountMetricsPort, storageUsagePort,
+        databaseUsageMetricsPort, ecsHeadroomPort, Executors.newFixedThreadPool(5));
+
+    long start = System.currentTimeMillis();
+    parallelService.operationalMetrics(DashboardScope.ALL, null, DashboardPeriod.LAST_HOUR);
+    long elapsedMillis = System.currentTimeMillis() - start;
+
+    assertThat(elapsedMillis).isLessThan(delayMillis * 3);
+  }
+
+  private static <T> T sleepThenReturn(long millis, T value) throws InterruptedException {
+    Thread.sleep(millis);
+    return value;
   }
 
   @Test

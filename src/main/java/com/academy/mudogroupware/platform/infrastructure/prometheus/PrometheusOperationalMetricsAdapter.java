@@ -13,30 +13,39 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 @Component
 @ConditionalOnProperty(prefix = "platform.dashboard", name = "enabled", havingValue = "true")
-@RequiredArgsConstructor
 public class PrometheusOperationalMetricsAdapter implements OperationalMetricsPort {
   private static final List<ApiCategory> API_CATEGORIES = categories();
   private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
   private final PlatformDashboardProperties properties;
+  private final Executor executor;
+
+  public PrometheusOperationalMetricsAdapter(
+      PlatformDashboardProperties properties, @Qualifier("applicationTaskExecutor") Executor executor) {
+    this.properties = properties;
+    this.executor = executor;
+  }
 
   @Override
   public List<ApiCallMetric> apiCallMetrics(List<AcademyRuntime> academies, DashboardPeriod period) {
     String tenantMatcher = tenantMatcher(academies);
     String window = window(period);
-    return API_CATEGORIES.stream()
-        .map(category -> new ApiCallMetric(category.name(), Math.round(scalar(
+    List<CompletableFuture<ApiCallMetric>> futures = API_CATEGORIES.stream()
+        .map(category -> CompletableFuture.supplyAsync(() -> new ApiCallMetric(category.name(), Math.round(scalar(
             "sum(increase(http_server_requests_seconds_count{tenant=~\"%s\",method=~\"%s\",uri=~\"%s\"}[%s]))"
-                .formatted(tenantMatcher, category.methodPattern(), category.uriPattern(), window)))))
+                .formatted(tenantMatcher, category.methodPattern(), category.uriPattern(), window)))), executor))
         .toList();
+    return futures.stream().map(CompletableFuture::join).toList();
   }
 
   @Override

@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 class PrometheusOperationalMetricsAdapterTest {
 
   private final PrometheusOperationalMetricsAdapter adapter =
-      new PrometheusOperationalMetricsAdapter(new PlatformDashboardProperties());
+      new PrometheusOperationalMetricsAdapter(new PlatformDashboardProperties(), Runnable::run);
 
   @Test
   void tenantMatcherFallsBackToMatchAllWhenAcademiesEmpty() {
