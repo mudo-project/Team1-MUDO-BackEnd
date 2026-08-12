@@ -25,7 +25,7 @@ public class RevenueReportBatchScheduler {
 
     private final GenerateRevenueReportUseCase generateRevenueReportUseCase;
 
-    @Scheduled(cron = "${app.revenue-report.batch-cron}", zone = "Asia/Seoul")
+    @Scheduled(cron = "${app.revenue-report.batch-cron:0 30 0 1 * *}", zone = "Asia/Seoul")
     public void generateMonthlyReport() {
         LocalDate targetMonth = LocalDate.now(SEOUL).minusMonths(1).withDayOfMonth(1);
         log.info("event=revenue_report_batch_시작 targetMonth={}", targetMonth);
