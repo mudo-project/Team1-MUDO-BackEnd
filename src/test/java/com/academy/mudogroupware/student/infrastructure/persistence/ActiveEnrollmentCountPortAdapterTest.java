@@ -1,7 +1,10 @@
 package com.academy.mudogroupware.student.infrastructure.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
@@ -36,5 +39,14 @@ class ActiveEnrollmentCountPortAdapterTest {
         Map<Long, Long> result = adapter.countActiveByLectureIds(List.of());
 
         assertThat(result).isEmpty();
+        verify(enrollmentJpaRepository, never()).countByLectureIdsAndStatus(any(), any());
+    }
+
+    @Test
+    void returnsEmptyMapForNullInput() {
+        Map<Long, Long> result = adapter.countActiveByLectureIds(null);
+
+        assertThat(result).isEmpty();
+        verify(enrollmentJpaRepository, never()).countByLectureIdsAndStatus(any(), any());
     }
 }
