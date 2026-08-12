@@ -13,14 +13,14 @@ class UpdateMemberProfileRequestTest {
 
     @Test
     void rejectsInvalidEmailFormat() {
-        UpdateMemberProfileRequest request = new UpdateMemberProfileRequest(null, null, "invalid-email", null);
+        UpdateMemberProfileRequest request = new UpdateMemberProfileRequest(null, null, "invalid-email", null, null);
 
         assertThat(validator.validate(request)).isNotEmpty();
     }
 
     @Test
     void allowsNullEmailForPartialUpdate() {
-        UpdateMemberProfileRequest request = new UpdateMemberProfileRequest(null, null, null, null);
+        UpdateMemberProfileRequest request = new UpdateMemberProfileRequest(null, null, null, null, null);
 
         assertThat(validator.validate(request)).isEmpty();
     }
