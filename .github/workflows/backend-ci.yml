@@ -54,4 +54,6 @@ jobs:
         run: ./gradlew clean bootJar --no-daemon
 
       - name: Run tests
+        env:
+          JAVA_TOOL_OPTIONS: -Xmx4g
         run: ./gradlew test --no-daemon
