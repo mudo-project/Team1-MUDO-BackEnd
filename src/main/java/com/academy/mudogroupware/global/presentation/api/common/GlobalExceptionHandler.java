@@ -1,6 +1,7 @@
 package com.academy.mudogroupware.global.presentation.api.common;
 
 import com.academy.mudogroupware.global.domain.common.exception.*;
+import io.sentry.Sentry;
 import jakarta.validation.ConstraintViolationException;
 import java.util.*;
 import lombok.extern.slf4j.Slf4j;
@@ -185,6 +186,13 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(Exception.class)
   public ResponseEntity<GlobalApiErrorResponse> unexpected(Exception e) {
     String traceId = trace();
+    Sentry.captureException(
+        e,
+        scope -> {
+          scope.setTag("traceId", traceId);
+          scope.setTag("tenantId", MDC.get("tenantId"));
+          scope.setTag("deploymentSha", MDC.get("deploymentSha"));
+        });
     log.error(
         "event=exception_handled reason=unexpected_exception exceptionClass={} errorCode={} httpStatus={} traceId={}",
         e.getClass().getSimpleName(),
