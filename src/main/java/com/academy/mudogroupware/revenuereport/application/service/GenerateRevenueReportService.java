@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import com.academy.mudogroupware.revenuereport.application.port.RevenueReportAiPort;
@@ -77,7 +78,17 @@ public class GenerateRevenueReportService implements GenerateRevenueReportUseCas
 
             RevenueReport report = RevenueReport.create(
                     targetMonth, reportText, toJson(snapshot), LocalDateTime.now(clock));
-            RevenueReport saved = revenueReportRepository.save(report);
+            RevenueReport saved;
+            try {
+                saved = revenueReportRepository.save(report);
+            } catch (DataIntegrityViolationException e) {
+                // findByTargetMonth 확인과 save 사이의 경쟁 조건 — 다른 인스턴스가 그 사이 먼저
+                // 저장을 마쳤다. target_month unique 제약 위반은 여기서만 발생할 수 있으므로
+                // 놀란 실패 로그 대신 "이미 처리됨"과 동일하게 조용히 넘어간다(AI를 두 번 부른
+                // 비용은 감수하되, 데이터 정합성과 배치 관측성은 지킨다).
+                log.info("event=revenue_report_generate_중복_스킵 targetMonth={}", targetMonth);
+                return;
+            }
 
             log.info("event=revenue_report_generate_완료 targetMonth={}, reportId={}", targetMonth, saved.getId());
         } catch (RuntimeException e) {

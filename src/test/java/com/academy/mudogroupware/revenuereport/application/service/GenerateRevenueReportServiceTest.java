@@ -98,6 +98,23 @@ class GenerateRevenueReportServiceTest {
     }
 
     @Test
+    void treatsDuplicateSaveAsBenignIdempotentSkip() {
+        // findByTargetMonth 확인과 save 사이에 경쟁 조건이 남아있다 — 여러 인스턴스가 동시에
+        // 같은 달을 처리하면 둘 다 이 지점까지 통과할 수 있다. target_month unique 제약으로
+        // 나중에 저장하는 쪽은 DataIntegrityViolationException을 받는데, 이걸 놀란 듯한 실패
+        // 로그 대신 "이미 처리됨"으로 조용히 넘어가도록 한다.
+        LocalDate targetMonth = LocalDate.of(2026, 8, 1);
+        when(revenueReportRepository.findByTargetMonth(targetMonth)).thenReturn(Optional.empty());
+        when(revenueReportRepository.findByTargetMonth(LocalDate.of(2026, 7, 1))).thenReturn(Optional.empty());
+        when(aggregationReader.read(any(), any())).thenReturn(sampleAggregation());
+        when(revenueReportAiPort.generateReport(any())).thenReturn("8월 매출 리포트 텍스트");
+        when(revenueReportRepository.save(any()))
+                .thenThrow(new org.springframework.dao.DataIntegrityViolationException("uk_revenue_report_target_month"));
+
+        service.generate(targetMonth);
+    }
+
+    @Test
     void tolerantOfUnknownPropertiesWhenParsingPreviousSnapshot() {
         LocalDate targetMonth = LocalDate.of(2026, 8, 1);
         LocalDate previousMonth = LocalDate.of(2026, 7, 1);
