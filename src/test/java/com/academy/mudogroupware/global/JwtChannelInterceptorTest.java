@@ -1,12 +1,14 @@
 package com.academy.mudogroupware.global;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
 import com.academy.mudogroupware.global.domain.auth.AccountType;
 import com.academy.mudogroupware.global.domain.auth.RolePermissionInfo;
 import com.academy.mudogroupware.global.infrastructure.security.jwt.*;
 import com.academy.mudogroupware.global.infrastructure.security.websocket.JwtChannelInterceptor;
+import com.academy.mudogroupware.global.presentation.security.AuthUser;
 import com.academy.mudogroupware.global.presentation.security.JwtAuthenticationConverter;
 import java.security.Principal;
 import java.util.Map;
@@ -15,10 +17,25 @@ import org.junit.jupiter.api.Test;
 import org.springframework.messaging.*;
 import org.springframework.messaging.simp.stomp.*;
 import org.springframework.messaging.support.*;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 
 class JwtChannelInterceptorTest {
+  private static JwtChannelInterceptor newInterceptor() {
+    JwtProperties p = new JwtProperties();
+    p.setSecret("test-secret-key-that-is-at-least-32-bytes-long");
+    return new JwtChannelInterceptor(
+        new JwtTokenProvider(p),
+        new JwtAuthenticationConverter(
+            roleId -> new RolePermissionInfo("STAFF", Set.of("CHAT:SEND")), Set::of));
+  }
+
+  private static Authentication authenticationOf(long userId) {
+    AuthUser user = new AuthUser(userId, "user-" + userId, 5L, "STAFF");
+    return new UsernamePasswordAuthenticationToken(user, null, Set.of());
+  }
+
   @Test
   void authenticatesConnectCookieToken() {
     JwtProperties p = new JwtProperties();
@@ -44,5 +61,40 @@ class JwtChannelInterceptorTest {
     assertThat(authentication.getAuthorities())
         .extracting(GrantedAuthority::getAuthority)
         .containsExactly("CHAT:SEND");
+  }
+
+  @Test
+  void rejectsSubscribingToAnotherUsersTopic() {
+    StompHeaderAccessor headers = StompHeaderAccessor.create(StompCommand.SUBSCRIBE);
+    headers.setDestination("/topic/workspaces/users/11");
+    headers.setUser(authenticationOf(10L));
+    Message<byte[]> message = MessageBuilder.createMessage(new byte[0], headers.getMessageHeaders());
+
+    assertThatThrownBy(() -> newInterceptor().preSend(message, mock(MessageChannel.class)))
+        .isInstanceOf(MessageDeliveryException.class);
+  }
+
+  @Test
+  void allowsSubscribingToOwnUserTopic() {
+    StompHeaderAccessor headers = StompHeaderAccessor.create(StompCommand.SUBSCRIBE);
+    headers.setDestination("/topic/workspaces/users/10");
+    headers.setUser(authenticationOf(10L));
+    Message<byte[]> message = MessageBuilder.createMessage(new byte[0], headers.getMessageHeaders());
+
+    Message<?> result = newInterceptor().preSend(message, mock(MessageChannel.class));
+
+    assertThat(result).isSameAs(message);
+  }
+
+  @Test
+  void ignoresDestinationsThatAreNotPersonalUserTopics() {
+    StompHeaderAccessor headers = StompHeaderAccessor.create(StompCommand.SUBSCRIBE);
+    headers.setDestination("/topic/other");
+    headers.setUser(authenticationOf(10L));
+    Message<byte[]> message = MessageBuilder.createMessage(new byte[0], headers.getMessageHeaders());
+
+    Message<?> result = newInterceptor().preSend(message, mock(MessageChannel.class));
+
+    assertThat(result).isSameAs(message);
   }
 }

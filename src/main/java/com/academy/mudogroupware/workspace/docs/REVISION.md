@@ -7,7 +7,7 @@
 - 트랜잭션 커밋 이후 `/topic/workspaces/users/{recipientUserId}`로 사용자별 payload를 전송한다.
 - 한 수신자의 WebSocket 발행 실패는 로그로 격리하고 나머지 수신자 발행을 계속한다.
 - Web Push 저장·전송과 영속 알림 읽음 상태는 이번 범위에 포함하지 않는다.
-- 사용자 topic의 SUBSCRIBE 인가는 global WebSocket 보안 과제로 분리한다.
+- 사용자 topic의 SUBSCRIBE 인가는 global WebSocket 보안 과제로 분리한다. → 후속 작업으로 착수. 설계는 [2026-08-12-mention-subscribe-authorization-design.md](../../../../../../../../docs/superpowers/specs/2026-08-12-mention-subscribe-authorization-design.md) 참고, `global/infrastructure/security/websocket/JwtChannelInterceptor.java`에서 처리(workspace 도메인 변경 없음).
 ## ✅ 2026-08-12 · 워크스페이스 상세 조회의 누적 미완료 업무 정책 유지
 
 ### 현재 동작
