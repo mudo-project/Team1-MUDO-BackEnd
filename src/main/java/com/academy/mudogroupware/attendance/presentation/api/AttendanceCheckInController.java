@@ -33,7 +33,7 @@ public class AttendanceCheckInController {
     private final CheckInUseCase checkInUseCase;
     private final ClientIpResolver clientIpResolver;
 
-    @PreAuthorize("hasAuthority('ATTENDANCE:CHECK_IN')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(
             summary = "출근 체크인",
             description = "소속 학원에 등록된 허용 IP에서 출근을 기록합니다. 지각인 경우 사유가 필요합니다.")

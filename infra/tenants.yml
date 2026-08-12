@@ -10,3 +10,4 @@ tenants:
     task_family: mudo-prod-tenant-academy-a
     health_url: https://academy-a.ieum.store/actuator/health
     s3_bucket: mudo-prod-staff-635249349258
+    finance_s3_bucket: mudo-prod-finance-635249349258

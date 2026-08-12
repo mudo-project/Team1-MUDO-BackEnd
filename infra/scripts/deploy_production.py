@@ -134,11 +134,11 @@ def validate_manifests(
             raise DeploymentError(f"{location}.cell이 cells.yml에 없습니다.")
         if not isinstance(tenant.get("enabled"), bool):
             raise DeploymentError(f"{location}.enabled는 true 또는 false여야 합니다.")
-        for field in ("service", "task_family", "health_url", "s3_bucket"):
+        for field in ("service", "task_family", "health_url", "s3_bucket", "finance_s3_bucket"):
             if not isinstance(tenant.get(field), str) or not tenant[field].strip():
                 raise DeploymentError(f"{location}.{field}가 필요합니다.")
         if tenant["enabled"]:
-            for field in ("health_url", "s3_bucket"):
+            for field in ("health_url", "s3_bucket", "finance_s3_bucket"):
                 if has_placeholder(tenant[field]):
                     raise DeploymentError(f"활성 tenant의 {location}.{field}에 자리표시자가 남아 있습니다.")
             enabled_tenants.append(tenant)
@@ -268,6 +268,8 @@ def render_app_task(
             "value": str(profile["heavy_job_max_concurrency"]),
         },
         {"name": "AWS_S3_BUCKET_NAME", "value": tenant["s3_bucket"]},
+        {"name": "AWS_S3_STAFF_BUCKET_NAME", "value": tenant["s3_bucket"]},
+        {"name": "AWS_S3_FINANCE_BUCKET_NAME", "value": tenant["finance_s3_bucket"]},
         {
             "name": "JAVA_TOOL_OPTIONS",
             "value": "-XX:MaxRAMPercentage=65.0 -XX:InitialRAMPercentage=25.0 -Dfile.encoding=UTF-8",

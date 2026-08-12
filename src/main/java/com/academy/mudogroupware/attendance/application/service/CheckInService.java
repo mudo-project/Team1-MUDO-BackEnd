@@ -88,8 +88,9 @@ public class CheckInService implements CheckInUseCase {
             return policy.getDefaultStartTime();
         }
         AttendancePolicyWeekday setting = weekday.get();
+        // 비근무일 출퇴근 기록은 payroll에서 휴일근로로 집계한다.
         if (!setting.workday()) {
-            throw new AttendanceException(AttendanceErrorCode.ATTENDANCE_NON_WORKDAY);
+            return policy.getDefaultStartTime();
         }
         return setting.startTime() == null
                 ? policy.getDefaultStartTime()
