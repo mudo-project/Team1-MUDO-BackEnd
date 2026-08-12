@@ -1,12 +1,13 @@
-package com.academy.mudogroupware.corporatecard.infrastructure.approval;
+package com.academy.mudogroupware.approval.infrastructure.corporatecard;
 
-import org.springframework.stereotype.Component;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.academy.mudogroupware.approval.application.command.CreateApprovalDocumentCommand;
 import com.academy.mudogroupware.approval.application.usecase.CreateApprovalDocumentUseCase;
@@ -19,14 +20,19 @@ import com.academy.mudogroupware.corporatecard.application.port.ApprovalSubmissi
 
 import lombok.RequiredArgsConstructor;
 
+/**
+ * Consumer: corporatecard
+ * Purpose: 법인카드 정산 상신과 결재 상태 및 기본 결재선 조회
+ */
 @Component
 @RequiredArgsConstructor
-public class ApprovalSubmissionAdapter implements ApprovalSubmissionPort {
+public class CorporateCardApprovalSubmissionAdapter implements ApprovalSubmissionPort {
     private final CreateApprovalDocumentUseCase createApprovalDocumentUseCase;
     private final ApprovalDocumentRepository approvalDocumentRepository;
     private final ApprovalTemplateRepository approvalTemplateRepository;
     private final ApprovalDocumentJpaRepository approvalDocumentJpaRepository;
 
+    /** Consumer: corporatecard / Purpose: 법인카드 정산용 독립 결재 문서 생성 */
     @Override
     public Long submit(Long templateId, Long creatorId, String title, String content, List<Long> approverIds) {
         return createApprovalDocumentUseCase.createDocument(new CreateApprovalDocumentCommand(
@@ -34,6 +40,7 @@ public class ApprovalSubmissionAdapter implements ApprovalSubmissionPort {
                 ApprovalDocumentSourceType.CORPORATE_CARD_EXPENSE));
     }
 
+    /** Consumer: corporatecard / Purpose: 단건 법인카드 정산 결재 상태 조회 */
     @Override
     public ApprovalStatusView findStatus(Long documentId) {
         return approvalDocumentRepository.findById(documentId)
@@ -41,6 +48,7 @@ public class ApprovalSubmissionAdapter implements ApprovalSubmissionPort {
                 .orElse(null);
     }
 
+    /** Consumer: corporatecard / Purpose: 법인카드 시스템 템플릿의 기본 결재선 조회 */
     @Override
     public List<Long> findDefaultApproverIds(Long templateId) {
         return approvalTemplateRepository.findById(templateId)
@@ -48,9 +56,11 @@ public class ApprovalSubmissionAdapter implements ApprovalSubmissionPort {
                 .orElse(List.of());
     }
 
+    /** Consumer: corporatecard / Purpose: 최초 법인카드 결재선을 시스템 템플릿에 한 번만 저장 */
     @Override
+    @Transactional
     public void saveDefaultApproverIdsIfEmpty(Long templateId, List<Long> approverIds) {
-        var template = approvalTemplateRepository.findById(templateId)
+        var template = approvalTemplateRepository.findByIdForUpdate(templateId)
                 .orElseThrow(() -> new IllegalStateException("법인카드 결재 템플릿을 찾을 수 없습니다."));
         if (template.approverIdsInOrder().isEmpty()) {
             template.update(template.getName(), approverIds, LocalDateTime.now());
@@ -58,9 +68,12 @@ public class ApprovalSubmissionAdapter implements ApprovalSubmissionPort {
         }
     }
 
+    /** Consumer: corporatecard / Purpose: 법인카드 정산 목록의 결재 상태 일괄 조회 */
     @Override
     public Map<Long, ApprovalStatusView> findStatuses(Set<Long> documentIds) {
         return approvalDocumentJpaRepository.findAllById(documentIds).stream()
-                .collect(Collectors.toMap(d -> d.getId(), d -> new ApprovalStatusView(d.getStatus().name(), d.getStatus().name())));
+                .collect(Collectors.toMap(
+                        document -> document.getId(),
+                        document -> new ApprovalStatusView(document.getStatus().name(), document.getStatus().name())));
     }
 }

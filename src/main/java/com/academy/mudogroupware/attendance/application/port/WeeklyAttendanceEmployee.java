@@ -10,5 +10,6 @@ public record WeeklyAttendanceEmployee(
         String name,
         LocalDate workDate,
         LocalDateTime clockInAt,
+        LocalDateTime clockOutAt,
         AttendanceStatus attendanceStatus) {
 }

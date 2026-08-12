@@ -25,9 +25,6 @@ public final class ApprovalTemplate {
         if (creatorId == null) {
             throw new IllegalArgumentException("creatorId must not be null");
         }
-        if (lines == null || lines.isEmpty()) {
-            throw new ApprovalException(ApprovalErrorCode.LINES_REQUIRED);
-        }
         if (createdAt == null) {
             throw new IllegalArgumentException("createdAt must not be null");
         }
@@ -37,14 +34,18 @@ public final class ApprovalTemplate {
         this.id = id;
         this.name = name;
         this.creatorId = creatorId;
-        this.lines = new ArrayList<>(lines);
+        this.lines = lines == null ? new ArrayList<>() : new ArrayList<>(lines);
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
 
     public static ApprovalTemplate create(String name, Long creatorId, List<Long> approverIds,
                                            LocalDateTime now) {
-        return new ApprovalTemplate(null, name, creatorId, buildLines(approverIds), now, now);
+        List<ApprovalTemplateLine> lines = buildLines(approverIds);
+        if (lines.isEmpty()) {
+            throw new ApprovalException(ApprovalErrorCode.LINES_REQUIRED);
+        }
+        return new ApprovalTemplate(null, name, creatorId, lines, now, now);
     }
 
     public static ApprovalTemplate restore(Long id, String name, Long creatorId,
