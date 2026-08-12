@@ -34,9 +34,9 @@ public class ListMembersService implements ListMembersUseCase {
     private final TodayAttendanceStatusPort todayAttendanceStatusPort;
 
     @Override
-    public MemberPage list(String keyword, Long roleId, int page, int size) {
-        log.info("event=member_list_시작 keywordPresent={}, roleId={}, page={}, size={}",
-                keyword != null && !keyword.isBlank(), roleId, page, size);
+    public MemberPage list(String keyword, Long roleId, UserStatus status, int page, int size) {
+        log.info("event=member_list_시작 keywordPresent={}, roleId={}, status={}, page={}, size={}",
+                keyword != null && !keyword.isBlank(), roleId, status, page, size);
 
         List<User> users = userRepository.findAll();
 
@@ -49,6 +49,7 @@ public class ListMembersService implements ListMembersUseCase {
                 .map(user -> toItem(user, roleNamesById.get(user.getRoleId())))
                 .filter(item -> matchesKeyword(item, normalizedKeyword))
                 .filter(item -> matchesRole(item, roleId))
+                .filter(item -> matchesStatus(item, status))
                 .sorted(Comparator
                         .comparing(MemberListItem::roleName, Comparator.nullsLast(String::compareTo))
                         .thenComparing(MemberListItem::name)
@@ -60,8 +61,12 @@ public class ListMembersService implements ListMembersUseCase {
         int to = (int) Math.min(offset + size, (long) filtered.size());
         List<MemberListItem> paged = filtered.subList(from, to);
 
+        List<Long> activeUserIds = paged.stream()
+                .filter(item -> item.status() == UserStatus.ACTIVE)
+                .map(MemberListItem::userId)
+                .toList();
         Map<Long, String> attendanceStatusByUserId = todayAttendanceStatusPort
-                .findTodayStatusByUserIds(paged.stream().map(MemberListItem::userId).toList()).stream()
+                .findTodayStatusByUserIds(activeUserIds).stream()
                 .collect(Collectors.toMap(MemberTodayAttendanceStatus::userId, MemberTodayAttendanceStatus::status));
 
         List<MemberListItem> result = paged.stream()
@@ -97,5 +102,9 @@ public class ListMembersService implements ListMembersUseCase {
 
     private boolean matchesRole(MemberListItem item, Long roleId) {
         return roleId == null || roleId.equals(item.roleId());
+    }
+
+    private boolean matchesStatus(MemberListItem item, UserStatus status) {
+        return status == null || status == item.status();
     }
 }

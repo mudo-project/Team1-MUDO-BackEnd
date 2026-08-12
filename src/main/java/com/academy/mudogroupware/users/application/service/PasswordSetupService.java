@@ -22,12 +22,12 @@ public class PasswordSetupService implements PasswordSetupUseCase {
 
     @Override
     public void setup(PasswordSetupCommand command) {
-        User user = userRepository.findByUsername(command.username())
+        User user = userRepository.findById(command.userId())
                 .filter(User::isMustChangePw)
-                .filter(u -> passwordEncoder.matches(command.tempPassword(), u.getPassword()))
                 .orElseThrow(PasswordSetupFailedException::new);
 
-        boolean updated = userRepository.completePasswordSetup(user.getId(), passwordEncoder.encode(command.newPassword()));
+        boolean updated = userRepository.completePasswordSetup(user.getId(),
+                passwordEncoder.encode(command.newPassword()), command.phone(), command.email());
         if (!updated) {
             throw new PasswordSetupFailedException();
         }

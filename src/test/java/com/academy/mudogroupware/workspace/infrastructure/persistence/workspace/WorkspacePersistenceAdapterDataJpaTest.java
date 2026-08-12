@@ -3,10 +3,10 @@ package com.academy.mudogroupware.workspace.infrastructure.persistence.workspace
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.academy.mudogroupware.global.infrastructure.config.TimeConfig;
 import com.academy.mudogroupware.workspace.domain.exception.workspace.WorkspaceAlreadyActiveException;
 import com.academy.mudogroupware.workspace.domain.exception.workspace.WorkspaceNameConflictException;
 import com.academy.mudogroupware.workspace.domain.model.workspace.Workspace;
+import com.academy.mudogroupware.workspace.infrastructure.persistence.WorkspacePersistenceTestConfig;
 import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -15,7 +15,7 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
 
 @DataJpaTest(properties = "spring.jpa.hibernate.ddl-auto=create-drop")
-@Import({TimeConfig.class, WorkspacePersistenceAdapter.class, WorkspacePersistenceMapperImpl.class})
+@Import(WorkspacePersistenceTestConfig.class)
 class WorkspacePersistenceAdapterDataJpaTest {
 
   @Autowired private WorkspacePersistenceAdapter workspaceRepository;

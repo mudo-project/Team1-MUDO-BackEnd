@@ -3,11 +3,11 @@ package com.academy.mudogroupware.workspace.infrastructure.persistence.task;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.academy.mudogroupware.global.domain.common.page.PageResult;
-import com.academy.mudogroupware.global.infrastructure.config.TimeConfig;
 import com.academy.mudogroupware.workspace.domain.model.task.RecurrenceType;
 import com.academy.mudogroupware.workspace.domain.model.task.RecurringTaskTemplate;
 import com.academy.mudogroupware.workspace.domain.repository.task.RecurringTaskSkipRepository;
 import com.academy.mudogroupware.workspace.domain.repository.task.RecurringTaskTemplateRepository;
+import com.academy.mudogroupware.workspace.infrastructure.persistence.WorkspacePersistenceTestConfig;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -20,12 +20,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 @DataJpaTest(properties = "spring.jpa.hibernate.ddl-auto=create-drop")
-@Import({
-  TimeConfig.class,
-  RecurringTaskTemplatePersistenceAdapter.class,
-  RecurringTaskSkipPersistenceAdapter.class,
-  RecurringTaskTemplatePersistenceMapperImpl.class
-})
+@Import(WorkspacePersistenceTestConfig.class)
 class RecurringTaskTemplatePersistenceAdapterDataJpaTest {
 
   private static final long WORKSPACE_ID = 1L;

@@ -96,8 +96,15 @@ public class UserRepositoryImpl implements UserRepository {
     }
 
     @Override
-    public boolean completePasswordSetup(Long userId, String newPasswordHash) {
-        return userJpaRepository.completePasswordSetupIfMustChange(userId, newPasswordHash) > 0;
+    public boolean completePasswordSetup(Long userId, String newPasswordHash, String phone, String email) {
+        try {
+            return userJpaRepository.completePasswordSetupIfMustChange(userId, newPasswordHash, phone, email) > 0;
+        } catch (DataIntegrityViolationException exception) {
+            if (containsConstraint(exception, EMAIL_UNIQUE_CONSTRAINT)) {
+                throw new EmailDuplicateException(exception);
+            }
+            throw exception;
+        }
     }
 
     @Override

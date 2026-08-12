@@ -33,6 +33,7 @@ chmod 600 "${CONFIG_DIR}/.env.monitoring"
 
 sed "s#<SLACK_WEBHOOK_FROM_SSM>#${SLACK_WEBHOOK_URL}#" \
   "${CONFIG_DIR}/alertmanager/alertmanager.template.yml" > "${CONFIG_DIR}/alertmanager/alertmanager.yml"
+chown 65534:65534 "${CONFIG_DIR}/alertmanager/alertmanager.yml"
 chmod 600 "${CONFIG_DIR}/alertmanager/alertmanager.yml"
 
 for dir in prometheus loki grafana alertmanager; do
