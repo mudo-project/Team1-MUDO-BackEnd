@@ -1,9 +1,12 @@
 package com.academy.mudogroupware.workspace.infrastructure.websocket;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import com.academy.mudogroupware.global.infrastructure.websocket.WebSocketEventPublisher;
 import com.academy.mudogroupware.workspace.domain.event.TaskCommentMentionedEvent;
@@ -46,5 +49,26 @@ class WorkspaceWebSocketNotifierTest {
             new TaskCommentMentionedSocketResponse(
                 "TASK_COMMENT_MENTIONED", 1L, 101L, "상담 일지 작성", 501L, 10L, 12L,
                 occurredAt));
+  }
+
+  @Test
+  void continuesWithNextRecipientWhenOnePublishFails() {
+    TaskCommentMentionedEvent event =
+        new TaskCommentMentionedEvent(
+            1L,
+            101L,
+            "상담 일지 작성",
+            501L,
+            10L,
+            List.of(11L, 12L),
+            LocalDateTime.of(2026, 8, 12, 10, 30));
+    doThrow(new IllegalStateException("broker unavailable"))
+        .when(eventPublisher)
+        .publish(eq("/topic/workspaces/users/11"), any(TaskCommentMentionedSocketResponse.class));
+
+    notifier.handle(event);
+
+    verify(eventPublisher)
+        .publish(eq("/topic/workspaces/users/12"), any(TaskCommentMentionedSocketResponse.class));
   }
 }

@@ -52,6 +52,21 @@ POST /api/workspaces/{workspaceId}/tasks/{taskId}/comments
 
 댓글 저장이 성공하면 요청자 자신을 제외한 멘션 사용자 ID를 입력 순서대로 중복 제거해 `TaskCommentMentionedEvent`를 발행한다. 외부 수신자가 없으면 이벤트를 발행하지 않는다. `WorkspaceWebSocketNotifier`는 트랜잭션 커밋 이후(`AFTER_COMMIT`) 이벤트를 받아 수신자마다 `/topic/workspaces/users/{recipientUserId}`로 `TASK_COMMENT_MENTIONED` payload를 전송한다. 댓글 트랜잭션이 롤백되면 WebSocket 알림도 전송되지 않는다.
 
+```json
+{
+  "eventType": "TASK_COMMENT_MENTIONED",
+  "workspaceId": 1,
+  "taskId": 101,
+  "taskTitle": "상담 일지 작성",
+  "commentId": 501,
+  "actorUserId": 10,
+  "recipientUserId": 11,
+  "occurredAt": "2026-08-12T10:30:00"
+}
+```
+
+payload는 수신자별로 생성되므로 `recipientUserId`는 구독 topic의 사용자 ID와 일치한다. 한 수신자의 WebSocket 발행이 실패하면 실패 정보를 로그로 남기고 다음 수신자 발행을 계속한다. 별도 영속 알림과 재시도 큐는 이번 범위에 포함하지 않는다.
+
 ### 7. 응답
 
 성공하면 Controller가 `GlobalApiResponse.created(WorkspaceResponseCode.TASK_COMMENT_CREATED, ...)`로 HTTP `201 Created`와 `TaskCommentResponse`(댓글 전체 필드 + `mentionedUserIds`)를 반환한다.
