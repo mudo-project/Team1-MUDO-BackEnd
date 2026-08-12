@@ -92,7 +92,9 @@ public class WeeklyEmployeeAttendanceQueryService implements GetWeeklyEmployeeAt
                         entry.getKey(), currentDate, schedules.get(currentDate), record,
                         approvedLeaves.get(currentDate), now);
                 days.add(new WeeklyEmployeeAttendanceView.Day(
-                        currentDate, dayStatus, record == null ? null : record.clockInAt()));
+                        currentDate, dayStatus,
+                        record == null ? null : record.clockInAt(),
+                        record == null ? null : record.clockOutAt()));
             }
             if (status != null && days.stream().noneMatch(day -> day.status() == status)) {
                 continue;

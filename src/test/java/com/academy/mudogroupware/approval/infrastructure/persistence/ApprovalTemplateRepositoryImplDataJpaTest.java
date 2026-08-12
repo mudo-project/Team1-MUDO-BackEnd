@@ -23,6 +23,16 @@ class ApprovalTemplateRepositoryImplDataJpaTest {
     private ApprovalTemplateRepositoryImpl approvalTemplateRepository;
 
     @Test
+    void restoresSystemTemplateWithoutDefaultApprovalLinesForUpdate() {
+        ApprovalTemplate created = approvalTemplateRepository.save(
+                ApprovalTemplate.restore(null, "법인카드 정산", 1L, null, NOW, NOW));
+
+        ApprovalTemplate locked = approvalTemplateRepository.findByIdForUpdate(created.getId()).orElseThrow();
+
+        assertThat(locked.approverIdsInOrder()).isEmpty();
+    }
+
+    @Test
     void updatingLinesReusesTheSameStepOrdersWithoutViolatingUniqueConstraint() {
         // buildLines()는 항상 step_order 1부터 다시 채번하므로, 결재선 구성만 바뀌는
         // 일반적인 수정에서도 항상 기존 step_order와 충돌한다(clearLines 후 재삽입 시

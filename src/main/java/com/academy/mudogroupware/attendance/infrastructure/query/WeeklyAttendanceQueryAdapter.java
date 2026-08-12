@@ -18,7 +18,7 @@ import lombok.RequiredArgsConstructor;
 public class WeeklyAttendanceQueryAdapter implements WeeklyAttendanceQueryPort {
 
     private static final String FIND_EMPLOYEES = """
-            SELECT u.id, u.name, ar.work_date, ar.clock_in_at, ar.status
+            SELECT u.id, u.name, ar.work_date, ar.clock_in_at, ar.clock_out_at, ar.status
             FROM users u
             LEFT JOIN attendance_record ar
               ON ar.user_id = u.id
@@ -35,11 +35,13 @@ public class WeeklyAttendanceQueryAdapter implements WeeklyAttendanceQueryPort {
             Long ownerUserId, LocalDate startDate, LocalDate endDate) {
         return jdbcTemplate.query(FIND_EMPLOYEES, (rs, rowNum) -> {
             Timestamp clockIn = rs.getTimestamp("clock_in_at");
+            Timestamp clockOut = rs.getTimestamp("clock_out_at");
             String status = rs.getString("status");
             return new WeeklyAttendanceEmployee(
                     rs.getLong("id"), rs.getString("name"),
                     rs.getDate("work_date") == null ? null : rs.getDate("work_date").toLocalDate(),
                     clockIn == null ? null : clockIn.toLocalDateTime(),
+                    clockOut == null ? null : clockOut.toLocalDateTime(),
                     status == null ? null : AttendanceStatus.valueOf(status));
         }, startDate, endDate, ownerUserId);
     }
