@@ -8,7 +8,7 @@ import com.academy.mudogroupware.attendance.domain.model.AttendanceStatus;
 public record WeeklyEmployeeDetail(
         Long userId,
         String name,
-        String position,
+        String roleName,
         LocalDate workDate,
         LocalDateTime clockInAt,
         LocalDateTime clockOutAt,

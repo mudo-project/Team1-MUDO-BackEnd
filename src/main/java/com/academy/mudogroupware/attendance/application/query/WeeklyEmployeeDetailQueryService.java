@@ -92,7 +92,7 @@ public class WeeklyEmployeeDetailQueryService implements GetWeeklyEmployeeDetail
                 .count();
         WeeklyEmployeeDetail employee = rows.get(0);
         WeeklyEmployeeDetailView result = new WeeklyEmployeeDetailView(
-                new WeeklyEmployeeDetailView.Employee(employee.userId(), employee.name(), employee.position()),
+                new WeeklyEmployeeDetailView.Employee(employee.userId(), employee.name(), employee.roleName()),
                 startDate, endDate, scheduledWorkDays, attendedDays, days);
         log.info("event=attendance_employee_weekly_detail_read_완료 userId={}, attendedDays={}", userId, attendedDays);
         return result;

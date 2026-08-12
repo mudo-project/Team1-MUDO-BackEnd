@@ -18,7 +18,7 @@ import lombok.RequiredArgsConstructor;
 public class WeeklyEmployeeDetailQueryAdapter implements WeeklyEmployeeDetailQueryPort {
 
     private static final String FIND_EMPLOYEE = """
-            SELECT u.id, u.name, r.name AS position, ar.work_date,
+            SELECT u.id, u.name, r.name AS role_name, ar.work_date,
                    ar.clock_in_at, ar.clock_out_at, ar.status
             FROM users u
             LEFT JOIN role r ON r.role_id = u.role_id
@@ -40,7 +40,7 @@ public class WeeklyEmployeeDetailQueryAdapter implements WeeklyEmployeeDetailQue
             Timestamp clockOut = rs.getTimestamp("clock_out_at");
             String status = rs.getString("status");
             return new WeeklyEmployeeDetail(
-                    rs.getLong("id"), rs.getString("name"), rs.getString("position"),
+                    rs.getLong("id"), rs.getString("name"), rs.getString("role_name"),
                     rs.getDate("work_date") == null ? null : rs.getDate("work_date").toLocalDate(),
                     clockIn == null ? null : clockIn.toLocalDateTime(),
                     clockOut == null ? null : clockOut.toLocalDateTime(),
