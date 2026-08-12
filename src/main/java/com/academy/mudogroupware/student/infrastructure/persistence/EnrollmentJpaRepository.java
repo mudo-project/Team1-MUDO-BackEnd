@@ -50,6 +50,13 @@ public interface EnrollmentJpaRepository extends JpaRepository<EnrollmentEntity,
     @Query(value = "delete from student_enrollment where student_id in :studentIds", nativeQuery = true)
     int deleteAllByStudentIds(@Param("studentIds") List<Long> studentIds);
 
+    /**
+     * revenuereport의 결제-강의 매핑 전용 조회. 결제 건수만큼 커질 수 있는 IN절에서
+     * EnrollmentEntity 전체를 로딩하지 않고 id/lectureId만 뽑는다.
+     */
+    @Query("select e.id as id, e.lectureId as lectureId from EnrollmentEntity e where e.id in :ids")
+    List<EnrollmentLectureIdProjection> findLectureIdsByIdIn(@Param("ids") List<Long> ids);
+
     interface StudentEnrollmentCount {
         Long getStudentId();
 
@@ -60,5 +67,11 @@ public interface EnrollmentJpaRepository extends JpaRepository<EnrollmentEntity,
         Long getLectureId();
 
         long getCount();
+    }
+
+    interface EnrollmentLectureIdProjection {
+        Long getId();
+
+        Long getLectureId();
     }
 }
