@@ -23,6 +23,7 @@ import com.academy.mudogroupware.revenuereport.domain.repository.PaymentReposito
 import com.academy.mudogroupware.revenuereport.domain.repository.RevenueReportRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import lombok.extern.slf4j.Slf4j;
@@ -65,7 +66,12 @@ public class GenerateRevenueReportService implements GenerateRevenueReportUseCas
         this.revenueReportRepository = revenueReportRepository;
         this.calculator = calculator;
         this.clock = clock;
-        this.objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
+        // WRITE_DATES_AS_TIMESTAMPS를 꺼야 targetMonth가 [2026,7,1] 배열이 아니라
+        // "2026-07-01" ISO 문자열로 저장/직렬화된다 — DB의 data_snapshot과 FastAPI 응답
+        // 구조를 그대로 프론트에 내려주는 상세 조회 API가 이 형식에 의존한다.
+        this.objectMapper = new ObjectMapper()
+                .registerModule(new JavaTimeModule())
+                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     }
 
     @Override

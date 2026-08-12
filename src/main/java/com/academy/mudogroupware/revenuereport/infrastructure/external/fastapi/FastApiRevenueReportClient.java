@@ -6,12 +6,14 @@ import java.time.Duration;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 import com.academy.mudogroupware.revenuereport.application.port.RevenueReportAiPort;
 import com.academy.mudogroupware.revenuereport.application.service.RevenueSnapshot;
 import com.academy.mudogroupware.revenuereport.domain.exception.RevenueReportAiException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Component
 public class FastApiRevenueReportClient implements RevenueReportAiPort {
@@ -21,9 +23,20 @@ public class FastApiRevenueReportClient implements RevenueReportAiPort {
     private final RestClient restClient;
     private final RevenueReportAiEngineProperties properties;
 
+    /**
+     * Spring이 자동 구성한 ObjectMapper(날짜를 [2026,7,1] 배열이 아니라 "2026-07-01"
+     * ISO 문자열로 직렬화)를 그대로 주입받아 쓴다. RestClient.builder()를 아무 설정 없이
+     * 쓰면 별도의 기본 ObjectMapper가 생겨서 FastAPI(Pydantic)가 날짜 필드를 거부한다
+     * (직접 겪은 버그 — 로컬 통합 테스트에서 422로 드러났다).
+     */
     @Autowired
-    public FastApiRevenueReportClient(RevenueReportAiEngineProperties properties) {
-        this(RestClient.builder().requestFactory(requestFactory(properties)).build(), properties);
+    public FastApiRevenueReportClient(RevenueReportAiEngineProperties properties, ObjectMapper objectMapper) {
+        this(RestClient.builder()
+                        .requestFactory(requestFactory(properties))
+                        .messageConverters(converters -> converters.add(0,
+                                new MappingJackson2HttpMessageConverter(objectMapper)))
+                        .build(),
+                properties);
     }
 
     FastApiRevenueReportClient(RestClient restClient, RevenueReportAiEngineProperties properties) {

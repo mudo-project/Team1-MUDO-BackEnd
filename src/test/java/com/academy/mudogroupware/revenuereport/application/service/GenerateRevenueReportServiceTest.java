@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import com.academy.mudogroupware.revenuereport.application.port.ActiveEnrollmentCountPort;
 import com.academy.mudogroupware.revenuereport.application.port.EnrollmentLectureLookupPort;
@@ -72,7 +73,11 @@ class GenerateRevenueReportServiceTest {
 
         service.generate(targetMonth);
 
-        verify(revenueReportRepository).save(any());
+        ArgumentCaptor<RevenueReport> savedReport = ArgumentCaptor.forClass(RevenueReport.class);
+        verify(revenueReportRepository).save(savedReport.capture());
         verify(revenueReportAiPort).generateReport(any());
+        // targetMonth가 [2026,8,1] 배열이 아니라 ISO 문자열로 저장돼야 한다 — FastAPI(Pydantic)와
+        // 프론트가 이 JSON을 그대로 읽는데, 배열로 나가면 날짜 검증에서 거부당한다(실제로 겪은 버그).
+        assertThat(savedReport.getValue().getDataSnapshot()).contains("\"targetMonth\":\"2026-08-01\"");
     }
 }
