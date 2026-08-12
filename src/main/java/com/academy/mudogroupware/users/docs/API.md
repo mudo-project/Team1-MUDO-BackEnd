@@ -26,7 +26,8 @@
   "message": "로그인에 성공했습니다.",
   "data": {
     "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
-    "mustChangePw": true
+    "mustChangePw": true,
+    "permissions": ["ATTENDANCE:CHECK_IN", "STUDENT:MANAGE"]
   }
 }
 ```
@@ -40,6 +41,7 @@
 - 계정 상태(`status`)가 `ACTIVE`가 아니면(`RESIGNED`/`INACTIVE`) 로그인할 수 없습니다.
 - refreshToken 쿠키의 만료 시간은 `jwt.refresh-token-expiration` 설정값과 동일합니다(기본 14일).
 - (2026-08-12) `mustChangePw`가 응답 바디와 `accessToken`(JWT) 클레임 양쪽에 모두 담깁니다. 임시 비밀번호로 발급된 계정이 아직 최초 비밀번호 설정(14번 항목)을 마치지 않았으면 `true`입니다. 응답 바디는 로그인 시점에만 내려오는 1회성 신호이고, 이후 새로고침 등으로 다시 확인해야 할 때는 프론트가 로컬에 저장된 JWT를 디코드해서 같은 클레임을 읽으면 됩니다 — 백엔드가 이 값으로 다른 API 호출을 막는 필터·체크를 두지는 않으므로, 화면 전환은 전적으로 프론트의 책임입니다.
+- (2026-08-12) `permissions`는 이 계정이 최종적으로 갖는 권한 코드 전체입니다 — `@PreAuthorize`가 실제로 검사하는 것과 완전히 동일한 값(역할의 권한 코드 + `PLATFORM:SUPER_ADMIN`/`ACADEMY:OWNER` 같은 합성 권한 포함)이 내려갑니다. 프론트는 이 배열에 특정 코드가 포함돼있는지만 보고 권한 없는 탭/메뉴를 숨기면 됩니다. 역할의 `permissionCodes`만 내려주면 안 됩니다 — 플랫폼 관리자는 `roleId`가 없어서 그렇게 하면 권한이 빈 배열로 잘못 나갑니다.
 
 ---
 

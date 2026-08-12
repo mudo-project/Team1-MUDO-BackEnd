@@ -13,10 +13,12 @@ import org.springframework.transaction.event.TransactionalEventListener;
 @Slf4j
 public class WorkspaceWebSocketNotifier {
 
+  // 사용자별 개인 알림 topic 접두사
   private static final String USER_TOPIC_PREFIX = "/topic/workspaces/users/";
 
   private final WebSocketEventPublisher eventPublisher;
 
+  // 이벤트 수신 메서드
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void handle(TaskCommentMentionedEvent event) {
     event.recipientUserIds().forEach(recipientUserId -> publish(event, recipientUserId));

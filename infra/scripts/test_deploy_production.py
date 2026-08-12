@@ -52,7 +52,8 @@ class DeploymentManifestTest(unittest.TestCase):
         )
         container = task["containerDefinitions"][0]
         environment = {item["name"]: item["value"] for item in container["environment"]}
-        secret_names = {item["name"] for item in container["secrets"]}
+        secrets = {item["name"]: item["valueFrom"] for item in container["secrets"]}
+        secret_names = set(secrets)
 
         self.assertEqual("academy-a", environment["TENANT_ID"])
         self.assertEqual("mudo-prod-staff-123456789012", environment["AWS_S3_STAFF_BUCKET_NAME"])
@@ -70,6 +71,10 @@ class DeploymentManifestTest(unittest.TestCase):
         self.assertIn("GOOGLE_REDIRECT_URI", secret_names)
         self.assertIn("GOOGLE_OAUTH_FRONTEND_REDIRECT_URI", secret_names)
         self.assertIn("GEMINI_API_KEY", secret_names)
+        self.assertEqual(
+            "arn:aws:ssm:ap-northeast-2:123456789012:parameter/mudo/prod/shared/SENTRY_DSN",
+            secrets["SENTRY_DSN"],
+        )
         self.assertNotIn("DB_PASSWORD", environment)
 
     def test_billing_plan_does_not_change_runtime_resources(self):

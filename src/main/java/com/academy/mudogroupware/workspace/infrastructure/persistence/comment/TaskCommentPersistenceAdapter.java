@@ -27,9 +27,14 @@ public class TaskCommentPersistenceAdapter implements TaskCommentRepository {
     TaskCommentJpaEntity entity;
     if (comment.getId() == null) {
       TaskJpaEntity task = taskJpaRepository.getReferenceById(comment.getTaskId());
-      entity =
-          taskCommentJpaRepository.saveAndFlush(
-              TaskCommentJpaEntity.create(task, comment.getAuthorId(), comment.getContent()));
+      // 댓글 저장
+      entity = taskCommentJpaRepository.saveAndFlush(
+              TaskCommentJpaEntity.create(
+                      task,
+                      comment.getAuthorId(),
+                      comment.getContent()
+              )
+          );
     } else {
       entity =
           taskCommentJpaRepository
