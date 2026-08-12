@@ -11,7 +11,7 @@
 
 대상 월 최신순으로 반환하며, 항목마다 읽음 여부(`read`)를 포함한다.
 
-#### Response · `200 OK`
+### Response · `200 OK`
 
 ```json
 {
@@ -48,7 +48,7 @@
 
 조회 시 해당 리포트를 읽음 처리한다(이미 읽었으면 최초 읽은 시각을 유지 — `read_at`은 한 번만 채워진다).
 
-#### Response · `200 OK`
+### Response · `200 OK`
 
 ```json
 {
@@ -57,7 +57,7 @@
   "message": "매출 리포트 상세 조회에 성공했습니다.",
   "data": {
     "reportId": 1,
-    "targetMonth": "2026-07-01",
+    "targetMonth": "2026-08-01",
     "report": "8월 매출은 420만 원으로 저번 달보다 늘었어요...",
     "dataSnapshot": "{\"targetMonth\":\"2026-08-01\",\"revenue\":{...},...}"
   }
@@ -66,7 +66,7 @@
 
 `dataSnapshot`은 집계 당시 숫자 스냅샷을 JSON 문자열 원문 그대로 내려준다(프론트 차트 렌더링용). 구조는 Spring 쪽 `RevenueSnapshot`과 동일하며, `previousMonth.available`이 `true`일 때만 전월 대비 필드가 채워진다.
 
-#### 검증 및 정책
+### 검증 및 정책
 
 - 존재하지 않는 `reportId`는 `404 REVENUE_REPORT_404_1`을 반환한다. 로컬 e2e에서 실제 확인:
 
@@ -90,7 +90,7 @@
 
 탭 배지 등 가벼운 표시용. 목록 전체를 조회하지 않고 카운트만 반환한다.
 
-#### Response · `200 OK`
+### Response · `200 OK`
 
 ```json
 {
