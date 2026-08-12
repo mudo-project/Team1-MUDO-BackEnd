@@ -12,7 +12,8 @@ import org.springframework.data.repository.query.Param;
 
 public interface NotificationJpaRepository extends JpaRepository<NotificationEntity, Long> {
 
-    Slice<NotificationEntity> findAllByRecipientUserIdAndDeletedAtIsNullOrderByCreatedAtDesc(
+    // createdAt 단독 정렬은 같은 시각에 생성된 알림의 순서를 보장하지 않아 id를 tiebreak로 추가한다.
+    Slice<NotificationEntity> findAllByRecipientUserIdAndDeletedAtIsNullOrderByCreatedAtDescIdDesc(
             Long recipientUserId, Pageable pageable);
 
     long countByRecipientUserIdAndDeletedAtIsNullAndReadAtIsNull(Long recipientUserId);

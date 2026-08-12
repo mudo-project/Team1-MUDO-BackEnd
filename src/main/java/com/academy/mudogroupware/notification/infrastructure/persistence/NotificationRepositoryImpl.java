@@ -35,7 +35,7 @@ public class NotificationRepositoryImpl implements NotificationRepository {
     @Override
     public PageResult<Notification> findAllByRecipientUserId(Long recipientUserId, int page, int size) {
         Slice<NotificationEntity> slice = notificationJpaRepository
-                .findAllByRecipientUserIdAndDeletedAtIsNullOrderByCreatedAtDesc(recipientUserId, PageRequest.of(page, size));
+                .findAllByRecipientUserIdAndDeletedAtIsNullOrderByCreatedAtDescIdDesc(recipientUserId, PageRequest.of(page, size));
         List<Notification> content = slice.getContent().stream().map(this::toDomain).toList();
         return PageResult.of(content, slice.getNumber(), slice.getSize(), slice.hasNext());
     }

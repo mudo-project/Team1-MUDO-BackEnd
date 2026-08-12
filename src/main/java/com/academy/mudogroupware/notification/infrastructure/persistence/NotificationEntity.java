@@ -36,7 +36,7 @@ public class NotificationEntity extends SoftDeleteTimeEntity {
     @Column(name = "target_id", nullable = false)
     private Long targetId;
 
-    @Column(nullable = false, length = 500)
+    @Column(nullable = false, length = 250)
     private String message;
 
     @Column(name = "read_at")
@@ -52,6 +52,9 @@ public class NotificationEntity extends SoftDeleteTimeEntity {
 
     // 이미 읽은 알림에 다시 호출해도 최초 읽은 시각을 유지한다(멱등).
     public void markAsRead(LocalDateTime readAt) {
+        if (readAt == null) {
+            throw new IllegalArgumentException("readAt must not be null");
+        }
         if (this.readAt != null) {
             return;
         }
