@@ -36,6 +36,29 @@ class GetRevenueReportServiceTest {
     }
 
     @Test
+    void returnedReportReflectsReadAtImmediately() {
+        RevenueReport report = RevenueReport.create(LocalDate.of(2026, 8, 1), "리포트", "{}", LocalDateTime.now());
+        when(revenueReportRepository.findById(1L)).thenReturn(Optional.of(report));
+
+        RevenueReport result = service.getReport(1L);
+
+        assertThat(result.isRead()).isTrue();
+        assertThat(result.getReadAt()).isEqualTo(LocalDateTime.now(clock));
+    }
+
+    @Test
+    void preservesFirstReadAtOnRepeatedView() {
+        LocalDateTime firstReadAt = LocalDateTime.of(2026, 9, 1, 0, 0);
+        RevenueReport alreadyRead = RevenueReport.restore(1L, LocalDate.of(2026, 8, 1), "리포트", "{}",
+                firstReadAt, LocalDateTime.now(), LocalDateTime.now());
+        when(revenueReportRepository.findById(1L)).thenReturn(Optional.of(alreadyRead));
+
+        RevenueReport result = service.getReport(1L);
+
+        assertThat(result.getReadAt()).isEqualTo(firstReadAt); // 재조회 시점의 clock 값으로 덮어쓰지 않음
+    }
+
+    @Test
     void throwsWhenReportNotFound() {
         when(revenueReportRepository.findById(99L)).thenReturn(Optional.empty());
 
