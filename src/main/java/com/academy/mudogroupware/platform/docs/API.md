@@ -84,6 +84,8 @@ Response Body
 }
 ```
 
+`apiCallMetrics`는 실제로는 11개 카테고리(`INITIAL_DATA_READ`, `ACCOUNT_ISSUANCE`, `CHECK_IN`, `ATTENDANCE_EXPORT`, `NOTICE_CREATE`, `WORKSPACE_TASK_CREATE`, `WORKSPACE_TASK_STATUS_CHANGE`, `APPROVAL_SUBMISSION`, `SETTLEMENT_SUBMISSION`, `CALENDAR_CREATE`, `MEMO_CREATE`)를 항상 전부 반환한다. 위 예시는 지면상 1개만 표기했다.
+
 ### 실패 코드
 
 | HTTP 상태 | code | message | 설명 |
@@ -92,7 +94,58 @@ Response Body
 | `404 Not Found` | `PLATFORM_404_1` | 조회할 학원을 찾을 수 없습니다. | `academyCode`가 테넌트 레지스트리에 없음 |
 | `503 Service Unavailable` | `PLATFORM_503_1` | 운영 지표를 현재 조회할 수 없습니다. | Prometheus/ECS 조회 실패 |
 
-비즈니스 규칙: 같은 RDS Cell(`rdsIdentifier`)을 공유하는 학원의 `rdsConnectionBudget.safeBudget`은 Cell 단위로 중복 없이 한 번만 합산한다.
+비즈니스 규칙:
+- 같은 RDS Cell(`rdsIdentifier`)을 공유하는 학원의 `rdsConnectionBudget.safeBudget`은 Cell 단위로 중복 없이 한 번만 합산한다.
+- `apiCallMetrics`는 `scope` 값과 무관하게 **항상 전체 서비스 합산**이다(기능 명세상 이 지표는 학원별 비교·필터를 제공하지 않는다). `scope=ACADEMY`를 줘도 `apiCallMetrics`만은 전체 학원 기준으로 나온다 — 학원별로 보려면 아래 `api-call-frequency`를 쓴다.
+- `p95ResponseMilliseconds`/`errorRatePercent`/`rdsConnectionBudget`/`ecsHostHeadrooms`는 `scope`에 맞춰 스코핑된다.
+
+## GET /api/platform/api-call-frequency
+
+전체 또는 선택 학원의 주요 업무 API 호출 빈도를 **학원별로 나란히 비교**해서 조회한다. `operational-metrics.apiCallMetrics`(항상 전체 합산)와 달리 이 API는 학원별 breakdown을 제공한다.
+
+Query Parameter
+
+| name | type | required | description |
+| --- | --- | --- | --- |
+| `scope` | `ALL` \| `ACADEMY` | false (기본 `ALL`) | 전체 학원 또는 특정 학원 단위 조회 |
+| `academyCode` | `String` | `scope=ACADEMY`일 때 필수 | 조회 대상 학원 코드 |
+| `period` | `LAST_HOUR` \| `LAST_24_HOURS` \| `TODAY` | false (기본 `LAST_HOUR`) | 집계 기간 |
+
+성공 코드
+
+| HTTP 상태 | 설명 |
+| --- | --- |
+| `200 OK` | 학원별 API 호출 빈도 조회 성공 |
+
+Response Body
+
+```json
+{
+  "status": 200,
+  "code": "PLATFORM_200_5",
+  "message": "학원별 API 호출 빈도 조회에 성공했습니다.",
+  "data": [
+    {
+      "academyCode": "academy-a",
+      "apiCallMetrics": [{ "category": "ACCOUNT_ISSUANCE", "count": 3 }]
+    },
+    {
+      "academyCode": "academy-b",
+      "apiCallMetrics": []
+    }
+  ]
+}
+```
+
+### 실패 코드
+
+| HTTP 상태 | code | message | 설명 |
+| --- | --- | --- | --- |
+| `400 Bad Request` | `PLATFORM_400_1` | 학원 코드가 필요합니다. | `scope=ACADEMY`인데 `academyCode`가 없거나 빈 값 |
+| `404 Not Found` | `PLATFORM_404_1` | 조회할 학원을 찾을 수 없습니다. | `academyCode`가 테넌트 레지스트리에 없음 |
+| `503 Service Unavailable` | `PLATFORM_503_1` | 운영 지표를 현재 조회할 수 없습니다. | Prometheus 조회 실패 |
+
+비즈니스 규칙: `scope=ALL`이면 조회 대상 학원 전체가 항상 포함된다 — 집계 기간 동안 호출이 전혀 없었던 학원도 `apiCallMetrics: []`로 목록에 나온다(누락되지 않는다). PromQL `sum by (tenant)`로 카테고리당 1번의 쿼리로 전체 학원의 값을 한 번에 받아오므로, 학원 수가 늘어도 쿼리 횟수는 카테고리 수(11개)로 고정된다.
 
 ## GET /api/platform/academies/{academyCode}/member-count
 
