@@ -55,4 +55,21 @@ class NotificationCommandServiceTest {
 
         verify(notificationRepository).markAsRead(1L, 10L, LocalDateTime.now(FIXED_CLOCK));
     }
+
+    @Test
+    void deleteDelegatesToRepositoryWithCurrentTime() {
+        service().delete(1L, 10L);
+
+        verify(notificationRepository).delete(1L, 10L, LocalDateTime.now(FIXED_CLOCK));
+    }
+
+    @Test
+    void deleteReadReturnsDeletedCountFromRepository() {
+        when(notificationRepository.deleteAllReadByRecipientUserId(10L, LocalDateTime.now(FIXED_CLOCK)))
+                .thenReturn(3);
+
+        int deletedCount = service().deleteRead(10L);
+
+        assertThat(deletedCount).isEqualTo(3);
+    }
 }

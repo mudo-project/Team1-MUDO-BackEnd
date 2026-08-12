@@ -3,6 +3,7 @@ package com.academy.mudogroupware.notification.presentation.api;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -15,8 +16,12 @@ import com.academy.mudogroupware.global.presentation.api.common.GlobalApiRespons
 import com.academy.mudogroupware.global.presentation.api.common.SliceResponse;
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
 import com.academy.mudogroupware.notification.application.usecase.CountUnreadNotificationsUseCase;
+import com.academy.mudogroupware.notification.application.usecase.DeleteNotificationUseCase;
+import com.academy.mudogroupware.notification.application.usecase.DeleteReadNotificationsUseCase;
 import com.academy.mudogroupware.notification.application.usecase.ListNotificationsUseCase;
 import com.academy.mudogroupware.notification.application.usecase.MarkNotificationAsReadUseCase;
+import com.academy.mudogroupware.notification.domain.exception.NotificationErrorCode;
+import com.academy.mudogroupware.notification.domain.exception.NotificationException;
 import com.academy.mudogroupware.notification.domain.model.Notification;
 import com.academy.mudogroupware.notification.presentation.api.common.NotificationResponseCode;
 import com.academy.mudogroupware.notification.presentation.api.response.NotificationItemResponse;
@@ -35,9 +40,13 @@ import lombok.RequiredArgsConstructor;
 @Validated
 public class NotificationController {
 
+    private static final String READ_STATUS_FILTER = "READ";
+
     private final ListNotificationsUseCase listNotificationsUseCase;
     private final CountUnreadNotificationsUseCase countUnreadNotificationsUseCase;
     private final MarkNotificationAsReadUseCase markNotificationAsReadUseCase;
+    private final DeleteNotificationUseCase deleteNotificationUseCase;
+    private final DeleteReadNotificationsUseCase deleteReadNotificationsUseCase;
 
     @Operation(summary = "알림 목록 조회", description = "본인에게 온 알림을 생성일 최신순으로 페이지네이션 조회합니다.")
     @GetMapping
@@ -67,5 +76,24 @@ public class NotificationController {
             @AuthenticationPrincipal AuthUser authUser, @PathVariable Long notificationId) {
         markNotificationAsReadUseCase.markAsRead(notificationId, authUser.userId());
         return ResponseEntity.ok(GlobalApiResponse.ok(NotificationResponseCode.NOTIFICATION_READ));
+    }
+
+    @Operation(summary = "알림 개별 삭제", description = "본인 소유 알림만 삭제할 수 있습니다(소프트 삭제).")
+    @DeleteMapping("/{notificationId}")
+    public ResponseEntity<GlobalApiResponse<Void>> deleteNotification(
+            @AuthenticationPrincipal AuthUser authUser, @PathVariable Long notificationId) {
+        deleteNotificationUseCase.delete(notificationId, authUser.userId());
+        return ResponseEntity.ok(GlobalApiResponse.ok(NotificationResponseCode.NOTIFICATION_DELETED));
+    }
+
+    @Operation(summary = "읽은 알림 일괄 삭제", description = "status=READ만 지원합니다.")
+    @DeleteMapping
+    public ResponseEntity<GlobalApiResponse<Void>> deleteReadNotifications(
+            @AuthenticationPrincipal AuthUser authUser, @RequestParam String status) {
+        if (!READ_STATUS_FILTER.equalsIgnoreCase(status)) {
+            throw new NotificationException(NotificationErrorCode.INVALID_DELETE_STATUS_FILTER);
+        }
+        deleteReadNotificationsUseCase.deleteRead(authUser.userId());
+        return ResponseEntity.ok(GlobalApiResponse.ok(NotificationResponseCode.READ_NOTIFICATIONS_DELETED));
     }
 }
