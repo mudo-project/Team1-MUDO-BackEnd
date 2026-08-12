@@ -128,9 +128,4 @@ Controller
 
 ## 구현 현황
 
-> Google 계정 연결 성공 시 시스템 루트를 자동 생성·저장하는 흐름과 Drive 연동 하부구조(Port·Guard·오류 매핑)까지 구현했다. 조회·생성·수정·삭제·다운로드 UseCase와 HTTP API는 아직 없다. 자세한 구현 내역과 계획서 대비 달라진 점은 [REVISION.md](REVISION.md) 참고. 📚
-
-## 다음 설계 항목
-
-- HTTP API URI, 요청·응답 DTO, 오류 코드
-- 업로드 파일 크기·허용 형식·다운로드 응답 정책
+> 시스템 루트 자동 생성·조회·재생성, 목록·상세·검색, 폴더·파일 생성, 이름 변경·이동·휴지통 삭제·다운로드, HTTP API(Controller·DTO·권한·Swagger)까지 11개 엔드포인트 전부 구현했다. 요청·응답 상세는 [SHAREDFILE_API.md](SHAREDFILE_API.md), API별 호출 흐름은 [SHAREDFILE_API_FLOW.md](SHAREDFILE_API_FLOW.md), 구현 내역과 계획서 대비 달라진 점은 [REVISION.md](REVISION.md) 참고. 📚
