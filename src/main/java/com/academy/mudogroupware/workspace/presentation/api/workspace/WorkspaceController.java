@@ -72,7 +72,7 @@ public class WorkspaceController {
 
   @Operation(
       summary = "워크스페이스 목록 조회",
-      description = "내 워크스페이스를 조회합니다. WORKSPACE:READ_ALL 권한이 있으면 전체 워크스페이스를 조회할 수 있습니다.")
+      description = "내 워크스페이스를 조회합니다. WORKSPACE:READ_ALL 권한이 있으면 같은 학원의 전체 워크스페이스를 조회할 수 있습니다.")
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "워크스페이스 목록 조회 성공"),
     @ApiResponse(responseCode = "400", description = "scope 값이 유효하지 않음"),
