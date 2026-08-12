@@ -260,3 +260,9 @@ infra/monitoring/runtime/
 # npx skills CLI local manifest (개인 AI 툴링 로컬 상태)
 /skills-lock.json
 /.agents/
+
+# Local email sending credentials guide
+/EMAIL_SENDING_BOILERPLATE.md
+
+# Local payroll email test data
+/docs/payroll-email-local-mock.sql

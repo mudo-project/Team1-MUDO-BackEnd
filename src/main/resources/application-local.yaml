@@ -7,3 +7,8 @@ spring:
     username: ${DB_USERNAME:mudo}
     password: ${DB_PASSWORD:mudo}
     driver-class-name: com.mysql.cj.jdbc.Driver
+
+app:
+  payroll:
+    statement:
+      local-storage-path: ${PAYROLL_LOCAL_STORAGE_PATH:build/local-payroll-statements}

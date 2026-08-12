@@ -33,6 +33,6 @@ public class DecideLeaveRequestService implements DecideLeaveRequestUseCase {
             leaveRequestRepository.save(leaveRequest);
         });
         log.info("event=attendance_leave_request_decide_완료 documentId={}, approved={}", documentId, approved);
-        } catch (RuntimeException e) { log.warn("event=attendance_leave_request_decide_실패 documentId={}, reason={}", documentId, e.getMessage()); throw e; }
+        } catch (RuntimeException e) { log.warn("event=attendance_leave_request_decide_실패 documentId={}, errorType={}", documentId, e.getClass().getSimpleName()); throw e; }
     }
 }

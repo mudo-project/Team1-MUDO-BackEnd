@@ -32,7 +32,7 @@ public class CheckOutService implements CheckOutUseCase {
 
     @Override
     public CheckOutResult checkOut(CheckOutCommand command) {
-        log.info("event=attendance_check_out_시작 userId={}={}", command.userId());
+        log.info("event=attendance_check_out_시작 userId={}", command.userId());
         try {
             if (command.userId() == null) {
                 throw new AttendanceException(AttendanceErrorCode.CHECK_OUT_FORBIDDEN);
@@ -54,12 +54,12 @@ public class CheckOutService implements CheckOutUseCase {
         AttendanceRecord checkedOut = openRecord.checkOut(
                 now, command.clockOutType(), command.clockOutNote());
             CheckOutResult result = CheckOutResult.from(attendanceRecordRepository.save(checkedOut));
-            log.info("event=attendance_check_out_완료 userId={}={}, clockOutType={}",
+            log.info("event=attendance_check_out_완료 userId={}, clockOutType={}",
                     command.userId(), result.clockOutType());
             return result;
         } catch (RuntimeException e) {
-            log.warn("event=attendance_check_out_실패 userId={}={}, reason={}",
-                    command.userId(), e.getMessage());
+            log.warn("event=attendance_check_out_실패 userId={}, errorType={}",
+                    command.userId(), e.getClass().getSimpleName());
             throw e;
         }
     }

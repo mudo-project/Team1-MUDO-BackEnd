@@ -4,10 +4,12 @@ import static com.academy.mudogroupware.payroll.domain.model.PayrollTypes.*;
 import static com.academy.mudogroupware.payroll.presentation.api.common.PayrollResponseCode.*;
 
 import com.academy.mudogroupware.global.presentation.api.common.GlobalApiResponse;
+import com.academy.mudogroupware.global.presentation.security.AuthUser;
 import com.academy.mudogroupware.payroll.application.port.out.PayrollReferenceDataPort.*;
 import com.academy.mudogroupware.payroll.application.result.*;
 import com.academy.mudogroupware.payroll.application.service.PayrollService;
 import com.academy.mudogroupware.payroll.application.service.PayrollService.ItemAdjustment;
+import com.academy.mudogroupware.payroll.application.service.PayrollStatementEmailService;
 import com.academy.mudogroupware.payroll.application.service.PayrollStatementService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -19,6 +21,7 @@ import java.time.YearMonth;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -30,6 +33,7 @@ import org.springframework.web.bind.annotation.*;
 public class PayrollController {
   private final PayrollService service;
   private final PayrollStatementService statementService;
+  private final PayrollStatementEmailService statementEmailService;
 
   @GetMapping("/api/payrolls")
   @Operation(summary = "월 급여 목록 조회", description = "급여가 없는 활성 직원도 NOT_CREATED 상태로 포함해 페이지 조회합니다.")
@@ -136,6 +140,34 @@ public class PayrollController {
         statementService.retry(payrollId));
   }
 
+  @PostMapping("/api/payrolls/{payrollId}/statement/email-deliveries")
+  @Operation(summary = "급여명세서 개별 이메일 발송")
+  public GlobalApiResponse<PayrollStatementEmailService.DeliveryResult> sendStatementEmail(
+      @AuthenticationPrincipal AuthUser authUser, @PathVariable Long payrollId) {
+    return GlobalApiResponse.created(STATEMENT_EMAIL_SEND_STARTED,
+        statementEmailService.send(payrollId, authUser.userId()));
+  }
+
+  @PostMapping("/api/payrolls/statement/email-delivery-batches")
+  @Operation(summary = "급여명세서 이메일 일괄 발송")
+  public GlobalApiResponse<PayrollStatementEmailService.BatchCreatedResult> sendStatementEmailBatch(
+      @AuthenticationPrincipal AuthUser authUser,
+      @Valid @RequestBody EmailBatchRequest request) {
+    return GlobalApiResponse.created(STATEMENT_EMAIL_BATCH_STARTED,
+        statementEmailService.sendBatch(YearMonth.of(request.year(), request.month()),
+            authUser.userId()));
+  }
+
+  @GetMapping("/api/payrolls/statement/email-delivery-batches/{batchId}")
+  @Operation(summary = "급여명세서 이메일 일괄 발송 결과 조회")
+  public GlobalApiResponse<PayrollStatementEmailService.BatchResult> getStatementEmailBatch(
+      @PathVariable Long batchId,
+      @RequestParam(defaultValue = "0") @Min(0) int page,
+      @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
+    return GlobalApiResponse.ok(STATEMENT_EMAIL_BATCH_RETRIEVED,
+        statementEmailService.getBatch(batchId, page, size));
+  }
+
   @GetMapping("/api/payroll/policies")
   @Operation(summary = "급여 정책 조회")
   public GlobalApiResponse<PayrollPolicyData> getPolicy() {
@@ -171,6 +203,7 @@ public class PayrollController {
   }
 
   public record CreateRequest(@Min(2000) int year, @Min(1) @Max(12) int month) {}
+  public record EmailBatchRequest(@Min(2000) int year, @Min(1) @Max(12) int month) {}
   public record VersionRequest(@Min(0) long expectedVersion) {}
   public record AdjustmentRequest(@NotNull Long itemId, @NotNull @PositiveOrZero BigDecimal amount,
       @NotBlank String reason) {}

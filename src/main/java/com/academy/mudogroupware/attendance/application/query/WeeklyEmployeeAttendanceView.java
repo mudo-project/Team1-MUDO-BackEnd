@@ -16,6 +16,7 @@ public record WeeklyEmployeeAttendanceView(
     public record Employee(
             Long userId,
             String name,
+            String roleName,
             int attendedDays,
             int scheduledWorkDays,
             List<Day> days) {

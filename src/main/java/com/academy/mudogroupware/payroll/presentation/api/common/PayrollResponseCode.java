@@ -23,7 +23,11 @@ public enum PayrollResponseCode implements ResponseCode {
   POLICY_RETRIEVED("PAYROLL_200_11", "급여 정책을 조회했습니다."),
   POLICY_UPDATED("PAYROLL_200_12", "급여 정책을 수정했습니다."),
   SETTINGS_RETRIEVED("PAYROLL_200_13", "직원 급여 설정을 조회했습니다."),
-  SETTINGS_UPDATED("PAYROLL_200_14", "직원 급여 설정을 저장했습니다.");
+  SETTINGS_UPDATED("PAYROLL_200_14", "직원 급여 설정을 저장했습니다."),
+  STATEMENT_EMAIL_SEND_STARTED("PAYROLL_201_4", "급여명세서 이메일 발송을 시작했습니다."),
+  STATEMENT_EMAIL_BATCH_STARTED("PAYROLL_201_5", "급여명세서 이메일 일괄 발송을 시작했습니다."),
+  STATEMENT_EMAIL_BATCH_RETRIEVED("PAYROLL_200_15", "급여명세서 이메일 일괄 발송 결과를 조회했습니다."),
+  STATEMENT_EMAIL_WEBHOOK_RECEIVED("PAYROLL_200_16", "이메일 발송 상태를 반영했습니다.");
 
   private final String code;
   private final String message;

@@ -15,7 +15,7 @@ import com.academy.mudogroupware.global.domain.common.page.PageResult;
 class WeeklyEmployeeAttendanceResponseTest {
 
     @Test
-    void includesClockOutAtInDailyAttendance() {
+    void includesRoleNameAndClockOutAtInDailyAttendance() {
         LocalDateTime clockInAt = LocalDateTime.of(2026, 8, 11, 9, 0);
         LocalDateTime clockOutAt = LocalDateTime.of(2026, 8, 11, 18, 0);
         WeeklyEmployeeAttendanceView view = new WeeklyEmployeeAttendanceView(
@@ -25,6 +25,7 @@ class WeeklyEmployeeAttendanceResponseTest {
                 PageResult.of(List.of(new WeeklyEmployeeAttendanceView.Employee(
                         2L,
                         "employee",
+                        "instructor",
                         1,
                         5,
                         List.of(new WeeklyEmployeeAttendanceView.Day(
@@ -36,6 +37,7 @@ class WeeklyEmployeeAttendanceResponseTest {
         WeeklyEmployeeAttendanceResponse response = WeeklyEmployeeAttendanceResponse.from(view);
 
         WeeklyEmployeeAttendanceResponse.Day day = response.employees().content().get(0).days().get(0);
+        assertEquals("instructor", response.employees().content().get(0).roleName());
         assertEquals(clockInAt, day.clockInAt());
         assertEquals(clockOutAt, day.clockOutAt());
     }

@@ -37,10 +37,10 @@ public record AdminAttendanceCorrectionResponse(
                 c.reason(), c.requestedAt(), c.processedAt(), c.processedBy(), c.rejectionReason());
     }
 
-    public record RequesterResponse(Long userId, String name, String position) {
+    public record RequesterResponse(Long userId, String name, String roleName) {
         static RequesterResponse from(Requester requester) {
             return requester == null ? null : new RequesterResponse(
-                    requester.userId(), requester.name(), requester.position());
+                    requester.userId(), requester.name(), requester.roleName());
         }
     }
 }

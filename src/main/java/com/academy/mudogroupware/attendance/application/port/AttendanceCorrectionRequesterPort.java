@@ -6,5 +6,5 @@ import java.util.Set;
 public interface AttendanceCorrectionRequesterPort {
     Map<Long, Requester> findByUserIds(Set<Long> userIds);
 
-    record Requester(Long userId, String name, String position) {}
+    record Requester(Long userId, String name, String roleName) {}
 }
