@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.notification.presentation.api;
 
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -68,5 +69,65 @@ class NotificationControllerTest {
         mockMvc.perform(get("/api/notifications/unread-count").with(authentication(auth())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.unreadCount").value(3));
+    }
+
+    @Test
+    void getNotificationsPassesNonDefaultPageAndSizeToUseCase() throws Exception {
+        when(listNotificationsUseCase.getNotifications(10L, 2, 50))
+                .thenReturn(PageResult.of(List.of(), 2, 50, false));
+
+        mockMvc.perform(get("/api/notifications")
+                        .param("page", "2")
+                        .param("size", "50")
+                        .with(authentication(auth())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.page").value(2))
+                .andExpect(jsonPath("$.data.size").value(50));
+    }
+
+    @Test
+    void getNotificationsRejectsNegativePage() throws Exception {
+        mockMvc.perform(get("/api/notifications")
+                        .param("page", "-1")
+                        .with(authentication(auth())))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(listNotificationsUseCase);
+    }
+
+    @Test
+    void getNotificationsRejectsSizeBelowMinimum() throws Exception {
+        mockMvc.perform(get("/api/notifications")
+                        .param("size", "0")
+                        .with(authentication(auth())))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(listNotificationsUseCase);
+    }
+
+    @Test
+    void getNotificationsRejectsSizeAboveMaximum() throws Exception {
+        mockMvc.perform(get("/api/notifications")
+                        .param("size", "101")
+                        .with(authentication(auth())))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(listNotificationsUseCase);
+    }
+
+    @Test
+    void getNotificationsReturns401WhenUnauthenticated() throws Exception {
+        mockMvc.perform(get("/api/notifications"))
+                .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(listNotificationsUseCase);
+    }
+
+    @Test
+    void getUnreadCountReturns401WhenUnauthenticated() throws Exception {
+        mockMvc.perform(get("/api/notifications/unread-count"))
+                .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(countUnreadNotificationsUseCase);
     }
 }
