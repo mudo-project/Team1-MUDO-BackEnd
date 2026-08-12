@@ -12,6 +12,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 import com.academy.mudogroupware.global.domain.auth.AccountType;
+import com.academy.mudogroupware.users.domain.exception.UserErrorCode;
 import com.academy.mudogroupware.users.domain.exception.UserException;
 import com.academy.mudogroupware.users.domain.model.User;
 import com.academy.mudogroupware.users.domain.model.UserStatus;
@@ -63,10 +64,32 @@ class UpdateUserProfileServiceTest {
     }
 
     @Test
-    void updateMemberProfileThrowsWhenTargetIsNotMember() {
+    void updateMemberProfileThrowsUserNotFoundWhenTargetIsNotMember() {
         when(userRepository.findById(2L)).thenReturn(Optional.of(user(2L, AccountType.ADMIN)));
 
         assertThatThrownBy(() -> service.updateMemberProfile(2L, "새이름", null, null, null))
-                .isInstanceOf(UserException.class);
+                .isInstanceOf(UserException.class)
+                .extracting(e -> ((UserException) e).getErrorCode())
+                .isEqualTo(UserErrorCode.USER_NOT_FOUND);
+    }
+
+    @Test
+    void updateMemberProfileThrowsUserNotFoundWhenTargetDoesNotExist() {
+        when(userRepository.findById(2L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.updateMemberProfile(2L, "새이름", null, null, null))
+                .isInstanceOf(UserException.class)
+                .extracting(e -> ((UserException) e).getErrorCode())
+                .isEqualTo(UserErrorCode.USER_NOT_FOUND);
+    }
+
+    @Test
+    void updateMyProfileThrowsUserNotFoundWhenTargetDoesNotExist() {
+        when(userRepository.findById(1L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.updateMyProfile(1L, "010-9999-0000", null))
+                .isInstanceOf(UserException.class)
+                .extracting(e -> ((UserException) e).getErrorCode())
+                .isEqualTo(UserErrorCode.USER_NOT_FOUND);
     }
 }
