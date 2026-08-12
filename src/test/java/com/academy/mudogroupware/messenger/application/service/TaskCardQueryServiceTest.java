@@ -61,7 +61,7 @@ class TaskCardQueryServiceTest {
         when(chatRoomRepository.findById(1L)).thenReturn(Optional.of(chatRoom));
         when(chatTaskCardRepository.findPage(1L, null, null, 1)).thenReturn(List.of(first, second));
         when(chatMemberDirectoryPort.getMembers(List.of(1L))).thenReturn(
-                Map.of(1L, new ChatMemberInfo(1L, "assigner", 10L)));
+                Map.of(1L, new ChatMemberInfo(1L, "assigner")));
 
         TaskCardPageView view = service.getTaskCards(1L, 1L, null, null, 1);
 

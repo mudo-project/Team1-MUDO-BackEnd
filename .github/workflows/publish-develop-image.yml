@@ -31,8 +31,6 @@ jobs:
           cache: gradle
 
       - name: Run tests
-        env:
-          JAVA_TOOL_OPTIONS: -Xmx4g
         run: |
           chmod +x gradlew
           ./gradlew test --no-daemon
