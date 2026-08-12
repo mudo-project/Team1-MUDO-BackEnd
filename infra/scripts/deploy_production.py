@@ -202,6 +202,10 @@ def parameter_arn(region: str, account_id: str, tenant: str, name: str) -> str:
     return f"arn:aws:ssm:{region}:{account_id}:parameter/mudo/prod/tenants/{tenant}/{name}"
 
 
+def shared_parameter_arn(region: str, account_id: str, name: str) -> str:
+    return f"arn:aws:ssm:{region}:{account_id}:parameter/mudo/prod/shared/{name}"
+
+
 def render_app_task(
     tenant: dict[str, Any],
     profile: dict[str, Any],
@@ -294,6 +298,12 @@ def render_app_task(
         {"name": name, "valueFrom": parameter_arn(region, account_id, code, name)}
         for name in secret_names
     ]
+    container["secrets"].append(
+        {
+            "name": "SENTRY_DSN",
+            "valueFrom": shared_parameter_arn(region, account_id, "SENTRY_DSN"),
+        }
+    )
     return task
 
 
