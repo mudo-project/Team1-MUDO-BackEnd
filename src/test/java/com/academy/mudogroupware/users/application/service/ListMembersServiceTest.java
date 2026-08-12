@@ -288,4 +288,35 @@ class ListMembersServiceTest {
 
         verify(todayAttendanceStatusPort).findTodayStatusByUserIds(List.of(1L, 2L));
     }
+
+    @Test
+    void excludesNonActiveUsersFromAttendanceStatusQuery() {
+        when(userRepository.findAll()).thenReturn(List.of(
+                user(1L, "김강사", 8L, UserStatus.ACTIVE),
+                user(2L, "이조교", 9L, UserStatus.RESIGNED),
+                user(3L, "박강사", 8L, UserStatus.INACTIVE)));
+        when(roleRepository.findAll()).thenReturn(List.of(
+                Role.restore(8L, "강사", null, LocalDateTime.now(), Set.of()),
+                Role.restore(9L, "조교", null, LocalDateTime.now(), Set.of())));
+        when(todayAttendanceStatusPort.findTodayStatusByUserIds(any())).thenReturn(List.of());
+
+        service.list(null, null, null, 0, 20);
+
+        verify(todayAttendanceStatusPort).findTodayStatusByUserIds(List.of(1L));
+    }
+
+    @Test
+    void queriesAttendanceStatusWithEmptyListWhenPageHasNoActiveUsers() {
+        when(userRepository.findAll()).thenReturn(List.of(
+                user(1L, "이조교", 9L, UserStatus.RESIGNED),
+                user(2L, "박강사", 8L, UserStatus.INACTIVE)));
+        when(roleRepository.findAll()).thenReturn(List.of(
+                Role.restore(8L, "강사", null, LocalDateTime.now(), Set.of()),
+                Role.restore(9L, "조교", null, LocalDateTime.now(), Set.of())));
+        when(todayAttendanceStatusPort.findTodayStatusByUserIds(any())).thenReturn(List.of());
+
+        service.list(null, null, UserStatus.RESIGNED, 0, 20);
+
+        verify(todayAttendanceStatusPort).findTodayStatusByUserIds(List.of());
+    }
 }

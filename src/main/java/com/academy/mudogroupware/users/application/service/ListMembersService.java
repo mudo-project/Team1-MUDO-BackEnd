@@ -61,8 +61,12 @@ public class ListMembersService implements ListMembersUseCase {
         int to = (int) Math.min(offset + size, (long) filtered.size());
         List<MemberListItem> paged = filtered.subList(from, to);
 
+        List<Long> activeUserIds = paged.stream()
+                .filter(item -> item.status() == UserStatus.ACTIVE)
+                .map(MemberListItem::userId)
+                .toList();
         Map<Long, String> attendanceStatusByUserId = todayAttendanceStatusPort
-                .findTodayStatusByUserIds(paged.stream().map(MemberListItem::userId).toList()).stream()
+                .findTodayStatusByUserIds(activeUserIds).stream()
                 .collect(Collectors.toMap(MemberTodayAttendanceStatus::userId, MemberTodayAttendanceStatus::status));
 
         List<MemberListItem> result = paged.stream()
