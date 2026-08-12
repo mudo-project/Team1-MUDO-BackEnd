@@ -3,6 +3,7 @@ package com.academy.mudogroupware.revenuereport.infrastructure.external.fastapi;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
@@ -48,6 +49,10 @@ class FastApiRevenueReportClientTest {
         server.expect(requestTo("http://localhost:8000/api/revenue-report/generate"))
                 .andExpect(method(HttpMethod.POST))
                 .andExpect(header("X-Revenue-Report-Ai-Key", "secret"))
+                // 요청 바디는 RevenueSnapshot 필드가 최상위에 그대로 와야 한다(FastAPI가 그 형태를
+                // 기대함) — {"snapshot": {...}}처럼 감싸면 FastAPI에서 422가 난다(실제로 났었음).
+                .andExpect(jsonPath("$.targetMonth").exists())
+                .andExpect(jsonPath("$.snapshot").doesNotExist())
                 .andRespond(withSuccess("""
                         {"report":"8월 매출은 420만원으로 전월 대비 안정적입니다."}
                         """, MediaType.APPLICATION_JSON));

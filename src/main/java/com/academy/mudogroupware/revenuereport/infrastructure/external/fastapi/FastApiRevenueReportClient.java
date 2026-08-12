@@ -51,7 +51,7 @@ public class FastApiRevenueReportClient implements RevenueReportAiPort {
         FastApiRevenueReportResponse response;
         try {
             response = request
-                    .body(FastApiRevenueReportRequest.from(snapshot))
+                    .body(snapshot)
                     .retrieve()
                     .body(FastApiRevenueReportResponse.class);
         } catch (org.springframework.web.client.RestClientException e) {
