@@ -44,4 +44,26 @@ class PaymentRepositoryImplDataJpaTest {
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getEnrollmentId()).isEqualTo(1L);
     }
+
+    @Test
+    void excludesPaymentExactlyAtExclusiveUpperBound() {
+        PaymentEntity atLowerBound = PaymentEntity.builder()
+                .enrollmentId(1L).amount(300000)
+                .paidAt(LocalDateTime.of(2026, 8, 1, 0, 0))
+                .method(PaymentMethod.CARD).status(PaymentStatus.PAID)
+                .build();
+        PaymentEntity atUpperBound = PaymentEntity.builder()
+                .enrollmentId(2L).amount(200000)
+                .paidAt(LocalDateTime.of(2026, 9, 1, 0, 0))
+                .method(PaymentMethod.CASH).status(PaymentStatus.PAID)
+                .build();
+        paymentJpaRepository.save(atLowerBound);
+        paymentJpaRepository.save(atUpperBound);
+
+        java.util.List<Payment> result = paymentRepositoryImpl.findAllByPaidAtBetween(
+                LocalDateTime.of(2026, 8, 1, 0, 0), LocalDateTime.of(2026, 9, 1, 0, 0));
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getEnrollmentId()).isEqualTo(1L);
+    }
 }

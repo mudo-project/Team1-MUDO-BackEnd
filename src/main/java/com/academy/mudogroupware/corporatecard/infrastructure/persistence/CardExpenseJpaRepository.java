@@ -25,7 +25,7 @@ public interface CardExpenseJpaRepository extends JpaRepository<CardExpenseJpaEn
             select ce.expenseCategory as category, sum(t.amount) as amount
             from CardExpenseJpaEntity ce
             join ce.transaction t
-            where t.approvedAt between :from and :to
+            where t.approvedAt >= :from and t.approvedAt < :to
             group by ce.expenseCategory
             """)
     List<CategoryAmountProjection> sumAmountByCategoryAndApprovedAtBetween(
