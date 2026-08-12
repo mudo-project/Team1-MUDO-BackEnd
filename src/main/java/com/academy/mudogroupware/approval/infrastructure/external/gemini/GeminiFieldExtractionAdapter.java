@@ -14,6 +14,7 @@ import com.academy.mudogroupware.approval.application.port.AttachmentContent;
 import com.academy.mudogroupware.approval.application.port.AttachmentFieldExtractionException;
 import com.academy.mudogroupware.approval.application.port.AttachmentFieldExtractorPort;
 import com.academy.mudogroupware.approval.application.port.ExtractedReceiptFields;
+import com.academy.mudogroupware.global.infrastructure.observability.ai.GeminiTokenUsageTracker;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.RequiredArgsConstructor;
@@ -26,6 +27,8 @@ import lombok.RequiredArgsConstructor;
 @Component
 @RequiredArgsConstructor
 public class GeminiFieldExtractionAdapter implements AttachmentFieldExtractorPort {
+
+    private static final String FEATURE = "approval-attachment-field-extraction";
 
     private static final String EXTRACTION_INSTRUCTION = """
             다음은 사내 법인카드 경비 정산 결재에 첨부된 영수증입니다. 영수증에서 결제 금액, 결제 일자,
@@ -43,6 +46,7 @@ public class GeminiFieldExtractionAdapter implements AttachmentFieldExtractorPor
     private final RestClient geminiRestClient;
     private final GeminiProperties geminiProperties;
     private final ObjectMapper objectMapper;
+    private final GeminiTokenUsageTracker tokenUsageTracker;
 
     @Override
     public ExtractedReceiptFields extract(AttachmentContent content) {
@@ -64,6 +68,12 @@ public class GeminiFieldExtractionAdapter implements AttachmentFieldExtractorPor
                     .body(GeminiGenerateContentResponse.class);
         } catch (RestClientException e) {
             throw new AttachmentFieldExtractionException("Gemini API 호출에 실패했습니다.", e);
+        }
+
+        if (response != null && response.usageMetadata() != null) {
+            GeminiGenerateContentResponse.UsageMetadata usage = response.usageMetadata();
+            tokenUsageTracker.record(FEATURE, geminiProperties.model(), usage.promptTokenCount(),
+                    usage.candidatesTokenCount(), usage.totalTokenCount());
         }
 
         String json = response != null ? response.firstText() : null;
