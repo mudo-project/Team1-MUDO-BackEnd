@@ -21,6 +21,11 @@ POST /api/workspaces/{workspaceId}/tasks/{taskId}/comments
   → TaskCommentRepository.save
   → TaskCommentPersistenceAdapter
   → TaskCommentJpaRepository / TaskCommentMentionJpaRepository
+  → ApplicationEventPublisher.publishEvent (TaskCommentMentionedEvent)
+  → 트랜잭션 커밋
+  → WorkspaceWebSocketNotifier (AFTER_COMMIT)
+  → WebSocketEventPublisher
+  → /topic/workspaces/users/{recipientUserId}
 ```
 
 ### 1. 요청 검증과 Command 변환
@@ -43,7 +48,11 @@ POST /api/workspaces/{workspaceId}/tasks/{taskId}/comments
 
 `TaskComment.create(taskId, authorId, content, mentionedUserIds, now)`가 댓글과 멘션 목록을 함께 만든다(`now`는 `CreateTaskCommentService`가 소유한 `Clock`으로 계산). 내용이 공백만 있으면 도메인이 `BadRequestException`(`COMMON_400_1`)을 던진다(Request 계층 `@NotBlank`와 이중 방어). `TaskCommentRepository.save`는 `TaskCommentPersistenceAdapter`가 구현하며, 신규 댓글이므로 `TaskCommentJpaEntity.create` 후 멘션 목록을 함께 저장한다.
 
-### 6. 응답
+### 6. 멘션 알림 이벤트 발행
+
+댓글 저장이 성공하면 요청자 자신을 제외한 멘션 사용자 ID를 입력 순서대로 중복 제거해 `TaskCommentMentionedEvent`를 발행한다. 외부 수신자가 없으면 이벤트를 발행하지 않는다. `WorkspaceWebSocketNotifier`는 트랜잭션 커밋 이후(`AFTER_COMMIT`) 이벤트를 받아 수신자마다 `/topic/workspaces/users/{recipientUserId}`로 `TASK_COMMENT_MENTIONED` payload를 전송한다. 댓글 트랜잭션이 롤백되면 WebSocket 알림도 전송되지 않는다.
+
+### 7. 응답
 
 성공하면 Controller가 `GlobalApiResponse.created(WorkspaceResponseCode.TASK_COMMENT_CREATED, ...)`로 HTTP `201 Created`와 `TaskCommentResponse`(댓글 전체 필드 + `mentionedUserIds`)를 반환한다.
 
@@ -110,6 +119,11 @@ PATCH /api/workspaces/{workspaceId}/tasks/{taskId}/comments/{commentId}
   → TaskComment.updateContent (Domain Model)
   → TaskCommentRepository.save
   → TaskCommentPersistenceAdapter
+  → ApplicationEventPublisher.publishEvent (신규 멘션이 있을 때만)
+  → 트랜잭션 커밋
+  → WorkspaceWebSocketNotifier (AFTER_COMMIT)
+  → WebSocketEventPublisher
+  → /topic/workspaces/users/{recipientUserId}
 ```
 
 ### 1~3. 요청 검증, 워크스페이스·업무 확인
@@ -122,9 +136,13 @@ PATCH /api/workspaces/{workspaceId}/tasks/{taskId}/comments/{commentId}
 
 ### 5. 멘션 대상 검증과 전체 교체
 
-댓글 생성과 동일하게 멘션 대상을 검증한 뒤(`400_6`), `comment.updateContent(content, mentionedUserIds, now)`로 content와 멘션을 함께 교체한 새 `TaskComment`를 만든다(불변 도메인 모델). `TaskCommentRepository.save`는 기존 멘션을 전부 삭제하고 새 목록으로 재삽입한다(diff 없음 — 멘션 단독 CRUD가 없어 최적화하지 않음).
+댓글 생성과 동일하게 멘션 대상을 검증한 뒤(`400_6`), 수정 전 멘션 ID 집합을 보존하고 `comment.updateContent(content, mentionedUserIds, now)`로 content와 멘션을 함께 교체한 새 `TaskComment`를 만든다(불변 도메인 모델). `TaskCommentRepository.save`는 기존 멘션을 전부 삭제하고 새 목록으로 재삽입한다. 영속성은 전체 교체를 유지하고, 알림 수신자 계산에만 수정 전후 멘션 차집합을 사용한다.
 
-### 6. 응답
+### 6. 새로 추가된 멘션 알림
+
+알림 수신자는 `수정 요청 멘션 - 수정 전 멘션 - 요청자 자신`으로 계산하고 입력 순서대로 중복을 제거한다. 유지된 멘션은 재알림하지 않고, 제거된 멘션과 요청자 자신에게도 알리지 않는다. 신규 외부 멘션이 있을 때만 `TaskCommentMentionedEvent`를 발행하며, 생성 흐름과 동일하게 커밋 이후 사용자별 topic으로 전송한다.
+
+### 7. 응답
 
 작성자 본인 여부는 확인하지 않는다 — 현재 워크스페이스 참여자면 누구나 수정할 수 있다. 성공하면 `TASK_COMMENT_UPDATED`(`200_7`)와 갱신된 `TaskCommentResponse`를 반환한다.
 
