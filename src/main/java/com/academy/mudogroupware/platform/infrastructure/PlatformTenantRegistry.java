@@ -18,9 +18,26 @@ public class PlatformTenantRegistry {
   private final PlatformDashboardProperties properties;
   private final ObjectMapper objectMapper;
 
+  private volatile List<AcademyRuntime> cachedAcademies;
+
   public List<AcademyRuntime> findAll() {
+    List<AcademyRuntime> academies = cachedAcademies;
+    if (academies == null) {
+      synchronized (this) {
+        academies = cachedAcademies;
+        if (academies == null) {
+          academies = parse();
+          cachedAcademies = academies;
+        }
+      }
+    }
+    return academies;
+  }
+
+  private List<AcademyRuntime> parse() {
     try {
-      return objectMapper.readValue(properties.getTenantRegistryJson(), new TypeReference<List<AcademyRuntime>>() {}).stream()
+      return objectMapper
+          .readValue(properties.getTenantRegistryJson(), new TypeReference<List<AcademyRuntime>>() {}).stream()
           .sorted(Comparator.comparing(AcademyRuntime::code))
           .toList();
     } catch (Exception exception) {

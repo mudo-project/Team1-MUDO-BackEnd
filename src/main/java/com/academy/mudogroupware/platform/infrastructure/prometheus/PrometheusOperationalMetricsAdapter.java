@@ -79,8 +79,8 @@ public class PrometheusOperationalMetricsAdapter implements OperationalMetricsPo
     };
   }
 
-  private String tenantMatcher(List<AcademyRuntime> academies) {
-    return academies.stream().map(AcademyRuntime::code).collect(Collectors.joining("|"));
+  String tenantMatcher(List<AcademyRuntime> academies) {
+    return academies.isEmpty() ? ".*" : academies.stream().map(AcademyRuntime::code).collect(Collectors.joining("|"));
   }
 
   private static List<ApiCategory> categories() {
