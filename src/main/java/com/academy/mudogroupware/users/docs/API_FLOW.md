@@ -13,17 +13,19 @@
    → 불일치하면 UserException(LOGIN_FAILED) — 위 "없음" 케이스와 동일 코드
 → User.ensureLoginAllowed()
    → status != ACTIVE 이면 UserException(LOGIN_RESTRICTED)
-→ TokenIssuerUseCase.issue(id, username, roleId, accountType, adminScope)  ※ auth 모듈의 TokenService
+→ TokenIssuerUseCase.issue(id, username, roleId, accountType, adminScope, mustChangePw)  ※ auth 모듈의 TokenService
    → JwtTokenProvider.createAccessToken / createRefreshToken
    → RefreshTokenRepository: 기존 행 있으면 교체(replace), 없으면 저장(save)
    → TokenPair(accessToken, refreshToken) 반환
-→ LoginResponse(accessToken)
+→ LoginResult(tokenPair, user.isMustChangePw())
+→ LoginResponse(accessToken, mustChangePw)
 → RefreshTokenCookieFactory.create(refreshToken) → Set-Cookie 헤더
 → GlobalApiResponse<LoginResponse>
 ```
 
 - JWT엔 `roleId`만 싣습니다(`academyId`는 Phase 2에서 제거했습니다). `roleName`이나 permission 목록은 싣지 않고, 매 요청마다 새로 조회합니다(아래 3번 흐름).
 - refreshToken은 응답 바디에 절대 포함되지 않고, HttpOnly 쿠키로만 전달됩니다.
+- (2026-08-12) `mustChangePw`는 응답 바디와 액세스 토큰 클레임 양쪽에 모두 실립니다. 로그인 자체는 `mustChangePw` 값과 무관하게 항상 성공합니다(`User.ensureLoginAllowed()`는 `status`만 확인) — 이 값은 프론트가 최초 비밀번호 설정 화면으로 안내할지 판단하는 신호일 뿐, 백엔드가 다른 API 호출을 막는 강제 로직으로 쓰지 않습니다.
 
 ## 2. 액세스 토큰 재발급 흐름
 
@@ -47,7 +49,7 @@
    → 없으면 UserException(USER_NOT_FOUND)
 → User.ensureLoginAllowed()
    → status != ACTIVE 이면 UserException(LOGIN_RESTRICTED)
-→ TokenIssuerUseCase.issueAccessToken(id, username, roleId, accountType, adminScope)  ※ 액세스 토큰만 새로 생성, refreshToken 저장소는 건드리지 않음
+→ TokenIssuerUseCase.issueAccessToken(id, username, roleId, accountType, adminScope, user.isMustChangePw())  ※ 액세스 토큰만 새로 생성, refreshToken 저장소는 건드리지 않음
 → RefreshResponse(accessToken)
 → GlobalApiResponse<RefreshResponse>
 ```
@@ -55,6 +57,7 @@
 - 로그인 흐름의 `TokenIssuerUseCase.issue()`(쌍 발급 + 저장)와 달리, 재발급은 `issueAccessToken()`(액세스 토큰만 생성, DB 쓰기 없음)을 호출합니다 — 그래서 `RefreshService`는 `@Transactional(readOnly = true)`로 선언되어 있습니다.
 - JWT 자체 위조/만료(`AUTH_401_1`/`AUTH_401_2`)와, DB에 없거나(`AUTH_401_6`) DB 값과 다른 경우(`AUTH_401_7`)를 서로 다른 코드로 구분합니다 — 클라이언트가 "토큰을 완전히 새로 받아야 하는 경우"와 "다른 기기에서 로그인해서 밀려난 경우"를 구분할 수 있게 하기 위함입니다.
 - 재발급 시점의 `roleId`는 액세스 토큰 발급 당시(로그인 또는 마지막 재발급) 값을 그대로 이어받습니다 — 재발급 자체가 역할을 다시 확인하는 절차는 아닙니다.
+- `mustChangePw`도 재발급 시점에 DB에서 다시 조회한 최신 값(`user.isMustChangePw()`)으로 새 액세스 토큰에 다시 실립니다 — 로그인 이후 최초 비밀번호 설정을 완료했다면, 재발급부터는 새 토큰의 `mustChangePw`가 `false`로 갱신됩니다.
 
 ## 3. 요청 인증·인가 흐름 (인증이 필요한 모든 요청마다 반복)
 
@@ -62,7 +65,7 @@
 모든 요청 (SecurityConfig: 명시적으로 permitAll 안 된 경로는 authenticated() 필요)
 → JwtAuthenticationFilter (OncePerRequestFilter)
 → Authorization 헤더 또는 accessToken 쿠키에서 토큰 추출
-→ JwtTokenProvider.parseAccessToken → JwtClaims(userId, username, roleId, accountType, adminScope)
+→ JwtTokenProvider.parseAccessToken → JwtClaims(userId, username, roleId, accountType, adminScope, mustChangePw)
    → 위조/만료 시 request attribute에 에러코드만 저장(필터는 그냥 통과, 이후 인가 단계에서 401/403으로 응답)
 → JwtAuthenticationConverter.toAuthentication(claims)
    
@@ -77,7 +80,7 @@
          → role → role_permission → permission 조인 조회 (@Transactional(readOnly=true))
          → RolePermissionInfo(roleName, permissionCodes)
    
-   → AuthUser(userId, username, roleId, roleName, accountType, adminScope)
+   → AuthUser(userId, username, roleId, roleName, accountType, adminScope, mustChangePw)
    → authorities = permissionCodes를 SimpleGrantedAuthority로 변환한 목록
 → SecurityContextHolder에 Authentication 저장
 → 컨트롤러의 @PreAuthorize("hasAuthority('RESOURCE:ACTION')")가 authorities를 검사
@@ -108,7 +111,7 @@
 
 ## 📝 문서 정보
 
-- 업데이트일: `2026-08-11`
+- 업데이트일: `2026-08-12`
 - 변경 사항(요약):
   - 로그인 흐름을 처음 작성했습니다.
   - 액세스 토큰 재발급 흐름을 추가했습니다 (리프레시 토큰 검증 3단계 분기 포함).
@@ -116,3 +119,4 @@
   - 로그아웃 흐름(4번)을 추가했습니다.
   - JWT에 `accountType`/`adminScope` 매개변수 전파, `JwtAuthenticationConverter`에 platform admin 분기 로직 추가 (accountType==ADMIN && adminScope==PLATFORM인 경우 RolePermissionLookupPort 대신 PlatformAdminPermissionPort 호출).
   - academyId 스코핑 제거(Phase 2): `JwtClaims`/`JwtTokenProvider`/`AuthUser`/`JwtAuthenticationConverter`에서 `academyId`를 제거했습니다. 위 흐름의 시그니처들을 이에 맞춰 갱신했습니다.
+  - 최초 로그인/비밀번호 설정 흐름 재설계: JWT·로그인 응답에 `mustChangePw` 클레임을 추가해 로그인 흐름(1번)을 갱신했습니다. 자세한 배경은 `REVISION.md` 참고.

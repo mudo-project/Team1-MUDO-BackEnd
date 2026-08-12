@@ -62,10 +62,11 @@ public class RoleController {
                 .body(GlobalApiResponse.created(RoleResponseCode.ROLE_CREATED, data));
     }
 
-    @PreAuthorize("hasAuthority('ROLE:MANAGE')")
+    @PreAuthorize("hasAuthority('ROLE:MANAGE') or hasAuthority('ACCOUNT:MANAGE')")
     @Operation(
             summary = "역할 목록 조회",
-            description = "소속 학원의 역할 목록을 조회합니다. 권한 목록은 포함하지 않습니다.")
+            description = "소속 학원의 역할 목록을 조회합니다. 권한 목록은 포함하지 않습니다. "
+                    + "계정 발급 시 역할을 선택해야 하므로 ACCOUNT:MANAGE 권한으로도 호출할 수 있습니다.")
     @GetMapping
     public ResponseEntity<GlobalApiResponse<List<RoleListResponse>>> list() {
         List<RoleListResponse> data = listRolesUseCase.listRoles().stream()
@@ -74,10 +75,11 @@ public class RoleController {
         return ResponseEntity.ok(GlobalApiResponse.ok(RoleResponseCode.ROLE_LIST_FOUND, data));
     }
 
-    @PreAuthorize("hasAuthority('ROLE:MANAGE')")
+    @PreAuthorize("hasAuthority('ROLE:MANAGE') or hasAuthority('ACCOUNT:MANAGE')")
     @Operation(
             summary = "역할 상세 조회",
-            description = "역할 하나의 이름/설명/색상/인원수/권한 목록을 조회합니다. 다른 학원 소속이면 미존재와 동일하게 404로 응답합니다.")
+            description = "역할 하나의 이름/설명/색상/인원수/권한 목록을 조회합니다. 다른 학원 소속이면 미존재와 동일하게 404로 응답합니다. "
+                    + "계정 발급 시 역할을 선택해야 하므로 ACCOUNT:MANAGE 권한으로도 호출할 수 있습니다.")
     @GetMapping("/{roleId}")
     public ResponseEntity<GlobalApiResponse<RoleDetailResponse>> get(
             @Parameter(description = "역할 ID") @PathVariable Long roleId) {

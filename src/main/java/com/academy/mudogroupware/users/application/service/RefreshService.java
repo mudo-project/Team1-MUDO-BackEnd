@@ -43,7 +43,7 @@ public class RefreshService implements RefreshUseCase {
             user.ensureLoginAllowed();
 
             String accessToken = tokenIssuerUseCase.issueAccessToken(user.getId(), user.getUsername(),
-                    user.getRoleId(), user.getAccountType(), user.getAdminScope());
+                    user.getRoleId(), user.getAccountType(), user.getAdminScope(), user.isMustChangePw());
             log.info("event=auth_token_reissue_완료 userId={}", user.getId());
             return accessToken;
         } catch (RuntimeException e) {
