@@ -172,7 +172,7 @@ public class PayrollReferenceDataAdapter implements PayrollReferenceDataPort {
   }
 
   @Override public Optional<LaborScopeData> findLaborScope(YearMonth month) {
-    return one("select labor_scope_id, is_five_or_more from workplace_labor_scope where year_month=?",
+    return one("select labor_scope_id, is_five_or_more from workplace_labor_scope where `year_month`=?",
         (rs, row) -> new LaborScopeData(rs.getLong(1), rs.getBoolean(2)), month.atDay(1));
   }
 
@@ -198,7 +198,7 @@ public class PayrollReferenceDataAdapter implements PayrollReferenceDataPort {
         userId, month.atEndOfMonth(), month.atDay(1));
     if (statuses.isEmpty()) return Optional.empty();
     Optional<InsuranceData> assessment = one("select national_pension_amount, health_insurance_amount, long_term_care_amount, "
-        + "employment_insurance_amount from social_insurance_assessment where employee_id=? and year_month=?",
+        + "employment_insurance_amount from social_insurance_assessment where employee_id=? and `year_month`=?",
         (rs, row) -> new InsuranceData(rs.getBigDecimal(1), rs.getBigDecimal(2),
             rs.getBigDecimal(3), rs.getBigDecimal(4)), userId, month.atDay(1));
     InsuranceStatuses status = statuses.get();
@@ -214,7 +214,7 @@ public class PayrollReferenceDataAdapter implements PayrollReferenceDataPort {
 
   @Override public Optional<TaxData> findTax(Long userId, YearMonth month) {
     return one("select income_tax_amount, local_income_tax_amount from tax_assessment "
-        + "where employee_id=? and year_month=?",
+        + "where employee_id=? and `year_month`=?",
         (rs, row) -> new TaxData(rs.getBigDecimal(1), rs.getBigDecimal(2)), userId, month.atDay(1));
   }
 

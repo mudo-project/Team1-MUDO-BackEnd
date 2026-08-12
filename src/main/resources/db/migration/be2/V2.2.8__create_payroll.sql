@@ -33,15 +33,15 @@ CREATE TABLE statutory_policy (
 
 CREATE TABLE workplace_labor_scope (
     labor_scope_id BIGINT NOT NULL AUTO_INCREMENT,
-    year_month DATE NOT NULL,
+    `year_month` DATE NOT NULL,
     regular_employee_count INT NOT NULL,
     is_five_or_more BOOLEAN NOT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (labor_scope_id),
-    CONSTRAINT uk_workplace_labor_scope_month UNIQUE (year_month),
+    CONSTRAINT uk_workplace_labor_scope_month UNIQUE (`year_month`),
     CONSTRAINT chk_workplace_labor_scope_count CHECK (regular_employee_count >= 0),
-    CONSTRAINT chk_workplace_labor_scope_first_day CHECK (DAYOFMONTH(year_month) = 1)
+    CONSTRAINT chk_workplace_labor_scope_first_day CHECK (DAYOFMONTH(`year_month`) = 1)
 );
 
 CREATE TABLE employee_compensation (
@@ -131,7 +131,7 @@ CREATE TABLE social_insurance_status (
 CREATE TABLE social_insurance_assessment (
     assessment_id BIGINT NOT NULL AUTO_INCREMENT,
     employee_id BIGINT NOT NULL,
-    year_month DATE NOT NULL,
+    `year_month` DATE NOT NULL,
     national_pension_amount DECIMAL(15, 2) NOT NULL,
     health_insurance_amount DECIMAL(15, 2) NOT NULL,
     long_term_care_amount DECIMAL(15, 2) NOT NULL,
@@ -140,8 +140,8 @@ CREATE TABLE social_insurance_assessment (
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (assessment_id),
     CONSTRAINT fk_social_insurance_assessment_user FOREIGN KEY (employee_id) REFERENCES users (id),
-    CONSTRAINT uk_social_insurance_assessment_month UNIQUE (employee_id, year_month),
-    CONSTRAINT chk_social_insurance_assessment_first_day CHECK (DAYOFMONTH(year_month) = 1),
+    CONSTRAINT uk_social_insurance_assessment_month UNIQUE (employee_id, `year_month`),
+    CONSTRAINT chk_social_insurance_assessment_first_day CHECK (DAYOFMONTH(`year_month`) = 1),
     CONSTRAINT chk_social_insurance_assessment_amounts CHECK (
         national_pension_amount >= 0 AND health_insurance_amount >= 0
         AND long_term_care_amount >= 0 AND employment_insurance_amount >= 0
@@ -151,15 +151,15 @@ CREATE TABLE social_insurance_assessment (
 CREATE TABLE tax_assessment (
     tax_assessment_id BIGINT NOT NULL AUTO_INCREMENT,
     employee_id BIGINT NOT NULL,
-    year_month DATE NOT NULL,
+    `year_month` DATE NOT NULL,
     income_tax_amount DECIMAL(15, 2) NOT NULL,
     local_income_tax_amount DECIMAL(15, 2) NOT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (tax_assessment_id),
     CONSTRAINT fk_tax_assessment_user FOREIGN KEY (employee_id) REFERENCES users (id),
-    CONSTRAINT uk_tax_assessment_month UNIQUE (employee_id, year_month),
-    CONSTRAINT chk_tax_assessment_first_day CHECK (DAYOFMONTH(year_month) = 1),
+    CONSTRAINT uk_tax_assessment_month UNIQUE (employee_id, `year_month`),
+    CONSTRAINT chk_tax_assessment_first_day CHECK (DAYOFMONTH(`year_month`) = 1),
     CONSTRAINT chk_tax_assessment_amounts CHECK
         (income_tax_amount >= 0 AND local_income_tax_amount >= 0)
 );
