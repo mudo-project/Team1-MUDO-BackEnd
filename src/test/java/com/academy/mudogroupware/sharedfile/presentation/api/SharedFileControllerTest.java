@@ -138,6 +138,14 @@ class SharedFileControllerTest {
     }
 
     @Test
+    void rootManageAuthorityAloneCannotAccessContentApis() throws Exception {
+        mockMvc.perform(get("/api/shared-files/root").with(authentication(rootManageUser())))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(getSharedFileRootUseCase);
+    }
+
+    @Test
     void getItemsReturnsCursorFields() throws Exception {
         SharedFileItemsView view = new SharedFileItemsView(
                 List.of(item("item-1", "수업계획.docx")), true, "next-cursor");

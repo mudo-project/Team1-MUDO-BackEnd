@@ -13,7 +13,7 @@
 
 # **1. GET /api/shared-files/root — 시스템 루트 상태 조회**
 
-## [request]
+# **[request]**
 
 Request Header
 
@@ -25,7 +25,7 @@ Request Parameter
 
 없음
 
-## [response]
+# **[response]**
 
 ### 성공코드
 
@@ -61,7 +61,7 @@ Response Body
 
 # **2. POST /api/shared-files/root/recreation — 시스템 루트 재생성**
 
-## [request]
+# **[request]**
 
 Request Header
 
@@ -73,7 +73,7 @@ Request Parameter
 
 없음
 
-## [response]
+# **[response]**
 
 ### 성공코드
 
@@ -108,7 +108,7 @@ Response Body
 
 # **3. GET /api/shared-files/items — 현재 폴더 목록**
 
-## [request]
+# **[request]**
 
 Request Header
 
@@ -124,7 +124,7 @@ Request Parameter
 | `cursor` | 다음 페이지 조회용 cursor. 첫 페이지는 생략 |
 | `size` | 페이지 크기. 기본값 20, 1~100 |
 
-## [response]
+# **[response]**
 
 ### 성공코드
 
@@ -181,7 +181,7 @@ Response Body
 
 # **4. GET /api/shared-files/items/{itemId} — 파일·폴더 상세 조회**
 
-## [request]
+# **[request]**
 
 Request Header
 
@@ -195,7 +195,7 @@ Path Variable
 | --- | --- |
 | `itemId` | 조회할 Google Drive 파일·폴더 ID |
 
-## [response]
+# **[response]**
 
 ### 성공코드
 
@@ -239,7 +239,7 @@ Response Body
 
 # **5. GET /api/shared-files/items/search — 시스템 루트 전체 검색**
 
-## [request]
+# **[request]**
 
 Request Header
 
@@ -256,7 +256,7 @@ Request Parameter
 | `cursor` | 다음 페이지 조회용 cursor. 첫 페이지는 생략 |
 | `size` | 페이지 크기. 기본값 20, 1~100 |
 
-## [response]
+# **[response]**
 
 ### 성공코드
 
@@ -296,7 +296,7 @@ Response Body
 
 # **6. POST /api/shared-files/folders — 하위 폴더 생성**
 
-## [request]
+# **[request]**
 
 Request Header
 
@@ -319,7 +319,7 @@ Request Body
 | `parentId` | 상위 폴더 ID. 시스템 루트 바로 아래에 만들려면 루트 ID를 전달. 필수 |
 | `name` | 생성할 폴더 이름. 필수, 공백 불가 |
 
-## [response]
+# **[response]**
 
 ### 성공코드
 
@@ -360,7 +360,7 @@ Response Body
 
 # **7. POST /api/shared-files/items/upload — 로컬 파일 업로드**
 
-## [request]
+# **[request]**
 
 Request Header
 
@@ -381,7 +381,7 @@ Request Body (multipart part)
 | --- | --- |
 | `file` | 업로드할 파일 한 개. 최대 100MB |
 
-## [response]
+# **[response]**
 
 ### 성공코드
 
@@ -423,7 +423,7 @@ Response Body
 
 # **8. POST /api/shared-files/google-files — Google 파일 생성**
 
-## [request]
+# **[request]**
 
 Request Header
 
@@ -448,7 +448,7 @@ Request Body
 | `name` | 생성할 파일 이름. 필수, 공백 불가 |
 | `type` | 생성할 Google Workspace 파일 유형. `DOCS`, `SHEETS`, `SLIDES` 중 하나. 필수 |
 
-## [response]
+# **[response]**
 
 ### 성공코드
 
@@ -489,7 +489,7 @@ Response Body
 
 # **9. PATCH /api/shared-files/items/{itemId} — 이름 변경·이동**
 
-## [request]
+# **[request]**
 
 Request Header
 
@@ -538,7 +538,7 @@ Request Body
 
 > `name`과 `parentId`가 둘 다 없으면 요청을 거부한다.
 
-## [response]
+# **[response]**
 
 ### 성공코드
 
@@ -580,7 +580,7 @@ Response Body
 
 # **10. DELETE /api/shared-files/items/{itemId} — 휴지통 삭제**
 
-## [request]
+# **[request]**
 
 Request Header
 
@@ -594,7 +594,7 @@ Path Variable
 | --- | --- |
 | `itemId` | 삭제할 Google Drive 파일·폴더 ID |
 
-## [response]
+# **[response]**
 
 ### 성공코드
 
@@ -615,7 +615,7 @@ Path Variable
 
 # **11. GET /api/shared-files/items/{itemId}/download — 원본·변환 다운로드**
 
-## [request]
+# **[request]**
 
 Request Header
 
@@ -635,7 +635,7 @@ Request Parameter
 | --- | --- |
 | `format` | 변환 형식. `PDF`, `DOCX`, `XLSX`, `PPTX` 중 하나. 생략하면 원본 그대로 다운로드 |
 
-## [response]
+# **[response]**
 
 ### 성공코드
 

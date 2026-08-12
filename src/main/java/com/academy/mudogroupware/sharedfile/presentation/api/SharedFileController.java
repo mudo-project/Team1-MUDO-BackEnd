@@ -170,6 +170,9 @@ public class SharedFileController {
     public ResponseEntity<GlobalApiResponse<SharedFileItemResponse>> uploadItem(
             @RequestParam String parentId,
             @RequestPart MultipartFile file) throws IOException {
+        if (file.isEmpty()) {
+            throw new IllegalArgumentException("업로드할 파일이 비어 있습니다.");
+        }
         SharedFileItemView view = uploadSharedFileUseCase.upload(
                 parentId, file.getOriginalFilename(), file.getContentType(), file.getBytes());
         return ResponseEntity.status(HttpStatus.CREATED).body(
