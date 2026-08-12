@@ -1,9 +1,212 @@
 > 작성일: 2026-08-04
-> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청/승인 워크플로우(PR 1·2·3/3, "계정 발급 체계" 2단계) 완료, 역할 관리 API 7개(생성/목록/상세/수정/삭제/권한 조립/권한 카탈로그 조회) 완료, 사용자 역할 변경 API 완료, 학원 구성원 검색 API 완료, 역할 색상/인원수 완료, CodeRabbit 피드백 반영 + 로깅 컨벤션 전체 도메인(Service 17개) 적용 완료, 직원 계정 발급 API 완료("계정 발급 체계" 3단계 완료), 학원 신청 접수 API 완료(최소 스코프, "계정 발급 체계" 2단계 최종 완결), 학원 신청 접수 시점 requestedLoginId 중복확인 완료, 비밀번호 설정 링크 + 계정 발급 흐름 통합 완료(원장 역할 자동 생성·전체 권한 배정 포함), 관리자용 구성원 목록 조회 API 완료(오늘 근태 상태·페이지네이션·역할 필터 포함) · 후속 작업: 이메일 발송, 사업자등록증 검증(OCR·국세청 API), 비밀번호 설정 링크 재발급 흐름
+> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청/승인 워크플로우(PR 1·2·3/3, "계정 발급 체계" 2단계) 완료, 역할 관리 API 7개(생성/목록/상세/수정/삭제/권한 조립/권한 카탈로그 조회) 완료, 학원 구성원 검색 API 완료, 역할 색상/인원수 완료, CodeRabbit 피드백 반영 + 로깅 컨벤션 전체 도메인(Service 17개) 적용 완료, 직원 계정 발급 API 완료("계정 발급 체계" 3단계 완료), 학원 신청 접수 API 완료(최소 스코프, "계정 발급 체계" 2단계 최종 완결), 학원 신청 접수 시점 requestedLoginId 중복확인 완료, 비밀번호 설정 링크 + 계정 발급 흐름 통합 완료(원장 역할 자동 생성·전체 권한 배정 포함), 관리자용 구성원 목록 조회 API 완료(오늘 근태 상태·페이지네이션·역할/재직상태 필터 포함), 최초 로그인/비밀번호 설정 흐름 재설계 완료(계정 발급 시 연락처·이메일 입력 차단, 임시 비밀번호 평문 응답으로 회귀, 최초 비밀번호 설정 인증 필요화 + 연락처·이메일 필수 등록, 로그인 응답·JWT에 `mustChangePw` 클레임 추가), 계정 발급 권한(ACCOUNT:MANAGE)에 역할 목록/상세 조회 허용 완료, 사용자 역할 변경 API를 구성원 정보 수정 API로 병합 완료 · 후속 작업: 이메일 발송, 사업자등록증 검증(OCR·국세청 API), 비밀번호 설정 링크 재발급 흐름
 
 ## 🎯 변경 목적
 
 계정·권한(users) 도메인을 신설하고, 로그인과 액세스 토큰 재발급을 구현한다. 초기세팅 때 approval 도메인이 참조용으로 임시로 만들어둔 `users` 테이블을 팀이 확정한 ERD에 맞게 정합화하고, 그 위에서 인증 흐름을 짠다.
+
+---
+
+## ✅ 2026-08-12 · 구성원 목록 조회 재직 상태 필터 추가
+
+### 배경
+
+`GET /api/users/members` 응답에는 구성원별 `status`(`ACTIVE`/`RESIGNED`/`INACTIVE`)가 이미 내려가고 있었는데, 조회 쪽에는 이를 걸러낼 파라미터가 없었다. 이 API는 인메모리 필터링 + 인메모리 페이지네이션 구조라(`ListMembersService.list()`가 `userRepository.findAll()`로 전체를 가져온 뒤 필터·정렬·슬라이스), 프론트가 클라이언트 사이드에서 `status`로 걸러내려 하면 서버 페이지네이션과 구조적으로 맞물리지 않는다(한 페이지 안에서 원하는 상태만 추려내면 페이지당 개수가 들쭉날쭉해지고 `totalElements`/`totalPages`도 실제 필터 결과와 어긋난다). 재직/휴직/퇴사 탭 필터링을 서버에서 처리하도록 `status` 쿼리 파라미터를 추가하기로 했다.
+
+### 확정된 정책
+
+- **`keyword`/`roleId`와 동일한 패턴으로 구현한다.** `ListMembersUseCase.list()`/`ListMembersService.list()`에 `UserStatus status` 파라미터를 추가하고, 기존 스트림 체인에 `matchesStatus()` 필터를 하나 더 끼워 넣는다 — `keyword`/`roleId`/`status` 셋 다 AND 조건으로 함께 적용된 뒤 정렬·페이지네이션이 이루어진다.
+- **DB 레벨 필터링으로 전환하지 않는다.** 이 API가 인메모리 방식을 유지하기로 한 기존 결정(2026-08-12 "구성원 목록 조회 번호 기반 페이지네이션" 항목 참고)을 그대로 따른다. `status` 필터도 이미 메모리에 올라온 리스트에 조건 하나를 추가하는 것뿐이라 추가 DB 조회 비용이 없다.
+- **잘못된 값은 Spring 기본 enum 바인딩 검증에 맡긴다.** `@RequestParam(required = false) UserStatus status`로 선언하면 `ACTIVE`/`RESIGNED`/`INACTIVE` 외의 값이 들어왔을 때 `MethodArgumentTypeMismatchException`이 발생하고, 기존 `GlobalExceptionHandler`가 이를 `400 COMMON_400_1`로 변환한다 — 별도의 커스텀 검증 로직을 추가하지 않았다. (참고: 이 API는 매핑된 라우트이므로, 별개로 존재하는 "매핑 안 된 경로가 404 대신 500을 반환하는" 기존 버그와는 무관하다.)
+- **CodeRabbit 피드백 반영: 근태 상태 조회 대상을 ACTIVE 구성원으로 제한한다.** 기존엔 페이지에 포함된 모든 userId(RESIGNED/INACTIVE 포함)를 그대로 `TodayAttendanceStatusPort`에 넘겼는데, 응답 조립 단계(`withAttendanceStatus()`)에서 ACTIVE가 아니면 어차피 `null`로 덮어써서 그 결과가 100% 버려지고 있었다. `status=RESIGNED`/`INACTIVE`로 조회하면 페이지 전체가 이 낭비성 근태 조회(휴가 승인 조회 + 근태 기록 조회 쿼리)를 매번 유발했다. `ListMembersService.list()`가 Port를 호출하기 전에 `paged`를 ACTIVE 구성원 ID로만 필터링하도록 수정했다 — 근태 정책 미등록 시 404로 실패하는 기존 정책(빈 목록이어도 `AttendancePolicyRepository.findCurrent()`가 먼저 실행되는 `TodayAttendanceStatusAdapter`의 기존 동작)은 그대로 유지되고, 응답 값도 전혀 바뀌지 않는다(원래도 ACTIVE만 실제 값을 받았으므로).
+
+### 완료 기준
+
+- [x] `ListMembersUseCase.list()`/`ListMembersService.list()`에 `status` 파라미터 추가, `matchesStatus()` 필터 구현
+- [x] `UserController.listMembers`에 `status` 쿼리 파라미터 추가, Swagger `@Operation` description 갱신
+- [x] `ListMembersServiceTest`에 `status` 단독 필터, 필터 미지정 시 전체 반환, `keyword`+`roleId`+`status` 동시 조합 3케이스 추가(TDD)
+- [x] `ListMembersService`가 `TodayAttendanceStatusPort` 호출 대상을 ACTIVE 구성원으로 제한하도록 수정, 관련 테스트 2건 추가(TDD, CodeRabbit 피드백 반영)
+- [x] `UserControllerTest` 신규 작성: `status=NOT_A_STATUS` 요청이 `400 COMMON_400_1`로 거절되고 `listMembersUseCase`가 호출되지 않는지 검증(CodeRabbit 피드백 반영, 이 컨트롤러의 첫 테스트 파일)
+- [x] `./gradlew test --max-workers=1` 전체 통과
+- [x] 로컬 curl e2e: 구성원 2명을 각각 `RESIGNED`/`INACTIVE`로 상태 변경 후 `status=ACTIVE`/`RESIGNED`/`INACTIVE`/미지정/잘못된 값(`NOT_A_STATUS`) 5가지 시나리오 확인 — 각각 올바른 `totalElements`와 대상, 미지정 시 전체 반환, 잘못된 값은 `400 COMMON_400_1` 확인
+- [x] 문서 갱신(API.md/README.md/CHANGELOG.md/REVISION.md/Notion)
+
+### 🧩 영향 범위
+
+| 계층 | 변경 내용 |
+| --- | --- |
+| Application(users) | `ListMembersUseCase`(`status` 파라미터 추가), `ListMembersService`(`matchesStatus()` 필터 추가, `TodayAttendanceStatusPort` 호출 대상을 ACTIVE로 제한) |
+| Presentation(users) | `UserController.listMembers`(`status` 쿼리 파라미터 추가), `UserControllerTest` 신규 추가 |
+| 삭제 | 없음 |
+| Migration | 없음(기존 `status` 컬럼 재사용) |
+
+---
+
+## ✅ 2026-08-12 · 계정 발급 권한(ACCOUNT:MANAGE)에 역할 조회 허용
+
+### 배경
+
+"계정 생성 권한이 있다면 역할 CRUD도 당연히 가능해야 하는 게 자연스럽지 않나?"라는 질문에서 시작된 논의. 확인해보니 `ACCOUNT:MANAGE`(`UserController`)와 `ROLE:MANAGE`(`RoleController`)는 실제로 완전히 분리된 권한이었다. 팀이 이전에 정한 "관련 행위는 하나의 코드로 묶는다" 원칙(예: `ACCOUNT:CREATE`→`ACCOUNT:MANAGE`로 통합)을 계정↔역할처럼 서로 다른 리소스 사이에도 그대로 적용해 하나로 묶자는 제안이 있었으나, 그 원칙은 같은 리소스 안에서의 통합이었을 뿐 리소스가 다른 경우까지 일반화한 적은 없어 그대로 적용하는 것에는 반대했다. 다만 실무적으로 계정 발급(`POST /api/users`) 화면에서 `roleId`를 선택해야 하므로, 역할 목록/상세 조회(읽기 전용)만큼은 `ACCOUNT:MANAGE`로도 열어주는 게 합리적이라는 절충안으로 수렴했다.
+
+### 확정된 정책
+
+- **역할 목록 조회(`GET /api/roles`)와 역할 상세 조회(`GET /api/roles/{roleId}`)만 `ACCOUNT:MANAGE`에도 허용한다.** `@PreAuthorize("hasAuthority('ROLE:MANAGE') or hasAuthority('ACCOUNT:MANAGE')")`로 변경했다.
+- **역할 생성·수정·삭제·권한 조립(쓰기 작업 4개)은 그대로 `ROLE:MANAGE` 전용으로 남긴다.** 권한 조립은 보안 민감도가 높아 계정 발급 권한만으로 손댈 수 있게 하지 않는다.
+- **권한 코드 자체는 통합하지 않는다.** `ACCOUNT:MANAGE`/`ROLE:MANAGE`는 카탈로그에 여전히 별도 코드로 남아있고, 이번 변경은 컨트롤러의 `@PreAuthorize` 식에 `or` 조건을 추가한 것뿐이다 — 역할에 권한을 배정할 때 두 코드를 항상 같이 묶어 배정해야 하는 정책 변화는 아니다.
+
+### 완료 기준
+
+- [x] `RoleController.list()`/`RoleController.get()`의 `@PreAuthorize`에 `ACCOUNT:MANAGE` 조건 추가
+- [x] `./gradlew compileJava` 통과
+- [x] 로컬 curl e2e: `ACCOUNT:MANAGE`만 가진 테스트 역할(`ROLE:MANAGE` 없음)을 만들어 그 역할의 계정으로 로그인 → 목록/상세 조회 200 확인 → 역할 생성/수정/권한 조립/삭제 4개 모두 403 확인
+- [x] 문서 갱신(API.md/README.md/CHANGELOG.md/REVISION.md/Notion)
+
+### 🧩 영향 범위
+
+| 계층 | 변경 내용 |
+| --- | --- |
+| Presentation(users) | `RoleController.list()`/`RoleController.get()`의 `@PreAuthorize`를 `ROLE:MANAGE` 단독에서 `ROLE:MANAGE or ACCOUNT:MANAGE`로 변경(Javadoc/`@Operation` 설명 갱신) |
+| Migration | 없음 |
+
+---
+
+## ✅ 2026-08-12 · 구성원 역할 변경을 구성원 정보 수정 API로 병합
+
+### 배경
+
+프론트에서 관리자용 "구성원 정보 수정" 화면과 "역할 변경"을 하나의 저장 액션으로 처리하고 싶다는 요청이 들어왔다. 기존에는 `PATCH /api/users/{userId}`(이름/연락처/이메일/입사일)와 `PATCH /api/users/{userId}/role`(역할)이 완전히 분리된 API였다(2026-08-08 "사용자 역할 변경 추가"에서 별도 API로 만들었고, README에는 "역할 변경에는 role 존재 검증이 별도로 필요해서 책임을 분리했다"고 근거를 남겨뒀었다).
+
+### 확정된 정책
+
+- **`UpdateMemberProfileRequest`에 선택 필드 `roleId`를 추가한다.** 값을 보내지 않으면 기존 역할을 유지하고(다른 필드들과 동일한 부분 수정 패턴), 값을 보내면 역할도 함께 바뀐다.
+- **역할 존재 검증을 프로필 필드 갱신보다 먼저 수행한다.** `UpdateUserProfileService.updateMemberProfile()`이 `RoleRepository`를 새로 의존성으로 받아, `roleId != null`이면 `roleRepository.findById()`로 먼저 확인하고(없으면 `RoleNotFoundException`, `404 USER_404_2`) `userRepository.changeRole()`을 호출한 뒤에야 `userRepository.updateProfile()`을 호출한다. 이 순서 덕분에 잘못된 `roleId`를 보내면 이름·연락처 등 다른 필드도 전혀 반영되지 않는다(로컬 e2e로 확인: 잘못된 roleId로 이름도 같이 보냈을 때 이름이 안 바뀐 채 404만 응답).
+- **역할 변경 관련 로직·검증(대상 MEMBER 여부, 역할 존재 확인, `changeRole` 리포지토리 호출)은 기존 `ChangeUserRoleService`의 패턴을 그대로 옮겨왔다.** `UserRepository.changeRole`/`UserRepositoryImpl.changeRole`/`UserEntity.changeRole`(FK 위반 시 `RoleNotFoundException` 변환 포함)은 이미 검증된 코드라 그대로 재사용하고, 그 위의 오케스트레이션 계층(`ChangeUserRoleCommand`/`ChangeUserRoleUseCase`/`ChangeUserRoleService`/`ChangeUserRoleRequest`)만 삭제했다.
+- **`PATCH /api/users/{userId}/role` 엔드포인트와 관련 클래스를 전부 삭제한다.** `UserController`에서 핸들러·필드·import를 제거했고, 그 경로로 호출하면 이제 매핑된 컨트롤러가 없어 컨트롤러 자체를 안 탄다. (기존에 발견한 별개 이슈: 이 앱은 매핑되지 않은 경로 전체에 대해 404 대신 500을 반환한다 — `NoResourceFoundException`을 잡는 catch-all `GlobalExceptionHandler`가 원인으로 보이며, 이번 병합과 무관한 기존 버그라 별도로 남겨뒀다.)
+- **`changeRole`이 다른 곳에서 안 쓰이는지 확인 후 삭제했다.** 코드베이스 전체에서 `ChangeUserRoleUseCase`/`ChangeUserRoleCommand`/`ChangeUserRoleService`/`ChangeUserRoleRequest`를 참조하는 곳은 자기 자신의 호출 체인(`UserController` → `ChangeUserRoleService` → `UserRepository.changeRole`)뿐이었다.
+
+### 완료 기준
+
+- [x] `UpdateMemberProfileUseCase`/`UpdateMemberProfileRequest`에 선택 필드 `roleId` 추가
+- [x] `UpdateUserProfileService`에 `RoleRepository` 의존성 추가, 역할 검증→변경→프로필 갱신 순서로 구현(TDD: 역할 미지정 시 변경 없음/역할 지정 시 변경/잘못된 역할 시 `RoleNotFoundException`+아무 것도 반영 안 됨 3케이스 추가)
+- [x] `UserController`에서 `changeRole` 핸들러·`ChangeUserRoleUseCase` 필드·관련 import 제거, `updateMemberProfile` 핸들러가 `roleId`를 전달하도록 수정
+- [x] `ChangeUserRoleCommand`/`ChangeUserRoleUseCase`/`ChangeUserRoleService`/`ChangeUserRoleRequest`/`ChangeUserRoleServiceTest` 삭제(다른 참조 없음 확인)
+- [x] `./gradlew test` 전체 통과
+- [x] 로컬 curl e2e: 이름/연락처만 수정(역할 유지) → 역할만 수정(다른 필드 유지) → 이름+역할 동시 수정 → 잘못된 roleId로 이름+역할 동시 수정 시 404 확인 및 이름이 반영되지 않았음을 재조회로 확인 → 옛 `/role` 엔드포인트가 더 이상 라우팅되지 않음을 확인
+- [x] 문서 갱신(API.md/README.md/CHANGELOG.md/REVISION.md/Notion)
+
+### 🧩 영향 범위
+
+| 계층 | 변경 내용 |
+| --- | --- |
+| Application(users) | `UpdateMemberProfileUseCase`(`roleId` 파라미터 추가), `UpdateUserProfileService`(`RoleRepository` 의존성 추가, 역할 변경 로직 흡수) |
+| Presentation(users) | `UpdateMemberProfileRequest`(`roleId` 필드 추가), `UserController`(`changeRole` 핸들러 제거, `updateMemberProfile` 핸들러 갱신) |
+| 삭제 | `ChangeUserRoleCommand`/`ChangeUserRoleUseCase`/`ChangeUserRoleService`/`ChangeUserRoleRequest`/`ChangeUserRoleServiceTest`, `PATCH /api/users/{userId}/role` 엔드포인트 |
+| Migration | 없음(기존 컬럼·제약 재사용) |
+
+---
+
+## ✅ 2026-08-12 · 최초 로그인/비밀번호 설정 흐름 재설계
+
+### 배경
+
+계정 발급 시 `phone`/`email`을 선택 입력으로 받을 수 있게 한 뒤(`V4.1.7`, 위 "계정생성 phone/email 선택입력화" 참고), "그럼 최초 로그인 시 비밀번호를 바꾸면서 연락처·이메일도 같이 받을 수 있나?"라는 질문에서 시작해 다음 문제들을 한 번에 다시 들여다봤다.
+
+1. 임시 비밀번호로 로그인한 뒤 앱을 그냥 꺼버리거나 재설치하면, `mustChangePw=true`라는 신호를 프론트가 다시 확인할 방법이 없었다 — 로그인 API 응답에 이 값이 아예 없었기 때문이다.
+2. `POST /api/users/password-setup`은 비밀번호 설정 링크(`PasswordSetupLinkBuilder`가 만든 URL, `?username=...&tempPassword=...`)에 아이디와 임시 비밀번호를 쿼리스트링으로 실어 보내고 있었다. 이는 (a) 브라우저 히스토리에 평문으로 남고, (b) 서버·프록시·CDN 접근 로그가 기본적으로 요청 URL 전체(쿼리스트링 포함)를 기록하며, (c) 같은 페이지에서 외부 리소스를 로드하면 `Referer` 헤더로 제3자에게 전달될 수 있는 실제 보안 안티패턴(OWASP에 문서화됨)이다. 이 방식은 PR #314(2026-08-10)에서 "평문 비밀번호가 API 응답과 로그에 남는 게 마음에 걸린다"는 이유로 기존 `temporaryPassword` 평문 응답 방식을 대체하며 도입됐는데, 재검토 결과 원래 우려(앱 레벨 응답 로깅)는 그대로 남아있으면서 새로운 노출 경로(브라우저 히스토리/접근 로그/Referer)만 추가된, 더 나빠진 변경이었다.
+3. `POST /api/users/password-setup`이 익명 공개 엔드포인트라 `username`/`tempPassword`를 요청 바디로 받아야 했다.
+
+### 확정된 정책
+
+- **계정 발급 시 연락처·이메일 입력을 완전히 막는다.** `CreateAccountRequest`/`CreateAccountCommand`/`User.create()`에서 `phone`/`email` 파라미터를 아예 제거했다(선택 입력에서 "받지 않음"으로 강화). 전역 Jackson 설정(`FAIL_ON_UNKNOWN_PROPERTIES`)이 켜져 있어, 요청 바디에 `phone`/`email`을 넣어도 알 수 없는 필드로 처리되어 `400`으로 거절된다(로컬 e2e로 확인). 원장이 직원 전체의 연락처를 대신 입력·관리하지 않고, 본인이 최초 비밀번호 설정에서 등록하도록 강제하는 쪽으로 정책을 굳혔다.
+- **비밀번호 설정 링크 방식을 폐기하고 평문 임시 비밀번호 응답으로 되돌린다.** `PasswordSetupLinkBuilder`(+ 테스트, `app.frontend-url` 설정)를 완전히 삭제했다. `AccountIssuer.issue()`가 `phone`/`email` 파라미터도 함께 제거하고 `IssuedAccount(user, temporaryPassword)`를 반환하도록 되돌렸다(`CreateAccountResult`/`AccountCreateResponse`의 `passwordSetupLink` 필드도 `temporaryPassword`로 되돌림). JSON 응답 필드는 요청 URL이 아니므로 브라우저 히스토리·접근 로그·Referer 노출 경로가 없다 — 원래 PR #314가 우려했던 "응답에 평문이 남는다"는 지점은 이 설계에서도 동일하게 존재하지만, 그 우려는 URL이든 JSON 바디든 앱 레벨 응답 로깅 정책으로 별도 해결해야 하는 문제이고 지금 스코프에는 없다고 판단했다.
+- **로그인 응답과 액세스 토큰(JWT) 양쪽에 `mustChangePw`를 싣는다.** `JwtClaims`/`JwtTokenProvider`/`TokenIssuerUseCase`/`TokenService`/`AuthUser`/`JwtAuthenticationConverter`/`LoginService`/`RefreshService` 전체에 `mustChangePw`를 관통시켰다(레거시 토큰엔 클레임이 없으므로 `JwtTokenProvider.parseAccessToken`은 누락 시 `false`로 안전하게 기본값 처리). `AuthUser`는 기존 4-arg 편의 생성자(21개 크로스 도메인 테스트가 의존)를 건드리지 않고 `mustChangePw=false` 기본값을 주는 방식으로 확장해, 무관한 테스트 파일들을 손대지 않았다. 로그인 응답 바디는 로그인 시점 1회성 신호이고, 이후 새로고침 등으로 다시 확인해야 하면 프론트가 로컬에 저장한 JWT를 디코드해서 같은 클레임을 읽으면 된다. `mustChangePw`는 여전히 백엔드가 다른 API 호출을 막는 로그인 게이트로 쓰지 않는다(`LoginService`/`User.ensureLoginAllowed()`는 `status`만 확인) — 순수하게 프론트 화면 전환용 신호다.
+- **`POST /api/users/password-setup`을 인증 필요 엔드포인트로 바꾸고, 새 비밀번호와 함께 이메일·전화번호를 필수로 받는다.** 요청 바디는 `{newPassword, email, phone}`만 받고 `username`/임시 비밀번호는 받지 않는다 — 대상 계정은 `@AuthenticationPrincipal AuthUser`(JWT)에서 식별한다. `SecurityConfig`의 `permitAll` 매처를 제거했다. 서비스 내부에서는 JWT의 `mustChangePw` 클레임을 그대로 믿지 않고 `userRepository.findById()`로 최신 DB 상태를 다시 조회해 `mustChangePw==true`인지 재확인한다(클레임은 로그인 시점 값이라 그 사이 이미 설정을 마쳤을 수 있음). 비밀번호·연락처·이메일 갱신은 `UserJpaRepository.completePasswordSetupIfMustChange`(기존 CR-Fix에서 도입한 `WHERE mustChangePw=true` 조건부 원자적 UPDATE)를 확장해 한 문장으로 처리한다 — 부분 반영(비밀번호만 바뀌고 연락처는 안 바뀌는 등)이 구조적으로 불가능하다.
+- **엔드포인트 자체가 인증을 요구하게 됐지만, "이미 설정 완료" 재요청에 대한 마스킹 정책은 그대로 유지한다.** 처음 이 흐름을 재검토할 때 "임시 비밀번호로 로그인하면 '이미 재설정된 비밀번호입니다'라고 구체적으로 알려줄 수 있나?"라는 요청이 있었으나, 익명 호출자가 이 구분을 이용해 계정 상태(존재 여부·설정 완료 여부)를 추론할 수 있다는 점을 근거로 반대했고 사용자가 이를 받아들여 제외했다. 인증이 추가된 지금은 호출자가 이미 그 계정의 소유자로 확인된 상태라 엄밀히는 같은 위험이 없지만, 재요청 시 "이미 처리됨"과 그 외 실패를 구분하지 않는 기존 응답(`400 USER_400_2`)을 그대로 유지하기로 했다 — 새로운 위험을 만들지 않는 선에서 기존 동작을 최소한으로만 바꾼다는 원칙을 따랐다.
+- **이메일 중복은 여전히 `409 USER_409_7`로 별도 처리한다.** `UserRepositoryImpl.completePasswordSetup`이 `DataIntegrityViolationException`을 잡아 `uk_users_email` 위반이면 `EmailDuplicateException`으로 변환한다(내 정보 수정/구성원 정보 수정과 동일한 패턴). 이건 익명 열거 문제가 아니라 인증된 본인이 스스로 잘못된 값을 넣은 경우라 구체적인 오류를 그대로 보여준다.
+
+### 검토했다가 제외한 대안
+
+- **랜덤 토큰 발급 방식(별도 토큰 테이블)**: `refresh_tokens` 테이블과 같은 "도메인 모델 없는 infra-only 테이블, 1인 1토큰 upsert" 패턴을 그대로 재사용할 수 있어 구현 난이도는 낮다고 판단했으나, 결국 별도 저장소·만료 로직·발급 API가 추가로 필요해 지금 스코프에 비해 과했다. JWT의 `mustChangePw` 클레임 + 인증된 password-setup 엔드포인트만으로 원래 문제(재확인 불가능, URL 노출)를 모두 해결할 수 있어 채택하지 않았다.
+- **`temporaryPassword`를 계정 발급 응답으로, 최초 로그인 여부는 액세스 토큰에 담는 방식**: 최종 채택한 설계와 거의 같은 방향이었으나, `password-setup` 엔드포인트를 아예 없애고 `PATCH /api/users/me/password`(내 비밀번호 변경)를 재사용하자는 제안이 있었다. 사용자가 "최초 설정과 평소 비밀번호 변경은 책임이 다르다"는 이유로 반대해, `password-setup`은 별도 엔드포인트로 유지하고 대신 페이로드만 이메일·전화번호까지 받도록 확장했다.
+
+### 완료 기준
+
+- [x] JWT 체인 전체에 `mustChangePw` 클레임 추가(`JwtClaims`/`JwtTokenProvider`/`TokenIssuerUseCase`/`TokenService`/`AuthUser`/`JwtAuthenticationConverter`/`LoginService`/`RefreshService`, `LoginResult`/`LoginResponse`에 반영), 관련 테스트 전부 TDD로 갱신(신규 `LoginServiceTest` 포함)
+- [x] `CreateAccountRequest`/`CreateAccountCommand`/`User.create()`에서 `phone`/`email` 제거, 요청에 포함 시 `400`으로 거절되는지 로컬 e2e로 확인
+- [x] `AccountIssuer`/`IssuedAccount`/`CreateAccountResult`/`AccountCreateResponse`를 `temporaryPassword` 반환으로 되돌림, `PasswordSetupLinkBuilder`+테스트+`app.frontend-url` 설정(로컬/운영/테스트 3곳) 삭제
+- [x] `PasswordSetupRequest`/`PasswordSetupCommand`/`PasswordSetupService`를 인증 기반(`userId`로 조회) + `{newPassword, email, phone}` 필수 입력으로 재작성(TDD)
+- [x] `UserJpaRepository.completePasswordSetupIfMustChange` 확장(비밀번호+연락처+이메일 동시 갱신), `UserRepositoryImpl.completePasswordSetup`에 이메일 중복 → `EmailDuplicateException` 변환 추가(TDD)
+- [x] `UserController`의 `password-setup` 핸들러에 `@AuthenticationPrincipal AuthUser` 추가, `SecurityConfig`에서 `permitAll` 매처 제거
+- [x] `./gradlew test` 전체 통과(환경 이슈로 `Java heap space` 1회 발생 후 재시도 성공 — IntelliJ+Gradle 데몬+구동 중인 앱 서버가 동시에 메모리를 점유한 환경 문제, 코드 결함 아님)
+- [x] 로컬 curl e2e: 계정 발급(연락처·이메일 미입력 확인, 포함 시 400 확인) → 로그인(`mustChangePw=true` 응답·JWT 클레임 확인) → 인증 없이 password-setup 호출 시 401 확인 → 이메일 누락 시 400 확인 → 정상 설정(이메일 중복 시 409 확인 후 유니크 값으로 재시도, 204) → 재로그인(`mustChangePw=false` 확인, DB에 연락처·이메일 반영 확인) → 옛 임시 비밀번호 로그인 실패(401) → 동일 계정 재설정 시도 시 400 확인
+- [x] Swagger(OpenAPI) 문서로 `AccountCreateResponse`/`PasswordSetupRequest`/`CreateAccountRequest`/`LoginResponse` 스키마 재검증
+- [x] 문서 갱신(API.md/API_FLOW.md/README.md/CHANGELOG.md/REVISION.md)
+
+### 🧩 영향 범위
+
+| 계층 | 변경 내용 |
+| --- | --- |
+| Domain(users) | `User.create()`에서 `phone`/`email` 파라미터 제거(내부적으로 `null` 고정, `restore()`는 영향 없음) |
+| Application(users) | `CreateAccountCommand`(`phone`/`email` 제거), `AccountIssuer`/`IssuedAccount`(`temporaryPassword` 필드로 복귀), `CreateAccountResult`(동일), `PasswordSetupCommand`(`{userId, newPassword, email, phone}`로 전면 교체), `PasswordSetupService`(인증 기반 재작성), `LoginResult`(신규), `LoginService`/`RefreshService`(`mustChangePw` 전파) |
+| Persistence(users) | `UserJpaRepository.completePasswordSetupIfMustChange`(비밀번호+연락처+이메일 동시 갱신으로 확장), `UserRepositoryImpl.completePasswordSetup`(이메일 중복 예외 변환 추가) |
+| Presentation(users) | `CreateAccountRequest`(`phone`/`email` 제거), `AccountCreateResponse`(`temporaryPassword`로 복귀), `PasswordSetupRequest`(`{newPassword, email, phone}`로 전면 교체), `UserController.setupPassword`(`@AuthenticationPrincipal AuthUser` 추가), `LoginResponse`(`mustChangePw` 추가) |
+| 공통(`global`) | `JwtClaims`/`JwtTokenProvider`/`AuthUser`/`JwtAuthenticationConverter`에 `mustChangePw` 추가, `SecurityConfig`에서 `POST /api/users/password-setup`의 `permitAll` 매처 제거 |
+| 공통(`auth`) | `TokenIssuerUseCase`/`TokenService`의 `issue()`/`issueAccessToken()`에 `mustChangePw` 파라미터 추가 |
+| 삭제 | `PasswordSetupLinkBuilder`+테스트, `app.frontend-url`(로컬/운영/테스트 설정 3곳), 이제 무의미해진 `CreateAccountRequestTest`(email 검증 테스트) |
+| Migration | 없음(기존 컬럼·제약 재사용, 신규 컬럼 추가 없음) |
+
+### 후속 작업
+
+- 임시 비밀번호·아이디를 학원 관리자가 직원에게 전달하는 과정의 자동화(이메일/카카오톡 발송 연동)는 여전히 범위 밖이다.
+- 응답 바디에 평문 임시 비밀번호가 담기는 것 자체를 앱 레벨 로깅에서 마스킹할지는 별도 검토가 필요하다(access log에 응답 바디를 남기는 설정이 있는지 확인 필요) — 이번 작업은 URL 노출 경로만 제거했다.
+
+---
+
+## ✅ 2026-08-12 · 프로필 수정 동시성 방어 + 이메일 형식 검증 (CodeRabbit 피드백 반영)
+
+### 배경
+
+PR #374(구성원 정보 수정) 리뷰에서 CodeRabbit이 남긴 미해결 지적 3건을 반영했다: (1) `UpdateUserProfileService`가 조회한 기존 값으로 모든 프로필 필드를 다시 저장하는 방식이라 동시 수정 시 필드 유실 위험이 있음, (2) 프로필/계정발급 요청의 `email` 필드가 `@Size`만 있고 `@Email`이 없어 형식이 안 맞는 값도 저장됨, (3) 테스트가 `UserException` 타입만 검증하고 구체적 에러코드는 검증하지 않음.
+
+### 확정된 정책
+
+- **동시성 방어**: `UserEntity`에 `@Version`(JPA 낙관적 락)을 추가했다(`V4.1.9` 마이그레이션, `users.version BIGINT NOT NULL DEFAULT 0`). `UserRepositoryImpl.updateProfile`이 `flush()` 중 `OptimisticLockingFailureException`을 받으면 `ProfileUpdateConflictException`(`409 USER_409_8`)으로 변환한다. `shared_file_root`(`SharedFileRootEntity`)에 이미 있던 `@Version` 패턴을 그대로 따랐다.
+- **이메일 형식 검증**: `UpdateMemberProfileRequest`/`UpdateMyProfileRequest`/`CreateAccountRequest`의 `email` 필드에 `@Email`을 추가했다. `null`은 부분 수정 의미로 계속 허용되고(Bean Validation은 null을 유효한 값으로 취급), 형식이 안 맞는 비어있지 않은 값만 `400 COMMON_400_1`로 거절된다.
+- **테스트 보강**: `UpdateUserProfileServiceTest`의 두 실패 케이스가 `.extracting(e -> ((UserException) e).getErrorCode()).isEqualTo(UserErrorCode.USER_NOT_FOUND)`로 구체적 에러코드까지 검증하도록 바꿨고, `findById`가 `Optional.empty()`를 반환하는(대상이 진짜로 존재하지 않는) 케이스를 `updateMyProfile`/`updateMemberProfile` 양쪽에 추가했다.
+- **범위 밖**: PR #367에서 CodeRabbit이 지적했던 나머지 1건은 이미 해당 PR 안에서 해결된 상태였다(코멘트에 "Addressed in commit decb792" 표시 확인). PR #371/#372/#373/#375에는 CodeRabbit 리뷰가 rate limit으로 아예 실행되지 않았고, 이미 머지된 PR이라 `@coderabbitai review`로도 재실행이 안 된다("This command is applicable only when automatic reviews are paused") — 재검토가 필요하면 해당 코드를 건드리는 새 PR을 열어야 리뷰가 트리거된다.
+
+### 완료 기준
+
+- [x] `UserEntity.version`(`@Version`) + `V4.1.9` 마이그레이션
+- [x] `ProfileUpdateConflictException`/`UserErrorCode.PROFILE_UPDATE_CONFLICT`(`USER_409_8`) + `UserRepositoryImpl.updateProfile` 예외 변환(TDD)
+- [x] `UpdateMemberProfileRequest`/`UpdateMyProfileRequest`/`CreateAccountRequest`에 `@Email` 추가(TDD)
+- [x] `UpdateUserProfileServiceTest` 에러코드 구체화 + `Optional.empty()` 케이스 추가
+- [x] `./gradlew build` 전체 통과
+- [x] 문서 갱신(API.md/CHANGELOG.md/REVISION.md)
+
+---
+
+## ✅ 2026-08-12 · 구성원 목록 조회 번호 기반 페이지네이션
+
+### 배경
+
+`GET /api/users/members`가 공용 `SliceResponse`(`content`/`page`/`size`/`hasNext`)를 쓰고 있어서, 프론트가 "다음 페이지 있는지"만 알 수 있고 전체 페이지 수를 몰라 "1 2 3 4" 번호 버튼 UI를 그릴 수 없었다. 사용자가 로컬에 갖고 있던 이전 프로젝트(`module03-gymjjak`)의 `PageResponse`(`totalElements`/`totalPages`/`first`/`last`/`hasPrevious`) 패턴을 참고해서 반영했다.
+
+### 확정된 정책
+
+- **인메모리 유지, DB 레벨 전환은 안 함**: 이 API는 이미 전체 구성원을 메모리에 올린 뒤 필터·정렬·슬라이스하는 방식이라(`ListMembersService`), `totalElements`는 그 필터링된 리스트의 `size()`를 그대로 쓰면 돼서 추가 DB 조회 비용이 없다. 아래 "구성원 목록 조회 페이지네이션·역할 필터" 절에서 DB 레벨 페이지네이션(Pageable/LIMIT-OFFSET)을 보류하기로 한 결정은 이번에도 그대로 유지한다 — gymjjak처럼 `Pageable`+`@Query(countQuery=...)`로 가는 전환은 하지 않았다.
+- **공용 `PageResult`/`SliceResponse`는 건드리지 않음**: 이 둘은 lecture/attendance/approval/notice/student/workspace 등 9개 이상의 다른 도메인이 함께 쓰는 공용 컴포넌트라, 필드를 추가하면 모든 소비처의 생성자 호출이 깨진다(이번 세션에서 겪은 `AuthUser` 5-args 생성자 변경과 같은 종류의 리스크). 대신 users 도메인 안에 `MemberPage`(application 결과 레코드)와 `MemberPageResponse`(presentation DTO, gymjjak `PageResponse`와 필드 순서까지 동일: `content`/`page`/`size`/`totalElements`/`totalPages`/`first`/`last`/`hasNext`/`hasPrevious`)를 새로 만들어 이 엔드포인트에만 적용했다.
+- **`ListMembersUseCase.list(...)`의 반환 타입**을 `PageResult<MemberListItem>`에서 `MemberPage`로 바꿨다 — users 도메인 내부(usecase/service/controller/테스트)에만 영향이 있고, 다른 도메인 컴파일에는 영향이 없다.
+- Swagger `@Operation` description에 남아있던 "같은 학원 소속 구성원 전체" 문구도 이번에 발견해서 제거했다(Phase 2에서 놓친 잔여 참조).
+
+### 완료 기준
+
+- [x] `MemberPage`(TDD: totalElements/totalPages 계산 검증, `ListMembersServiceTest`)
+- [x] `ListMembersUseCase`/`ListMembersService` 반환 타입 교체
+- [x] `MemberPageResponse` + `UserController.listMembers` 반영
+- [x] 로컬 e2e: Swagger UI에서 `GET /api/users/members?page=0&size=2` 호출해 `totalElements=12`/`totalPages=6`/`first`/`last`/`hasPrevious` 확인
+- [x] `./gradlew build` 전체 통과(1150+ 테스트)
+- [x] 문서 갱신(API.md/README.md/CHANGELOG.md/REVISION.md/Notion)
 
 ---
 

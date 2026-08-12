@@ -3,7 +3,7 @@ package com.academy.mudogroupware.workspace.infrastructure.persistence.comment;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
 
-import com.academy.mudogroupware.global.infrastructure.config.TimeConfig;
+import com.academy.mudogroupware.workspace.infrastructure.persistence.WorkspacePersistenceTestConfig;
 import com.academy.mudogroupware.workspace.infrastructure.persistence.comment.TaskCommentJpaRepository.TaskCommentSummaryRow;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -14,7 +14,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 @DataJpaTest(properties = "spring.jpa.hibernate.ddl-auto=create-drop")
-@Import(TimeConfig.class)
+@Import(WorkspacePersistenceTestConfig.class)
 class TaskCommentJpaRepositoryDataJpaTest {
 
   @Autowired private JdbcTemplate jdbcTemplate;

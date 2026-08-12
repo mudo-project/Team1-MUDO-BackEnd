@@ -33,11 +33,17 @@ chmod 600 "${CONFIG_DIR}/.env.monitoring"
 
 sed "s#<SLACK_WEBHOOK_FROM_SSM>#${SLACK_WEBHOOK_URL}#" \
   "${CONFIG_DIR}/alertmanager/alertmanager.template.yml" > "${CONFIG_DIR}/alertmanager/alertmanager.yml"
+chown 65534:65534 "${CONFIG_DIR}/alertmanager/alertmanager.yml"
 chmod 600 "${CONFIG_DIR}/alertmanager/alertmanager.yml"
 
 for dir in prometheus loki grafana alertmanager; do
   mkdir -p "/opt/mudo-observability/data/${dir}"
 done
+
+chown -R 472:472 /opt/mudo-observability/data/grafana
+chown -R 65534:65534 /opt/mudo-observability/data/prometheus
+chown -R 10001:10001 /opt/mudo-observability/data/loki
+chown -R 65534:65534 /opt/mudo-observability/data/alertmanager
 
 docker compose --env-file .env.monitoring -f docker-compose.monitoring.yml pull
 docker compose --env-file .env.monitoring -f docker-compose.monitoring.yml up -d

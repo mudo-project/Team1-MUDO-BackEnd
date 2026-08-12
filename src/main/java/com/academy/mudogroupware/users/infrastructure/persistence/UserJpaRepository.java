@@ -24,9 +24,10 @@ public interface UserJpaRepository extends JpaRepository<UserEntity, Long> {
     void clearRoleId(@Param("roleId") Long roleId);
 
     @Modifying(clearAutomatically = true)
-    @Query("update UserEntity u set u.password = :passwordHash, u.mustChangePw = false "
-            + "where u.id = :userId and u.mustChangePw = true")
-    int completePasswordSetupIfMustChange(@Param("userId") Long userId, @Param("passwordHash") String passwordHash);
+    @Query("update UserEntity u set u.password = :passwordHash, u.phone = :phone, u.email = :email, "
+            + "u.mustChangePw = false where u.id = :userId and u.mustChangePw = true")
+    int completePasswordSetupIfMustChange(@Param("userId") Long userId, @Param("passwordHash") String passwordHash,
+                                           @Param("phone") String phone, @Param("email") String email);
 
     @Query("select u.id from UserEntity u "
             + "where u.status = com.academy.mudogroupware.users.domain.model.UserStatus.ACTIVE "

@@ -9,9 +9,11 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Repository;
 
 import com.academy.mudogroupware.users.domain.exception.EmailDuplicateException;
+import com.academy.mudogroupware.users.domain.exception.ProfileUpdateConflictException;
 import com.academy.mudogroupware.users.domain.exception.RoleNotFoundException;
 import com.academy.mudogroupware.users.domain.exception.UserErrorCode;
 import com.academy.mudogroupware.users.domain.exception.UserException;
@@ -74,6 +76,8 @@ public class UserRepositoryImpl implements UserRepository {
                 throw new EmailDuplicateException(exception);
             }
             throw exception;
+        } catch (OptimisticLockingFailureException exception) {
+            throw new ProfileUpdateConflictException(exception);
         }
     }
 
@@ -92,8 +96,15 @@ public class UserRepositoryImpl implements UserRepository {
     }
 
     @Override
-    public boolean completePasswordSetup(Long userId, String newPasswordHash) {
-        return userJpaRepository.completePasswordSetupIfMustChange(userId, newPasswordHash) > 0;
+    public boolean completePasswordSetup(Long userId, String newPasswordHash, String phone, String email) {
+        try {
+            return userJpaRepository.completePasswordSetupIfMustChange(userId, newPasswordHash, phone, email) > 0;
+        } catch (DataIntegrityViolationException exception) {
+            if (containsConstraint(exception, EMAIL_UNIQUE_CONSTRAINT)) {
+                throw new EmailDuplicateException(exception);
+            }
+            throw exception;
+        }
     }
 
     @Override

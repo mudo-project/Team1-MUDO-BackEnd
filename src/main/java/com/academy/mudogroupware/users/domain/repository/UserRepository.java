@@ -29,7 +29,7 @@ public interface UserRepository {
 
     User save(User user);
 
-    boolean completePasswordSetup(Long userId, String newPasswordHash);
+    boolean completePasswordSetup(Long userId, String newPasswordHash, String phone, String email);
 
     Optional<User> findByUsername(String username);
 

@@ -96,14 +96,16 @@ class UserRepositoryImplDataJpaTest {
     }
 
     @Test
-    void completePasswordSetupReplacesPasswordAndClearsMustChangePw() {
+    void completePasswordSetupReplacesPasswordContactAndClearsMustChangePw() {
         insertUserWithPasswordAndMustChangePw(1L, "pending", "old-hash", true);
 
-        boolean updated = userRepository.completePasswordSetup(1L, "new-hash");
+        boolean updated = userRepository.completePasswordSetup(1L, "new-hash", "010-1234-5678", "new1@example.com");
 
         assertThat(updated).isTrue();
         User found = userRepository.findById(1L).orElseThrow();
         assertThat(found.getPassword()).isEqualTo("new-hash");
+        assertThat(found.getPhone()).isEqualTo("010-1234-5678");
+        assertThat(found.getEmail()).isEqualTo("new1@example.com");
         assertThat(found.isMustChangePw()).isFalse();
     }
 
@@ -111,7 +113,7 @@ class UserRepositoryImplDataJpaTest {
     void completePasswordSetupReturnsFalseWhenAlreadyCompleted() {
         insertUserWithPasswordAndMustChangePw(2L, "done", "already-hash", false);
 
-        boolean updated = userRepository.completePasswordSetup(2L, "new-hash");
+        boolean updated = userRepository.completePasswordSetup(2L, "new-hash", "010-1234-5678", "new2@example.com");
 
         assertThat(updated).isFalse();
         User found = userRepository.findById(2L).orElseThrow();
@@ -132,8 +134,8 @@ class UserRepositoryImplDataJpaTest {
     }
 
     @Test
-    void savesUserWithNullPhoneAndEmail() {
-        User user = User.create("no-contact", "hashed", "연락처없음", null, null,
+    void createdUserHasNullPhoneAndEmailUntilProfileIsUpdated() {
+        User user = User.create("no-contact", "hashed", "연락처없음",
                 null, com.academy.mudogroupware.global.domain.auth.AccountType.MEMBER, null,
                 java.time.LocalDateTime.now());
 
@@ -182,10 +184,10 @@ class UserRepositoryImplDataJpaTest {
         jdbcTemplate.update("""
                 insert into users (
                     id, role_id, username, password, name, phone_number, email, status,
-                    must_change_pw, account_type, admin_scope, created_at, updated_at
-                ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, current_timestamp, current_timestamp)
+                    must_change_pw, account_type, admin_scope, version, created_at, updated_at
+                ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, current_timestamp, current_timestamp)
                 """, id, null, "user-" + suffix, password, "사용자-" + suffix,
-                "010-0000-0000", suffix + "@example.com", UserStatus.ACTIVE.name(), mustChangePw, "MEMBER", null);
+                "010-0000-0000", suffix + "@example.com", UserStatus.ACTIVE.name(), mustChangePw, "MEMBER", null, 0L);
     }
 
     private void insertUser(long id, String suffix, UserStatus status) {
@@ -196,9 +198,9 @@ class UserRepositoryImplDataJpaTest {
         jdbcTemplate.update("""
                 insert into users (
                     id, role_id, username, password, name, phone_number, email, status,
-                    must_change_pw, account_type, admin_scope, created_at, updated_at
-                ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, current_timestamp, current_timestamp)
+                    must_change_pw, account_type, admin_scope, version, created_at, updated_at
+                ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, current_timestamp, current_timestamp)
                 """, id, roleId, "user-" + suffix, "password", "사용자-" + suffix,
-                "010-0000-0000", suffix + "@example.com", status.name(), false, "MEMBER", null);
+                "010-0000-0000", suffix + "@example.com", status.name(), false, "MEMBER", null, 0L);
     }
 }

@@ -17,11 +17,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.academy.mudogroupware.global.presentation.api.common.GlobalApiResponse;
-import com.academy.mudogroupware.global.presentation.api.common.SliceResponse;
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
 import com.academy.mudogroupware.users.application.result.CreateAccountResult;
 import com.academy.mudogroupware.users.application.usecase.ChangeMyPasswordUseCase;
-import com.academy.mudogroupware.users.application.usecase.ChangeUserRoleUseCase;
 import com.academy.mudogroupware.users.application.usecase.ChangeUserStatusUseCase;
 import com.academy.mudogroupware.users.application.usecase.CreateAccountUseCase;
 import com.academy.mudogroupware.users.application.usecase.GetMemberDetailUseCase;
@@ -31,9 +29,9 @@ import com.academy.mudogroupware.users.application.usecase.PasswordSetupUseCase;
 import com.academy.mudogroupware.users.application.usecase.SearchUsersUseCase;
 import com.academy.mudogroupware.users.application.usecase.UpdateMemberProfileUseCase;
 import com.academy.mudogroupware.users.application.usecase.UpdateMyProfileUseCase;
+import com.academy.mudogroupware.users.domain.model.UserStatus;
 import com.academy.mudogroupware.users.presentation.api.common.UserResponseCode;
 import com.academy.mudogroupware.users.presentation.api.request.ChangeMyPasswordRequest;
-import com.academy.mudogroupware.users.presentation.api.request.ChangeUserRoleRequest;
 import com.academy.mudogroupware.users.presentation.api.request.ChangeUserStatusRequest;
 import com.academy.mudogroupware.users.presentation.api.request.CreateAccountRequest;
 import com.academy.mudogroupware.users.presentation.api.request.PasswordSetupRequest;
@@ -41,6 +39,7 @@ import com.academy.mudogroupware.users.presentation.api.request.UpdateMemberProf
 import com.academy.mudogroupware.users.presentation.api.request.UpdateMyProfileRequest;
 import com.academy.mudogroupware.users.presentation.api.response.AccountCreateResponse;
 import com.academy.mudogroupware.users.presentation.api.response.MemberListResponse;
+import com.academy.mudogroupware.users.presentation.api.response.MemberPageResponse;
 import com.academy.mudogroupware.users.presentation.api.response.UserDetailResponse;
 import com.academy.mudogroupware.users.presentation.api.response.UserSearchResponse;
 
@@ -59,7 +58,6 @@ import lombok.RequiredArgsConstructor;
 @Validated
 public class UserController {
 
-    private final ChangeUserRoleUseCase changeUserRoleUseCase;
     private final SearchUsersUseCase searchUsersUseCase;
     private final CreateAccountUseCase createAccountUseCase;
     private final PasswordSetupUseCase passwordSetupUseCase;
@@ -81,18 +79,6 @@ public class UserController {
                 .body(GlobalApiResponse.created(UserResponseCode.ACCOUNT_CREATED, data));
     }
 
-    @PreAuthorize("hasAuthority('ACCOUNT:MANAGE')")
-    @Operation(
-            summary = "구성원 역할 변경",
-            description = "일반 직원 계정(accountType=MEMBER)의 역할을 같은 학원 소속 다른 역할로 바꿉니다. 역할 해제(역할 없음)는 지원하지 않습니다.")
-    @PatchMapping("/{userId}/role")
-    public ResponseEntity<Void> changeRole(
-            @Parameter(description = "대상 구성원의 사용자 ID") @PathVariable Long userId,
-            @Valid @RequestBody ChangeUserRoleRequest request) {
-        changeUserRoleUseCase.changeRole(request.toCommand(userId));
-        return ResponseEntity.noContent().build();
-    }
-
     @Operation(
             summary = "학원 구성원 검색",
             description = "같은 학원 소속 ACTIVE 구성원을 이름으로 검색합니다. 키워드가 없으면 전체 목록을 반환합니다. 로그인만 되면 권한 제약 없이 호출할 수 있습니다.")
@@ -109,21 +95,24 @@ public class UserController {
     @PreAuthorize("hasAuthority('ACCOUNT:MANAGE')")
     @Operation(
             summary = "구성원 목록 조회(관리자)",
-            description = "같은 학원 소속 구성원 전체(퇴사자 포함)를 이름/이메일/전화번호/역할명/입사일/계정상태/오늘 근태상태와 함께 조회합니다. "
+            description = "구성원 전체(퇴사자 포함)를 이름/이메일/전화번호/역할명/입사일/계정상태/오늘 근태상태와 함께 조회합니다. "
                     + "keyword는 이름 또는 역할명에 부분 일치합니다. roleId를 지정하면 해당 역할 구성원만 반환합니다(조직도 화면에서 역할 탭별로 호출하는 용도). "
+                    + "status를 지정하면 해당 재직 상태 구성원만 반환합니다(재직/휴직/퇴사 탭 필터링용). "
                     + "결과는 역할명, 이름 순으로 정렬됩니다.")
     @GetMapping("/members")
-    public ResponseEntity<GlobalApiResponse<SliceResponse<MemberListResponse>>> listMembers(
+    public ResponseEntity<GlobalApiResponse<MemberPageResponse<MemberListResponse>>> listMembers(
             @Parameter(description = "이름 또는 역할명 부분 일치 검색어. 없으면 전체 반환")
             @RequestParam(required = false) String keyword,
             @Parameter(description = "특정 역할의 구성원만 조회. 없으면 전체 역할 포함")
             @RequestParam(required = false) Long roleId,
+            @Parameter(description = "특정 재직 상태(ACTIVE/RESIGNED/INACTIVE)의 구성원만 조회. 없으면 전체 상태 포함")
+            @RequestParam(required = false) UserStatus status,
             @Parameter(description = "페이지 번호(0부터 시작)")
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @Parameter(description = "페이지 크기(1~100)")
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
-        SliceResponse<MemberListResponse> data = SliceResponse.from(
-                listMembersUseCase.list(keyword, roleId, page, size),
+        MemberPageResponse<MemberListResponse> data = MemberPageResponse.from(
+                listMembersUseCase.list(keyword, roleId, status, page, size),
                 MemberListResponse::from);
         return ResponseEntity.ok(GlobalApiResponse.ok(UserResponseCode.MEMBERS_LISTED, data));
     }
@@ -174,14 +163,14 @@ public class UserController {
     @PreAuthorize("hasAuthority('ACCOUNT:MANAGE')")
     @Operation(
             summary = "구성원 정보 수정(관리자)",
-            description = "일반 직원 계정(accountType=MEMBER)의 이름/연락처/이메일/입사일을 수정합니다. "
-                    + "값을 보내지 않은 필드는 기존 값을 유지합니다.")
+            description = "일반 직원 계정(accountType=MEMBER)의 이름/연락처/이메일/입사일/역할을 수정합니다. "
+                    + "값을 보내지 않은 필드는 기존 값을 유지합니다. roleId를 보내면 역할도 함께 바뀝니다(역할 해제는 지원하지 않음).")
     @PatchMapping("/{userId}")
     public ResponseEntity<Void> updateMemberProfile(
             @Parameter(description = "대상 구성원의 사용자 ID") @PathVariable Long userId,
             @Valid @RequestBody UpdateMemberProfileRequest request) {
         updateMemberProfileUseCase.updateMemberProfile(userId, request.name(),
-                request.phone(), request.email(), request.joinedAt());
+                request.phone(), request.email(), request.joinedAt(), request.roleId());
         return ResponseEntity.noContent().build();
     }
 
@@ -200,11 +189,13 @@ public class UserController {
 
     @Operation(
             summary = "최초 비밀번호 설정",
-            description = "계정 발급 시 받은 링크의 username/임시비밀번호로 자기 비밀번호를 최초 설정합니다. "
-                    + "이미 설정을 마친 계정이거나 임시비밀번호가 틀리면 동일한 오류로 응답합니다.")
+            description = "임시 비밀번호로 로그인한 계정이 새 비밀번호와 이메일·전화번호를 함께 등록해 최초 설정을 완료합니다. "
+                    + "이미 설정을 마친 계정이면 동일한 오류로 응답합니다.")
     @PostMapping("/password-setup")
-    public ResponseEntity<Void> setupPassword(@Valid @RequestBody PasswordSetupRequest request) {
-        passwordSetupUseCase.setup(request.toCommand());
+    public ResponseEntity<Void> setupPassword(
+            @AuthenticationPrincipal AuthUser authUser,
+            @Valid @RequestBody PasswordSetupRequest request) {
+        passwordSetupUseCase.setup(request.toCommand(authUser.userId()));
         return ResponseEntity.noContent().build();
     }
 }
