@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.academy.mudogroupware.workspace.application.command.comment.UpdateTaskCommentCommand;
+import com.academy.mudogroupware.workspace.domain.event.TaskCommentMentionedEvent;
 import com.academy.mudogroupware.workspace.domain.exception.comment.InvalidMentionedUserException;
 import com.academy.mudogroupware.workspace.domain.exception.comment.TaskCommentNotFoundException;
 import com.academy.mudogroupware.workspace.domain.exception.task.TaskNotFoundException;
@@ -32,8 +33,11 @@ import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 @ExtendWith(MockitoExtension.class)
 class UpdateTaskCommentServiceTest {
@@ -46,15 +50,24 @@ class UpdateTaskCommentServiceTest {
   private static final long COMMENT_ID = 501L;
   private static final long MEMBER_ID = 10L;
   private static final long OTHER_MEMBER_ID = 11L;
+  private static final long THIRD_MEMBER_ID = 12L;
   private static final long OUTSIDER_ID = 99L;
+  private static final LocalDateTime FIXED_NOW = LocalDateTime.of(2026, 8, 7, 10, 0);
 
   @Mock private WorkspaceRepository workspaceRepository;
   @Mock private TaskRepository taskRepository;
   @Mock private TaskCommentRepository taskCommentRepository;
+  @Mock private ApplicationEventPublisher applicationEventPublisher;
+
+  @Captor private ArgumentCaptor<TaskCommentMentionedEvent> eventCaptor;
 
   private UpdateTaskCommentService service() {
     return new UpdateTaskCommentService(
-        workspaceRepository, taskRepository, taskCommentRepository, FIXED_CLOCK);
+        workspaceRepository,
+        taskRepository,
+        taskCommentRepository,
+        applicationEventPublisher,
+        FIXED_CLOCK);
   }
 
   @Test
@@ -88,6 +101,54 @@ class UpdateTaskCommentServiceTest {
 
     assertThat(result.getMentions()).extracting(m -> m.getMentionedUserId())
         .containsExactly(OTHER_MEMBER_ID);
+  }
+
+  @Test
+  void publishesMentionEventOnlyForNewDistinctRecipientsExcludingRequester() {
+    givenWorkspaceWithMembers(MEMBER_ID, OTHER_MEMBER_ID, THIRD_MEMBER_ID);
+    givenTask(WORKSPACE_ID);
+    givenCommentWithMentions(TASK_ID, MEMBER_ID, List.of(MEMBER_ID, OTHER_MEMBER_ID));
+    when(taskCommentRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+    service()
+        .updateComment(
+            new UpdateTaskCommentCommand(
+                WORKSPACE_ID,
+                TASK_ID,
+                COMMENT_ID,
+                MEMBER_ID,
+                "수정된 내용",
+                List.of(OTHER_MEMBER_ID, THIRD_MEMBER_ID, MEMBER_ID, THIRD_MEMBER_ID)));
+
+    verify(applicationEventPublisher).publishEvent(eventCaptor.capture());
+    TaskCommentMentionedEvent event = eventCaptor.getValue();
+    assertThat(event.workspaceId()).isEqualTo(WORKSPACE_ID);
+    assertThat(event.taskId()).isEqualTo(TASK_ID);
+    assertThat(event.taskTitle()).isEqualTo("업무");
+    assertThat(event.commentId()).isEqualTo(COMMENT_ID);
+    assertThat(event.actorUserId()).isEqualTo(MEMBER_ID);
+    assertThat(event.recipientUserIds()).containsExactly(THIRD_MEMBER_ID);
+    assertThat(event.occurredAt()).isEqualTo(FIXED_NOW);
+  }
+
+  @Test
+  void doesNotPublishMentionEventForRetainedRemovedOrRequesterMentions() {
+    givenWorkspaceWithMembers(MEMBER_ID, OTHER_MEMBER_ID, THIRD_MEMBER_ID);
+    givenTask(WORKSPACE_ID);
+    givenCommentWithMentions(TASK_ID, MEMBER_ID, List.of(OTHER_MEMBER_ID, THIRD_MEMBER_ID));
+    when(taskCommentRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+    service()
+        .updateComment(
+            new UpdateTaskCommentCommand(
+                WORKSPACE_ID,
+                TASK_ID,
+                COMMENT_ID,
+                MEMBER_ID,
+                "수정된 내용",
+                List.of(OTHER_MEMBER_ID, MEMBER_ID)));
+
+    verify(applicationEventPublisher, never()).publishEvent(any());
   }
 
   @Test
@@ -175,6 +236,7 @@ class UpdateTaskCommentServiceTest {
         .isInstanceOf(InvalidMentionedUserException.class);
 
     verify(taskCommentRepository, never()).save(any());
+    verify(applicationEventPublisher, never()).publishEvent(any());
   }
 
   private void givenWorkspaceWithMembers(long... memberIds) {

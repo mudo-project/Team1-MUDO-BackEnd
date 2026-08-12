@@ -378,6 +378,7 @@ Query Parameter
 | --- | --- | --- | --- |
 | `keyword` | String | false | 이름 또는 역할명 부분 일치 검색어(대소문자 무관). 없으면 전체 반환 |
 | `roleId` | Long | false | 특정 역할의 구성원만 조회. 없으면 전체 역할 포함 |
+| `status` | String | false | 특정 재직 상태(`ACTIVE`/`RESIGNED`/`INACTIVE`)의 구성원만 조회. 없으면 전체 상태 포함 |
 | `page` | int | false | 페이지 번호(0부터 시작). 기본값 0 |
 | `size` | int | false | 페이지 크기(1~100). 기본값 20 |
 
@@ -416,7 +417,9 @@ Query Parameter
 
 ### 검증 및 정책
 
-- 기존 "학원 구성원 검색"(12번 항목)과 달리 `ACTIVE`뿐 아니라 `RESIGNED`/`INACTIVE`도 포함한 전체 구성원을 반환합니다 — 관리자 전용 관리 화면 API이기 때문입니다. "재직/비활성" 탭 분류(비활성 = RESIGNED+INACTIVE)는 프론트에서 처리합니다.
+- 기존 "학원 구성원 검색"(12번 항목)과 달리 `ACTIVE`뿐 아니라 `RESIGNED`/`INACTIVE`도 포함한 전체 구성원을 반환합니다 — 관리자 전용 관리 화면 API이기 때문입니다. `status` 파라미터로 재직/휴직/퇴사 탭별 필터링이 가능하며, 지정하지 않으면 전체 상태를 반환합니다.
+- `status`에 `ACTIVE`/`RESIGNED`/`INACTIVE` 외의 값을 넘기면 `400 COMMON_400_1`로 실패합니다.
+- `keyword`/`roleId`/`status`는 서버에서 AND 조건으로 함께 적용된 뒤 정렬·페이지네이션이 이루어집니다.
 - `roleId`가 없는 계정(예: 역할 미배정)은 `roleId`/`roleName` 모두 `null`로 내려갑니다.
 - 결과는 `roleName`, `name` 순으로 정렬됩니다 — 역할별로 묶어 보여주는 조직도 화면에서, `roleId`를 지정해 역할 탭마다 별도로 호출하는 방식을 전제로 합니다.
 - `page`/`size` 범위를 벗어나면(`page<0`, `size`가 1~100 밖) `400`으로 실패합니다.

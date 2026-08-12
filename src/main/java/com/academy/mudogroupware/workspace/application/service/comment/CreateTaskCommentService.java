@@ -3,6 +3,7 @@ package com.academy.mudogroupware.workspace.application.service.comment;
 import com.academy.mudogroupware.global.infrastructure.logging.AfterCommitLogger;
 import com.academy.mudogroupware.workspace.application.command.comment.CreateTaskCommentCommand;
 import com.academy.mudogroupware.workspace.application.usecase.comment.CreateTaskCommentUseCase;
+import com.academy.mudogroupware.workspace.domain.event.TaskCommentMentionedEvent;
 import com.academy.mudogroupware.workspace.domain.exception.comment.InvalidMentionedUserException;
 import com.academy.mudogroupware.workspace.domain.exception.task.TaskNotFoundException;
 import com.academy.mudogroupware.workspace.domain.exception.workspace.WorkspaceAccessDeniedException;
@@ -15,8 +16,10 @@ import com.academy.mudogroupware.workspace.domain.repository.task.TaskRepository
 import com.academy.mudogroupware.workspace.domain.repository.workspace.WorkspaceRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +31,7 @@ public class CreateTaskCommentService implements CreateTaskCommentUseCase {
   private final WorkspaceRepository workspaceRepository;
   private final TaskRepository taskRepository;
   private final TaskCommentRepository taskCommentRepository;
+  private final ApplicationEventPublisher applicationEventPublisher;
   private final Clock clock;
 
   @Override
@@ -57,15 +61,33 @@ public class CreateTaskCommentService implements CreateTaskCommentUseCase {
       throw new InvalidMentionedUserException();
     }
 
+    LocalDateTime occurredAt = LocalDateTime.now(clock);
     TaskComment comment =
         TaskComment.create(
             command.taskId(),
             command.requesterId(),
             command.content(),
             command.mentionedUserIds(),
-            LocalDateTime.now(clock));
+            occurredAt);
 
     TaskComment saved = taskCommentRepository.save(comment);
+    List<Long> recipientUserIds =
+        command.mentionedUserIds().stream()
+            .filter(userId -> !userId.equals(command.requesterId()))
+            .distinct()
+            .toList();
+
+    if (!recipientUserIds.isEmpty()) {
+      applicationEventPublisher.publishEvent(
+          new TaskCommentMentionedEvent(
+              command.workspaceId(),
+              command.taskId(),
+              task.getTitle(),
+              saved.getId(),
+              command.requesterId(),
+              recipientUserIds,
+              occurredAt));
+    }
 
     AfterCommitLogger.run(
         () ->
