@@ -35,13 +35,17 @@ public class SolapiSmsAdapter implements SmsSenderPort {
 
     @Override
     public SmsSendResult send(String receiverPhone, String message) {
-        String receiver = receiverPhone == null ? "" : receiverPhone.replaceAll("[^0-9]", "");
+        String receiver = normalizePhone(receiverPhone);
+        String sender = normalizePhone(solapiProperties.senderNumber());
+        if (!hasText(solapiProperties.apiKey()) || !hasText(solapiProperties.apiSecret()) || !hasText(sender)) {
+            return SmsSendResult.failed("Solapi 설정이 누락되었습니다.");
+        }
         if (receiver.isBlank()) {
             return SmsSendResult.failed("수신자 전화번호가 없습니다.");
         }
 
         SolapiSendRequest body = new SolapiSendRequest(
-                new SolapiMessageDto(solapiProperties.senderNumber(), receiver, message));
+                new SolapiMessageDto(sender, receiver, message));
 
         String responseBody;
         try {
@@ -55,11 +59,24 @@ public class SolapiSmsAdapter implements SmsSenderPort {
         } catch (RestClientException e) {
             log.warn("event=solapi_sms_send_실패 receiver={}, reason={}", maskPhone(receiver), e.getMessage());
             return SmsSendResult.failed("SMS 발송 API 호출에 실패했습니다: " + e.getMessage());
+        } catch (IllegalStateException e) {
+            // authorizationHeader() -> hmacSha256Hex()의 서명 생성 실패. SmsSenderPort는 예외를
+            // 던지지 않고 실패 결과를 반환한다고 명시하므로, 여기서도 그 계약을 지킨다.
+            log.warn("event=solapi_sms_send_실패 receiver={}, reason={}", maskPhone(receiver), e.getMessage());
+            return SmsSendResult.failed("SMS 발송 인증 처리에 실패했습니다.");
         }
 
         log.info("event=solapi_sms_send_완료 receiver={}, responseLength={}", maskPhone(receiver),
                 responseBody == null ? 0 : responseBody.length());
         return SmsSendResult.succeeded();
+    }
+
+    private String normalizePhone(String phone) {
+        return phone == null ? "" : phone.replaceAll("[^0-9]", "");
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 
     private String maskPhone(String phone) {
@@ -83,7 +100,7 @@ public class SolapiSmsAdapter implements SmsSenderPort {
             mac.init(new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), HMAC_ALGORITHM));
             byte[] hash = mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
             return HexFormat.of().formatHex(hash);
-        } catch (NoSuchAlgorithmException | InvalidKeyException e) {
+        } catch (NoSuchAlgorithmException | InvalidKeyException | IllegalArgumentException e) {
             throw new IllegalStateException("HMAC 서명 생성에 실패했습니다.", e);
         }
     }

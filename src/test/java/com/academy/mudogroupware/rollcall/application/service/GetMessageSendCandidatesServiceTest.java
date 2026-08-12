@@ -54,8 +54,10 @@ class GetMessageSendCandidatesServiceTest {
         assertThat(candidates).hasSize(2);
         assertThat(candidates.get(0).eligible()).isTrue();
         assertThat(candidates.get(0).matchedTemplateName()).isEqualTo("결석 안내");
+        assertThat(candidates.get(0).lectureName()).isEqualTo("수학 기초반");
         assertThat(candidates.get(1).eligible()).isFalse();
         assertThat(candidates.get(1).matchedTemplateName()).isNull();
+        assertThat(candidates.get(1).lectureName()).isEqualTo("수학 기초반");
         verify(messageTemplateRepository).findAll();
         verify(messageTemplateRepository, never()).findByStatus(any());
     }

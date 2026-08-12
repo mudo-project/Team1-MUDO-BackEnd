@@ -22,18 +22,22 @@ import com.academy.mudogroupware.global.presentation.security.AuthUser;
 import com.academy.mudogroupware.users.application.result.CreateAccountResult;
 import com.academy.mudogroupware.users.application.usecase.ChangeMyPasswordUseCase;
 import com.academy.mudogroupware.users.application.usecase.ChangeUserRoleUseCase;
+import com.academy.mudogroupware.users.application.usecase.ChangeUserStatusUseCase;
 import com.academy.mudogroupware.users.application.usecase.CreateAccountUseCase;
 import com.academy.mudogroupware.users.application.usecase.GetMemberDetailUseCase;
 import com.academy.mudogroupware.users.application.usecase.GetMyProfileUseCase;
 import com.academy.mudogroupware.users.application.usecase.ListMembersUseCase;
 import com.academy.mudogroupware.users.application.usecase.PasswordSetupUseCase;
 import com.academy.mudogroupware.users.application.usecase.SearchUsersUseCase;
+import com.academy.mudogroupware.users.application.usecase.UpdateMemberProfileUseCase;
 import com.academy.mudogroupware.users.application.usecase.UpdateMyProfileUseCase;
 import com.academy.mudogroupware.users.presentation.api.common.UserResponseCode;
 import com.academy.mudogroupware.users.presentation.api.request.ChangeMyPasswordRequest;
 import com.academy.mudogroupware.users.presentation.api.request.ChangeUserRoleRequest;
+import com.academy.mudogroupware.users.presentation.api.request.ChangeUserStatusRequest;
 import com.academy.mudogroupware.users.presentation.api.request.CreateAccountRequest;
 import com.academy.mudogroupware.users.presentation.api.request.PasswordSetupRequest;
+import com.academy.mudogroupware.users.presentation.api.request.UpdateMemberProfileRequest;
 import com.academy.mudogroupware.users.presentation.api.request.UpdateMyProfileRequest;
 import com.academy.mudogroupware.users.presentation.api.response.AccountCreateResponse;
 import com.academy.mudogroupware.users.presentation.api.response.MemberListResponse;
@@ -64,13 +68,14 @@ public class UserController {
     private final UpdateMyProfileUseCase updateMyProfileUseCase;
     private final ChangeMyPasswordUseCase changeMyPasswordUseCase;
     private final GetMemberDetailUseCase getMemberDetailUseCase;
+    private final UpdateMemberProfileUseCase updateMemberProfileUseCase;
+    private final ChangeUserStatusUseCase changeUserStatusUseCase;
 
     @PreAuthorize("hasAuthority('ACCOUNT:MANAGE')")
     @PostMapping
     public ResponseEntity<GlobalApiResponse<AccountCreateResponse>> createAccount(
-            @AuthenticationPrincipal AuthUser authUser,
             @Valid @RequestBody CreateAccountRequest request) {
-        CreateAccountResult result = createAccountUseCase.createAccount(request.toCommand(authUser.academyId()));
+        CreateAccountResult result = createAccountUseCase.createAccount(request.toCommand());
         AccountCreateResponse data = AccountCreateResponse.from(result);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(GlobalApiResponse.created(UserResponseCode.ACCOUNT_CREATED, data));
@@ -82,10 +87,9 @@ public class UserController {
             description = "일반 직원 계정(accountType=MEMBER)의 역할을 같은 학원 소속 다른 역할로 바꿉니다. 역할 해제(역할 없음)는 지원하지 않습니다.")
     @PatchMapping("/{userId}/role")
     public ResponseEntity<Void> changeRole(
-            @AuthenticationPrincipal AuthUser authUser,
             @Parameter(description = "대상 구성원의 사용자 ID") @PathVariable Long userId,
             @Valid @RequestBody ChangeUserRoleRequest request) {
-        changeUserRoleUseCase.changeRole(request.toCommand(userId, authUser.academyId()));
+        changeUserRoleUseCase.changeRole(request.toCommand(userId));
         return ResponseEntity.noContent().build();
     }
 
@@ -94,10 +98,9 @@ public class UserController {
             description = "같은 학원 소속 ACTIVE 구성원을 이름으로 검색합니다. 키워드가 없으면 전체 목록을 반환합니다. 로그인만 되면 권한 제약 없이 호출할 수 있습니다.")
     @GetMapping
     public ResponseEntity<GlobalApiResponse<List<UserSearchResponse>>> search(
-            @AuthenticationPrincipal AuthUser authUser,
             @Parameter(description = "이름 부분 일치 검색어. 없으면 전체 목록 반환")
             @RequestParam(required = false) String keyword) {
-        List<UserSearchResponse> data = searchUsersUseCase.search(authUser.academyId(), keyword).stream()
+        List<UserSearchResponse> data = searchUsersUseCase.search(keyword).stream()
                 .map(UserSearchResponse::from)
                 .toList();
         return ResponseEntity.ok(GlobalApiResponse.ok(UserResponseCode.USER_SEARCHED, data));
@@ -111,7 +114,6 @@ public class UserController {
                     + "결과는 역할명, 이름 순으로 정렬됩니다.")
     @GetMapping("/members")
     public ResponseEntity<GlobalApiResponse<SliceResponse<MemberListResponse>>> listMembers(
-            @AuthenticationPrincipal AuthUser authUser,
             @Parameter(description = "이름 또는 역할명 부분 일치 검색어. 없으면 전체 반환")
             @RequestParam(required = false) String keyword,
             @Parameter(description = "특정 역할의 구성원만 조회. 없으면 전체 역할 포함")
@@ -121,7 +123,7 @@ public class UserController {
             @Parameter(description = "페이지 크기(1~100)")
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
         SliceResponse<MemberListResponse> data = SliceResponse.from(
-                listMembersUseCase.list(authUser.academyId(), keyword, roleId, page, size),
+                listMembersUseCase.list(keyword, roleId, page, size),
                 MemberListResponse::from);
         return ResponseEntity.ok(GlobalApiResponse.ok(UserResponseCode.MEMBERS_LISTED, data));
     }
@@ -164,11 +166,36 @@ public class UserController {
                     + "대상이 존재하지 않거나 다른 학원 소속이거나 학원 관리자 계정이면 동일하게 404로 응답합니다.")
     @GetMapping("/{userId}")
     public ResponseEntity<GlobalApiResponse<UserDetailResponse>> getMemberDetail(
-            @AuthenticationPrincipal AuthUser authUser,
             @Parameter(description = "조회할 구성원의 사용자 ID") @PathVariable Long userId) {
-        UserDetailResponse data = UserDetailResponse.from(
-                getMemberDetailUseCase.getMemberDetail(authUser.academyId(), userId));
+        UserDetailResponse data = UserDetailResponse.from(getMemberDetailUseCase.getMemberDetail(userId));
         return ResponseEntity.ok(GlobalApiResponse.ok(UserResponseCode.MEMBER_DETAIL_RETRIEVED, data));
+    }
+
+    @PreAuthorize("hasAuthority('ACCOUNT:MANAGE')")
+    @Operation(
+            summary = "구성원 정보 수정(관리자)",
+            description = "일반 직원 계정(accountType=MEMBER)의 이름/연락처/이메일/입사일을 수정합니다. "
+                    + "값을 보내지 않은 필드는 기존 값을 유지합니다.")
+    @PatchMapping("/{userId}")
+    public ResponseEntity<Void> updateMemberProfile(
+            @Parameter(description = "대상 구성원의 사용자 ID") @PathVariable Long userId,
+            @Valid @RequestBody UpdateMemberProfileRequest request) {
+        updateMemberProfileUseCase.updateMemberProfile(userId, request.name(),
+                request.phone(), request.email(), request.joinedAt());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PreAuthorize("hasAuthority('ACCOUNT:MANAGE')")
+    @Operation(
+            summary = "구성원 재직 상태 변경(관리자)",
+            description = "일반 직원 계정(accountType=MEMBER)의 재직 상태를 ACTIVE/RESIGNED/INACTIVE 중 하나로 바꿉니다. "
+                    + "양방향 전환(예: 휴직 복귀)을 지원합니다.")
+    @PatchMapping("/{userId}/status")
+    public ResponseEntity<Void> changeUserStatus(
+            @Parameter(description = "대상 구성원의 사용자 ID") @PathVariable Long userId,
+            @Valid @RequestBody ChangeUserStatusRequest request) {
+        changeUserStatusUseCase.changeStatus(userId, request.status());
+        return ResponseEntity.noContent().build();
     }
 
     @Operation(

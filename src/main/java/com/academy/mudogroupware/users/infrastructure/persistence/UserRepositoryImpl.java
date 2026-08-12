@@ -78,6 +78,13 @@ public class UserRepositoryImpl implements UserRepository {
     }
 
     @Override
+    public void changeStatus(Long userId, UserStatus status) {
+        UserEntity entity = userJpaRepository.findById(userId)
+                .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+        entity.changeStatus(status);
+    }
+
+    @Override
     public void changePassword(Long userId, String encodedPassword) {
         UserEntity entity = userJpaRepository.findById(userId)
                 .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
@@ -90,18 +97,18 @@ public class UserRepositoryImpl implements UserRepository {
     }
 
     @Override
-    public List<User> searchByAcademyId(Long academyId, String keyword) {
+    public List<User> search(String keyword) {
         String normalizedKeyword = keyword == null ? "" : keyword.trim();
         List<UserEntity> entities = normalizedKeyword.isEmpty()
-                ? userJpaRepository.findAllByAcademyIdAndStatus(academyId, UserStatus.ACTIVE)
-                : userJpaRepository.findAllByAcademyIdAndStatusAndNameContainingIgnoreCase(
-                        academyId, UserStatus.ACTIVE, normalizedKeyword);
+                ? userJpaRepository.findAllByStatus(UserStatus.ACTIVE)
+                : userJpaRepository.findAllByStatusAndNameContainingIgnoreCase(
+                        UserStatus.ACTIVE, normalizedKeyword);
         return entities.stream().map(this::toDomain).toList();
     }
 
     @Override
-    public List<User> findAllByAcademyId(Long academyId) {
-        return userJpaRepository.findAllByAcademyId(academyId).stream().map(this::toDomain).toList();
+    public List<User> findAll() {
+        return userJpaRepository.findAll().stream().map(this::toDomain).toList();
     }
 
     @Override
@@ -116,7 +123,6 @@ public class UserRepositoryImpl implements UserRepository {
     @Override
     public User save(User user) {
         UserEntity entity = UserEntity.builder()
-                .academyId(user.getAcademyId())
                 .username(user.getUsername())
                 .password(user.getPassword())
                 .name(user.getName())
@@ -153,10 +159,13 @@ public class UserRepositoryImpl implements UserRepository {
 
     @Override
     public Set<Long> findActiveUserIds(Long academyId, Set<Long> userIds) {
+        // academyId는 사용하지 않는다 — 학원마다 별도 DB 스키마를 쓰는 배포 구조라 users 도메인은
+        // 더 이상 academyId로 스코핑하지 않지만, messenger/workspace가 이 시그니처로 호출하고
+        // 있어서(크로스 BC 파라미터) 그쪽 정리가 끝나기 전까지는 그대로 받아만 두고 무시한다.
         if (userIds.isEmpty()) {
             return Set.of();
         }
-        return userJpaRepository.findActiveIdsByAcademyIdAndIdIn(academyId, userIds);
+        return userJpaRepository.findActiveIdsByIdIn(userIds);
     }
 
     @Override
@@ -169,7 +178,7 @@ public class UserRepositoryImpl implements UserRepository {
 
     private User toDomain(UserEntity entity) {
         return User.restore(
-                entity.getId(), entity.getAcademyId(), entity.getUsername(), entity.getPassword(), entity.getName(),
+                entity.getId(), entity.getUsername(), entity.getPassword(), entity.getName(),
                 entity.getPhone(), entity.getEmail(), entity.getRoleId(), entity.getStatus(), entity.isMustChangePw(),
                 entity.getAccountType(), entity.getAdminScope(), entity.getJoinedAt(), entity.getCreatedAt(),
                 entity.getUpdatedAt());

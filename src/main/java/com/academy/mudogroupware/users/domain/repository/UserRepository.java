@@ -17,11 +17,13 @@ public interface UserRepository {
 
     void updateProfile(Long userId, String name, String phone, String email, java.time.LocalDateTime joinedAt);
 
+    void changeStatus(Long userId, com.academy.mudogroupware.users.domain.model.UserStatus status);
+
     void changePassword(Long userId, String encodedPassword);
 
-    List<User> searchByAcademyId(Long academyId, String keyword);
+    List<User> search(String keyword);
 
-    List<User> findAllByAcademyId(Long academyId);
+    List<User> findAll();
 
     Map<Long, Long> countActiveByRoleIds(Set<Long> roleIds);
 

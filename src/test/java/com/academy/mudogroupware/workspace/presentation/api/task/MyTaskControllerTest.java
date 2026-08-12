@@ -27,7 +27,7 @@ import org.springframework.test.web.servlet.MockMvc;
 @WebMvcTest(MyTaskController.class)
 class MyTaskControllerTest {
 
-  private static final AuthUser AUTH_USER = new AuthUser(10L, "user", 1L, 3L, "MEMBER");
+  private static final AuthUser AUTH_USER = new AuthUser(10L, "user", 3L, "MEMBER");
 
   @Autowired private MockMvc mockMvc;
 

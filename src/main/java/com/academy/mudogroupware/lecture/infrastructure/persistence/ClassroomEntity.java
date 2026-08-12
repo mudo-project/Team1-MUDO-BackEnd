@@ -24,7 +24,9 @@ public class ClassroomEntity extends CreatedAtEntity {
     @Column(name = "classroom_id")
     private Long id;
 
-    @Column(nullable = false, length = 100)
+    // 실제 DB 제약(uk_classroom_name, V1.5.9)과 일치시킨다. ddl-auto=create-drop을 쓰는
+    // 테스트 스키마도 이 제약을 그대로 반영해야, 동시 생성 시나리오를 정확히 재현할 수 있다.
+    @Column(nullable = false, length = 100, unique = true)
     private String name;
 
     @Builder

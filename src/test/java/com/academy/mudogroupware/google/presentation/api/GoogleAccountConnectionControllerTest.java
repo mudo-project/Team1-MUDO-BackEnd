@@ -46,7 +46,7 @@ import com.academy.mudogroupware.google.domain.model.GoogleConnectionStatus;
 @WebMvcTest(GoogleAccountConnectionController.class)
 class GoogleAccountConnectionControllerTest {
 
-    private static final AuthUser AUTH_USER = new AuthUser(7L, "user", 1L, 3L, "OWNER");
+    private static final AuthUser AUTH_USER = new AuthUser(7L, "user", 3L, "OWNER");
 
     @Autowired private MockMvc mockMvc;
 

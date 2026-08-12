@@ -40,7 +40,7 @@ public class LoginService implements LoginUseCase {
             user.ensureLoginAllowed();
 
             TokenPair tokenPair = tokenIssuerUseCase.issue(user.getId(), user.getUsername(), user.getRoleId(),
-                    user.getAcademyId(), user.getAccountType(), user.getAdminScope());
+                    user.getAccountType(), user.getAdminScope());
             log.info("event=auth_login_완료 username={}, userId={}", command.username(), user.getId());
             return tokenPair;
         } catch (RuntimeException e) {

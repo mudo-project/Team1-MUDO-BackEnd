@@ -6,17 +6,15 @@ import java.util.Set;
 public final class Role {
 
     private final Long id;
-    private final Long academyId;
     private final String name;
     private final String description;
     private final String color;
     private final LocalDateTime createdAt;
     private final Set<String> permissionCodes;
 
-    private Role(Long id, Long academyId, String name, String description, String color, LocalDateTime createdAt,
+    private Role(Long id, String name, String description, String color, LocalDateTime createdAt,
                  Set<String> permissionCodes) {
         this.id = id;
-        this.academyId = academyId;
         this.name = name;
         this.description = description;
         this.color = color;
@@ -24,35 +22,31 @@ public final class Role {
         this.permissionCodes = Set.copyOf(permissionCodes);
     }
 
-    public static Role create(Long academyId, String name, String description, LocalDateTime createdAt) {
-        return create(academyId, name, description, null, createdAt);
+    public static Role create(String name, String description, LocalDateTime createdAt) {
+        return create(name, description, null, createdAt);
     }
 
-    public static Role create(Long academyId, String name, String description, String color,
+    public static Role create(String name, String description, String color,
                                LocalDateTime createdAt) {
-        return new Role(null, academyId, name, description, color, createdAt, Set.of());
+        return new Role(null, name, description, color, createdAt, Set.of());
     }
 
-    public static Role restore(Long id, Long academyId, String name, String description, LocalDateTime createdAt,
+    public static Role restore(Long id, String name, String description, LocalDateTime createdAt,
                                 Set<String> permissionCodes) {
-        return restore(id, academyId, name, description, null, createdAt, permissionCodes);
+        return restore(id, name, description, null, createdAt, permissionCodes);
     }
 
-    public static Role restore(Long id, Long academyId, String name, String description, String color,
+    public static Role restore(Long id, String name, String description, String color,
                                 LocalDateTime createdAt, Set<String> permissionCodes) {
-        return new Role(id, academyId, name, description, color, createdAt, permissionCodes);
+        return new Role(id, name, description, color, createdAt, permissionCodes);
     }
 
     public Role withPermissionCodes(Set<String> permissionCodes) {
-        return new Role(id, academyId, name, description, color, createdAt, permissionCodes);
+        return new Role(id, name, description, color, createdAt, permissionCodes);
     }
 
     public Long getId() {
         return id;
-    }
-
-    public Long getAcademyId() {
-        return academyId;
     }
 
     public String getName() {

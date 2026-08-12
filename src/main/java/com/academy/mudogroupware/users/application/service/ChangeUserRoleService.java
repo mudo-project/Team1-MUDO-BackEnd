@@ -28,23 +28,20 @@ public class ChangeUserRoleService implements ChangeUserRoleUseCase {
 
     @Override
     public void changeRole(ChangeUserRoleCommand command) {
-        log.info("event=user_role_change_시작 userId={}, roleId={}, academyId={}", command.userId(),
-                command.roleId(), command.academyId());
+        log.info("event=user_role_change_시작 userId={}, roleId={}", command.userId(), command.roleId());
         try {
             User user = userRepository.findById(command.userId())
-                    .filter(u -> u.getAcademyId().equals(command.academyId()))
                     .filter(u -> u.getAccountType() == AccountType.MEMBER)
                     .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
 
             Role role = roleRepository.findById(command.roleId())
-                    .filter(r -> r.getAcademyId().equals(command.academyId()))
                     .orElseThrow(RoleNotFoundException::new);
 
             userRepository.changeRole(user.getId(), role.getId());
             log.info("event=user_role_change_완료 userId={}, roleId={}", user.getId(), role.getId());
         } catch (RuntimeException e) {
-            log.warn("event=user_role_change_실패 userId={}, roleId={}, academyId={}, reason={}", command.userId(),
-                    command.roleId(), command.academyId(), e.getMessage(), e);
+            log.warn("event=user_role_change_실패 userId={}, roleId={}, reason={}", command.userId(),
+                    command.roleId(), e.getMessage(), e);
             throw e;
         }
     }

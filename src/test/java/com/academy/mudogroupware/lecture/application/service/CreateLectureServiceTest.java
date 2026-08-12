@@ -65,7 +65,7 @@ class CreateLectureServiceTest {
                 .thenReturn(Optional.of(Term.restore(10L, "2026 겨울방학 특강", NOW)));
         when(subjectRepository.findByName("수학"))
                 .thenReturn(Optional.of(Subject.restore(20L, "수학", NOW)));
-        when(classroomRepository.findByName("101호"))
+        when(classroomRepository.findByNameForUpdate("101호"))
                 .thenReturn(Optional.of(Classroom.restore(40L, "101호", NOW)));
         when(lectureRepository.existsOverlap("101호", DayOfWeek.MONDAY, LocalTime.of(15, 0), LocalTime.of(17, 0)))
                 .thenReturn(false);
@@ -84,7 +84,7 @@ class CreateLectureServiceTest {
         when(termRepository.save(any(Term.class))).thenReturn(Term.restore(10L, "2026 겨울방학 특강", NOW));
         when(subjectRepository.findByName("수학")).thenReturn(Optional.empty());
         when(subjectRepository.save(any(Subject.class))).thenReturn(Subject.restore(20L, "수학", NOW));
-        when(classroomRepository.findByName("101호")).thenReturn(Optional.empty());
+        when(classroomRepository.findByNameForUpdate("101호")).thenReturn(Optional.empty());
         when(classroomRepository.save(any(Classroom.class)))
                 .thenReturn(Classroom.restore(40L, "101호", NOW));
         when(lectureRepository.existsOverlap("101호", DayOfWeek.MONDAY, LocalTime.of(15, 0), LocalTime.of(17, 0)))
@@ -99,12 +99,28 @@ class CreateLectureServiceTest {
     }
 
     @Test
+    void throwsWhenTwoSchedulesInSameRequestOverlap() {
+        CreateLectureCommand command = new CreateLectureCommand(
+                "Math Basics", ClassType.CLASS, "601", null, null, null, null, null, null,
+                List.of(new ScheduleInput(DayOfWeek.MONDAY, LocalTime.of(19, 0), LocalTime.of(21, 0)),
+                        new ScheduleInput(DayOfWeek.MONDAY, LocalTime.of(20, 0), LocalTime.of(22, 0))),
+                99L, null);
+
+        assertThatThrownBy(() -> service.createLecture(command))
+                .isInstanceOf(ClassroomTimeConflictException.class);
+
+        // 요청 안에서 이미 겹치는 걸 알 수 있으므로, 저장된 일정과 대조하는 DB 조회까지 갈 필요가 없다.
+        verify(lectureRepository, never()).existsOverlap(any(), any(), any(), any());
+        verify(lectureRepository, never()).save(any());
+    }
+
+    @Test
     void throwsWhenClassroomTimeConflictExists() {
         when(termRepository.findByName("2026 겨울방학 특강"))
                 .thenReturn(Optional.of(Term.restore(10L, "2026 겨울방학 특강", NOW)));
         when(subjectRepository.findByName("수학"))
                 .thenReturn(Optional.of(Subject.restore(20L, "수학", NOW)));
-        when(classroomRepository.findByName("101호"))
+        when(classroomRepository.findByNameForUpdate("101호"))
                 .thenReturn(Optional.of(Classroom.restore(40L, "101호", NOW)));
         when(lectureRepository.existsOverlap("101호", DayOfWeek.MONDAY, LocalTime.of(15, 0), LocalTime.of(17, 0)))
                 .thenReturn(true);
@@ -132,7 +148,7 @@ class CreateLectureServiceTest {
                 null);
         when(subjectRepository.findByName("Math")).thenReturn(Optional.empty());
         when(subjectRepository.save(any(Subject.class))).thenReturn(Subject.restore(20L, "Math", NOW));
-        when(classroomRepository.findByName("601")).thenReturn(Optional.empty());
+        when(classroomRepository.findByNameForUpdate("601")).thenReturn(Optional.empty());
         when(classroomRepository.save(any(Classroom.class))).thenReturn(Classroom.restore(40L, "601", NOW));
         when(lectureRepository.existsOverlap("601", DayOfWeek.MONDAY, LocalTime.of(19, 0), LocalTime.of(21, 0)))
                 .thenReturn(false);
@@ -166,7 +182,7 @@ class CreateLectureServiceTest {
                 List.of(new ScheduleInput(DayOfWeek.MONDAY, LocalTime.of(19, 0), LocalTime.of(21, 0))),
                 99L,
                 null);
-        when(classroomRepository.findByName("601")).thenReturn(Optional.of(Classroom.restore(40L, "601", NOW)));
+        when(classroomRepository.findByNameForUpdate("601")).thenReturn(Optional.of(Classroom.restore(40L, "601", NOW)));
         when(lectureRepository.existsOverlap("601", DayOfWeek.MONDAY, LocalTime.of(19, 0), LocalTime.of(21, 0)))
                 .thenReturn(false);
         when(lectureRepository.save(any(Lecture.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -192,7 +208,7 @@ class CreateLectureServiceTest {
                 .thenReturn(Optional.of(Term.restore(10L, "2026 겨울방학 특강", NOW)));
         when(subjectRepository.findByName("수학"))
                 .thenReturn(Optional.of(Subject.restore(20L, "수학", NOW)));
-        when(classroomRepository.findByName("101호"))
+        when(classroomRepository.findByNameForUpdate("101호"))
                 .thenReturn(Optional.of(Classroom.restore(40L, "101호", NOW)));
         when(lectureRepository.existsOverlap("101호", DayOfWeek.MONDAY, LocalTime.of(15, 0), LocalTime.of(17, 0)))
                 .thenReturn(false);

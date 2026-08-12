@@ -21,11 +21,11 @@ public class SearchUsersService implements SearchUsersUseCase {
     private final UserRepository userRepository;
 
     @Override
-    public List<User> search(Long academyId, String keyword) {
+    public List<User> search(String keyword) {
         boolean keywordPresent = keyword != null && !keyword.isBlank();
-        log.info("event=user_search_시작 academyId={}, keywordPresent={}", academyId, keywordPresent);
-        List<User> result = userRepository.searchByAcademyId(academyId, keyword);
-        log.info("event=user_search_완료 academyId={}, count={}", academyId, result.size());
+        log.info("event=user_search_시작 keywordPresent={}", keywordPresent);
+        List<User> result = userRepository.search(keyword);
+        log.info("event=user_search_완료 count={}", result.size());
         return result;
     }
 }

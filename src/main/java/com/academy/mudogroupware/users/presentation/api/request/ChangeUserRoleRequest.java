@@ -9,7 +9,7 @@ public record ChangeUserRoleRequest(
         @Schema(description = "배정할 역할 ID (같은 학원 소속 역할만 가능)", example = "5")
         @NotNull Long roleId) {
 
-    public ChangeUserRoleCommand toCommand(Long userId, Long academyId) {
-        return new ChangeUserRoleCommand(userId, academyId, roleId);
+    public ChangeUserRoleCommand toCommand(Long userId) {
+        return new ChangeUserRoleCommand(userId, roleId);
     }
 }

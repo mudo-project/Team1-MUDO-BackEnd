@@ -6,5 +6,5 @@ import com.academy.mudogroupware.users.domain.model.User;
 
 public interface SearchUsersUseCase {
 
-    List<User> search(Long academyId, String keyword);
+    List<User> search(String keyword);
 }

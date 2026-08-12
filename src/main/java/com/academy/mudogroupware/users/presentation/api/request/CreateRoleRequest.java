@@ -15,7 +15,7 @@ public record CreateRoleRequest(
         @Size(max = 20) String color
 ) {
 
-    public CreateRoleCommand toCommand(Long academyId) {
-        return new CreateRoleCommand(academyId, name, description, color);
+    public CreateRoleCommand toCommand() {
+        return new CreateRoleCommand(name, description, color);
     }
 }

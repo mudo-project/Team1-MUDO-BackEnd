@@ -25,9 +25,9 @@ class LectureTeacherDirectoryAdapterTest {
 
     @Test
     void returnsTeachersByIds() {
-        User included = user(10L, 1L, "Teacher Kim", 3L, UserStatus.ACTIVE);
-        User otherAcademy = user(20L, 2L, "Other Teacher", 4L, UserStatus.ACTIVE);
-        when(userRepository.findAllById(Set.of(10L, 20L))).thenReturn(List.of(included, otherAcademy));
+        User included = user(10L, "Teacher Kim", 3L, UserStatus.ACTIVE);
+        User other = user(20L, "Other Teacher", 4L, UserStatus.ACTIVE);
+        when(userRepository.findAllById(Set.of(10L, 20L))).thenReturn(List.of(included, other));
 
         Map<Long, TeacherInfo> result = adapter.findTeachers(List.of(10L, 20L));
 
@@ -43,8 +43,8 @@ class LectureTeacherDirectoryAdapterTest {
         verifyNoInteractions(userRepository);
     }
 
-    private User user(Long id, Long academyId, String name, Long roleId, UserStatus status) {
-        return User.restore(id, academyId, "user" + id, "pw", name, "010", "user" + id + "@example.com",
+    private User user(Long id, String name, Long roleId, UserStatus status) {
+        return User.restore(id, "user" + id, "pw", name, "010", "user" + id + "@example.com",
                 roleId, status, false, AccountType.MEMBER, null, LocalDateTime.now(), LocalDateTime.now(),
                 LocalDateTime.now());
     }

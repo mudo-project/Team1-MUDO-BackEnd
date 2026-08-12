@@ -31,19 +31,7 @@ class ChangeUserRoleServiceTest {
         when(userRepository.findById(1L)).thenReturn(Optional.empty());
         ChangeUserRoleService service = new ChangeUserRoleService(userRepository, roleRepository);
 
-        assertThatThrownBy(() -> service.changeRole(new ChangeUserRoleCommand(1L, 10L, 5L)))
-                .isInstanceOf(UserException.class);
-    }
-
-    @Test
-    void throwsWhenTargetUserBelongsToDifferentAcademy() {
-        UserRepository userRepository = mock(UserRepository.class);
-        RoleRepository roleRepository = mock(RoleRepository.class);
-        User user = member(1L, 20L);
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        ChangeUserRoleService service = new ChangeUserRoleService(userRepository, roleRepository);
-
-        assertThatThrownBy(() -> service.changeRole(new ChangeUserRoleCommand(1L, 10L, 5L)))
+        assertThatThrownBy(() -> service.changeRole(new ChangeUserRoleCommand(1L, 5L)))
                 .isInstanceOf(UserException.class);
     }
 
@@ -51,13 +39,13 @@ class ChangeUserRoleServiceTest {
     void throwsWhenTargetIsNotMemberAccount() {
         UserRepository userRepository = mock(UserRepository.class);
         RoleRepository roleRepository = mock(RoleRepository.class);
-        User admin = User.restore(1L, 10L, "academy01", "hashed", "원장", "010-0000-0000",
+        User admin = User.restore(1L, "academy01", "hashed", "원장", "010-0000-0000",
                 "admin@example.com", null, UserStatus.ACTIVE, false, AccountType.ADMIN, AdminScope.ACADEMY,
                 LocalDateTime.now(), LocalDateTime.now(), LocalDateTime.now());
         when(userRepository.findById(1L)).thenReturn(Optional.of(admin));
         ChangeUserRoleService service = new ChangeUserRoleService(userRepository, roleRepository);
 
-        assertThatThrownBy(() -> service.changeRole(new ChangeUserRoleCommand(1L, 10L, 5L)))
+        assertThatThrownBy(() -> service.changeRole(new ChangeUserRoleCommand(1L, 5L)))
                 .isInstanceOf(UserException.class);
     }
 
@@ -65,26 +53,12 @@ class ChangeUserRoleServiceTest {
     void throwsWhenTargetRoleDoesNotExist() {
         UserRepository userRepository = mock(UserRepository.class);
         RoleRepository roleRepository = mock(RoleRepository.class);
-        User user = member(1L, 10L);
+        User user = member(1L);
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
         when(roleRepository.findById(5L)).thenReturn(Optional.empty());
         ChangeUserRoleService service = new ChangeUserRoleService(userRepository, roleRepository);
 
-        assertThatThrownBy(() -> service.changeRole(new ChangeUserRoleCommand(1L, 10L, 5L)))
-                .isInstanceOf(RoleNotFoundException.class);
-    }
-
-    @Test
-    void throwsWhenTargetRoleBelongsToDifferentAcademy() {
-        UserRepository userRepository = mock(UserRepository.class);
-        RoleRepository roleRepository = mock(RoleRepository.class);
-        User user = member(1L, 10L);
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        Role role = Role.restore(5L, 20L, "강사", "설명", LocalDateTime.now(), Set.of());
-        when(roleRepository.findById(5L)).thenReturn(Optional.of(role));
-        ChangeUserRoleService service = new ChangeUserRoleService(userRepository, roleRepository);
-
-        assertThatThrownBy(() -> service.changeRole(new ChangeUserRoleCommand(1L, 10L, 5L)))
+        assertThatThrownBy(() -> service.changeRole(new ChangeUserRoleCommand(1L, 5L)))
                 .isInstanceOf(RoleNotFoundException.class);
     }
 
@@ -92,19 +66,19 @@ class ChangeUserRoleServiceTest {
     void changesRoleWhenValid() {
         UserRepository userRepository = mock(UserRepository.class);
         RoleRepository roleRepository = mock(RoleRepository.class);
-        User user = member(1L, 10L);
+        User user = member(1L);
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        Role role = Role.restore(5L, 10L, "강사", "설명", LocalDateTime.now(), Set.of());
+        Role role = Role.restore(5L, "강사", "설명", LocalDateTime.now(), Set.of());
         when(roleRepository.findById(5L)).thenReturn(Optional.of(role));
         ChangeUserRoleService service = new ChangeUserRoleService(userRepository, roleRepository);
 
-        service.changeRole(new ChangeUserRoleCommand(1L, 10L, 5L));
+        service.changeRole(new ChangeUserRoleCommand(1L, 5L));
 
         verify(userRepository).changeRole(1L, 5L);
     }
 
-    private User member(Long id, Long academyId) {
-        return User.restore(id, academyId, "member01", "hashed", "구성원", "010-0000-0000",
+    private User member(Long id) {
+        return User.restore(id, "member01", "hashed", "구성원", "010-0000-0000",
                 "member@example.com", 3L, UserStatus.ACTIVE, false, AccountType.MEMBER, null,
                 LocalDateTime.now(), LocalDateTime.now(), LocalDateTime.now());
     }

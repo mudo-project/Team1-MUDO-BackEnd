@@ -48,7 +48,8 @@ public class TimetableSetEntity extends BaseTimeEntity {
     @Column(name = "operating_end_time", nullable = false)
     private LocalTime operatingEndTime;
 
-    @Column(name = "operating_days", nullable = false, length = 50)
+    // DayOfWeek 7개 전체를 콤마로 이어붙이면 56자("SUNDAY,MONDAY,...,SATURDAY")라 50자로는 부족하다.
+    @Column(name = "operating_days", nullable = false, length = 100)
     private String operatingDays;
 
     @Column(name = "slot_unit_minutes", nullable = false)

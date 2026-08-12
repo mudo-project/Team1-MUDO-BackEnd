@@ -35,7 +35,7 @@ import com.academy.mudogroupware.global.presentation.security.AuthUser;
 @AutoConfigureMockMvc
 class CalendarControllerPermissionIntegrationTest {
 
-    private static final AuthUser AUTH_USER = new AuthUser(7L, "user", 1L, 3L, "MEMBER");
+    private static final AuthUser AUTH_USER = new AuthUser(7L, "user", 3L, "MEMBER");
 
     @Autowired
     private MockMvc mockMvc;

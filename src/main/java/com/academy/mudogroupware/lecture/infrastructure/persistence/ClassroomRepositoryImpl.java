@@ -22,6 +22,11 @@ public class ClassroomRepositoryImpl implements ClassroomRepository {
     }
 
     @Override
+    public Optional<Classroom> findByNameForUpdate(String name) {
+        return classroomJpaRepository.findByNameForUpdate(name).map(this::toDomain);
+    }
+
+    @Override
     public List<Classroom> findAllById(List<Long> ids) {
         return classroomJpaRepository.findAllById(ids).stream().map(this::toDomain).toList();
     }

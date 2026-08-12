@@ -29,9 +29,6 @@ public class UserEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "academy_id", nullable = false)
-    private Long academyId;
-
     @Column(nullable = false, length = 50)
     private String username;
 
@@ -75,12 +72,11 @@ public class UserEntity {
     private LocalDateTime updatedAt;
 
     @Builder
-    private UserEntity(Long id, Long academyId, String username, String password, String name, Long roleId,
+    private UserEntity(Long id, String username, String password, String name, Long roleId,
                         String phone, String email, UserStatus status, boolean mustChangePw, AccountType accountType,
                         AdminScope adminScope, LocalDateTime joinedAt, LocalDateTime createdAt,
                         LocalDateTime updatedAt) {
         this.id = id;
-        this.academyId = academyId;
         this.username = username;
         this.password = password;
         this.name = name;
@@ -105,6 +101,10 @@ public class UserEntity {
         this.phone = phone;
         this.email = email;
         this.joinedAt = joinedAt;
+    }
+
+    void changeStatus(UserStatus status) {
+        this.status = status;
     }
 
     void changePassword(String password) {

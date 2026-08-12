@@ -27,7 +27,9 @@ public class ApprovalDocumentRepositoryImpl implements ApprovalDocumentRepositor
 
     @Override
     public ApprovalDocument save(ApprovalDocument approvalDocument) {
-        ApprovalDocumentEntity entity = toEntity(approvalDocument);
+        ApprovalDocumentEntity entity = needsLineReplacement(approvalDocument)
+                ? updateExistingLines(approvalDocument)
+                : toEntity(approvalDocument);
         return toDomain(approvalDocumentJpaRepository.save(entity));
     }
 
@@ -86,6 +88,19 @@ public class ApprovalDocumentRepositoryImpl implements ApprovalDocumentRepositor
 
     private Sort latestFirstSort() {
         return Sort.by(Sort.Direction.DESC, "createdAt", "id");
+    }
+
+    private boolean needsLineReplacement(ApprovalDocument approvalDocument) {
+        return approvalDocument.getId() != null
+                && approvalDocument.getLines().stream().allMatch(line -> line.getId() == null);
+    }
+
+    private ApprovalDocumentEntity updateExistingLines(ApprovalDocument domain) {
+        ApprovalDocumentEntity entity = approvalDocumentJpaRepository.getReferenceById(domain.getId());
+        entity.clearLines();
+        approvalDocumentJpaRepository.saveAndFlush(entity);
+        domain.getLines().forEach(line -> entity.addLine(toLineEntity(line)));
+        return entity;
     }
 
     private ApprovalDocumentEntity toEntity(ApprovalDocument domain) {

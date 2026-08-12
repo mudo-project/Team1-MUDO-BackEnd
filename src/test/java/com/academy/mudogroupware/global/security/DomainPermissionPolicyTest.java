@@ -47,6 +47,7 @@ class DomainPermissionPolicyTest {
         assertPolicy(RollcallController.class, "saveEntries", "hasAuthority('ROLLCALL:MANAGE')");
         assertPolicy(RollcallController.class, "exportSheet", "hasAuthority('ROLLCALL:MANAGE')");
         assertPolicy(RollcallController.class, "getMessageCandidates", "hasAuthority('ROLLCALL:MANAGE')");
+        assertPolicy(RollcallController.class, "sendMessages", "hasAuthority('ROLLCALL:MANAGE')");
 
         assertPolicy(
                 MessageTemplateController.class,

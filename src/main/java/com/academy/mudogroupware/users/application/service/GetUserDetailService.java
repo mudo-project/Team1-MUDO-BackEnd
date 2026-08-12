@@ -32,9 +32,8 @@ public class GetUserDetailService implements GetMyProfileUseCase, GetMemberDetai
     }
 
     @Override
-    public UserDetailResult getMemberDetail(Long academyId, Long userId) {
+    public UserDetailResult getMemberDetail(Long userId) {
         User user = userRepository.findById(userId)
-                .filter(u -> u.getAcademyId().equals(academyId))
                 .filter(u -> u.getAccountType() == AccountType.MEMBER)
                 .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
         return toResult(user);

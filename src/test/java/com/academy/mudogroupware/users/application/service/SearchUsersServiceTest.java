@@ -19,11 +19,11 @@ class SearchUsersServiceTest {
     @Test
     void returnsMatchingUsersWhenKeywordGiven() {
         UserRepository userRepository = mock(UserRepository.class);
-        User user = member(1L, 10L, "김강사", "kim_teacher01");
-        when(userRepository.searchByAcademyId(10L, "김")).thenReturn(List.of(user));
+        User user = member(1L, "김강사", "kim_teacher01");
+        when(userRepository.search("김")).thenReturn(List.of(user));
         SearchUsersService service = new SearchUsersService(userRepository);
 
-        List<User> result = service.search(10L, "김");
+        List<User> result = service.search("김");
 
         assertThat(result).containsExactly(user);
     }
@@ -31,11 +31,11 @@ class SearchUsersServiceTest {
     @Test
     void returnsAllUsersWhenKeywordIsNull() {
         UserRepository userRepository = mock(UserRepository.class);
-        User user = member(1L, 10L, "김강사", "kim_teacher01");
-        when(userRepository.searchByAcademyId(10L, null)).thenReturn(List.of(user));
+        User user = member(1L, "김강사", "kim_teacher01");
+        when(userRepository.search(null)).thenReturn(List.of(user));
         SearchUsersService service = new SearchUsersService(userRepository);
 
-        List<User> result = service.search(10L, null);
+        List<User> result = service.search(null);
 
         assertThat(result).containsExactly(user);
     }
@@ -43,16 +43,16 @@ class SearchUsersServiceTest {
     @Test
     void returnsEmptyListWhenNoMatch() {
         UserRepository userRepository = mock(UserRepository.class);
-        when(userRepository.searchByAcademyId(10L, "없는이름")).thenReturn(List.of());
+        when(userRepository.search("없는이름")).thenReturn(List.of());
         SearchUsersService service = new SearchUsersService(userRepository);
 
-        List<User> result = service.search(10L, "없는이름");
+        List<User> result = service.search("없는이름");
 
         assertThat(result).isEmpty();
     }
 
-    private User member(Long id, Long academyId, String name, String username) {
-        return User.restore(id, academyId, username, "hashed", name, "010-0000-0000",
+    private User member(Long id, String name, String username) {
+        return User.restore(id, username, "hashed", name, "010-0000-0000",
                 username + "@example.com", 3L, UserStatus.ACTIVE, false, AccountType.MEMBER, null,
                 LocalDateTime.now(), LocalDateTime.now(), LocalDateTime.now());
     }

@@ -26,19 +26,19 @@ public class CreateRoleService implements CreateRoleUseCase {
 
     @Override
     public Long createRole(CreateRoleCommand command) {
-        log.info("event=role_create_시작 academyId={}, name={}", command.academyId(), command.name());
+        log.info("event=role_create_시작 name={}", command.name());
         try {
-            if (roleRepository.existsByAcademyIdAndName(command.academyId(), command.name())) {
+            if (roleRepository.existsByName(command.name())) {
                 throw new RoleNameDuplicateException();
             }
 
-            Role role = Role.create(command.academyId(), command.name(), command.description(), command.color(),
+            Role role = Role.create(command.name(), command.description(), command.color(),
                     LocalDateTime.now(clock));
             Long roleId = roleRepository.save(role).getId();
-            log.info("event=role_create_완료 academyId={}, roleId={}", command.academyId(), roleId);
+            log.info("event=role_create_완료 roleId={}", roleId);
             return roleId;
         } catch (RuntimeException e) {
-            log.warn("event=role_create_실패 academyId={}, name={}, reason={}", command.academyId(), command.name(),
+            log.warn("event=role_create_실패 name={}, reason={}", command.name(),
                     e.getMessage(), e);
             throw e;
         }
