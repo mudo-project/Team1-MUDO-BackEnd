@@ -36,17 +36,18 @@ public class GetMessageSendCandidatesService implements GetMessageSendCandidates
 
         return roster.entries().stream()
                 .filter(entry -> entry.status() != null)
-                .map(entry -> toCandidate(entry, templatesByStatus))
+                .map(entry -> toCandidate(entry, roster.lectureName(), templatesByStatus))
                 .toList();
     }
 
     private MessageSendCandidateView toCandidate(
             RosterEntryView entry,
+            String lectureName,
             Map<AttendanceStatus, MessageTemplate> templatesByStatus
     ) {
         MessageTemplate template = templatesByStatus.get(entry.status());
         return new MessageSendCandidateView(entry.studentId(), entry.studentName(), entry.status(),
                 entry.parentPhone(), template != null ? template.getId() : null,
-                template != null ? template.getName() : null, template != null);
+                template != null ? template.getName() : null, template != null, lectureName);
     }
 }

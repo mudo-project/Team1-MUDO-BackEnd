@@ -9,6 +9,13 @@ public record MessageSendCandidateView(
         String parentPhone,
         Long matchedTemplateId,
         String matchedTemplateName,
-        boolean eligible
+        boolean eligible,
+        String lectureName
 ) {
+
+    public MessageSendCandidateView(Long studentId, String studentName, AttendanceStatus status,
+                                    String parentPhone, Long matchedTemplateId, String matchedTemplateName,
+                                    boolean eligible) {
+        this(studentId, studentName, status, parentPhone, matchedTemplateId, matchedTemplateName, eligible, null);
+    }
 }

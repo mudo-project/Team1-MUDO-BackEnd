@@ -187,6 +187,7 @@ Content-Disposition: attachment; filename="attendance_1_2026-08-06.xlsx"
 
 - 요청한 `studentIds` 각각에 대해 발송을 시도하고, 학생별 성공/실패를 반환한다(일부 실패해도 전체 요청은 200으로 응답).
 - 발송 대상 조회(4번 API)에서 `eligible=false`였던 학생은 실제 발송 없이 실패로 처리된다.
+- 문자 템플릿 본문의 `{학생명}`, `{강의명}`, `{날짜}`는 실제 발송 직전에 학생명, 강의명, 발송 기준일(`yyyy-MM-dd`)로 치환된다.
 - 외부 SMS 공급자는 [솔라피(SOLAPI)](https://solapi.com/)를 사용한다. 학생 1명당 API 호출 1건(배치 발송 아님).
 
 ---
@@ -204,7 +205,7 @@ Content-Disposition: attachment; filename="attendance_1_2026-08-06.xlsx"
 {
   "name": "결석 안내",
   "status": "ABSENT",
-  "content": "[무도학원] 오늘 결석 처리되었습니다."
+  "content": "[무도학원] 오늘 {학생명} 학생이 {강의명} 강의에 결석 처리되었습니다. 기준일: {날짜}"
 }
 ```
 
@@ -224,6 +225,7 @@ Content-Disposition: attachment; filename="attendance_1_2026-08-06.xlsx"
 #### 규칙
 
 - 같은 학원에서 같은 출결 상태의 템플릿은 1개만 만들 수 있다.
+- 템플릿 본문에서 사용할 수 있는 변수는 `{학생명}`, `{강의명}`, `{날짜}`다.
 
 ---
 
