@@ -14,5 +14,7 @@ public record UpdateMemberProfileRequest(
         @Schema(description = "이메일. 보내지 않으면 기존 값 유지", example = "hwchoi@academy.kr")
         @Email @Size(max = 100) String email,
         @Schema(description = "입사일. 보내지 않으면 기존 값 유지", example = "2023-03-02T00:00:00")
-        LocalDateTime joinedAt) {
+        LocalDateTime joinedAt,
+        @Schema(description = "배정할 역할 ID. 보내지 않으면 기존 역할 유지, 같은 학원 소속 역할만 가능", example = "5")
+        Long roleId) {
 }

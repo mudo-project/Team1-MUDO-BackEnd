@@ -20,7 +20,6 @@ import com.academy.mudogroupware.global.presentation.api.common.GlobalApiRespons
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
 import com.academy.mudogroupware.users.application.result.CreateAccountResult;
 import com.academy.mudogroupware.users.application.usecase.ChangeMyPasswordUseCase;
-import com.academy.mudogroupware.users.application.usecase.ChangeUserRoleUseCase;
 import com.academy.mudogroupware.users.application.usecase.ChangeUserStatusUseCase;
 import com.academy.mudogroupware.users.application.usecase.CreateAccountUseCase;
 import com.academy.mudogroupware.users.application.usecase.GetMemberDetailUseCase;
@@ -32,7 +31,6 @@ import com.academy.mudogroupware.users.application.usecase.UpdateMemberProfileUs
 import com.academy.mudogroupware.users.application.usecase.UpdateMyProfileUseCase;
 import com.academy.mudogroupware.users.presentation.api.common.UserResponseCode;
 import com.academy.mudogroupware.users.presentation.api.request.ChangeMyPasswordRequest;
-import com.academy.mudogroupware.users.presentation.api.request.ChangeUserRoleRequest;
 import com.academy.mudogroupware.users.presentation.api.request.ChangeUserStatusRequest;
 import com.academy.mudogroupware.users.presentation.api.request.CreateAccountRequest;
 import com.academy.mudogroupware.users.presentation.api.request.PasswordSetupRequest;
@@ -59,7 +57,6 @@ import lombok.RequiredArgsConstructor;
 @Validated
 public class UserController {
 
-    private final ChangeUserRoleUseCase changeUserRoleUseCase;
     private final SearchUsersUseCase searchUsersUseCase;
     private final CreateAccountUseCase createAccountUseCase;
     private final PasswordSetupUseCase passwordSetupUseCase;
@@ -79,18 +76,6 @@ public class UserController {
         AccountCreateResponse data = AccountCreateResponse.from(result);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(GlobalApiResponse.created(UserResponseCode.ACCOUNT_CREATED, data));
-    }
-
-    @PreAuthorize("hasAuthority('ACCOUNT:MANAGE')")
-    @Operation(
-            summary = "구성원 역할 변경",
-            description = "일반 직원 계정(accountType=MEMBER)의 역할을 같은 학원 소속 다른 역할로 바꿉니다. 역할 해제(역할 없음)는 지원하지 않습니다.")
-    @PatchMapping("/{userId}/role")
-    public ResponseEntity<Void> changeRole(
-            @Parameter(description = "대상 구성원의 사용자 ID") @PathVariable Long userId,
-            @Valid @RequestBody ChangeUserRoleRequest request) {
-        changeUserRoleUseCase.changeRole(request.toCommand(userId));
-        return ResponseEntity.noContent().build();
     }
 
     @Operation(
@@ -174,14 +159,14 @@ public class UserController {
     @PreAuthorize("hasAuthority('ACCOUNT:MANAGE')")
     @Operation(
             summary = "구성원 정보 수정(관리자)",
-            description = "일반 직원 계정(accountType=MEMBER)의 이름/연락처/이메일/입사일을 수정합니다. "
-                    + "값을 보내지 않은 필드는 기존 값을 유지합니다.")
+            description = "일반 직원 계정(accountType=MEMBER)의 이름/연락처/이메일/입사일/역할을 수정합니다. "
+                    + "값을 보내지 않은 필드는 기존 값을 유지합니다. roleId를 보내면 역할도 함께 바뀝니다(역할 해제는 지원하지 않음).")
     @PatchMapping("/{userId}")
     public ResponseEntity<Void> updateMemberProfile(
             @Parameter(description = "대상 구성원의 사용자 ID") @PathVariable Long userId,
             @Valid @RequestBody UpdateMemberProfileRequest request) {
         updateMemberProfileUseCase.updateMemberProfile(userId, request.name(),
-                request.phone(), request.email(), request.joinedAt());
+                request.phone(), request.email(), request.joinedAt(), request.roleId());
         return ResponseEntity.noContent().build();
     }
 
