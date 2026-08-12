@@ -136,9 +136,56 @@ Response Body
 
 ---
 
+## **3. 알림 읽음 처리**
+
+`PATCH /api/notifications/{notificationId}/read`
+
+권한: 없음(로그인만 필요, 본인 소유 알림만 처리 가능)
+
+# **[request]**
+
+Request Header
+
+| **name** | **description** |
+| --- | --- |
+| `Authorization` | `Bearer {AccessToken}` 형식의 사용자 인증 토큰입니다. |
+
+Path Variable
+
+| **name** | **description** |
+| --- | --- |
+| `notificationId` | 읽음 처리할 알림 ID |
+
+# **[response]**
+
+### **성공코드**
+
+| **HTTP 상태** | **설명** |
+| --- | --- |
+| `200 OK` | 읽음 처리 성공(이미 읽은 알림이어도 200, 최초 읽은 시각을 그대로 유지) |
+
+Response Body
+
+```json
+{
+    "status": 200,
+    "code": "NOTIFICATION_200_3",
+    "message": "알림 읽음 처리에 성공했습니다.",
+    "data": null
+}
+```
+
+### **실패 코드**
+
+| **HTTP 상태** | **code** | **message** | **설명** |
+| --- | --- | --- | --- |
+| `401 Unauthorized` | `COMMON_401_1` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않은 경우 |
+| `404 Not Found` | `NOTIFICATION_404_1` | 알림을 찾을 수 없습니다. | 존재하지 않거나 본인 소유가 아닌 `notificationId`인 경우. 다른 사람 알림이 존재한다는 사실 자체를 노출하지 않기 위해 403 대신 404로 응답한다. |
+
+---
+
 ## 다음 예정 API (아직 미구현)
 
-- `PATCH /api/notifications/{notificationId}/read` — 읽음 처리
 - `DELETE /api/notifications/{notificationId}` — 개별 삭제
 - `DELETE /api/notifications?status=READ` — 읽은 알림 일괄 삭제
 

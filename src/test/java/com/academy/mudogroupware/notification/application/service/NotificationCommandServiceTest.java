@@ -4,6 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -18,11 +23,13 @@ import com.academy.mudogroupware.notification.domain.repository.NotificationRepo
 @ExtendWith(MockitoExtension.class)
 class NotificationCommandServiceTest {
 
+    private static final Clock FIXED_CLOCK = Clock.fixed(Instant.parse("2026-08-13T01:00:00Z"), ZoneId.of("UTC"));
+
     @Mock
     private NotificationRepository notificationRepository;
 
     private NotificationCommandService service() {
-        return new NotificationCommandService(notificationRepository);
+        return new NotificationCommandService(notificationRepository, FIXED_CLOCK);
     }
 
     @Test
@@ -31,7 +38,7 @@ class NotificationCommandServiceTest {
         when(notificationRepository.save(captor.capture()))
                 .thenAnswer(invocation -> Notification.restore(1L, 10L,
                         NotificationType.APPROVAL_LINE_ACTIVATED.name(), 100L, "결재 차례가 되었습니다",
-                        null, java.time.LocalDateTime.now()));
+                        null, LocalDateTime.now(FIXED_CLOCK)));
 
         Long id = service().create(new CreateNotificationCommand(
                 10L, NotificationType.APPROVAL_LINE_ACTIVATED.name(), 100L, "결재 차례가 되었습니다"));
@@ -40,5 +47,12 @@ class NotificationCommandServiceTest {
         assertThat(captor.getValue().getRecipientUserId()).isEqualTo(10L);
         assertThat(captor.getValue().getMessage()).isEqualTo("결재 차례가 되었습니다");
         verify(notificationRepository).save(captor.getValue());
+    }
+
+    @Test
+    void markAsReadDelegatesToRepositoryWithCurrentTime() {
+        service().markAsRead(1L, 10L);
+
+        verify(notificationRepository).markAsRead(1L, 10L, LocalDateTime.now(FIXED_CLOCK));
     }
 }
