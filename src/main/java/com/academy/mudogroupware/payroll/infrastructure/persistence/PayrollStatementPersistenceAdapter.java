@@ -27,6 +27,18 @@ public class PayrollStatementPersistenceAdapter implements PayrollStatementPort 
           "select * from payroll_statement where payroll_id=?", this::map, payrollId));
     } catch (EmptyResultDataAccessException e) { return Optional.empty(); }
   }
+  @Override public Optional<StatementData> findByPayrollIdForUpdate(Long payrollId) {
+    try {
+      return Optional.ofNullable(jdbc.queryForObject(
+          "select * from payroll_statement where payroll_id=? for update", this::map, payrollId));
+    } catch (EmptyResultDataAccessException e) { return Optional.empty(); }
+  }
+  @Override public Optional<StatementData> findById(Long statementId) {
+    try {
+      return Optional.ofNullable(jdbc.queryForObject(
+          "select * from payroll_statement where statement_id=?", this::map, statementId));
+    } catch (EmptyResultDataAccessException e) { return Optional.empty(); }
+  }
   @Override public Optional<StatementData> markPendingIfFailed(Long payrollId) {
     int changed = jdbc.update("update payroll_statement set status='PENDING', failure_reason=null "
         + "where payroll_id=? and status='FAILED'", payrollId);

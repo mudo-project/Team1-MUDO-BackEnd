@@ -20,6 +20,11 @@ public enum PayrollErrorCode implements ErrorCode {
   PAYROLL_ITEM_NOT_EDITABLE(HttpStatus.BAD_REQUEST, "PAYROLL_ITEM_NOT_EDITABLE", "수정할 수 없는 급여 항목입니다."),
   PAYROLL_STATEMENT_NOT_READY(HttpStatus.CONFLICT, "PAYROLL_STATEMENT_NOT_READY", "급여명세서가 아직 준비되지 않았습니다."),
   PAYROLL_STATEMENT_RETRY_NOT_ALLOWED(HttpStatus.CONFLICT, "PAYROLL_STATEMENT_RETRY_NOT_ALLOWED", "실패한 급여명세서만 재시도할 수 있습니다."),
+  PAYROLL_EMPLOYEE_EMAIL_MISSING(HttpStatus.UNPROCESSABLE_ENTITY, "PAYROLL_EMAIL_422_1", "직원 이메일이 등록되어 있지 않습니다."),
+  PAYROLL_EMAIL_NOT_LATEST_REVISION(HttpStatus.CONFLICT, "PAYROLL_EMAIL_409_1", "최신 급여 정정본만 이메일로 발송할 수 있습니다."),
+  PAYROLL_EMAIL_DELIVERY_CONFLICT(HttpStatus.CONFLICT, "PAYROLL_EMAIL_409_2", "이미 전달됐거나 발송 처리 중인 급여명세서입니다."),
+  PAYROLL_EMAIL_BATCH_NOT_FOUND(HttpStatus.NOT_FOUND, "PAYROLL_EMAIL_404_1", "이메일 일괄 발송 내역을 찾을 수 없습니다."),
+  PAYROLL_EMAIL_WEBHOOK_SIGNATURE_INVALID(HttpStatus.UNAUTHORIZED, "PAYROLL_EMAIL_401_1", "Mailgun Webhook 서명이 올바르지 않습니다."),
   INVALID_PAYROLL_REQUEST(HttpStatus.BAD_REQUEST, "INVALID_PAYROLL_REQUEST", "급여 요청 값이 올바르지 않습니다.");
 
   private final HttpStatus httpStatus;

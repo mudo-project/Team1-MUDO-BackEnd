@@ -4,8 +4,9 @@
 
 학원 그룹웨어의 직원 월 급여 관리 기능을 구현한다.
 
-현재 단계에서는 실제 급여 지급과 이메일 발송 기능은 구현하지 않는다.
-확정된 급여의 PDF 급여명세서는 생성하여 Finance S3 버킷에 저장한다.
+현재 단계에서는 실제 급여 지급 기능은 구현하지 않는다.
+확정된 급여의 PDF 급여명세서는 생성하여 Finance S3 버킷에 저장하고,
+권한 있는 관리자의 요청에 따라 직원 이메일로 개별 또는 일괄 발송한다.
 
 이번 구현의 범위는 다음과 같다.
 
@@ -62,6 +63,10 @@
 * 확정 급여명세서 PDF 생성
 * Finance S3 버킷 저장
 * 급여명세서 다운로드 URL 발급
+* 급여명세서 이메일 개별 발송
+* 급여명세서 이메일 귀속월 일괄 발송
+* 이메일 발송 이력 및 일괄 발송 결과 조회
+* Mailgun Webhook 기반 수신 이메일 서버 전달 결과 확인
 
 ---
 
@@ -80,11 +85,8 @@
 
 국세청 실제 API 연동
 
-이메일 급여명세서 발송
-
 자동 발송
 발송 예약
-발송 이력
 
 실제 지급 여부 확인
 ```
@@ -95,13 +97,12 @@
 PAID
 paid_at
 
-payroll_statement_delivery
 payroll_auto_delivery_setting
 ```
 
 급여명세서 생성 여부는 Payroll 상태에 추가하지 않고 `payroll_statement.status`로 관리한다.
-
-이메일 발송과 자동 발송 기능은 향후 별도로 추가한다.
+이메일은 관리자가 명시적으로 개별 또는 일괄 발송을 요청할 때만 전송한다.
+급여 확정 시 PDF는 자동 생성하지만 이메일은 자동 발송하지 않는다.
 
 ---
 
@@ -171,6 +172,18 @@ CALCULATED
         ↓
 
 CONFIRMED
+
+        ↓
+
+급여명세서 PDF 생성 / Finance S3 저장
+
+        ↓
+
+관리자 요청 기반 개별 / 일괄 이메일 발송
+
+        ↓
+
+Mailgun Webhook 기반 수신 이메일 서버 전달 결과 확인
 ```
 
 ---
@@ -2063,13 +2076,14 @@ totalDeductions
 totalNetPay
 ```
 
-현재 이메일 발송 기능이 없으므로 다음 Summary는 제공하지 않는다.
+월 급여 목록 API는 이메일 발송 Summary를 제공하지 않는다.
+발송 현황은 발송 요청과 배치 결과 조회 API에서 별도로 제공한다.
 
 ```text
-발송 완료
-미발송
-발송 실패
-발송률
+메일 서버 전달 완료
+발송 중
+전달 실패
+발송 제외
 ```
 
 ---
@@ -2413,6 +2427,18 @@ PayrollStatementStoragePort
 → FINANCE 버킷
 ```
 
+로컬 이메일 첨부 테스트에서는 AWS 의존성을 제거하기 위해 `local` Profile에서만
+`LocalPayrollStatementStorageAdapter`를 사용하고 `build/local-payroll-statements`에 저장한다.
+`local`이 아닌 Profile에서는 기존 `FinanceS3PayrollStatementAdapter`만 활성화한다.
+로컬 DB의 `object_key` 형식은 운영과 동일하게 유지하여 저장소 구현 외의 흐름을 바꾸지 않는다.
+
+로컬 저장 경로는 다음 환경변수로 변경할 수 있다.
+
+```text
+PAYROLL_LOCAL_STORAGE_PATH
+기본값: build/local-payroll-statements
+```
+
 학원별 DB 스키마를 사용하더라도 S3 버킷은 공유하므로 `tenantId` Prefix를 유지한다.
 
 ```text
@@ -2463,6 +2489,626 @@ PATCH /api/payrolls/{payrollId}/statement/retry
 `FAILED` 상태에서만 재시도할 수 있다.
 재시도 시작 시 `PENDING`으로 변경하고 성공하면 `READY`, 실패하면 다시 `FAILED`로 변경한다.
 `PAYROLL:MANAGE` 권한이 필요하다.
+
+## 급여명세서 이메일 발송 원칙
+
+급여 확정 시 이메일을 자동 발송하지 않는다.
+권한 있는 관리자가 개별 발송 또는 귀속월 일괄 발송을 요청한 경우에만 발송한다.
+
+발송 가능한 급여명세서는 다음 조건을 모두 만족해야 한다.
+
+```text
+payroll.status = CONFIRMED
+payroll_statement.status = READY
+직원 이메일 존재
+```
+
+이메일 발송 실패는 이미 확정된 Payroll 또는 생성된 PDF 상태를 되돌리지 않는다.
+
+```text
+Payroll = CONFIRMED
+PayrollStatement = READY
+EmailDelivery = FAILED
+```
+
+발송할 PDF는 다시 생성하지 않고 Finance S3 버킷에 저장된 확정본을 읽어 첨부한다.
+메일 본문에 S3 URL이나 `object_key`를 노출하지 않는다.
+
+일괄 발송도 수신자별로 별도 메일 한 통과 PDF 한 개를 발송한다.
+여러 직원의 이메일 주소나 급여명세서를 하나의 메일에 묶지 않는다.
+
+## 직원 이메일 조회 경계
+
+직원 이메일은 Users Domain이 소유한다.
+Payroll은 Users Entity, Repository, 내부 Service를 직접 참조하지 않고 기존 조회 Port를 확장한다.
+
+```java
+public interface PayrollEmployeePort {
+
+    Optional<EmployeeView> findById(Long userId);
+
+    Optional<EmployeeView> findActiveById(Long userId);
+
+    List<EmployeeView> findAllActive(String keyword);
+
+    record EmployeeView(
+        Long id,
+        String name,
+        String email,
+        LocalDate joinedAt
+    ) {}
+}
+```
+
+Users의 `PayrollEmployeeAdapter`가 이메일을 포함한 최소 Projection을 반환한다.
+Adapter 메서드에는 다음 용도를 주석으로 남긴다.
+
+```text
+Consumer: payroll
+Purpose: 급여명세서 이메일 수신 주소 조회
+```
+
+직원 이메일은 발송 이력 생성 시점의 값을 `recipient_email`에 Snapshot으로 저장한다.
+이후 직원이 이메일을 변경해도 과거 발송 주소는 변경하지 않는다.
+
+## 이메일 발송 Port / Adapter
+
+Payroll Application은 SMTP 구현을 직접 참조하지 않고 다음 Port에 의존한다.
+
+```java
+public interface PayrollStatementEmailSender {
+
+    SendResult send(
+        String recipientEmail,
+        String subject,
+        String body,
+        String attachmentName,
+        byte[] attachment,
+        String deliveryToken
+    );
+
+    record SendResult(boolean sent, String skipCode) {
+    }
+}
+```
+
+Mailgun SMTP 제출 성공 시 `sent = true`, 로컬 발송 비활성화처럼 실제 발송을 수행하지 않은 경우
+`sent = false`와 `skipCode`를 반환한다.
+
+Adapter 구성:
+
+```text
+PayrollStatementEmailSender
+├── ConsolePayrollStatementEmailSender   @Profile("!mailgun")
+└── MailgunPayrollStatementEmailSender   @Profile("mailgun")
+```
+
+PDF 첨부가 필요하므로 `SimpleMailMessage`가 아니라 `MimeMessageHelper`를 사용한다.
+Mailgun SMTP 발송에는 `spring-boot-starter-mail`을 사용한다.
+
+Finance S3에 저장된 PDF를 읽기 위해 Storage Port를 확장한다.
+
+```java
+public interface PayrollStatementStoragePort {
+
+    void upload(String objectKey, byte[] content, String contentType);
+
+    byte[] download(String objectKey);
+
+    String generateDownloadUrl(String objectKey, long expiresInSeconds);
+}
+```
+
+이메일 예:
+
+```text
+제목: [MUDO] 2026년 8월 급여명세서
+본문: 급여명세서를 첨부파일로 전달드립니다.
+첨부파일: 2026년 8월 급여명세서.pdf
+```
+
+## 이메일 발송 상태
+
+`payroll_statement_delivery.status`는 다음 여섯 상태만 사용한다.
+
+```text
+PENDING
+SENDING
+SENT
+DELIVERED
+FAILED
+SKIPPED
+```
+
+| 상태 | 의미 |
+| --- | --- |
+| `PENDING` | 발송 요청 이력 생성 후 비동기 작업 대기 |
+| `SENDING` | 작업자가 발송 건을 선점하고 S3 조회 및 SMTP 제출 처리 중 |
+| `SENT` | Mailgun SMTP 제출 성공 후 최종 전달 Webhook 대기 |
+| `DELIVERED` | 수신 이메일 서버가 메일을 받아들였음을 Mailgun Webhook으로 확인 |
+| `FAILED` | 애플리케이션 발송 또는 Mailgun 전달이 최종 실패 |
+| `SKIPPED` | 일괄 발송 조건 미충족 또는 로컬 발송 비활성화로 발송하지 않음 |
+
+정상 상태 전이:
+
+```text
+PENDING
+   ↓
+SENDING
+   ↓
+SENT
+   ↓
+DELIVERED
+```
+
+애플리케이션 단계 실패:
+
+```text
+PENDING → SENDING → FAILED
+```
+
+Mailgun 최종 전달 실패:
+
+```text
+PENDING → SENDING → SENT → FAILED
+```
+
+로컬 발송 비활성화:
+
+```text
+PENDING → SENDING → SKIPPED
+```
+
+Mailgun의 일시적인 전달 실패는 별도 상태로 만들지 않는다.
+Mailgun이 자체 재시도하는 동안 `SENT`를 유지하고 최종 결과에 따라 `DELIVERED` 또는 `FAILED`로 변경한다.
+
+`DELIVERED`는 직원이 이메일이나 PDF를 열었다는 의미가 아니다.
+Gmail, 네이버 등 수신 이메일 서버가 메시지를 받아들였다는 의미다.
+열람 추적 Pixel과 `OPENED` 상태는 사용하지 않는다.
+
+## payroll_statement_delivery_batch
+
+귀속월 일괄 발송 요청을 식별한다.
+
+```text
+payroll_statement_delivery_batch
+
+batch_id
+payroll_year_month
+requested_by
+requested_at
+created_at
+```
+
+`payroll_year_month`는 다른 Payroll 계약과 동일하게 해당 월 1일의 `DATE`로 저장한다.
+배치 상태와 집계 건수는 직원별 Delivery 상태에서 계산하며 중복 저장하지 않는다.
+`requested_by`는 발송을 요청한 사용자 `user_id`를 가리킨다.
+
+최소 제약조건:
+
+```text
+FOREIGN KEY (requested_by) REFERENCES users(id)
+INDEX(payroll_year_month, batch_id)
+```
+
+## payroll_statement_delivery
+
+직원 한 명에 대한 발송 시도 한 번을 나타낸다.
+
+```text
+payroll_statement_delivery
+
+delivery_id
+batch_id NULL
+payroll_id
+statement_id NULL
+user_id
+
+recipient_email NULL
+status
+
+failure_code NULL
+failure_reason NULL
+
+delivery_token
+mailgun_message_id NULL
+
+requested_by
+requested_at
+sending_started_at NULL
+sent_at NULL
+delivered_at NULL
+failed_at NULL
+
+created_at
+updated_at
+```
+
+개별 발송은 `batch_id = NULL`, 일괄 발송은 생성된 `batch_id`를 저장한다.
+`user_id`는 Payroll과 동일한 직원 식별자 계약을 사용하며 API에서는 `employeeId`로 표현한다.
+`delivery_token`은 개인정보가 포함되지 않은 추측 불가능한 무작위 값이며 Unique Constraint를 둔다.
+Mailgun Webhook과 내부 Delivery를 연결할 때 `delivery_token`을 사용한다.
+
+최소 제약조건:
+
+```text
+FOREIGN KEY (batch_id) REFERENCES payroll_statement_delivery_batch(batch_id)
+FOREIGN KEY (payroll_id) REFERENCES payroll(payroll_id)
+FOREIGN KEY (statement_id) REFERENCES payroll_statement(statement_id)
+FOREIGN KEY (user_id) REFERENCES users(id)
+FOREIGN KEY (requested_by) REFERENCES users(id)
+UNIQUE(delivery_token)
+INDEX(batch_id, delivery_id)
+INDEX(statement_id, requested_at)
+CHECK(status IN ('PENDING', 'SENDING', 'SENT', 'DELIVERED', 'FAILED', 'SKIPPED'))
+```
+
+`failure_reason`에는 SMTP 예외 원문, 자격증명, 이메일 본문 또는 S3 정보를 그대로 저장하지 않는다.
+운영 화면에 노출 가능한 정제된 메시지만 최대 길이를 제한해 저장한다.
+
+실패 후 다시 발송하면 기존 Delivery 행을 수정하지 않고 새 행을 생성한다.
+
+```text
+Delivery #501 → FAILED
+Delivery #520 → PENDING → DELIVERED
+```
+
+기존 이력을 덮어쓰지 않으므로 별도의 재전송 API와 `retry_of_delivery_id`는 만들지 않는다.
+같은 `statement_id`의 발송 이력을 시간순으로 조회하면 각 시도를 확인할 수 있다.
+
+## 중복 발송 방지
+
+비동기 작업자는 조건부 갱신으로 발송 건을 선점한다.
+
+```sql
+UPDATE payroll_statement_delivery
+SET status = 'SENDING',
+    sending_started_at = CURRENT_TIMESTAMP
+WHERE delivery_id = ?
+  AND status = 'PENDING';
+```
+
+갱신된 행이 1개인 작업자만 실제 메일을 발송한다.
+중복 이벤트 또는 여러 애플리케이션 인스턴스가 같은 Delivery를 처리해도 한 번만 SMTP에 제출한다.
+
+같은 명세서에 `PENDING`, `SENDING`, `SENT`, `DELIVERED` 이력이 존재하면 새 개별 발송 요청을 거절한다.
+`FAILED` 이력만 있으면 같은 발송 API를 다시 호출하여 새 Delivery를 생성할 수 있다.
+
+새 Delivery 생성은 `payroll_statement` 행을 잠근 하나의 트랜잭션에서 처리한다.
+
+```text
+payroll_statement SELECT ... FOR UPDATE
+→ 같은 statement_id의 Delivery 이력 재조회
+→ PENDING / SENDING / SENT / DELIVERED 존재 여부 검증
+→ 검증 통과 시 PENDING Delivery 생성
+```
+
+동일한 `statement_id`의 개별 요청과 일괄 요청은 같은 Statement 잠금을 사용한다.
+따라서 동시에 들어와도 먼저 잠금을 획득한 요청만 Delivery를 생성하고 뒤 요청은 갱신된 이력을 보고 제외 또는 충돌 처리한다.
+발송 이력은 보존해야 하므로 `statement_id` 자체에는 Unique Constraint를 두지 않는다.
+
+애플리케이션이 비정상 종료되어 `SENDING`에 장시간 머무른 건은 복구 작업이 `FAILED`로 전환한다.
+복구 작업은 자동 재발송하지 않는다. 관리자가 결과를 확인한 뒤 동일 발송 API를 다시 호출한다.
+
+## 이메일 발송 트랜잭션과 비동기 경계
+
+발송 요청 DB 트랜잭션 안에서는 다음까지만 처리한다.
+
+```text
+개별 또는 일괄 발송 조건 검증
+DeliveryBatch 생성
+Delivery PENDING 생성
+발송 요청 Event 발행
+```
+
+실제 S3 다운로드와 SMTP 호출은 트랜잭션 커밋 이후 비동기로 처리한다.
+네트워크 I/O 동안 DB 트랜잭션을 열어두지 않는다.
+
+```text
+발송 요청 커밋
+→ DeliveryRequestedEvent
+→ 짧은 트랜잭션에서 PENDING을 SENDING으로 선점
+→ Finance S3 PDF 다운로드
+→ Mailgun SMTP 제출
+→ 짧은 트랜잭션에서 SENT 또는 FAILED 기록
+```
+
+발송 요청 Event는 중복 수신될 수 있으므로 `PENDING → SENDING` 조건부 갱신으로 멱등 처리한다.
+비동기 실행은 기존 `applicationTaskExecutor`를 사용하되,
+일괄 발송이 다른 비동기 작업을 고갈시키지 않도록 발송 동시성 상한을 환경설정으로 제한한다.
+
+## 개별 이메일 발송 API
+
+```http
+POST /api/payrolls/{payrollId}/statement/email-deliveries
+```
+
+새 발송 시도 이력을 생성하는 API이므로 `POST`를 사용한다.
+
+`payrollId`가 식별하는 특정 Payroll Revision의 확정 급여명세서를 해당 직원 이메일로 발송한다.
+
+검증:
+
+```text
+요청자에게 PAYROLL:MANAGE 권한이 있는가
+Payroll이 존재하는가
+Payroll.status = CONFIRMED인가
+해당 직원의 최신 Payroll Revision인가
+payroll_statement.status = READY인가
+직원 이메일이 존재하는가
+동일 statement의 처리 중 또는 DELIVERED 이력이 없는가
+```
+
+성공 시 Delivery를 `PENDING`으로 생성하고 커밋 이후 비동기 발송을 시작한다.
+
+```json
+{
+  "deliveryId": 501,
+  "payrollId": 100,
+  "status": "PENDING",
+  "requestedAt": "2026-08-12T15:00:00+09:00"
+}
+```
+
+`PENDING`, `SENDING`, `SENT`, `DELIVERED` 이력이 있으면 `409 Conflict`로 거절한다.
+`FAILED` 이력만 있으면 새 Delivery를 생성하여 재발송한다.
+개별 발송의 필수조건이 충족되지 않으면 `SKIPPED` 행을 만들지 않고 요청 오류를 반환한다.
+
+성공 응답은 `201 Created`와 `GlobalApiResponse`를 사용한다.
+
+```text
+code = PAYROLL_201_4
+message = 급여명세서 이메일 발송을 시작했습니다.
+```
+
+## 귀속월 일괄 이메일 발송 API
+
+```http
+POST /api/payrolls/statement/email-delivery-batches
+```
+
+새 일괄 발송 Batch와 직원별 Delivery 이력을 생성하는 API이므로 `POST`를 사용한다.
+
+Request:
+
+```json
+{
+  "year": 2026,
+  "month": 8
+}
+```
+
+직원별로 해당 귀속월의 최신 Revision 하나를 결정적으로 선택한다.
+최신 Revision 자체가 `CONFIRMED`이고 연결된 명세서가 `READY`인 경우에만 발송한다.
+최신 Revision이 `CALCULATED`이면 과거에 확정된 Revision의 명세서를 대신 발송하지 않는다.
+
+일괄 발송은 일부 항목이 실패하거나 제외되어도 나머지 직원을 계속 처리한다.
+대상마다 Delivery 행을 생성하여 개별 결과를 보존한다.
+
+발송하지 않은 항목은 `SKIPPED`와 다음 사유 코드를 기록한다.
+
+```text
+NO_EMAIL
+PAYROLL_NOT_CONFIRMED
+STATEMENT_NOT_READY
+ALREADY_DELIVERED_OR_IN_PROGRESS
+MAIL_DELIVERY_DISABLED
+```
+
+일괄 발송은 귀속월의 최신 Revision만 조회하므로 별도의 `NOT_LATEST_REVISION` Delivery를 생성하지 않는다.
+
+성공 응답:
+
+```json
+{
+  "batchId": 30,
+  "payrollYearMonth": "2026-08-01",
+  "targetCount": 20,
+  "status": "PENDING"
+}
+```
+
+성공 응답은 `201 Created`와 `GlobalApiResponse`를 사용한다.
+
+```text
+code = PAYROLL_201_5
+message = 급여명세서 일괄 이메일 발송을 시작했습니다.
+```
+
+## 일괄 이메일 발송 결과 조회 API
+
+```http
+GET /api/payrolls/statement/email-delivery-batches/{batchId}?page=0&size=20
+```
+
+일괄 발송은 비동기로 진행되므로 배치의 진행 상태, 상태별 건수와 직원별 결과를 페이지 조회한다.
+
+배치 상태는 저장하지 않고 직원별 Delivery 상태에서 계산한다.
+
+| 배치 상태 | 계산 조건 |
+| --- | --- |
+| `PENDING` | 모든 항목이 아직 `PENDING` |
+| `PROCESSING` | `PENDING` 또는 `SENDING` 항목이 하나 이상 존재 |
+| `AWAITING_DELIVERY` | 제출 작업은 끝났지만 `SENT` 항목이 하나 이상 존재 |
+| `COMPLETED` | 모든 항목이 `DELIVERED`, `FAILED`, `SKIPPED` 중 하나 |
+
+발송 후보가 0명인 빈 Batch도 즉시 `COMPLETED`로 계산한다.
+
+일부 실패 여부는 별도 배치 상태로 만들지 않고 Summary로 표현한다.
+
+```json
+{
+  "batchId": 30,
+  "payrollYearMonth": "2026-08-01",
+  "status": "COMPLETED",
+  "summary": {
+    "totalCount": 20,
+    "pendingCount": 0,
+    "sendingCount": 0,
+    "sentCount": 0,
+    "deliveredCount": 16,
+    "failedCount": 1,
+    "skippedCount": 3
+  },
+  "deliveries": {
+    "content": [],
+    "page": 0,
+    "size": 20,
+    "hasNext": false
+  }
+}
+```
+
+직원별 응답의 `recipientEmail`은 마스킹하여 반환한다.
+실패 또는 제외 항목은 `payrollId`, `deliveryId`, 직원 식별 정보, 상태와 정제된 사유를 반환한다.
+관리자는 해당 `payrollId`로 개별 발송 API를 다시 호출할 수 있다.
+
+성공 응답은 `200 OK`와 `GlobalApiResponse`를 사용한다.
+
+```text
+code = PAYROLL_200_15
+message = 급여명세서 일괄 이메일 발송 결과를 조회했습니다.
+```
+
+## 이메일 발송 오류
+
+개별 발송 요청은 다음 오류를 구분한다.
+
+| 조건 | HTTP | 의미 |
+| --- | --- | --- |
+| Payroll 없음 | `404 Not Found` | 발송 대상 급여를 찾을 수 없음 |
+| 직원 이메일 없음 | `422 Unprocessable Entity` | 발송할 수신 주소가 없음 |
+| Payroll 미확정 | `409 Conflict` | 확정본만 발송 가능 |
+| 최신 Revision 아님 | `409 Conflict` | 과거 Revision 오발송 방지 |
+| Statement 미준비 | `409 Conflict` | PDF가 `READY`가 아님 |
+| 이미 처리 중 또는 전달 완료 | `409 Conflict` | 중복 발송 방지 |
+| S3 또는 SMTP 처리 실패 | 비동기 `FAILED` | 요청 응답 이후 Delivery 결과에 기록 |
+
+일괄 발송에서는 직원 한 명의 조건 미충족을 전체 HTTP 오류로 반환하지 않고 해당 Delivery를 `SKIPPED`로 기록한다.
+배치 요청 자체가 유효하지 않거나 저장에 실패한 경우에만 요청 전체를 오류로 응답한다.
+
+## Mailgun Webhook
+
+Mailgun이 수신 이메일 서버 전달 결과를 알릴 수 있도록 외부 Webhook을 제공한다.
+
+```http
+POST /api/webhooks/mailgun
+```
+
+이 API는 외부 Mailgun 서버가 호출하므로 JWT와 `PAYROLL:MANAGE`를 요구하지 않는다.
+대신 `MAILGUN_WEBHOOK_SIGNING_KEY`로 HMAC-SHA256 서명과 timestamp 허용 범위를 검증한다.
+서명 검증에 실패하면 Delivery 상태를 변경하지 않는다.
+
+메일 발송 시 개인정보가 없는 `delivery_token`을 `X-Mailgun-Variables`로 전달하여
+Webhook 이벤트와 Academy Delivery를 연결한다.
+공유 Mailgun 도메인의 다른 프로젝트 이벤트는 유효한 서명이더라도 Academy에 해당 토큰이 없으면 상태 변경 없이 2xx로 응답한다.
+
+Webhook 처리 규칙:
+
+```text
+delivered
+→ SENDING, SENT 또는 FAILED를 DELIVERED로 변경
+→ delivered_at 기록
+
+permanent_fail 또는 failed + permanent
+→ SENDING 또는 SENT를 FAILED로 변경
+→ 실패 코드와 failed_at 기록
+
+temporary_fail
+→ SENT 유지
+→ Mailgun 자체 재시도 결과를 기다림
+```
+
+Webhook은 중복 수신될 수 있으므로 조건부 상태 갱신으로 멱등 처리한다.
+이미 `DELIVERED`인 Delivery는 이전 상태로 되돌리지 않는다.
+
+SMTP 작업자의 완료 갱신도 다음 조건을 사용한다.
+
+```text
+SMTP 성공: SENDING → SENT
+SMTP 실패: SENDING → FAILED
+```
+
+Webhook이 먼저 도착한 경우 SMTP 작업자의 조건부 갱신은 Webhook 결과를 덮어쓰지 않는다.
+`DELIVERED`는 수신 서버 접수 결과이며 직원 열람 여부는 의미하지 않는다.
+
+## 로컬 / 운영 발송 전환
+
+`mailgun` Spring Profile로 Adapter를 전환한다.
+
+파일 저장소는 `local` Profile 여부로 전환한다.
+
+```text
+local
+→ LocalPayrollStatementStorageAdapter
+→ build/local-payroll-statements
+
+local 아님
+→ FinanceS3PayrollStatementAdapter
+→ FINANCE 버킷
+```
+
+```text
+mailgun 비활성
+→ ConsolePayrollStatementEmailSender
+→ 실제 메일 발송 없음
+→ Delivery = SKIPPED
+→ failure_code = MAIL_DELIVERY_DISABLED
+
+mailgun 활성
+→ MailgunPayrollStatementEmailSender
+→ 실제 SMTP 발송
+```
+
+운영 `prod` Profile Group에는 `mailgun`을 포함한다.
+로컬에서 실제 발송을 시험할 때만 `local,mailgun`을 명시적으로 활성화한다.
+
+환경변수:
+
+```text
+MAILGUN_SMTP_USERNAME
+MAILGUN_SMTP_PASSWORD
+MAIL_FROM
+MAILGUN_WEBHOOK_SIGNING_KEY
+MAIL_SENDING_TIMEOUT
+APP_MAIL_RECOVERY_INTERVAL_MS
+```
+
+```text
+MAIL_SENDING_TIMEOUT 기본값: PT15M
+APP_MAIL_RECOVERY_INTERVAL_MS 기본값: 300000
+```
+
+`MAIL_SENDING_TIMEOUT`을 초과해 `SENDING`에 머문 Delivery는 복구 대상이 된다.
+복구 작업은 `APP_MAIL_RECOVERY_INTERVAL_MS` 간격으로 실행하며 해당 Delivery를 `FAILED`로 변경한다.
+
+실제 값은 `.env`, 서버 환경변수 또는 Secret Manager에만 저장한다.
+SMTP 자격증명이 포함된 참고 문서는 Git에 커밋하지 않는다.
+
+SMTP 연결, 읽기와 쓰기 timeout은 환경설정으로 반드시 지정한다.
+애플리케이션은 SMTP 제출 실패를 자동 재시도하지 않는다.
+Mailgun에 제출된 뒤의 일시적 전달 실패는 Mailgun 자체 재시도에 맡긴다.
+
+## 이메일 발송 로그
+
+Service 로그는 다음 이벤트명을 사용한다.
+
+```text
+payroll_statement_email_send_시작
+payroll_statement_email_send_완료
+payroll_statement_email_send_실패
+
+payroll_statement_email_batch_시작
+payroll_statement_email_batch_완료
+payroll_statement_email_batch_실패
+
+payroll_statement_email_webhook_시작
+payroll_statement_email_webhook_완료
+payroll_statement_email_webhook_실패
+```
+
+로그에는 `deliveryId`, `batchId`, `payrollId`, 상태와 처리 건수만 남긴다.
+직원 이메일 원문, PDF 내용, S3 Key, SMTP 자격증명은 남기지 않는다.
 
 ---
 
@@ -2927,10 +3573,13 @@ description = 급여 및 급여명세서 조회·계산·확정·관리
 급여명세서 상태 조회
 급여명세서 다운로드 URL 발급
 실패한 급여명세서 생성 재시도
+급여명세서 이메일 개별 발송
+급여명세서 이메일 귀속월 일괄 발송
+이메일 일괄 발송 결과 조회
 ```
 
 직원 본인 여부로 급여명세서 접근을 허용하지 않는다.
-자기 급여명세서라도 `PAYROLL:MANAGE` 권한이 없으면 조회하거나 다운로드할 수 없다.
+자기 급여명세서라도 `PAYROLL:MANAGE` 권한이 없으면 조회, 다운로드 또는 이메일 발송할 수 없다.
 본인 전용 `/api/me/payrolls/...` API는 만들지 않는다.
 
 모든 Payroll Controller와 급여명세서 Controller는 다음 권한을 검사한다.
@@ -2938,6 +3587,9 @@ description = 급여 및 급여명세서 조회·계산·확정·관리
 ```java
 @PreAuthorize("hasAuthority('PAYROLL:MANAGE')")
 ```
+
+`POST /api/webhooks/mailgun`은 외부 Mailgun 호출용이므로 위 권한 검사의 예외다.
+JWT 대신 Mailgun Webhook HMAC 서명을 검증한다.
 
 ---
 
@@ -3048,6 +3700,19 @@ GET
 
 PATCH
 /api/payrolls/{payrollId}/statement/retry
+
+POST
+/api/payrolls/{payrollId}/statement/email-deliveries
+
+POST
+/api/payrolls/statement/email-delivery-batches
+
+GET
+/api/payrolls/statement/email-delivery-batches/{batchId}
+
+POST
+/api/webhooks/mailgun
+
 ```
 
 급여 정책:
@@ -3075,16 +3740,13 @@ PATCH
 # 84. 이번 단계에서 만들지 않는 API
 
 ```text
-POST /statements/send
-
-POST /statements/resend
-
 POST /auto-delivery
 
 PATCH /auto-delivery
 ```
 
-이메일 발송 / 재발송 / 자동발송 관련 API는 구현하지 않는다.
+급여 확정 시 이메일을 자동 발송하는 API, 발송 예약 API와 자동발송 설정 API는 구현하지 않는다.
+실패한 메일은 별도 재전송 API를 만들지 않고 기존 개별 또는 일괄 발송 API를 다시 사용한다.
 
 ---
 
@@ -3110,7 +3772,10 @@ payroll
 │   │       ├── SocialInsurancePort
 │   │       ├── TaxAssessmentPort
 │   │       ├── StatutoryPolicyPort
-│   │       └── WorkplaceLaborScopePort
+│   │       ├── WorkplaceLaborScopePort
+│   │       ├── PayrollStatementStoragePort
+│   │       ├── PayrollStatementDeliveryPort
+│   │       └── PayrollStatementEmailSender
 │   │
 │   └── service
 │       ├── CreatePayrollService
@@ -3118,7 +3783,9 @@ payroll
 │       ├── UpdatePayrollService
 │       ├── ConfirmPayrollService
 │       ├── CreatePayrollRevisionService
-│       └── GetPayrollService
+│       ├── GetPayrollService
+│       ├── PayrollStatementEmailService
+│       └── PayrollStatementEmailProcessor
 │
 ├── domain
 │   ├── Payroll
@@ -3137,7 +3804,9 @@ payroll
         ├── persistence
         ├── attendance
         ├── insurance
-        └── tax
+        ├── tax
+        ├── s3
+        └── mailgun
 ```
 
 ---
@@ -3276,7 +3945,20 @@ STATEMENT_ISSUED
 
 ### Rule 19
 
-이메일 발송과 자동발송은 현재 Payroll Domain 범위에 포함하지 않는다.
+이메일은 권한 있는 관리자의 개별 또는 귀속월 일괄 발송 요청이 있을 때만 전송한다.
+급여 확정 시 자동발송하지 않는다.
+
+### Rule 20
+
+이메일 발송 실패는 `CONFIRMED` Payroll 또는 `READY` 급여명세서 상태를 되돌리지 않는다.
+
+### Rule 21
+
+`DELIVERED`는 수신 이메일 서버의 접수 완료를 뜻하며 직원의 열람 완료를 뜻하지 않는다.
+
+### Rule 22
+
+일괄 발송도 직원마다 별도 메일 한 통과 해당 직원의 PDF 한 개만 첨부한다.
 
 ---
 
@@ -3314,17 +3996,19 @@ payroll_compensation_snapshot
 payroll_rule_snapshot
 
 payroll_statement
+
+payroll_statement_delivery_batch
+
+payroll_statement_delivery
 ```
 
-향후 이메일/자동발송 기능 구현 시 별도로 추가:
+자동발송 기능을 추가할 때만 별도로 생성한다.
 
 ```text
-payroll_statement_delivery
-
 payroll_auto_delivery_setting
 ```
 
-현재는 생성하지 않는다.
+현재는 `payroll_auto_delivery_setting`을 생성하지 않는다.
 
 ---
 
@@ -3364,6 +4048,10 @@ PayrollStatement PENDING 생성
 Finance S3 업로드
    ↓
 READY
+   ↓
+권한 있는 관리자 개별 / 일괄 이메일 발송 요청
+   ↓
+Delivery PENDING → SENDING → SENT 또는 FAILED
 ```
 
 확정 후 오류가 발견되면:
@@ -3480,6 +4168,22 @@ Finance S3 저장
 
 급여명세서 기능 구현.
 
+### 12단계
+
+```text
+PayrollEmployeePort 이메일 Projection 확장
+PayrollStatementStoragePort PDF 조회 확장
+PayrollStatementEmailSender
+Mailgun / Console Adapter
+payroll_statement_delivery_batch
+payroll_statement_delivery
+개별 / 일괄 발송 API
+배치 결과 조회 API
+Mailgun Webhook 서명 검증 및 전달 상태 반영
+```
+
+급여명세서 이메일 발송 기능 구현.
+
 ---
 
 # 91. 현재 단계의 최종 목표
@@ -3532,6 +4236,12 @@ Finance S3 저장
         ↓
 
 권한 기반 다운로드
+        ↓
+
+관리자 요청 기반 개별 / 일괄 이메일 발송
+        ↓
+
+Mailgun Webhook 기반 수신 이메일 서버 전달 결과 확인
 ```
 
-이메일 전송과 자동 발송은 급여 및 급여명세서 기능이 안정화된 이후 별도 기능으로 확장한다.
+급여 확정 시 자동 발송, 발송 예약과 자동 발송 설정은 현재 범위에 포함하지 않는다.
