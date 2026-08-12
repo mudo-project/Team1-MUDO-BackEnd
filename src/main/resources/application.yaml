@@ -61,3 +61,9 @@ app:
     max-concurrency: ${APP_HEAVY_JOB_MAX_CONCURRENCY:2}
   revenue-report:
     batch-cron: "${REVENUE_REPORT_BATCH_CRON:0 30 0 1 * *}"
+
+platform:
+  dashboard:
+    enabled: ${PLATFORM_DASHBOARD_ENABLED:false}
+    prometheus-url: ${PLATFORM_DASHBOARD_PROMETHEUS_URL:http://monitoring.mudo.internal:9090}
+    tenant-registry-json: '${PLATFORM_DASHBOARD_TENANT_REGISTRY_JSON:[]}'
