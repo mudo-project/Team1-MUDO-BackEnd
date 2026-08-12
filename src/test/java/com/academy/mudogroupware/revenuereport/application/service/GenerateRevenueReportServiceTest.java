@@ -27,6 +27,8 @@ import com.academy.mudogroupware.revenuereport.domain.exception.RevenueReportAiE
 import com.academy.mudogroupware.revenuereport.domain.model.RevenueReport;
 import com.academy.mudogroupware.revenuereport.domain.repository.RevenueReportRepository;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+
 class GenerateRevenueReportServiceTest {
 
     private final RevenueReportAggregationReader aggregationReader = mock(RevenueReportAggregationReader.class);
@@ -34,12 +36,14 @@ class GenerateRevenueReportServiceTest {
     private final RevenueReportRepository revenueReportRepository = mock(RevenueReportRepository.class);
     private final RevenueSnapshotCalculator calculator = new RevenueSnapshotCalculator();
     private final Clock clock = Clock.fixed(Instant.parse("2026-09-01T00:30:00Z"), ZoneId.of("Asia/Seoul"));
+    private final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper =
             new com.fasterxml.jackson.databind.ObjectMapper()
                     .registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule())
                     .disable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     private final GenerateRevenueReportService service = new GenerateRevenueReportService(
-            aggregationReader, revenueReportAiPort, revenueReportRepository, calculator, clock, objectMapper);
+            aggregationReader, revenueReportAiPort, revenueReportRepository, calculator, clock, objectMapper,
+            meterRegistry);
 
     private RevenueReportAggregation sampleAggregation() {
         return new RevenueReportAggregation(
@@ -79,6 +83,9 @@ class GenerateRevenueReportServiceTest {
         // targetMonth가 [2026,8,1] 배열이 아니라 ISO 문자열로 저장돼야 한다 — FastAPI(Pydantic)와
         // 프론트가 이 JSON을 그대로 읽는데, 배열로 나가면 날짜 검증에서 거부당한다(실제로 겪은 버그).
         assertThat(savedReport.getValue().getDataSnapshot()).contains("\"targetMonth\":\"2026-08-01\"");
+        assertThat(meterRegistry.get("mudo.revenue.report.generate").tag("result", "success").counter().count())
+                .isEqualTo(1.0);
+        assertThat(meterRegistry.get("mudo.revenue.report.generate.duration").timer().count()).isEqualTo(1L);
     }
 
     @Test
@@ -95,6 +102,8 @@ class GenerateRevenueReportServiceTest {
         assertThatThrownBy(() -> service.generate(targetMonth)).isInstanceOf(RevenueReportAiException.class);
 
         verify(revenueReportRepository, never()).save(any());
+        assertThat(meterRegistry.get("mudo.revenue.report.generate").tag("result", "failure").counter().count())
+                .isEqualTo(1.0);
     }
 
     @Test

@@ -17,6 +17,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -34,18 +36,21 @@ public class GenerateRevenueReportService implements GenerateRevenueReportUseCas
     private final RevenueSnapshotCalculator calculator;
     private final Clock clock;
     private final ObjectMapper objectMapper;
+    private final MeterRegistry meterRegistry;
 
     public GenerateRevenueReportService(RevenueReportAggregationReader aggregationReader,
                                         RevenueReportAiPort revenueReportAiPort,
                                         RevenueReportRepository revenueReportRepository,
                                         RevenueSnapshotCalculator calculator,
                                         Clock clock,
-                                        ObjectMapper objectMapper) {
+                                        ObjectMapper objectMapper,
+                                        MeterRegistry meterRegistry) {
         this.aggregationReader = aggregationReader;
         this.revenueReportAiPort = revenueReportAiPort;
         this.revenueReportRepository = revenueReportRepository;
         this.calculator = calculator;
         this.clock = clock;
+        this.meterRegistry = meterRegistry;
         // Spring이 구성한 ObjectMapper(날짜를 [2026,7,1] 배열이 아니라 "2026-07-01" ISO
         // 문자열로 직렬화)를 그대로 복사해 쓴다. 직접 new ObjectMapper()를 만들면 이 설정이
         // 빠져서 실제로 날짜 직렬화 버그를 겪었다. FAIL_ON_UNKNOWN_PROPERTIES도 꺼서, 나중에
@@ -58,6 +63,7 @@ public class GenerateRevenueReportService implements GenerateRevenueReportUseCas
     @Override
     public void generate(LocalDate targetMonth) {
         log.info("event=revenue_report_generate_시작 targetMonth={}", targetMonth);
+        Timer.Sample sample = Timer.start(meterRegistry);
         try {
             if (revenueReportRepository.findByTargetMonth(targetMonth).isPresent()) {
                 log.info("event=revenue_report_already_exists targetMonth={}", targetMonth);
@@ -91,9 +97,25 @@ public class GenerateRevenueReportService implements GenerateRevenueReportUseCas
             }
 
             log.info("event=revenue_report_generate_완료 targetMonth={}, reportId={}", targetMonth, saved.getId());
+            recordMetric(sample, "success");
         } catch (RuntimeException e) {
             log.warn("event=revenue_report_generate_실패 targetMonth={}, reason={}", targetMonth, e.getMessage(), e);
+            recordMetric(sample, "failure");
             throw e;
+        }
+    }
+
+    /**
+     * 월 1회만 실행되는 배치라 실패를 놓치면 다음 달까지 리포트가 없다 — 성공/실패 카운터와
+     * 소요시간을 남겨서 알림에 연결할 수 있게 한다. 메트릭 기록 자체가 실패해도 배치 결과에는
+     * 영향을 주면 안 되므로 예외를 흡수한다.
+     */
+    private void recordMetric(Timer.Sample sample, String result) {
+        try {
+            meterRegistry.counter("mudo.revenue.report.generate", "result", result).increment();
+            sample.stop(meterRegistry.timer("mudo.revenue.report.generate.duration"));
+        } catch (RuntimeException metricError) {
+            log.warn("event=revenue_report_metric_기록_실패 reason={}", metricError.getMessage(), metricError);
         }
     }
 
