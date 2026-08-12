@@ -10,9 +10,10 @@ public record TaskCommentMentionedSocketResponse(
     String taskTitle,
     Long commentId,
     Long actorUserId,
-    Long recipientUserId,
+    Long recipientUserId, // 이벤트를 받는 사용자
     LocalDateTime occurredAt) {
 
+  // 이벤트 타입
   private static final String EVENT_TYPE = "TASK_COMMENT_MENTIONED";
 
   public static TaskCommentMentionedSocketResponse from(
