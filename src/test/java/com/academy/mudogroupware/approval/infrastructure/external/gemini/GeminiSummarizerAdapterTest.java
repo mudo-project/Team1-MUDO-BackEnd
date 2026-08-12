@@ -20,18 +20,22 @@ import org.springframework.web.client.RestClient;
 
 import com.academy.mudogroupware.approval.application.port.AttachmentContent;
 import com.academy.mudogroupware.approval.application.port.AttachmentSummarizationException;
+import com.academy.mudogroupware.global.infrastructure.observability.ai.GeminiTokenUsageTracker;
 
 class GeminiSummarizerAdapterTest {
 
     private static final String GENERATE_CONTENT_URL =
             "https://generativelanguage.googleapis.com/v1beta/models/gemini-test:generateContent";
 
+    private final GeminiTokenUsageTracker tokenUsageTracker = new GeminiTokenUsageTracker();
+
     private RestClient.Builder builder() {
         return RestClient.builder().baseUrl("https://generativelanguage.googleapis.com");
     }
 
     private GeminiSummarizerAdapter adapter(RestClient.Builder builder) {
-        return new GeminiSummarizerAdapter(builder.build(), new GeminiProperties("test-key", "gemini-test"));
+        return new GeminiSummarizerAdapter(builder.build(), new GeminiProperties("test-key", "gemini-test"),
+                tokenUsageTracker);
     }
 
     @Test
@@ -49,6 +53,24 @@ class GeminiSummarizerAdapterTest {
         String summary = adapter(builder).summarize(AttachmentContent.text("휴가 신청 사유는 개인 사정입니다."));
 
         assertThat(summary).isEqualTo("요약: 휴가 신청입니다.");
+        server.verify();
+    }
+
+    @Test
+    void recordsTokenUsageWhenGeminiReturnsUsageMetadata() {
+        RestClient.Builder builder = builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        server.expect(requestTo(GENERATE_CONTENT_URL))
+                .andRespond(withSuccess("""
+                        {"candidates":[{"content":{"parts":[{"text":"요약입니다."}]}}],
+                         "usageMetadata":{"promptTokenCount":200,"candidatesTokenCount":50,"totalTokenCount":250}}
+                        """, MediaType.APPLICATION_JSON));
+
+        adapter(builder).summarize(AttachmentContent.text("내용"));
+
+        assertThat(tokenUsageTracker.snapshot()).hasSize(1);
+        assertThat(tokenUsageTracker.snapshot().get(0).feature()).isEqualTo("approval-attachment-summary");
+        assertThat(tokenUsageTracker.snapshot().get(0).totalTokens()).isEqualTo(250);
         server.verify();
     }
 

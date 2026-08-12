@@ -15,6 +15,7 @@ import org.springframework.web.client.RestClient;
 import com.academy.mudogroupware.dataimport.application.port.ImportAnalysisPort;
 import com.academy.mudogroupware.dataimport.application.port.ParsedImportRow;
 import com.academy.mudogroupware.dataimport.application.port.ParsedImportSheet;
+import com.academy.mudogroupware.global.infrastructure.observability.ai.GeminiTokenUsageTracker;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -23,6 +24,8 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Component
 public class GeminiImportAnalysisAdapter implements ImportAnalysisPort {
+
+    private static final String FEATURE = "dataimport-onboarding-analysis";
 
     private static final int SAMPLE_ROW_LIMIT = 5;
     private static final Set<String> CANONICAL_HEADERS = Set.of(
@@ -52,21 +55,25 @@ public class GeminiImportAnalysisAdapter implements ImportAnalysisPort {
     private final RestClient geminiRestClient;
     private final DataImportGeminiProperties geminiProperties;
     private final ObjectMapper objectMapper;
+    private final GeminiTokenUsageTracker tokenUsageTracker;
 
     @Autowired
     public GeminiImportAnalysisAdapter(DataImportGeminiProperties geminiProperties,
-                                       ObjectMapper objectMapper) {
+                                       ObjectMapper objectMapper,
+                                       GeminiTokenUsageTracker tokenUsageTracker) {
         this(RestClient.builder()
                 .baseUrl("https://generativelanguage.googleapis.com")
-                .build(), geminiProperties, objectMapper);
+                .build(), geminiProperties, objectMapper, tokenUsageTracker);
     }
 
     GeminiImportAnalysisAdapter(RestClient geminiRestClient,
                                 DataImportGeminiProperties geminiProperties,
-                                ObjectMapper objectMapper) {
+                                ObjectMapper objectMapper,
+                                GeminiTokenUsageTracker tokenUsageTracker) {
         this.geminiRestClient = geminiRestClient;
         this.geminiProperties = geminiProperties;
         this.objectMapper = objectMapper;
+        this.tokenUsageTracker = tokenUsageTracker;
     }
 
     @Override
@@ -84,6 +91,11 @@ public class GeminiImportAnalysisAdapter implements ImportAnalysisPort {
                     .body(GeminiImportAnalysisRequest.of(buildPrompt(safeSheets)))
                     .retrieve()
                     .body(GeminiImportAnalysisResponse.class);
+            if (response != null && response.usageMetadata() != null) {
+                GeminiImportAnalysisResponse.UsageMetadata usage = response.usageMetadata();
+                tokenUsageTracker.record(FEATURE, geminiProperties.model(), usage.promptTokenCount(),
+                        usage.candidatesTokenCount(), usage.totalTokenCount());
+            }
             String text = response != null ? response.firstText() : null;
             if (isBlank(text)) {
                 return safeSheets;

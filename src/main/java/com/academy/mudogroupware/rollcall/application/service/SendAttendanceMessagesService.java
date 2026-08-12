@@ -19,6 +19,8 @@ import com.academy.mudogroupware.rollcall.application.usecase.SendAttendanceMess
 import com.academy.mudogroupware.rollcall.domain.exception.NoStudentsSelectedException;
 import com.academy.mudogroupware.rollcall.domain.model.MessageTemplate;
 import com.academy.mudogroupware.rollcall.domain.repository.MessageTemplateRepository;
+import com.academy.mudogroupware.resourceusage.application.command.RecordSmsUsageCommand;
+import com.academy.mudogroupware.resourceusage.application.port.ResourceUsageRecorder;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,9 +30,12 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class SendAttendanceMessagesService implements SendAttendanceMessagesUseCase {
 
+    private static final String SMS_USAGE_FEATURE = "rollcall-attendance-sms";
+
     private final GetMessageSendCandidatesUseCase getMessageSendCandidatesUseCase;
     private final MessageTemplateRepository messageTemplateRepository;
     private final SmsSenderPort smsSenderPort;
+    private final ResourceUsageRecorder resourceUsageRecorder;
 
     @Override
     public List<MessageSendResultView> send(SendAttendanceMessagesCommand command) {
@@ -60,6 +65,14 @@ public class SendAttendanceMessagesService implements SendAttendanceMessagesUseC
                 .toList();
 
         long sentCount = results.stream().filter(MessageSendResultView::sent).count();
+        if (sentCount > 0) {
+            try {
+                resourceUsageRecorder.recordSmsMessages(new RecordSmsUsageCommand(SMS_USAGE_FEATURE, sentCount));
+            } catch (RuntimeException e) {
+                log.warn("event=attendance_message_usage_persist_failed lectureId={}, sentCount={}, reason={}",
+                        command.lectureId(), sentCount, e.getMessage(), e);
+            }
+        }
         log.info("event=attendance_message_send_완료 lectureId={}, sentCount={}, failedCount={}",
                 command.lectureId(), sentCount, results.size() - sentCount);
         return results;

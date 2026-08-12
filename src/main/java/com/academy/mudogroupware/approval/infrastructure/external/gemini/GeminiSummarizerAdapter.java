@@ -8,12 +8,15 @@ import org.springframework.web.client.RestClientException;
 import com.academy.mudogroupware.approval.application.port.AttachmentContent;
 import com.academy.mudogroupware.approval.application.port.AttachmentSummarizationException;
 import com.academy.mudogroupware.approval.application.port.AttachmentSummarizerPort;
+import com.academy.mudogroupware.global.infrastructure.observability.ai.GeminiTokenUsageTracker;
 
 import lombok.RequiredArgsConstructor;
 
 @Component
 @RequiredArgsConstructor
 public class GeminiSummarizerAdapter implements AttachmentSummarizerPort {
+
+    private static final String FEATURE = "approval-attachment-summary";
 
     private static final String SUMMARY_INSTRUCTION = """
             다음은 사내 전자결재에 첨부된 문서입니다. 결재자가 승인 여부를 빠르게 판단할 수 있도록
@@ -23,6 +26,7 @@ public class GeminiSummarizerAdapter implements AttachmentSummarizerPort {
 
     private final RestClient geminiRestClient;
     private final GeminiProperties geminiProperties;
+    private final GeminiTokenUsageTracker tokenUsageTracker;
 
     @Override
     public String summarize(AttachmentContent content) {
@@ -43,6 +47,12 @@ public class GeminiSummarizerAdapter implements AttachmentSummarizerPort {
                     .body(GeminiGenerateContentResponse.class);
         } catch (RestClientException e) {
             throw new AttachmentSummarizationException("Gemini API 호출에 실패했습니다.", e);
+        }
+
+        if (response != null && response.usageMetadata() != null) {
+            GeminiGenerateContentResponse.UsageMetadata usage = response.usageMetadata();
+            tokenUsageTracker.record(FEATURE, geminiProperties.model(), usage.promptTokenCount(),
+                    usage.candidatesTokenCount(), usage.totalTokenCount());
         }
 
         String text = response != null ? response.firstText() : null;

@@ -3,6 +3,7 @@ package com.academy.mudogroupware.rollcall.application.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -27,6 +28,8 @@ import com.academy.mudogroupware.rollcall.domain.exception.NoStudentsSelectedExc
 import com.academy.mudogroupware.rollcall.domain.model.AttendanceStatus;
 import com.academy.mudogroupware.rollcall.domain.model.MessageTemplate;
 import com.academy.mudogroupware.rollcall.domain.repository.MessageTemplateRepository;
+import com.academy.mudogroupware.resourceusage.application.command.RecordSmsUsageCommand;
+import com.academy.mudogroupware.resourceusage.application.port.ResourceUsageRecorder;
 
 class SendAttendanceMessagesServiceTest {
 
@@ -38,13 +41,14 @@ class SendAttendanceMessagesServiceTest {
             mock(GetMessageSendCandidatesUseCase.class);
     private final MessageTemplateRepository messageTemplateRepository = mock(MessageTemplateRepository.class);
     private final SmsSenderPort smsSenderPort = mock(SmsSenderPort.class);
+    private final ResourceUsageRecorder resourceUsageRecorder = mock(ResourceUsageRecorder.class);
 
     private SendAttendanceMessagesService service;
 
     @BeforeEach
     void setUp() {
         service = new SendAttendanceMessagesService(
-                getMessageSendCandidatesUseCase, messageTemplateRepository, smsSenderPort);
+                getMessageSendCandidatesUseCase, messageTemplateRepository, smsSenderPort, resourceUsageRecorder);
     }
 
     @Test
@@ -212,5 +216,47 @@ class SendAttendanceMessagesServiceTest {
 
         assertThat(results.get(0).sent()).isFalse();
         verify(smsSenderPort, never()).send(any(), any());
+    }
+
+    @Test
+    void recordsOnlySuccessfullySentSmsCount() {
+        MessageTemplate template = MessageTemplate.restore(
+                7L, "absence", AttendanceStatus.ABSENT, "absence message", 1L, NOW, NOW);
+        MessageSendCandidateView firstCandidate = new MessageSendCandidateView(
+                10L, "student-a", AttendanceStatus.ABSENT, "010-1111-1111", 7L, "absence", true);
+        MessageSendCandidateView secondCandidate = new MessageSendCandidateView(
+                11L, "student-b", AttendanceStatus.ABSENT, "010-2222-2222", 7L, "absence", true);
+        when(getMessageSendCandidatesUseCase.getCandidates(LECTURE_ID, DATE))
+                .thenReturn(List.of(firstCandidate, secondCandidate));
+        when(messageTemplateRepository.findById(7L)).thenReturn(Optional.of(template));
+        when(smsSenderPort.send("010-1111-1111", "absence message"))
+                .thenReturn(SmsSendResult.failed("provider failure"));
+        when(smsSenderPort.send("010-2222-2222", "absence message")).thenReturn(SmsSendResult.succeeded());
+
+        service.send(new SendAttendanceMessagesCommand(LECTURE_ID, DATE, List.of(10L, 11L)));
+
+        verify(resourceUsageRecorder).recordSmsMessages(new RecordSmsUsageCommand("rollcall-attendance-sms", 1));
+    }
+
+    @Test
+    void returnsSendResultsWhenSmsUsageRecordingFails() {
+        MessageTemplate template = MessageTemplate.restore(
+                7L, "absence", AttendanceStatus.ABSENT, "absence message", 1L, NOW, NOW);
+        MessageSendCandidateView candidate = new MessageSendCandidateView(
+                10L, "student-a", AttendanceStatus.ABSENT, "010-1111-1111", 7L, "absence", true);
+        when(getMessageSendCandidatesUseCase.getCandidates(LECTURE_ID, DATE))
+                .thenReturn(List.of(candidate));
+        when(messageTemplateRepository.findById(7L)).thenReturn(Optional.of(template));
+        when(smsSenderPort.send("010-1111-1111", "absence message")).thenReturn(SmsSendResult.succeeded());
+        doThrow(new IllegalStateException("usage store unavailable"))
+                .when(resourceUsageRecorder)
+                .recordSmsMessages(new RecordSmsUsageCommand("rollcall-attendance-sms", 1));
+
+        List<MessageSendResultView> results = service.send(
+                new SendAttendanceMessagesCommand(LECTURE_ID, DATE, List.of(10L)));
+
+        assertThat(results).singleElement()
+                .satisfies(result -> assertThat(result.sent()).isTrue());
+        verify(resourceUsageRecorder).recordSmsMessages(new RecordSmsUsageCommand("rollcall-attendance-sms", 1));
     }
 }
