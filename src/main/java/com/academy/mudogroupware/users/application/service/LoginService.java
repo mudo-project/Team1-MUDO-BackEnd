@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.academy.mudogroupware.auth.application.result.TokenPair;
 import com.academy.mudogroupware.auth.application.usecase.TokenIssuerUseCase;
 import com.academy.mudogroupware.users.application.command.LoginCommand;
+import com.academy.mudogroupware.users.application.result.LoginResult;
 import com.academy.mudogroupware.users.application.usecase.LoginUseCase;
 import com.academy.mudogroupware.users.domain.exception.UserErrorCode;
 import com.academy.mudogroupware.users.domain.exception.UserException;
@@ -27,7 +28,7 @@ public class LoginService implements LoginUseCase {
     private final TokenIssuerUseCase tokenIssuerUseCase;
 
     @Override
-    public TokenPair login(LoginCommand command) {
+    public LoginResult login(LoginCommand command) {
         log.info("event=auth_login_시작 username={}", command.username());
         try {
             User user = userRepository.findByUsername(command.username())
@@ -40,9 +41,9 @@ public class LoginService implements LoginUseCase {
             user.ensureLoginAllowed();
 
             TokenPair tokenPair = tokenIssuerUseCase.issue(user.getId(), user.getUsername(), user.getRoleId(),
-                    user.getAccountType(), user.getAdminScope());
+                    user.getAccountType(), user.getAdminScope(), user.isMustChangePw());
             log.info("event=auth_login_완료 username={}, userId={}", command.username(), user.getId());
-            return tokenPair;
+            return new LoginResult(tokenPair, user.isMustChangePw());
         } catch (RuntimeException e) {
             log.warn("event=auth_login_실패 username={}, reason={}", command.username(), e.getMessage(), e);
             throw e;

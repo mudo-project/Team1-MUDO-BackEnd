@@ -21,8 +21,8 @@ public class TokenService
   @Override
   @Transactional
   public TokenPair issue(Long id, String username, Long roleId, AccountType accountType,
-                          AdminScope adminScope) {
-    String a = provider.createAccessToken(id, username, roleId, accountType, adminScope),
+                          AdminScope adminScope, boolean mustChangePw) {
+    String a = provider.createAccessToken(id, username, roleId, accountType, adminScope, mustChangePw),
         r = provider.createRefreshToken(id, username);
     repository
         .findByUserId(id)
@@ -33,8 +33,8 @@ public class TokenService
 
   @Override
   public String issueAccessToken(Long id, String username, Long roleId, AccountType accountType,
-                                  AdminScope adminScope) {
-    return provider.createAccessToken(id, username, roleId, accountType, adminScope);
+                                  AdminScope adminScope, boolean mustChangePw) {
+    return provider.createAccessToken(id, username, roleId, accountType, adminScope, mustChangePw);
   }
 
   @Override

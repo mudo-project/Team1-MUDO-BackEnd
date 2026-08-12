@@ -43,7 +43,7 @@ class CreateAccountServiceTest {
         CreateAccountService service = new CreateAccountService(userRepository, roleRepository, accountIssuer, clock);
 
         assertThatThrownBy(() -> service.createAccount(
-                new CreateAccountCommand("teacher01", "김강사", "010-1111-2222", "teacher01@example.com", 5L)))
+                new CreateAccountCommand("teacher01", "김강사", 5L)))
                 .isInstanceOf(UsernameDuplicateException.class);
 
         verify(roleRepository, never()).findById(any());
@@ -59,7 +59,7 @@ class CreateAccountServiceTest {
         CreateAccountService service = new CreateAccountService(userRepository, roleRepository, accountIssuer, clock);
 
         assertThatThrownBy(() -> service.createAccount(
-                new CreateAccountCommand("teacher01", "김강사", "010-1111-2222", "teacher01@example.com", 5L)))
+                new CreateAccountCommand("teacher01", "김강사", 5L)))
                 .isInstanceOf(RoleNotFoundException.class);
     }
 
@@ -71,20 +71,19 @@ class CreateAccountServiceTest {
         when(userRepository.existsByUsername("teacher01")).thenReturn(false);
         Role role = Role.restore(5L, "강사", "설명", "#FFFFFF", LocalDateTime.now(), Set.of());
         when(roleRepository.findById(5L)).thenReturn(Optional.of(role));
-        User savedUser = User.restore(200L, "teacher01", "hashed", "김강사", "010-1111-2222",
-                "teacher01@example.com", 5L, UserStatus.ACTIVE, true, AccountType.MEMBER, null,
+        User savedUser = User.restore(200L, "teacher01", "hashed", "김강사", null,
+                null, 5L, UserStatus.ACTIVE, true, AccountType.MEMBER, null,
                 LocalDateTime.now(clock), LocalDateTime.now(clock), LocalDateTime.now(clock));
-        when(accountIssuer.issue("teacher01", "김강사", "010-1111-2222", "teacher01@example.com", 5L,
+        when(accountIssuer.issue("teacher01", "김강사", 5L,
                 AccountType.MEMBER, null, LocalDateTime.now(clock)))
-                .thenReturn(new IssuedAccount(savedUser, "http://localhost:3000/password-setup?username=teacher01&tempPassword=abc"));
+                .thenReturn(new IssuedAccount(savedUser, "tempPass123!"));
         CreateAccountService service = new CreateAccountService(userRepository, roleRepository, accountIssuer, clock);
 
         CreateAccountResult result = service.createAccount(
-                new CreateAccountCommand("teacher01", "김강사", "010-1111-2222", "teacher01@example.com", 5L));
+                new CreateAccountCommand("teacher01", "김강사", 5L));
 
         assertThat(result.userId()).isEqualTo(200L);
         assertThat(result.username()).isEqualTo("teacher01");
-        assertThat(result.passwordSetupLink())
-                .isEqualTo("http://localhost:3000/password-setup?username=teacher01&tempPassword=abc");
+        assertThat(result.temporaryPassword()).isEqualTo("tempPass123!");
     }
 }

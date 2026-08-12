@@ -189,11 +189,13 @@ public class UserController {
 
     @Operation(
             summary = "최초 비밀번호 설정",
-            description = "계정 발급 시 받은 링크의 username/임시비밀번호로 자기 비밀번호를 최초 설정합니다. "
-                    + "이미 설정을 마친 계정이거나 임시비밀번호가 틀리면 동일한 오류로 응답합니다.")
+            description = "임시 비밀번호로 로그인한 계정이 새 비밀번호와 이메일·전화번호를 함께 등록해 최초 설정을 완료합니다. "
+                    + "이미 설정을 마친 계정이면 동일한 오류로 응답합니다.")
     @PostMapping("/password-setup")
-    public ResponseEntity<Void> setupPassword(@Valid @RequestBody PasswordSetupRequest request) {
-        passwordSetupUseCase.setup(request.toCommand());
+    public ResponseEntity<Void> setupPassword(
+            @AuthenticationPrincipal AuthUser authUser,
+            @Valid @RequestBody PasswordSetupRequest request) {
+        passwordSetupUseCase.setup(request.toCommand(authUser.userId()));
         return ResponseEntity.noContent().build();
     }
 }

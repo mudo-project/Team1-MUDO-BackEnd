@@ -19,7 +19,7 @@ public class JwtTokenProvider {
   }
 
   public String createAccessToken(Long id, String username, Long roleId, AccountType accountType,
-                                   AdminScope adminScope) {
+                                   AdminScope adminScope, boolean mustChangePw) {
     Date n = new Date();
     return Jwts.builder()
         .subject(String.valueOf(id))
@@ -27,6 +27,7 @@ public class JwtTokenProvider {
         .claim("roleId", roleId)
         .claim("accountType", accountType.name())
         .claim("adminScope", adminScope == null ? null : adminScope.name())
+        .claim("mustChangePw", mustChangePw)
         .issuedAt(n)
         .expiration(new Date(n.getTime() + p.getAccessTokenExpiration()))
         .signWith(key, Jwts.SIG.HS256)
@@ -62,7 +63,8 @@ public class JwtTokenProvider {
     AccountType accountType = accountTypeRaw == null ? AccountType.MEMBER : AccountType.valueOf(accountTypeRaw);
     String adminScopeRaw = c.get("adminScope", String.class);
     AdminScope adminScope = adminScopeRaw == null ? null : AdminScope.valueOf(adminScopeRaw);
-    return new JwtClaims(id(c), u, roleId, accountType, adminScope);
+    Boolean mustChangePw = c.get("mustChangePw", Boolean.class);
+    return new JwtClaims(id(c), u, roleId, accountType, adminScope, Boolean.TRUE.equals(mustChangePw));
   }
 
   public RefreshTokenClaims parseRefreshToken(String token) {

@@ -53,8 +53,6 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/google/connections/callback")
                     .permitAll()
-                    .requestMatchers(HttpMethod.POST, "/api/users/password-setup")
-                    .permitAll()
                     .anyRequest()
                     .authenticated())
         .addFilterBefore(jwt, UsernamePasswordAuthenticationFilter.class)
