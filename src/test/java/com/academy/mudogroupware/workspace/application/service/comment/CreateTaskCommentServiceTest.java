@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.academy.mudogroupware.workspace.application.command.comment.CreateTaskCommentCommand;
+import com.academy.mudogroupware.workspace.domain.event.TaskCommentMentionedEvent;
 import com.academy.mudogroupware.workspace.domain.exception.comment.InvalidMentionedUserException;
 import com.academy.mudogroupware.workspace.domain.exception.workspace.WorkspaceAccessDeniedException;
 import com.academy.mudogroupware.workspace.domain.exception.workspace.WorkspaceNotFoundException;
@@ -21,6 +22,7 @@ import com.academy.mudogroupware.workspace.domain.repository.workspace.Workspace
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -32,6 +34,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 @ExtendWith(MockitoExtension.class)
 class CreateTaskCommentServiceTest {
@@ -40,19 +43,28 @@ class CreateTaskCommentServiceTest {
   private static final Clock FIXED_CLOCK = Clock.fixed(Instant.parse("2026-08-07T01:00:00Z"), KST);
   private static final long WORKSPACE_ID = 1L;
   private static final long TASK_ID = 101L;
+  private static final long COMMENT_ID = 501L;
   private static final long MEMBER_ID = 10L;
   private static final long MENTIONED_MEMBER_ID = 11L;
+  private static final long THIRD_MEMBER_ID = 12L;
   private static final long OUTSIDER_ID = 99L;
+  private static final LocalDateTime FIXED_NOW = LocalDateTime.of(2026, 8, 7, 10, 0);
 
   @Mock private WorkspaceRepository workspaceRepository;
   @Mock private TaskRepository taskRepository;
   @Mock private TaskCommentRepository taskCommentRepository;
+  @Mock private ApplicationEventPublisher applicationEventPublisher;
 
   @Captor private ArgumentCaptor<TaskComment> commentCaptor;
+  @Captor private ArgumentCaptor<TaskCommentMentionedEvent> eventCaptor;
 
   private CreateTaskCommentService service() {
     return new CreateTaskCommentService(
-        workspaceRepository, taskRepository, taskCommentRepository, FIXED_CLOCK);
+        workspaceRepository,
+        taskRepository,
+        taskCommentRepository,
+        applicationEventPublisher,
+        FIXED_CLOCK);
   }
 
   @Test
@@ -71,6 +83,47 @@ class CreateTaskCommentServiceTest {
     verify(taskCommentRepository).save(commentCaptor.capture());
     assertThat(commentCaptor.getValue().getMentions()).extracting(m -> m.getMentionedUserId())
         .containsExactly(MENTIONED_MEMBER_ID);
+  }
+
+  @Test
+  void publishesMentionEventForDistinctRecipientsExcludingRequester() {
+    givenWorkspaceWithMembers(MEMBER_ID, MENTIONED_MEMBER_ID, THIRD_MEMBER_ID);
+    givenTask(WORKSPACE_ID);
+    when(taskCommentRepository.save(any()))
+        .thenAnswer(invocation -> savedComment(invocation.getArgument(0)));
+
+    service()
+        .createComment(
+            new CreateTaskCommentCommand(
+                WORKSPACE_ID,
+                TASK_ID,
+                MEMBER_ID,
+                "확인 부탁드립니다",
+                List.of(MEMBER_ID, MENTIONED_MEMBER_ID, THIRD_MEMBER_ID, MENTIONED_MEMBER_ID)));
+
+    verify(applicationEventPublisher).publishEvent(eventCaptor.capture());
+    TaskCommentMentionedEvent event = eventCaptor.getValue();
+    assertThat(event.workspaceId()).isEqualTo(WORKSPACE_ID);
+    assertThat(event.taskId()).isEqualTo(TASK_ID);
+    assertThat(event.taskTitle()).isEqualTo("업무");
+    assertThat(event.commentId()).isEqualTo(COMMENT_ID);
+    assertThat(event.actorUserId()).isEqualTo(MEMBER_ID);
+    assertThat(event.recipientUserIds()).containsExactly(MENTIONED_MEMBER_ID, THIRD_MEMBER_ID);
+    assertThat(event.occurredAt()).isEqualTo(FIXED_NOW);
+  }
+
+  @Test
+  void doesNotPublishMentionEventWhenOnlyRequesterIsMentioned() {
+    givenWorkspaceWithMembers(MEMBER_ID);
+    givenTask(WORKSPACE_ID);
+    when(taskCommentRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+    service()
+        .createComment(
+            new CreateTaskCommentCommand(
+                WORKSPACE_ID, TASK_ID, MEMBER_ID, "내용", List.of(MEMBER_ID)));
+
+    verify(applicationEventPublisher, never()).publishEvent(any());
   }
 
   @Test
@@ -115,6 +168,7 @@ class CreateTaskCommentServiceTest {
         .isInstanceOf(InvalidMentionedUserException.class);
 
     verify(taskCommentRepository, never()).save(any());
+    verify(applicationEventPublisher, never()).publishEvent(any());
   }
 
   private void givenWorkspaceWithMembers(long... memberIds) {
@@ -132,5 +186,19 @@ class CreateTaskCommentServiceTest {
             TASK_ID, owningWorkspaceId, null, "업무", TaskStatus.WAITING, LocalDate.of(2026, 8, 10),
             null, MEMBER_ID);
     when(taskRepository.findByIdForUpdate(WORKSPACE_ID, TASK_ID)).thenReturn(Optional.of(task));
+  }
+
+  private TaskComment savedComment(TaskComment comment) {
+    return TaskComment.restore(
+        COMMENT_ID,
+        comment.getTaskId(),
+        comment.getAuthorId(),
+        comment.getContent(),
+        comment.isCompleted(),
+        comment.getCompletedBy(),
+        comment.getCompletedAt(),
+        comment.getMentions(),
+        comment.getCreatedAt(),
+        comment.getUpdatedAt());
   }
 }
