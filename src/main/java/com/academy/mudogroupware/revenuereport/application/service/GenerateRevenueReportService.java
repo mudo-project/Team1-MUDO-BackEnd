@@ -3,24 +3,14 @@ package com.academy.mudogroupware.revenuereport.application.service;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 
-import com.academy.mudogroupware.revenuereport.application.port.ActiveEnrollmentCountPort;
-import com.academy.mudogroupware.revenuereport.application.port.EnrollmentLectureLookupPort;
-import com.academy.mudogroupware.revenuereport.application.port.ExpenseSummary;
-import com.academy.mudogroupware.revenuereport.application.port.ExpenseSummaryPort;
-import com.academy.mudogroupware.revenuereport.application.port.LectureRevenueInfo;
-import com.academy.mudogroupware.revenuereport.application.port.LectureRevenuePort;
 import com.academy.mudogroupware.revenuereport.application.port.RevenueReportAiPort;
 import com.academy.mudogroupware.revenuereport.application.port.RevenueSnapshot;
 import com.academy.mudogroupware.revenuereport.application.usecase.GenerateRevenueReportUseCase;
-import com.academy.mudogroupware.revenuereport.domain.model.Payment;
 import com.academy.mudogroupware.revenuereport.domain.model.RevenueReport;
-import com.academy.mudogroupware.revenuereport.domain.repository.PaymentRepository;
 import com.academy.mudogroupware.revenuereport.domain.repository.RevenueReportRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -37,33 +27,21 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 public class GenerateRevenueReportService implements GenerateRevenueReportUseCase {
 
-    private final LectureRevenuePort lectureRevenuePort;
-    private final ActiveEnrollmentCountPort activeEnrollmentCountPort;
-    private final PaymentRepository paymentRepository;
-    private final ExpenseSummaryPort expenseSummaryPort;
+    private final RevenueReportAggregationReader aggregationReader;
     private final RevenueReportAiPort revenueReportAiPort;
-    private final EnrollmentLectureLookupPort enrollmentLectureLookupPort;
     private final RevenueReportRepository revenueReportRepository;
     private final RevenueSnapshotCalculator calculator;
     private final Clock clock;
     private final ObjectMapper objectMapper;
 
-    public GenerateRevenueReportService(LectureRevenuePort lectureRevenuePort,
-                                        ActiveEnrollmentCountPort activeEnrollmentCountPort,
-                                        PaymentRepository paymentRepository,
-                                        ExpenseSummaryPort expenseSummaryPort,
+    public GenerateRevenueReportService(RevenueReportAggregationReader aggregationReader,
                                         RevenueReportAiPort revenueReportAiPort,
-                                        EnrollmentLectureLookupPort enrollmentLectureLookupPort,
                                         RevenueReportRepository revenueReportRepository,
                                         RevenueSnapshotCalculator calculator,
                                         Clock clock,
                                         ObjectMapper objectMapper) {
-        this.lectureRevenuePort = lectureRevenuePort;
-        this.activeEnrollmentCountPort = activeEnrollmentCountPort;
-        this.paymentRepository = paymentRepository;
-        this.expenseSummaryPort = expenseSummaryPort;
+        this.aggregationReader = aggregationReader;
         this.revenueReportAiPort = revenueReportAiPort;
-        this.enrollmentLectureLookupPort = enrollmentLectureLookupPort;
         this.revenueReportRepository = revenueReportRepository;
         this.calculator = calculator;
         this.clock = clock;
@@ -88,20 +66,12 @@ public class GenerateRevenueReportService implements GenerateRevenueReportUseCas
             LocalDateTime from = targetMonth.atStartOfDay();
             LocalDateTime to = targetMonth.plusMonths(1).atStartOfDay();
 
-            List<LectureRevenueInfo> lectures = lectureRevenuePort.findAll();
-            List<Long> lectureIds = lectures.stream().map(LectureRevenueInfo::lectureId).toList();
-            Map<Long, Long> activeEnrollmentCounts = activeEnrollmentCountPort.countActiveByLectureIds(lectureIds);
-            List<Payment> payments = paymentRepository.findAllByPaidAtBetween(from, to);
-            ExpenseSummary expenseSummary = expenseSummaryPort.summarize(from, to);
-
-            List<Long> enrollmentIds = payments.stream().map(Payment::getEnrollmentId).distinct().toList();
-            Map<Long, Long> enrollmentIdToLectureId =
-                    enrollmentLectureLookupPort.findLectureIdsByEnrollmentIds(enrollmentIds);
-
+            RevenueReportAggregation aggregation = aggregationReader.read(from, to);
             Optional<RevenueSnapshot> previousSnapshot = fetchPreviousSnapshot(targetMonth);
 
-            RevenueSnapshot snapshot = calculator.calculate(targetMonth, lectures, activeEnrollmentCounts, payments,
-                    enrollmentIdToLectureId, expenseSummary, previousSnapshot);
+            RevenueSnapshot snapshot = calculator.calculate(targetMonth, aggregation.lectures(),
+                    aggregation.activeEnrollmentCounts(), aggregation.payments(),
+                    aggregation.enrollmentIdToLectureId(), aggregation.expenseSummary(), previousSnapshot);
 
             String reportText = revenueReportAiPort.generateReport(snapshot);
 

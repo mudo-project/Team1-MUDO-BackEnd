@@ -1,6 +1,7 @@
 package com.academy.mudogroupware.revenuereport.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -19,25 +20,17 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
-import com.academy.mudogroupware.revenuereport.application.port.ActiveEnrollmentCountPort;
-import com.academy.mudogroupware.revenuereport.application.port.EnrollmentLectureLookupPort;
 import com.academy.mudogroupware.revenuereport.application.port.ExpenseSummary;
-import com.academy.mudogroupware.revenuereport.application.port.ExpenseSummaryPort;
 import com.academy.mudogroupware.revenuereport.application.port.LectureRevenueInfo;
-import com.academy.mudogroupware.revenuereport.application.port.LectureRevenuePort;
 import com.academy.mudogroupware.revenuereport.application.port.RevenueReportAiPort;
+import com.academy.mudogroupware.revenuereport.domain.exception.RevenueReportAiException;
 import com.academy.mudogroupware.revenuereport.domain.model.RevenueReport;
-import com.academy.mudogroupware.revenuereport.domain.repository.PaymentRepository;
 import com.academy.mudogroupware.revenuereport.domain.repository.RevenueReportRepository;
 
 class GenerateRevenueReportServiceTest {
 
-    private final LectureRevenuePort lectureRevenuePort = mock(LectureRevenuePort.class);
-    private final ActiveEnrollmentCountPort activeEnrollmentCountPort = mock(ActiveEnrollmentCountPort.class);
-    private final PaymentRepository paymentRepository = mock(PaymentRepository.class);
-    private final ExpenseSummaryPort expenseSummaryPort = mock(ExpenseSummaryPort.class);
+    private final RevenueReportAggregationReader aggregationReader = mock(RevenueReportAggregationReader.class);
     private final RevenueReportAiPort revenueReportAiPort = mock(RevenueReportAiPort.class);
-    private final EnrollmentLectureLookupPort enrollmentLectureLookupPort = mock(EnrollmentLectureLookupPort.class);
     private final RevenueReportRepository revenueReportRepository = mock(RevenueReportRepository.class);
     private final RevenueSnapshotCalculator calculator = new RevenueSnapshotCalculator();
     private final Clock clock = Clock.fixed(Instant.parse("2026-09-01T00:30:00Z"), ZoneId.of("Asia/Seoul"));
@@ -46,9 +39,16 @@ class GenerateRevenueReportServiceTest {
                     .registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule())
                     .disable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     private final GenerateRevenueReportService service = new GenerateRevenueReportService(
-            lectureRevenuePort, activeEnrollmentCountPort, paymentRepository, expenseSummaryPort,
-            revenueReportAiPort, enrollmentLectureLookupPort, revenueReportRepository, calculator, clock,
-            objectMapper);
+            aggregationReader, revenueReportAiPort, revenueReportRepository, calculator, clock, objectMapper);
+
+    private RevenueReportAggregation sampleAggregation() {
+        return new RevenueReportAggregation(
+                List.of(new LectureRevenueInfo(1L, "중등 수학 심화반", "김강사", 300000)),
+                Map.of(1L, 10L),
+                List.of(),
+                new ExpenseSummary(0L, List.of()),
+                Map.of());
+    }
 
     @Test
     void skipsWhenReportAlreadyExistsForTargetMonth() {
@@ -67,12 +67,7 @@ class GenerateRevenueReportServiceTest {
         LocalDate targetMonth = LocalDate.of(2026, 8, 1);
         when(revenueReportRepository.findByTargetMonth(targetMonth)).thenReturn(Optional.empty());
         when(revenueReportRepository.findByTargetMonth(LocalDate.of(2026, 7, 1))).thenReturn(Optional.empty());
-        when(lectureRevenuePort.findAll()).thenReturn(
-                List.of(new LectureRevenueInfo(1L, "중등 수학 심화반", "김강사", 300000)));
-        when(activeEnrollmentCountPort.countActiveByLectureIds(List.of(1L))).thenReturn(Map.of(1L, 10L));
-        when(paymentRepository.findAllByPaidAtBetween(any(), any())).thenReturn(List.of());
-        when(expenseSummaryPort.summarize(any(), any())).thenReturn(new ExpenseSummary(0L, List.of()));
-        when(enrollmentLectureLookupPort.findLectureIdsByEnrollmentIds(any())).thenReturn(Map.of());
+        when(aggregationReader.read(any(), any())).thenReturn(sampleAggregation());
         when(revenueReportAiPort.generateReport(any())).thenReturn("8월 매출 리포트 텍스트");
         when(revenueReportRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -84,6 +79,22 @@ class GenerateRevenueReportServiceTest {
         // targetMonth가 [2026,8,1] 배열이 아니라 ISO 문자열로 저장돼야 한다 — FastAPI(Pydantic)와
         // 프론트가 이 JSON을 그대로 읽는데, 배열로 나가면 날짜 검증에서 거부당한다(실제로 겪은 버그).
         assertThat(savedReport.getValue().getDataSnapshot()).contains("\"targetMonth\":\"2026-08-01\"");
+    }
+
+    @Test
+    void propagatesAiFailureAndDoesNotSaveReport() {
+        LocalDate targetMonth = LocalDate.of(2026, 8, 1);
+        when(revenueReportRepository.findByTargetMonth(targetMonth)).thenReturn(Optional.empty());
+        when(revenueReportRepository.findByTargetMonth(LocalDate.of(2026, 7, 1))).thenReturn(Optional.empty());
+        when(aggregationReader.read(any(), any())).thenReturn(sampleAggregation());
+        when(revenueReportAiPort.generateReport(any()))
+                .thenThrow(new RevenueReportAiException("매출 리포트 AI 서버 호출에 실패했습니다."));
+
+        // 이 기능은 명시적으로 fallback이 없다 — AI 실패는 그대로 호출자(배치 스케줄러)에게 전파되어야
+        // 잘못된(비어있는) 리포트가 저장되는 일이 없다.
+        assertThatThrownBy(() -> service.generate(targetMonth)).isInstanceOf(RevenueReportAiException.class);
+
+        verify(revenueReportRepository, never()).save(any());
     }
 
     @Test
@@ -102,12 +113,7 @@ class GenerateRevenueReportServiceTest {
                 + "\"newField\":\"이 서비스가 모르는 필드\"}";
         when(revenueReportRepository.findByTargetMonth(previousMonth)).thenReturn(
                 Optional.of(RevenueReport.create(previousMonth, "7월 리포트", previousSnapshotJson, LocalDateTime.now())));
-        when(lectureRevenuePort.findAll()).thenReturn(
-                List.of(new LectureRevenueInfo(1L, "중등 수학 심화반", "김강사", 300000)));
-        when(activeEnrollmentCountPort.countActiveByLectureIds(List.of(1L))).thenReturn(Map.of(1L, 10L));
-        when(paymentRepository.findAllByPaidAtBetween(any(), any())).thenReturn(List.of());
-        when(expenseSummaryPort.summarize(any(), any())).thenReturn(new ExpenseSummary(0L, List.of()));
-        when(enrollmentLectureLookupPort.findLectureIdsByEnrollmentIds(any())).thenReturn(Map.of());
+        when(aggregationReader.read(any(), any())).thenReturn(sampleAggregation());
         when(revenueReportAiPort.generateReport(any())).thenReturn("8월 매출 리포트 텍스트");
         when(revenueReportRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -116,5 +122,53 @@ class GenerateRevenueReportServiceTest {
         ArgumentCaptor<RevenueReport> savedReport = ArgumentCaptor.forClass(RevenueReport.class);
         verify(revenueReportRepository).save(savedReport.capture());
         assertThat(savedReport.getValue().getDataSnapshot()).contains("\"previousMonth\":{\"available\":true");
+    }
+
+    @Test
+    void computesPreviousMonthDeltaWhenPreviousReportAvailable() {
+        LocalDate targetMonth = LocalDate.of(2026, 8, 1);
+        LocalDate previousMonth = LocalDate.of(2026, 7, 1);
+        when(revenueReportRepository.findByTargetMonth(targetMonth)).thenReturn(Optional.empty());
+        String previousSnapshotJson = "{\"targetMonth\":\"2026-07-01\","
+                + "\"revenue\":{\"expected\":2500000,\"actual\":2000000},"
+                + "\"expense\":{\"actual\":300000,\"byCategory\":[]},"
+                + "\"profit\":{\"actual\":1700000,\"expected\":2200000},"
+                + "\"previousMonth\":{\"available\":false},"
+                + "\"byLecture\":[],\"byTeacher\":[]}";
+        when(revenueReportRepository.findByTargetMonth(previousMonth)).thenReturn(
+                Optional.of(RevenueReport.create(previousMonth, "7월 리포트", previousSnapshotJson, LocalDateTime.now())));
+        when(aggregationReader.read(any(), any())).thenReturn(sampleAggregation());
+        when(revenueReportAiPort.generateReport(any())).thenReturn("8월 매출 리포트 텍스트");
+        when(revenueReportRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.generate(targetMonth);
+
+        ArgumentCaptor<RevenueReport> savedReport = ArgumentCaptor.forClass(RevenueReport.class);
+        verify(revenueReportRepository).save(savedReport.capture());
+        // sampleAggregation()의 강의1(300000원*10명=3000000 예상매출, 결제 없음=0 실매출, 지출 0)
+        // 기준 계산: actual revenue 0 - 2000000(전월 실매출) = -2000000
+        assertThat(savedReport.getValue().getDataSnapshot())
+                .contains("\"previousMonth\":{\"available\":true")
+                .contains("\"revenueActualDelta\":-2000000");
+    }
+
+    @Test
+    void treatsCorruptedPreviousSnapshotAsUnavailable() {
+        // 이전 달 스냅샷 JSON 자체가 손상돼 있어도(파싱 예외) available=false로 조용히
+        // 넘어가야 한다 — 리포트 생성 자체를 막지 않는다.
+        LocalDate targetMonth = LocalDate.of(2026, 8, 1);
+        LocalDate previousMonth = LocalDate.of(2026, 7, 1);
+        when(revenueReportRepository.findByTargetMonth(targetMonth)).thenReturn(Optional.empty());
+        when(revenueReportRepository.findByTargetMonth(previousMonth)).thenReturn(
+                Optional.of(RevenueReport.create(previousMonth, "7월 리포트", "{이건 유효한 JSON이 아님", LocalDateTime.now())));
+        when(aggregationReader.read(any(), any())).thenReturn(sampleAggregation());
+        when(revenueReportAiPort.generateReport(any())).thenReturn("8월 매출 리포트 텍스트");
+        when(revenueReportRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.generate(targetMonth);
+
+        ArgumentCaptor<RevenueReport> savedReport = ArgumentCaptor.forClass(RevenueReport.class);
+        verify(revenueReportRepository).save(savedReport.capture());
+        assertThat(savedReport.getValue().getDataSnapshot()).contains("\"previousMonth\":{\"available\":false}");
     }
 }
