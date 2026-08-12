@@ -1,5 +1,24 @@
 # 🔄 공유파일 도메인 변경 이력
 
+## ✅ 2026-08-12 · PR #404 CodeRabbit 리뷰 반영
+
+### 변경 목적
+
+Task6 구현(PR #404) CodeRabbit 리뷰 7건 중 반영 가능한 항목을 반영하고, 나머지는 근거를 남기고 보류·후속 이슈로 분리한다.
+
+### 구현 변경
+
+- `RecreateSharedFileRootService`: DB 저장이 실패하면 방금 만든 Drive 폴더를 `trash()`로 보상 삭제하고 원래 예외를 그대로 던진다.
+- `SharedFileController.uploadItem()`: `file.isEmpty()`를 `getBytes()` 호출 전에 검사해 빈 파일을 400으로 거부한다.
+- `application.yaml`: `spring.servlet.multipart.max-file-size`/`max-request-size`를 100MB로 명시했다. 기존엔 설정이 전혀 없어 Spring Boot 기본값(1MB)이 그대로 적용돼, 설계상 100MB 업로드 요구사항이 실제로는 1MB부터 막히고 있었다.
+- `SHAREDFILE_API.md`: `## [request]`/`## [response]`를 리포 컨벤션(`# **[request]**`)으로 22곳 전부 수정했다.
+
+### 반박·보류한 항목
+
+- **중첩 리스트 번호(1./2./3. → 전부 1.)**: 이 프로젝트의 `api-specification-generator` 스킬 예시(`examples/sample.md`)가 오히려 1/2/3 증가 번호를 쓰고, 리포에 markdownlint 설정·CI 검사가 없어 그대로 유지했다.
+- **PATCH 이름변경+이동 원자성**: rename 성공 후 move가 실패하면 부분 상태가 남는 문제는 맞지만, 제대로 고치려면 이미 develop에 머지된 PR #391의 `RenameSharedFileItemUseCase`/`MoveSharedFileItemUseCase`/`SharedFileDrivePort`를 손봐야 해 이 PR(Controller 계층) 범위 밖으로 판단, 후속 이슈 #406으로 분리했다.
+- **재생성 동시 요청 시 Drive 중복 생성**: 저장 실패 보상(위 항목)은 "고아 폴더가 영구히 남는 것"만 막고, "두 요청이 동시에 Drive 폴더를 각각 만드는 것" 자체는 막지 못한다는 후속 지적. `SHAREDFILE:ROOT_MANAGE` 권한자만 접근하는 저빈도 복구 API라 실제 동시 재생성 가능성이 낮고, 발생해도 보상 로직이 영구 고아를 막아주는 점을 근거로 이번엔 보류했다. 제대로 막으려면 `SharedFileRootStatus`에 `RECREATING` 같은 상태를 추가해 Drive 호출 전에 조건부 UPDATE로 재생성 소유권을 먼저 확보해야 한다.
+
 ## ✅ 2026-08-12 · HTTP API·권한·문서 구현 (Task6)
 
 ### 변경 목적
