@@ -72,19 +72,15 @@ public class WorkspaceController {
 
   @Operation(
       summary = "워크스페이스 목록 조회",
-      description = "내 워크스페이스를 조회합니다. 전체 조회는 권한 모듈 연동 후 제공됩니다.")
+      description = "내 워크스페이스를 조회합니다. WORKSPACE:READ_ALL 권한이 있으면 전체 워크스페이스를 조회할 수 있습니다.")
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "워크스페이스 목록 조회 성공"),
     @ApiResponse(responseCode = "400", description = "scope 값이 유효하지 않음"),
     @ApiResponse(responseCode = "403", description = "전체 조회 권한이 없음")
   })
-  // TODO : 권한 모듈의 WORKSPACE:READ_ALL 권한 시드·조회 로직 완성 후 통합 검증
   @PreAuthorize(
-          "#p1 != T(com.academy.mudogroupware.workspace.application.query.workspace.WorkspaceListScope).ALL"
-  )
-//  @PreAuthorize(
-//      "#p1 != T(com.academy.mudogroupware.workspace.application.query.workspace.WorkspaceListScope).ALL"
-//          + " or hasAuthority('WORKSPACE:READ_ALL')")
+      "#p1 != T(com.academy.mudogroupware.workspace.application.query.workspace.WorkspaceListScope).ALL"
+          + " or hasAuthority('WORKSPACE:READ_ALL')")
   @GetMapping
   public ResponseEntity<GlobalApiResponse<List<WorkspaceListResponse>>> getWorkspaces(
       @AuthenticationPrincipal AuthUser authUser,
