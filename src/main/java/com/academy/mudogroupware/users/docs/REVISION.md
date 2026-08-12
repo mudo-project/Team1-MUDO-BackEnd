@@ -1,9 +1,44 @@
 > 작성일: 2026-08-04
-> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청/승인 워크플로우(PR 1·2·3/3, "계정 발급 체계" 2단계) 완료, 역할 관리 API 7개(생성/목록/상세/수정/삭제/권한 조립/권한 카탈로그 조회) 완료, 사용자 역할 변경 API 완료, 학원 구성원 검색 API 완료, 역할 색상/인원수 완료, CodeRabbit 피드백 반영 + 로깅 컨벤션 전체 도메인(Service 17개) 적용 완료, 직원 계정 발급 API 완료("계정 발급 체계" 3단계 완료), 학원 신청 접수 API 완료(최소 스코프, "계정 발급 체계" 2단계 최종 완결), 학원 신청 접수 시점 requestedLoginId 중복확인 완료, 비밀번호 설정 링크 + 계정 발급 흐름 통합 완료(원장 역할 자동 생성·전체 권한 배정 포함), 관리자용 구성원 목록 조회 API 완료(오늘 근태 상태·페이지네이션·역할 필터 포함) · 후속 작업: 이메일 발송, 사업자등록증 검증(OCR·국세청 API), 비밀번호 설정 링크 재발급 흐름
+> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청/승인 워크플로우(PR 1·2·3/3, "계정 발급 체계" 2단계) 완료, 역할 관리 API 7개(생성/목록/상세/수정/삭제/권한 조립/권한 카탈로그 조회) 완료, 학원 구성원 검색 API 완료, 역할 색상/인원수 완료, CodeRabbit 피드백 반영 + 로깅 컨벤션 전체 도메인(Service 17개) 적용 완료, 직원 계정 발급 API 완료("계정 발급 체계" 3단계 완료), 학원 신청 접수 API 완료(최소 스코프, "계정 발급 체계" 2단계 최종 완결), 학원 신청 접수 시점 requestedLoginId 중복확인 완료, 비밀번호 설정 링크 + 계정 발급 흐름 통합 완료(원장 역할 자동 생성·전체 권한 배정 포함), 관리자용 구성원 목록 조회 API 완료(오늘 근태 상태·페이지네이션·역할 필터 포함), 사용자 역할 변경 API를 구성원 정보 수정 API로 병합 완료 · 후속 작업: 이메일 발송, 사업자등록증 검증(OCR·국세청 API), 비밀번호 설정 링크 재발급 흐름
 
 ## 🎯 변경 목적
 
 계정·권한(users) 도메인을 신설하고, 로그인과 액세스 토큰 재발급을 구현한다. 초기세팅 때 approval 도메인이 참조용으로 임시로 만들어둔 `users` 테이블을 팀이 확정한 ERD에 맞게 정합화하고, 그 위에서 인증 흐름을 짠다.
+
+---
+
+## ✅ 2026-08-12 · 구성원 역할 변경을 구성원 정보 수정 API로 병합
+
+### 배경
+
+프론트에서 관리자용 "구성원 정보 수정" 화면과 "역할 변경"을 하나의 저장 액션으로 처리하고 싶다는 요청이 들어왔다. 기존에는 `PATCH /api/users/{userId}`(이름/연락처/이메일/입사일)와 `PATCH /api/users/{userId}/role`(역할)이 완전히 분리된 API였다(2026-08-08 "사용자 역할 변경 추가"에서 별도 API로 만들었고, README에는 "역할 변경에는 role 존재 검증이 별도로 필요해서 책임을 분리했다"고 근거를 남겨뒀었다).
+
+### 확정된 정책
+
+- **`UpdateMemberProfileRequest`에 선택 필드 `roleId`를 추가한다.** 값을 보내지 않으면 기존 역할을 유지하고(다른 필드들과 동일한 부분 수정 패턴), 값을 보내면 역할도 함께 바뀐다.
+- **역할 존재 검증을 프로필 필드 갱신보다 먼저 수행한다.** `UpdateUserProfileService.updateMemberProfile()`이 `RoleRepository`를 새로 의존성으로 받아, `roleId != null`이면 `roleRepository.findById()`로 먼저 확인하고(없으면 `RoleNotFoundException`, `404 USER_404_2`) `userRepository.changeRole()`을 호출한 뒤에야 `userRepository.updateProfile()`을 호출한다. 이 순서 덕분에 잘못된 `roleId`를 보내면 이름·연락처 등 다른 필드도 전혀 반영되지 않는다(로컬 e2e로 확인: 잘못된 roleId로 이름도 같이 보냈을 때 이름이 안 바뀐 채 404만 응답).
+- **역할 변경 관련 로직·검증(대상 MEMBER 여부, 역할 존재 확인, `changeRole` 리포지토리 호출)은 기존 `ChangeUserRoleService`의 패턴을 그대로 옮겨왔다.** `UserRepository.changeRole`/`UserRepositoryImpl.changeRole`/`UserEntity.changeRole`(FK 위반 시 `RoleNotFoundException` 변환 포함)은 이미 검증된 코드라 그대로 재사용하고, 그 위의 오케스트레이션 계층(`ChangeUserRoleCommand`/`ChangeUserRoleUseCase`/`ChangeUserRoleService`/`ChangeUserRoleRequest`)만 삭제했다.
+- **`PATCH /api/users/{userId}/role` 엔드포인트와 관련 클래스를 전부 삭제한다.** `UserController`에서 핸들러·필드·import를 제거했고, 그 경로로 호출하면 이제 매핑된 컨트롤러가 없어 컨트롤러 자체를 안 탄다. (기존에 발견한 별개 이슈: 이 앱은 매핑되지 않은 경로 전체에 대해 404 대신 500을 반환한다 — `NoResourceFoundException`을 잡는 catch-all `GlobalExceptionHandler`가 원인으로 보이며, 이번 병합과 무관한 기존 버그라 별도로 남겨뒀다.)
+- **`changeRole`이 다른 곳에서 안 쓰이는지 확인 후 삭제했다.** 코드베이스 전체에서 `ChangeUserRoleUseCase`/`ChangeUserRoleCommand`/`ChangeUserRoleService`/`ChangeUserRoleRequest`를 참조하는 곳은 자기 자신의 호출 체인(`UserController` → `ChangeUserRoleService` → `UserRepository.changeRole`)뿐이었다.
+
+### 완료 기준
+
+- [x] `UpdateMemberProfileUseCase`/`UpdateMemberProfileRequest`에 선택 필드 `roleId` 추가
+- [x] `UpdateUserProfileService`에 `RoleRepository` 의존성 추가, 역할 검증→변경→프로필 갱신 순서로 구현(TDD: 역할 미지정 시 변경 없음/역할 지정 시 변경/잘못된 역할 시 `RoleNotFoundException`+아무 것도 반영 안 됨 3케이스 추가)
+- [x] `UserController`에서 `changeRole` 핸들러·`ChangeUserRoleUseCase` 필드·관련 import 제거, `updateMemberProfile` 핸들러가 `roleId`를 전달하도록 수정
+- [x] `ChangeUserRoleCommand`/`ChangeUserRoleUseCase`/`ChangeUserRoleService`/`ChangeUserRoleRequest`/`ChangeUserRoleServiceTest` 삭제(다른 참조 없음 확인)
+- [x] `./gradlew test` 전체 통과
+- [x] 로컬 curl e2e: 이름/연락처만 수정(역할 유지) → 역할만 수정(다른 필드 유지) → 이름+역할 동시 수정 → 잘못된 roleId로 이름+역할 동시 수정 시 404 확인 및 이름이 반영되지 않았음을 재조회로 확인 → 옛 `/role` 엔드포인트가 더 이상 라우팅되지 않음을 확인
+- [x] 문서 갱신(API.md/README.md/CHANGELOG.md/REVISION.md/Notion)
+
+### 🧩 영향 범위
+
+| 계층 | 변경 내용 |
+| --- | --- |
+| Application(users) | `UpdateMemberProfileUseCase`(`roleId` 파라미터 추가), `UpdateUserProfileService`(`RoleRepository` 의존성 추가, 역할 변경 로직 흡수) |
+| Presentation(users) | `UpdateMemberProfileRequest`(`roleId` 필드 추가), `UserController`(`changeRole` 핸들러 제거, `updateMemberProfile` 핸들러 갱신) |
+| 삭제 | `ChangeUserRoleCommand`/`ChangeUserRoleUseCase`/`ChangeUserRoleService`/`ChangeUserRoleRequest`/`ChangeUserRoleServiceTest`, `PATCH /api/users/{userId}/role` 엔드포인트 |
+| Migration | 없음(기존 컬럼·제약 재사용) |
 
 ---
 
