@@ -425,8 +425,13 @@ Query Parameter
       }
     ],
     "page": 0,
-    "size": 20,
-    "hasNext": false
+    "size": 2,
+    "totalElements": 12,
+    "totalPages": 6,
+    "first": true,
+    "last": false,
+    "hasNext": true,
+    "hasPrevious": false
   }
 }
 ```
@@ -438,6 +443,7 @@ Query Parameter
 - 결과는 `roleName`, `name` 순으로 정렬됩니다 — 역할별로 묶어 보여주는 조직도 화면에서, `roleId`를 지정해 역할 탭마다 별도로 호출하는 방식을 전제로 합니다.
 - `page`/`size` 범위를 벗어나면(`page<0`, `size`가 1~100 밖) `400`으로 실패합니다.
 - `attendanceStatus`는 `ACTIVE` 구성원만 `PRESENT`/`ABSENT`/`OFF`/`LEAVE` 중 하나로 채워지고, `RESIGNED`/`INACTIVE` 구성원은 `null`입니다. 근태 정책(`AttendancePolicy`)이 등록되어 있지 않으면 이 API 전체가 `404 ATTENDANCE_404_1`로 실패합니다. 근태 조회는 현재 페이지에 포함된 구성원만 대상으로 합니다.
+- (2026-08-12) 응답이 공용 `SliceResponse`(`content`/`page`/`size`/`hasNext`)에서 이 API 전용 `totalElements`/`totalPages`/`first`/`last`/`hasPrevious`를 추가한 형태로 바뀌었습니다 — `1 2 3 4` 번호 기반 페이지네이션 UI를 프론트에서 그릴 수 있게 하기 위함입니다. `totalElements`는 이미 인메모리에 올라와 있는 필터링된 전체 리스트의 크기를 그대로 쓰므로 추가 DB 조회 비용이 없습니다(DB 레벨 페이지네이션 전환은 여전히 보류 상태, 아래 REVISION.md 참고).
 
 ---
 
