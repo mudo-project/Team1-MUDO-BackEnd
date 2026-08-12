@@ -1,6 +1,7 @@
 package com.academy.mudogroupware.revenuereport.presentation.api;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -70,6 +71,27 @@ class RevenueReportControllerTest {
         mockMvc.perform(get("/api/revenue-reports").with(authentication(token)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("REVENUE_REPORT_200_1"));
+    }
+
+    @Test
+    void detailIsForbiddenWithoutAcademyOwnerAuthority() throws Exception {
+        TestingAuthenticationToken token = new TestingAuthenticationToken("member", null, "ACCOUNT:MANAGE");
+
+        mockMvc.perform(get("/api/revenue-reports/1").with(authentication(token)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void detailReturnsReportForAcademyOwner() throws Exception {
+        TestingAuthenticationToken token = new TestingAuthenticationToken("owner", null, "ACADEMY:OWNER");
+        RevenueReport report = RevenueReport.create(
+                LocalDate.of(2026, 8, 1), "8월 리포트", "{}", LocalDateTime.now());
+        when(getRevenueReportUseCase.getReport(1L)).thenReturn(report);
+
+        mockMvc.perform(get("/api/revenue-reports/1").with(authentication(token)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("REVENUE_REPORT_200_2"));
+        verify(getRevenueReportUseCase).getReport(1L);
     }
 
     @Test

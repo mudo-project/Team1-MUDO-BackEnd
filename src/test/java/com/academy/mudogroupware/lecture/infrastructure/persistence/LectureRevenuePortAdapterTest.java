@@ -8,29 +8,22 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
-import com.academy.mudogroupware.lecture.domain.model.ClassType;
-import com.academy.mudogroupware.lecture.domain.model.FeeType;
-import com.academy.mudogroupware.lecture.domain.model.Lecture;
-import com.academy.mudogroupware.lecture.domain.model.LectureSchedule;
-import com.academy.mudogroupware.lecture.domain.repository.LectureRepository;
 import com.academy.mudogroupware.revenuereport.application.port.LectureRevenueInfo;
-
-import java.time.DayOfWeek;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
 
 class LectureRevenuePortAdapterTest {
 
-    private final LectureRepository lectureRepository = mock(LectureRepository.class);
-    private final LectureRevenuePortAdapter adapter = new LectureRevenuePortAdapter(lectureRepository);
+    private final LectureJpaRepository lectureJpaRepository = mock(LectureJpaRepository.class);
+    private final LectureRevenuePortAdapter adapter = new LectureRevenuePortAdapter(lectureJpaRepository);
 
     @Test
-    void mapsLecturesToRevenueInfo() {
-        Lecture lecture = Lecture.restore(1L, "중등 수학 심화반", ClassType.CLASS, "A101", null, null, null,
-                null, null, "김강사", null, FeeType.PER_MONTH, 300000,
-                List.of(LectureSchedule.restore(null, DayOfWeek.MONDAY, LocalTime.of(10, 0), LocalTime.of(11, 0))),
-                LocalDateTime.now());
-        when(lectureRepository.findAll()).thenReturn(List.of(lecture));
+    void mapsProjectionRowsToRevenueInfo() {
+        LectureJpaRepository.LectureRevenueProjection row = mock(
+                LectureJpaRepository.LectureRevenueProjection.class);
+        when(row.getId()).thenReturn(1L);
+        when(row.getName()).thenReturn("중등 수학 심화반");
+        when(row.getTeacherName()).thenReturn("김강사");
+        when(row.getFeeAmount()).thenReturn(300000);
+        when(lectureJpaRepository.findAllRevenueProjection()).thenReturn(List.of(row));
 
         List<LectureRevenueInfo> result = adapter.findAll();
 

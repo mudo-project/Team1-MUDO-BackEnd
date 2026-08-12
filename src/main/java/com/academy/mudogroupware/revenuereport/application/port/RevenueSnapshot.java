@@ -1,4 +1,4 @@
-package com.academy.mudogroupware.revenuereport.application.service;
+package com.academy.mudogroupware.revenuereport.application.port;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -17,7 +17,7 @@ public record RevenueSnapshot(
     public record Revenue(long expected, long actual) {
     }
 
-    public record Expense(long actual, List<com.academy.mudogroupware.revenuereport.application.port.ExpenseCategoryAmount> byCategory) {
+    public record Expense(long actual, List<ExpenseCategoryAmount> byCategory) {
     }
 
     public record Profit(long actual, long expected) {

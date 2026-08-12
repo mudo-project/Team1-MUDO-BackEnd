@@ -20,7 +20,7 @@ public class PaymentRepositoryImpl implements PaymentRepository {
     @Override
     @Transactional(readOnly = true)
     public List<Payment> findAllByPaidAtBetween(LocalDateTime from, LocalDateTime to) {
-        return paymentJpaRepository.findAllByPaidAtBetween(from, to).stream()
+        return paymentJpaRepository.findAllByPaidAtGreaterThanEqualAndPaidAtLessThan(from, to).stream()
                 .map(this::toDomain)
                 .toList();
     }

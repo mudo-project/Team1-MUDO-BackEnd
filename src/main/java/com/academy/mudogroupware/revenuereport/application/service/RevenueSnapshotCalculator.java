@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 
 import com.academy.mudogroupware.revenuereport.application.port.ExpenseSummary;
 import com.academy.mudogroupware.revenuereport.application.port.LectureRevenueInfo;
+import com.academy.mudogroupware.revenuereport.application.port.RevenueSnapshot;
 import com.academy.mudogroupware.revenuereport.domain.model.Payment;
 import com.academy.mudogroupware.revenuereport.domain.model.PaymentStatus;
 
@@ -27,7 +28,7 @@ public class RevenueSnapshotCalculator {
                 .sum();
 
         Map<Long, Long> actualRevenueByLecture = actualRevenueByLecture(payments, enrollmentIdToLectureId);
-        long actualRevenue = actualRevenueByLecture.values().stream().mapToLong(Long::longValue).sum();
+        long actualRevenue = payments.stream().mapToLong(this::signedAmount).sum();
 
         long actualExpense = expenseSummary.totalAmount();
         long actualProfit = actualRevenue - actualExpense;
@@ -77,11 +78,14 @@ public class RevenueSnapshotCalculator {
             if (lectureId == null) {
                 continue;
             }
-            long signedAmount = payment.getStatus() == PaymentStatus.REFUNDED
-                    ? -payment.getAmount()
-                    : payment.getAmount();
-            result.merge(lectureId, signedAmount, Long::sum);
+            result.merge(lectureId, signedAmount(payment), Long::sum);
         }
         return result;
+    }
+
+    private long signedAmount(Payment payment) {
+        return payment.getStatus() == PaymentStatus.REFUNDED
+                ? -payment.getAmount()
+                : payment.getAmount();
     }
 }
