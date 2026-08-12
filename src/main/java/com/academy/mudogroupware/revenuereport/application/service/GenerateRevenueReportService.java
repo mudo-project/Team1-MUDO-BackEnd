@@ -22,9 +22,8 @@ import com.academy.mudogroupware.revenuereport.domain.model.RevenueReport;
 import com.academy.mudogroupware.revenuereport.domain.repository.PaymentRepository;
 import com.academy.mudogroupware.revenuereport.domain.repository.RevenueReportRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -56,7 +55,8 @@ public class GenerateRevenueReportService implements GenerateRevenueReportUseCas
                                         EnrollmentLectureLookupPort enrollmentLectureLookupPort,
                                         RevenueReportRepository revenueReportRepository,
                                         RevenueSnapshotCalculator calculator,
-                                        Clock clock) {
+                                        Clock clock,
+                                        ObjectMapper objectMapper) {
         this.lectureRevenuePort = lectureRevenuePort;
         this.activeEnrollmentCountPort = activeEnrollmentCountPort;
         this.paymentRepository = paymentRepository;
@@ -66,12 +66,13 @@ public class GenerateRevenueReportService implements GenerateRevenueReportUseCas
         this.revenueReportRepository = revenueReportRepository;
         this.calculator = calculator;
         this.clock = clock;
-        // WRITE_DATES_AS_TIMESTAMPS를 꺼야 targetMonth가 [2026,7,1] 배열이 아니라
-        // "2026-07-01" ISO 문자열로 저장/직렬화된다 — DB의 data_snapshot과 FastAPI 응답
-        // 구조를 그대로 프론트에 내려주는 상세 조회 API가 이 형식에 의존한다.
-        this.objectMapper = new ObjectMapper()
-                .registerModule(new JavaTimeModule())
-                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        // Spring이 구성한 ObjectMapper(날짜를 [2026,7,1] 배열이 아니라 "2026-07-01" ISO
+        // 문자열로 직렬화)를 그대로 복사해 쓴다. 직접 new ObjectMapper()를 만들면 이 설정이
+        // 빠져서 실제로 날짜 직렬화 버그를 겪었다. FAIL_ON_UNKNOWN_PROPERTIES도 꺼서, 나중에
+        // RevenueSnapshot에 필드를 추가/제거해도 예전 달의 data_snapshot을 읽다가 전월비교가
+        // 원인 없이 조용히 사라지는 일이 없게 한다.
+        this.objectMapper = objectMapper.copy()
+                .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     }
 
     @Override

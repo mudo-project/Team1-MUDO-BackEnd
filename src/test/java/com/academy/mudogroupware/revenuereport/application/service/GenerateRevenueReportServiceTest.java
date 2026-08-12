@@ -41,9 +41,14 @@ class GenerateRevenueReportServiceTest {
     private final RevenueReportRepository revenueReportRepository = mock(RevenueReportRepository.class);
     private final RevenueSnapshotCalculator calculator = new RevenueSnapshotCalculator();
     private final Clock clock = Clock.fixed(Instant.parse("2026-09-01T00:30:00Z"), ZoneId.of("Asia/Seoul"));
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper =
+            new com.fasterxml.jackson.databind.ObjectMapper()
+                    .registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule())
+                    .disable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     private final GenerateRevenueReportService service = new GenerateRevenueReportService(
             lectureRevenuePort, activeEnrollmentCountPort, paymentRepository, expenseSummaryPort,
-            revenueReportAiPort, enrollmentLectureLookupPort, revenueReportRepository, calculator, clock);
+            revenueReportAiPort, enrollmentLectureLookupPort, revenueReportRepository, calculator, clock,
+            objectMapper);
 
     @Test
     void skipsWhenReportAlreadyExistsForTargetMonth() {
@@ -79,5 +84,37 @@ class GenerateRevenueReportServiceTest {
         // targetMonth가 [2026,8,1] 배열이 아니라 ISO 문자열로 저장돼야 한다 — FastAPI(Pydantic)와
         // 프론트가 이 JSON을 그대로 읽는데, 배열로 나가면 날짜 검증에서 거부당한다(실제로 겪은 버그).
         assertThat(savedReport.getValue().getDataSnapshot()).contains("\"targetMonth\":\"2026-08-01\"");
+    }
+
+    @Test
+    void tolerantOfUnknownPropertiesWhenParsingPreviousSnapshot() {
+        LocalDate targetMonth = LocalDate.of(2026, 8, 1);
+        LocalDate previousMonth = LocalDate.of(2026, 7, 1);
+        when(revenueReportRepository.findByTargetMonth(targetMonth)).thenReturn(Optional.empty());
+        // 이전 달 스냅샷에 이 서비스가 모르는 필드("newField")가 섞여 있어도(스키마 변경 시나리오)
+        // 파싱이 실패해서 전월비교가 조용히 사라지면 안 된다.
+        String previousSnapshotJson = "{\"targetMonth\":\"2026-07-01\","
+                + "\"revenue\":{\"expected\":1000000,\"actual\":900000},"
+                + "\"expense\":{\"actual\":100000,\"byCategory\":[]},"
+                + "\"profit\":{\"actual\":800000,\"expected\":900000},"
+                + "\"previousMonth\":{\"available\":false},"
+                + "\"byLecture\":[],\"byTeacher\":[],"
+                + "\"newField\":\"이 서비스가 모르는 필드\"}";
+        when(revenueReportRepository.findByTargetMonth(previousMonth)).thenReturn(
+                Optional.of(RevenueReport.create(previousMonth, "7월 리포트", previousSnapshotJson, LocalDateTime.now())));
+        when(lectureRevenuePort.findAll()).thenReturn(
+                List.of(new LectureRevenueInfo(1L, "중등 수학 심화반", "김강사", 300000)));
+        when(activeEnrollmentCountPort.countActiveByLectureIds(List.of(1L))).thenReturn(Map.of(1L, 10L));
+        when(paymentRepository.findAllByPaidAtBetween(any(), any())).thenReturn(List.of());
+        when(expenseSummaryPort.summarize(any(), any())).thenReturn(new ExpenseSummary(0L, List.of()));
+        when(enrollmentLectureLookupPort.findLectureIdsByEnrollmentIds(any())).thenReturn(Map.of());
+        when(revenueReportAiPort.generateReport(any())).thenReturn("8월 매출 리포트 텍스트");
+        when(revenueReportRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.generate(targetMonth);
+
+        ArgumentCaptor<RevenueReport> savedReport = ArgumentCaptor.forClass(RevenueReport.class);
+        verify(revenueReportRepository).save(savedReport.capture());
+        assertThat(savedReport.getValue().getDataSnapshot()).contains("\"previousMonth\":{\"available\":true");
     }
 }
