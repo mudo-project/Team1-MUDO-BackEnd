@@ -1,9 +1,94 @@
 > 작성일: 2026-08-04
-> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청/승인 워크플로우(PR 1·2·3/3, "계정 발급 체계" 2단계) 완료, 역할 관리 API 7개(생성/목록/상세/수정/삭제/권한 조립/권한 카탈로그 조회) 완료, 사용자 역할 변경 API 완료, 학원 구성원 검색 API 완료, 역할 색상/인원수 완료, CodeRabbit 피드백 반영 + 로깅 컨벤션 전체 도메인(Service 17개) 적용 완료, 직원 계정 발급 API 완료("계정 발급 체계" 3단계 완료), 학원 신청 접수 API 완료(최소 스코프, "계정 발급 체계" 2단계 최종 완결), 학원 신청 접수 시점 requestedLoginId 중복확인 완료, 비밀번호 설정 링크 + 계정 발급 흐름 통합 완료(원장 역할 자동 생성·전체 권한 배정 포함), 관리자용 구성원 목록 조회 API 완료(오늘 근태 상태·페이지네이션·역할 필터 포함) · 후속 작업: 이메일 발송, 사업자등록증 검증(OCR·국세청 API), 비밀번호 설정 링크 재발급 흐름
+> 상태: 🚧 로그인·토큰 재발급·조립식 권한 인증 기반 완료, 로그아웃 API 완료, SUPER ADMIN 인증 연결 완료, 학원 신청/승인 워크플로우(PR 1·2·3/3, "계정 발급 체계" 2단계) 완료, 역할 관리 API 7개(생성/목록/상세/수정/삭제/권한 조립/권한 카탈로그 조회) 완료, 사용자 역할 변경 API 완료, 학원 구성원 검색 API 완료, 역할 색상/인원수 완료, CodeRabbit 피드백 반영 + 로깅 컨벤션 전체 도메인(Service 17개) 적용 완료, 직원 계정 발급 API 완료("계정 발급 체계" 3단계 완료), 학원 신청 접수 API 완료(최소 스코프, "계정 발급 체계" 2단계 최종 완결), 학원 신청 접수 시점 requestedLoginId 중복확인 완료, 관리자용 구성원 목록 조회 API 완료(오늘 근태 상태·페이지네이션·역할 필터 포함), 최초 로그인/비밀번호 설정 흐름 재설계 완료(계정 발급 시 연락처·이메일 입력 차단, 임시 비밀번호 평문 응답으로 회귀, 최초 비밀번호 설정 인증 필요화 + 연락처·이메일 필수 등록, 로그인 응답·JWT에 `mustChangePw` 클레임 추가), 계정 발급 권한(ACCOUNT:MANAGE)에 역할 목록/상세 조회 허용 완료 · 후속 작업: 이메일 발송, 사업자등록증 검증(OCR·국세청 API)
 
 ## 🎯 변경 목적
 
 계정·권한(users) 도메인을 신설하고, 로그인과 액세스 토큰 재발급을 구현한다. 초기세팅 때 approval 도메인이 참조용으로 임시로 만들어둔 `users` 테이블을 팀이 확정한 ERD에 맞게 정합화하고, 그 위에서 인증 흐름을 짠다.
+
+---
+
+## ✅ 2026-08-12 · 계정 발급 권한(ACCOUNT:MANAGE)에 역할 조회 허용
+
+### 배경
+
+"계정 생성 권한이 있다면 역할 CRUD도 당연히 가능해야 하는 게 자연스럽지 않나?"라는 질문에서 시작된 논의. 확인해보니 `ACCOUNT:MANAGE`(`UserController`)와 `ROLE:MANAGE`(`RoleController`)는 실제로 완전히 분리된 권한이었다. 팀이 이전에 정한 "관련 행위는 하나의 코드로 묶는다" 원칙(예: `ACCOUNT:CREATE`→`ACCOUNT:MANAGE`로 통합)을 계정↔역할처럼 서로 다른 리소스 사이에도 그대로 적용해 하나로 묶자는 제안이 있었으나, 그 원칙은 같은 리소스 안에서의 통합이었을 뿐 리소스가 다른 경우까지 일반화한 적은 없어 그대로 적용하는 것에는 반대했다. 다만 실무적으로 계정 발급(`POST /api/users`) 화면에서 `roleId`를 선택해야 하므로, 역할 목록/상세 조회(읽기 전용)만큼은 `ACCOUNT:MANAGE`로도 열어주는 게 합리적이라는 절충안으로 수렴했다.
+
+### 확정된 정책
+
+- **역할 목록 조회(`GET /api/roles`)와 역할 상세 조회(`GET /api/roles/{roleId}`)만 `ACCOUNT:MANAGE`에도 허용한다.** `@PreAuthorize("hasAuthority('ROLE:MANAGE') or hasAuthority('ACCOUNT:MANAGE')")`로 변경했다.
+- **역할 생성·수정·삭제·권한 조립(쓰기 작업 4개)은 그대로 `ROLE:MANAGE` 전용으로 남긴다.** 권한 조립은 보안 민감도가 높아 계정 발급 권한만으로 손댈 수 있게 하지 않는다.
+- **권한 코드 자체는 통합하지 않는다.** `ACCOUNT:MANAGE`/`ROLE:MANAGE`는 카탈로그에 여전히 별도 코드로 남아있고, 이번 변경은 컨트롤러의 `@PreAuthorize` 식에 `or` 조건을 추가한 것뿐이다 — 역할에 권한을 배정할 때 두 코드를 항상 같이 묶어 배정해야 하는 정책 변화는 아니다.
+
+### 완료 기준
+
+- [x] `RoleController.list()`/`RoleController.get()`의 `@PreAuthorize`에 `ACCOUNT:MANAGE` 조건 추가
+- [x] `./gradlew compileJava` 통과
+- [x] 로컬 curl e2e: `ACCOUNT:MANAGE`만 가진 테스트 역할(`ROLE:MANAGE` 없음)을 만들어 그 역할의 계정으로 로그인 → 목록/상세 조회 200 확인 → 역할 생성/수정/권한 조립/삭제 4개 모두 403 확인
+- [x] 문서 갱신(API.md/README.md/CHANGELOG.md/REVISION.md/Notion)
+
+### 🧩 영향 범위
+
+| 계층 | 변경 내용 |
+| --- | --- |
+| Presentation(users) | `RoleController.list()`/`RoleController.get()`의 `@PreAuthorize`를 `ROLE:MANAGE` 단독에서 `ROLE:MANAGE or ACCOUNT:MANAGE`로 변경(Javadoc/`@Operation` 설명 갱신) |
+| Migration | 없음 |
+
+---
+
+## ✅ 2026-08-12 · 최초 로그인/비밀번호 설정 흐름 재설계
+
+### 배경
+
+계정 발급 시 `phone`/`email`을 선택 입력으로 받을 수 있게 한 뒤(`V4.1.7`, 위 "계정생성 phone/email 선택입력화" 참고), "그럼 최초 로그인 시 비밀번호를 바꾸면서 연락처·이메일도 같이 받을 수 있나?"라는 질문에서 시작해 다음 문제들을 한 번에 다시 들여다봤다.
+
+1. 임시 비밀번호로 로그인한 뒤 앱을 그냥 꺼버리거나 재설치하면, `mustChangePw=true`라는 신호를 프론트가 다시 확인할 방법이 없었다 — 로그인 API 응답에 이 값이 아예 없었기 때문이다.
+2. `POST /api/users/password-setup`은 비밀번호 설정 링크(`PasswordSetupLinkBuilder`가 만든 URL, `?username=...&tempPassword=...`)에 아이디와 임시 비밀번호를 쿼리스트링으로 실어 보내고 있었다. 이는 (a) 브라우저 히스토리에 평문으로 남고, (b) 서버·프록시·CDN 접근 로그가 기본적으로 요청 URL 전체(쿼리스트링 포함)를 기록하며, (c) 같은 페이지에서 외부 리소스를 로드하면 `Referer` 헤더로 제3자에게 전달될 수 있는 실제 보안 안티패턴(OWASP에 문서화됨)이다. 이 방식은 PR #314(2026-08-10)에서 "평문 비밀번호가 API 응답과 로그에 남는 게 마음에 걸린다"는 이유로 기존 `temporaryPassword` 평문 응답 방식을 대체하며 도입됐는데, 재검토 결과 원래 우려(앱 레벨 응답 로깅)는 그대로 남아있으면서 새로운 노출 경로(브라우저 히스토리/접근 로그/Referer)만 추가된, 더 나빠진 변경이었다.
+3. `POST /api/users/password-setup`이 익명 공개 엔드포인트라 `username`/`tempPassword`를 요청 바디로 받아야 했다.
+
+### 확정된 정책
+
+- **계정 발급 시 연락처·이메일 입력을 완전히 막는다.** `CreateAccountRequest`/`CreateAccountCommand`/`User.create()`에서 `phone`/`email` 파라미터를 아예 제거했다(선택 입력에서 "받지 않음"으로 강화). 전역 Jackson 설정(`FAIL_ON_UNKNOWN_PROPERTIES`)이 켜져 있어, 요청 바디에 `phone`/`email`을 넣어도 알 수 없는 필드로 처리되어 `400`으로 거절된다(로컬 e2e로 확인). 원장이 직원 전체의 연락처를 대신 입력·관리하지 않고, 본인이 최초 비밀번호 설정에서 등록하도록 강제하는 쪽으로 정책을 굳혔다.
+- **비밀번호 설정 링크 방식을 폐기하고 평문 임시 비밀번호 응답으로 되돌린다.** `PasswordSetupLinkBuilder`(+ 테스트, `app.frontend-url` 설정)를 완전히 삭제했다. `AccountIssuer.issue()`가 `phone`/`email` 파라미터도 함께 제거하고 `IssuedAccount(user, temporaryPassword)`를 반환하도록 되돌렸다(`CreateAccountResult`/`AccountCreateResponse`의 `passwordSetupLink` 필드도 `temporaryPassword`로 되돌림). JSON 응답 필드는 요청 URL이 아니므로 브라우저 히스토리·접근 로그·Referer 노출 경로가 없다 — 원래 PR #314가 우려했던 "응답에 평문이 남는다"는 지점은 이 설계에서도 동일하게 존재하지만, 그 우려는 URL이든 JSON 바디든 앱 레벨 응답 로깅 정책으로 별도 해결해야 하는 문제이고 지금 스코프에는 없다고 판단했다.
+- **로그인 응답과 액세스 토큰(JWT) 양쪽에 `mustChangePw`를 싣는다.** `JwtClaims`/`JwtTokenProvider`/`TokenIssuerUseCase`/`TokenService`/`AuthUser`/`JwtAuthenticationConverter`/`LoginService`/`RefreshService` 전체에 `mustChangePw`를 관통시켰다(레거시 토큰엔 클레임이 없으므로 `JwtTokenProvider.parseAccessToken`은 누락 시 `false`로 안전하게 기본값 처리). `AuthUser`는 기존 4-arg 편의 생성자(21개 크로스 도메인 테스트가 의존)를 건드리지 않고 `mustChangePw=false` 기본값을 주는 방식으로 확장해, 무관한 테스트 파일들을 손대지 않았다. 로그인 응답 바디는 로그인 시점 1회성 신호이고, 이후 새로고침 등으로 다시 확인해야 하면 프론트가 로컬에 저장한 JWT를 디코드해서 같은 클레임을 읽으면 된다. `mustChangePw`는 여전히 백엔드가 다른 API 호출을 막는 로그인 게이트로 쓰지 않는다(`LoginService`/`User.ensureLoginAllowed()`는 `status`만 확인) — 순수하게 프론트 화면 전환용 신호다.
+- **`POST /api/users/password-setup`을 인증 필요 엔드포인트로 바꾸고, 새 비밀번호와 함께 이메일·전화번호를 필수로 받는다.** 요청 바디는 `{newPassword, email, phone}`만 받고 `username`/임시 비밀번호는 받지 않는다 — 대상 계정은 `@AuthenticationPrincipal AuthUser`(JWT)에서 식별한다. `SecurityConfig`의 `permitAll` 매처를 제거했다. 서비스 내부에서는 JWT의 `mustChangePw` 클레임을 그대로 믿지 않고 `userRepository.findById()`로 최신 DB 상태를 다시 조회해 `mustChangePw==true`인지 재확인한다(클레임은 로그인 시점 값이라 그 사이 이미 설정을 마쳤을 수 있음). 비밀번호·연락처·이메일 갱신은 `UserJpaRepository.completePasswordSetupIfMustChange`(기존 CR-Fix에서 도입한 `WHERE mustChangePw=true` 조건부 원자적 UPDATE)를 확장해 한 문장으로 처리한다 — 부분 반영(비밀번호만 바뀌고 연락처는 안 바뀌는 등)이 구조적으로 불가능하다.
+- **엔드포인트 자체가 인증을 요구하게 됐지만, "이미 설정 완료" 재요청에 대한 마스킹 정책은 그대로 유지한다.** 처음 이 흐름을 재검토할 때 "임시 비밀번호로 로그인하면 '이미 재설정된 비밀번호입니다'라고 구체적으로 알려줄 수 있나?"라는 요청이 있었으나, 익명 호출자가 이 구분을 이용해 계정 상태(존재 여부·설정 완료 여부)를 추론할 수 있다는 점을 근거로 반대했고 사용자가 이를 받아들여 제외했다. 인증이 추가된 지금은 호출자가 이미 그 계정의 소유자로 확인된 상태라 엄밀히는 같은 위험이 없지만, 재요청 시 "이미 처리됨"과 그 외 실패를 구분하지 않는 기존 응답(`400 USER_400_2`)을 그대로 유지하기로 했다 — 새로운 위험을 만들지 않는 선에서 기존 동작을 최소한으로만 바꾼다는 원칙을 따랐다.
+- **이메일 중복은 여전히 `409 USER_409_7`로 별도 처리한다.** `UserRepositoryImpl.completePasswordSetup`이 `DataIntegrityViolationException`을 잡아 `uk_users_email` 위반이면 `EmailDuplicateException`으로 변환한다(내 정보 수정/구성원 정보 수정과 동일한 패턴). 이건 익명 열거 문제가 아니라 인증된 본인이 스스로 잘못된 값을 넣은 경우라 구체적인 오류를 그대로 보여준다.
+
+### 검토했다가 제외한 대안
+
+- **랜덤 토큰 발급 방식(별도 토큰 테이블)**: `refresh_tokens` 테이블과 같은 "도메인 모델 없는 infra-only 테이블, 1인 1토큰 upsert" 패턴을 그대로 재사용할 수 있어 구현 난이도는 낮다고 판단했으나, 결국 별도 저장소·만료 로직·발급 API가 추가로 필요해 지금 스코프에 비해 과했다. JWT의 `mustChangePw` 클레임 + 인증된 password-setup 엔드포인트만으로 원래 문제(재확인 불가능, URL 노출)를 모두 해결할 수 있어 채택하지 않았다.
+- **`temporaryPassword`를 계정 발급 응답으로, 최초 로그인 여부는 액세스 토큰에 담는 방식**: 최종 채택한 설계와 거의 같은 방향이었으나, `password-setup` 엔드포인트를 아예 없애고 `PATCH /api/users/me/password`(내 비밀번호 변경)를 재사용하자는 제안이 있었다. 사용자가 "최초 설정과 평소 비밀번호 변경은 책임이 다르다"는 이유로 반대해, `password-setup`은 별도 엔드포인트로 유지하고 대신 페이로드만 이메일·전화번호까지 받도록 확장했다.
+
+### 완료 기준
+
+- [x] JWT 체인 전체에 `mustChangePw` 클레임 추가(`JwtClaims`/`JwtTokenProvider`/`TokenIssuerUseCase`/`TokenService`/`AuthUser`/`JwtAuthenticationConverter`/`LoginService`/`RefreshService`, `LoginResult`/`LoginResponse`에 반영), 관련 테스트 전부 TDD로 갱신(신규 `LoginServiceTest` 포함)
+- [x] `CreateAccountRequest`/`CreateAccountCommand`/`User.create()`에서 `phone`/`email` 제거, 요청에 포함 시 `400`으로 거절되는지 로컬 e2e로 확인
+- [x] `AccountIssuer`/`IssuedAccount`/`CreateAccountResult`/`AccountCreateResponse`를 `temporaryPassword` 반환으로 되돌림, `PasswordSetupLinkBuilder`+테스트+`app.frontend-url` 설정(로컬/운영/테스트 3곳) 삭제
+- [x] `PasswordSetupRequest`/`PasswordSetupCommand`/`PasswordSetupService`를 인증 기반(`userId`로 조회) + `{newPassword, email, phone}` 필수 입력으로 재작성(TDD)
+- [x] `UserJpaRepository.completePasswordSetupIfMustChange` 확장(비밀번호+연락처+이메일 동시 갱신), `UserRepositoryImpl.completePasswordSetup`에 이메일 중복 → `EmailDuplicateException` 변환 추가(TDD)
+- [x] `UserController`의 `password-setup` 핸들러에 `@AuthenticationPrincipal AuthUser` 추가, `SecurityConfig`에서 `permitAll` 매처 제거
+- [x] `./gradlew test` 전체 통과(환경 이슈로 `Java heap space` 1회 발생 후 재시도 성공 — IntelliJ+Gradle 데몬+구동 중인 앱 서버가 동시에 메모리를 점유한 환경 문제, 코드 결함 아님)
+- [x] 로컬 curl e2e: 계정 발급(연락처·이메일 미입력 확인, 포함 시 400 확인) → 로그인(`mustChangePw=true` 응답·JWT 클레임 확인) → 인증 없이 password-setup 호출 시 401 확인 → 이메일 누락 시 400 확인 → 정상 설정(이메일 중복 시 409 확인 후 유니크 값으로 재시도, 204) → 재로그인(`mustChangePw=false` 확인, DB에 연락처·이메일 반영 확인) → 옛 임시 비밀번호 로그인 실패(401) → 동일 계정 재설정 시도 시 400 확인
+- [x] Swagger(OpenAPI) 문서로 `AccountCreateResponse`/`PasswordSetupRequest`/`CreateAccountRequest`/`LoginResponse` 스키마 재검증
+- [x] 문서 갱신(API.md/API_FLOW.md/README.md/CHANGELOG.md/REVISION.md)
+
+### 🧩 영향 범위
+
+| 계층 | 변경 내용 |
+| --- | --- |
+| Domain(users) | `User.create()`에서 `phone`/`email` 파라미터 제거(내부적으로 `null` 고정, `restore()`는 영향 없음) |
+| Application(users) | `CreateAccountCommand`(`phone`/`email` 제거), `AccountIssuer`/`IssuedAccount`(`temporaryPassword` 필드로 복귀), `CreateAccountResult`(동일), `PasswordSetupCommand`(`{userId, newPassword, email, phone}`로 전면 교체), `PasswordSetupService`(인증 기반 재작성), `LoginResult`(신규), `LoginService`/`RefreshService`(`mustChangePw` 전파) |
+| Persistence(users) | `UserJpaRepository.completePasswordSetupIfMustChange`(비밀번호+연락처+이메일 동시 갱신으로 확장), `UserRepositoryImpl.completePasswordSetup`(이메일 중복 예외 변환 추가) |
+| Presentation(users) | `CreateAccountRequest`(`phone`/`email` 제거), `AccountCreateResponse`(`temporaryPassword`로 복귀), `PasswordSetupRequest`(`{newPassword, email, phone}`로 전면 교체), `UserController.setupPassword`(`@AuthenticationPrincipal AuthUser` 추가), `LoginResponse`(`mustChangePw` 추가) |
+| 공통(`global`) | `JwtClaims`/`JwtTokenProvider`/`AuthUser`/`JwtAuthenticationConverter`에 `mustChangePw` 추가, `SecurityConfig`에서 `POST /api/users/password-setup`의 `permitAll` 매처 제거 |
+| 공통(`auth`) | `TokenIssuerUseCase`/`TokenService`의 `issue()`/`issueAccessToken()`에 `mustChangePw` 파라미터 추가 |
+| 삭제 | `PasswordSetupLinkBuilder`+테스트, `app.frontend-url`(로컬/운영/테스트 설정 3곳), 이제 무의미해진 `CreateAccountRequestTest`(email 검증 테스트) |
+| Migration | 없음(기존 컬럼·제약 재사용, 신규 컬럼 추가 없음) |
+
+### 후속 작업
+
+- 임시 비밀번호·아이디를 학원 관리자가 직원에게 전달하는 과정의 자동화(이메일/카카오톡 발송 연동)는 여전히 범위 밖이다.
+- 응답 바디에 평문 임시 비밀번호가 담기는 것 자체를 앱 레벨 로깅에서 마스킹할지는 별도 검토가 필요하다(access log에 응답 바디를 남기는 설정이 있는지 확인 필요) — 이번 작업은 URL 노출 경로만 제거했다.
 
 ---
 

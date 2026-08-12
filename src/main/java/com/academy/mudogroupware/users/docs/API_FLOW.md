@@ -13,17 +13,19 @@
    → 불일치하면 UserException(LOGIN_FAILED) — 위 "없음" 케이스와 동일 코드
 → User.ensureLoginAllowed()
    → status != ACTIVE 이면 UserException(LOGIN_RESTRICTED)
-→ TokenIssuerUseCase.issue(id, username, roleId, accountType, adminScope)  ※ auth 모듈의 TokenService
+→ TokenIssuerUseCase.issue(id, username, roleId, accountType, adminScope, mustChangePw)  ※ auth 모듈의 TokenService
    → JwtTokenProvider.createAccessToken / createRefreshToken
    → RefreshTokenRepository: 기존 행 있으면 교체(replace), 없으면 저장(save)
    → TokenPair(accessToken, refreshToken) 반환
-→ LoginResponse(accessToken)
+→ LoginResult(tokenPair, user.isMustChangePw())
+→ LoginResponse(accessToken, mustChangePw)
 → RefreshTokenCookieFactory.create(refreshToken) → Set-Cookie 헤더
 → GlobalApiResponse<LoginResponse>
 ```
 
 - JWT엔 `roleId`만 싣습니다(`academyId`는 Phase 2에서 제거했습니다). `roleName`이나 permission 목록은 싣지 않고, 매 요청마다 새로 조회합니다(아래 3번 흐름).
 - refreshToken은 응답 바디에 절대 포함되지 않고, HttpOnly 쿠키로만 전달됩니다.
+- (2026-08-12) `mustChangePw`는 응답 바디와 액세스 토큰 클레임 양쪽에 모두 실립니다. 로그인 자체는 `mustChangePw` 값과 무관하게 항상 성공합니다(`User.ensureLoginAllowed()`는 `status`만 확인) — 이 값은 프론트가 최초 비밀번호 설정 화면으로 안내할지 판단하는 신호일 뿐, 백엔드가 다른 API 호출을 막는 강제 로직으로 쓰지 않습니다.
 
 ## 2. 액세스 토큰 재발급 흐름
 
@@ -108,7 +110,7 @@
 
 ## 📝 문서 정보
 
-- 업데이트일: `2026-08-11`
+- 업데이트일: `2026-08-12`
 - 변경 사항(요약):
   - 로그인 흐름을 처음 작성했습니다.
   - 액세스 토큰 재발급 흐름을 추가했습니다 (리프레시 토큰 검증 3단계 분기 포함).
@@ -116,3 +118,4 @@
   - 로그아웃 흐름(4번)을 추가했습니다.
   - JWT에 `accountType`/`adminScope` 매개변수 전파, `JwtAuthenticationConverter`에 platform admin 분기 로직 추가 (accountType==ADMIN && adminScope==PLATFORM인 경우 RolePermissionLookupPort 대신 PlatformAdminPermissionPort 호출).
   - academyId 스코핑 제거(Phase 2): `JwtClaims`/`JwtTokenProvider`/`AuthUser`/`JwtAuthenticationConverter`에서 `academyId`를 제거했습니다. 위 흐름의 시그니처들을 이에 맞춰 갱신했습니다.
+  - 최초 로그인/비밀번호 설정 흐름 재설계: JWT·로그인 응답에 `mustChangePw` 클레임을 추가해 로그인 흐름(1번)을 갱신했습니다. 자세한 배경은 `REVISION.md` 참고.

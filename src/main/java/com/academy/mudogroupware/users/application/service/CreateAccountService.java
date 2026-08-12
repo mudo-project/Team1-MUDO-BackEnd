@@ -44,11 +44,11 @@ public class CreateAccountService implements CreateAccountUseCase {
 
             LocalDateTime now = LocalDateTime.now(clock);
             IssuedAccount issuedAccount = accountIssuer.issue(command.username(),
-                    command.name(), command.phone(), command.email(), role.getId(), AccountType.MEMBER, null, now);
+                    command.name(), role.getId(), AccountType.MEMBER, null, now);
 
             log.info("event=account_create_완료 userId={}", issuedAccount.user().getId());
             return new CreateAccountResult(issuedAccount.user().getId(), issuedAccount.user().getUsername(),
-                    issuedAccount.passwordSetupLink());
+                    issuedAccount.temporaryPassword());
         } catch (RuntimeException e) {
             log.warn("event=account_create_실패 roleId={}, reason={}", command.roleId(), e.getMessage(), e);
             throw e;
