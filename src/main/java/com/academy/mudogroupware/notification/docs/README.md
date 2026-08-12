@@ -11,7 +11,9 @@ WebSocket 연결이 끊긴 사용자에게 유실되던 알림을 저장하고, 
 
 ## 외부에 공개하는 Application API
 
-(아직 없음 — 조회/읽음처리/삭제 API가 추가될 때마다 이 섹션에 한 줄씩 추가한다.)
+- `GET /api/notifications` — 목록 조회 (offset 페이지네이션, 20개, 최신순, 필터 없음)
+- `GET /api/notifications/unread-count` — 안읽은 개수 조회
+- (읽음처리/삭제 API가 추가될 때마다 이 섹션에 한 줄씩 추가한다.)
 
 ## 다른 모듈에 요청하는 의존성
 
