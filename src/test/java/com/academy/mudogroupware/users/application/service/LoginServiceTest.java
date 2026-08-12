@@ -60,6 +60,8 @@ class LoginServiceTest {
         LoginResult result = service.login(new LoginCommand("teacher01", "real-pass"));
 
         assertThat(result.mustChangePw()).isFalse();
+        assertThat(result.tokenPair().accessToken()).isEqualTo("access-token");
+        assertThat(result.tokenPair().refreshToken()).isEqualTo("refresh-token");
     }
 
     @Test

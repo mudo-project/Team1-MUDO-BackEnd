@@ -49,7 +49,7 @@
    → 없으면 UserException(USER_NOT_FOUND)
 → User.ensureLoginAllowed()
    → status != ACTIVE 이면 UserException(LOGIN_RESTRICTED)
-→ TokenIssuerUseCase.issueAccessToken(id, username, roleId, accountType, adminScope)  ※ 액세스 토큰만 새로 생성, refreshToken 저장소는 건드리지 않음
+→ TokenIssuerUseCase.issueAccessToken(id, username, roleId, accountType, adminScope, user.isMustChangePw())  ※ 액세스 토큰만 새로 생성, refreshToken 저장소는 건드리지 않음
 → RefreshResponse(accessToken)
 → GlobalApiResponse<RefreshResponse>
 ```
@@ -57,6 +57,7 @@
 - 로그인 흐름의 `TokenIssuerUseCase.issue()`(쌍 발급 + 저장)와 달리, 재발급은 `issueAccessToken()`(액세스 토큰만 생성, DB 쓰기 없음)을 호출합니다 — 그래서 `RefreshService`는 `@Transactional(readOnly = true)`로 선언되어 있습니다.
 - JWT 자체 위조/만료(`AUTH_401_1`/`AUTH_401_2`)와, DB에 없거나(`AUTH_401_6`) DB 값과 다른 경우(`AUTH_401_7`)를 서로 다른 코드로 구분합니다 — 클라이언트가 "토큰을 완전히 새로 받아야 하는 경우"와 "다른 기기에서 로그인해서 밀려난 경우"를 구분할 수 있게 하기 위함입니다.
 - 재발급 시점의 `roleId`는 액세스 토큰 발급 당시(로그인 또는 마지막 재발급) 값을 그대로 이어받습니다 — 재발급 자체가 역할을 다시 확인하는 절차는 아닙니다.
+- `mustChangePw`도 재발급 시점에 DB에서 다시 조회한 최신 값(`user.isMustChangePw()`)으로 새 액세스 토큰에 다시 실립니다 — 로그인 이후 최초 비밀번호 설정을 완료했다면, 재발급부터는 새 토큰의 `mustChangePw`가 `false`로 갱신됩니다.
 
 ## 3. 요청 인증·인가 흐름 (인증이 필요한 모든 요청마다 반복)
 
@@ -64,7 +65,7 @@
 모든 요청 (SecurityConfig: 명시적으로 permitAll 안 된 경로는 authenticated() 필요)
 → JwtAuthenticationFilter (OncePerRequestFilter)
 → Authorization 헤더 또는 accessToken 쿠키에서 토큰 추출
-→ JwtTokenProvider.parseAccessToken → JwtClaims(userId, username, roleId, accountType, adminScope)
+→ JwtTokenProvider.parseAccessToken → JwtClaims(userId, username, roleId, accountType, adminScope, mustChangePw)
    → 위조/만료 시 request attribute에 에러코드만 저장(필터는 그냥 통과, 이후 인가 단계에서 401/403으로 응답)
 → JwtAuthenticationConverter.toAuthentication(claims)
    
@@ -79,7 +80,7 @@
          → role → role_permission → permission 조인 조회 (@Transactional(readOnly=true))
          → RolePermissionInfo(roleName, permissionCodes)
    
-   → AuthUser(userId, username, roleId, roleName, accountType, adminScope)
+   → AuthUser(userId, username, roleId, roleName, accountType, adminScope, mustChangePw)
    → authorities = permissionCodes를 SimpleGrantedAuthority로 변환한 목록
 → SecurityContextHolder에 Authentication 저장
 → 컨트롤러의 @PreAuthorize("hasAuthority('RESOURCE:ACTION')")가 authorities를 검사

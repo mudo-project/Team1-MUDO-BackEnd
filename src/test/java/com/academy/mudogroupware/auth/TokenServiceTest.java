@@ -27,4 +27,17 @@ class TokenServiceTest {
     assertThat(provider.parseAccessToken(pair.accessToken()))
         .isEqualTo(new JwtClaims(1L, "user", 2L, AccountType.MEMBER, null, false));
   }
+
+  @Test
+  void issuesAccessTokenWithMustChangePwTrue() {
+    JwtProperties p = new JwtProperties();
+    p.setSecret("test-secret-key-that-is-at-least-32-bytes-long");
+    JwtTokenProvider provider = new JwtTokenProvider(p);
+    RefreshTokenRepository r = mock(RefreshTokenRepository.class);
+    when(r.findByUserId(1L)).thenReturn(Optional.empty());
+
+    TokenPair pair = new TokenService(provider, r).issue(1L, "user", 2L, AccountType.MEMBER, null, true);
+
+    assertThat(provider.parseAccessToken(pair.accessToken()).mustChangePw()).isTrue();
+  }
 }
