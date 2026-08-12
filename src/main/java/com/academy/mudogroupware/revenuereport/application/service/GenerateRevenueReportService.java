@@ -16,6 +16,7 @@ import com.academy.mudogroupware.revenuereport.application.port.ExpenseSummaryPo
 import com.academy.mudogroupware.revenuereport.application.port.LectureRevenueInfo;
 import com.academy.mudogroupware.revenuereport.application.port.LectureRevenuePort;
 import com.academy.mudogroupware.revenuereport.application.port.RevenueReportAiPort;
+import com.academy.mudogroupware.revenuereport.application.port.RevenueSnapshot;
 import com.academy.mudogroupware.revenuereport.application.usecase.GenerateRevenueReportUseCase;
 import com.academy.mudogroupware.revenuereport.domain.model.Payment;
 import com.academy.mudogroupware.revenuereport.domain.model.RevenueReport;

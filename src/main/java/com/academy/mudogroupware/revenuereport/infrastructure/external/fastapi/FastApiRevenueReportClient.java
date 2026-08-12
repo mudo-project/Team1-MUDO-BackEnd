@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 import com.academy.mudogroupware.revenuereport.application.port.RevenueReportAiPort;
-import com.academy.mudogroupware.revenuereport.application.service.RevenueSnapshot;
+import com.academy.mudogroupware.revenuereport.application.port.RevenueSnapshot;
 import com.academy.mudogroupware.revenuereport.domain.exception.RevenueReportAiException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 

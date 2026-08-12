@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 
 import com.academy.mudogroupware.revenuereport.application.port.ExpenseSummary;
 import com.academy.mudogroupware.revenuereport.application.port.LectureRevenueInfo;
+import com.academy.mudogroupware.revenuereport.application.port.RevenueSnapshot;
 import com.academy.mudogroupware.revenuereport.domain.model.Payment;
 import com.academy.mudogroupware.revenuereport.domain.model.PaymentStatus;
 

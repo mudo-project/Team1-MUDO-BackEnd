@@ -17,7 +17,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
-import com.academy.mudogroupware.revenuereport.application.service.RevenueSnapshot;
+import com.academy.mudogroupware.revenuereport.application.port.RevenueSnapshot;
 
 class FastApiRevenueReportClientTest {
 
