@@ -5,14 +5,19 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.academy.mudogroupware.platform.application.port.DatabaseUsageMetricsPort;
 import com.academy.mudogroupware.platform.application.port.EcsHeadroomPort;
 import com.academy.mudogroupware.platform.application.port.MemberCountMetricsPort;
 import com.academy.mudogroupware.platform.application.port.OperationalMetricsPort;
 import com.academy.mudogroupware.platform.application.port.StorageUsagePort;
+import com.academy.mudogroupware.platform.domain.exception.PlatformErrorCode;
+import com.academy.mudogroupware.platform.domain.exception.PlatformException;
 import com.academy.mudogroupware.platform.domain.model.AcademyRuntime;
 import com.academy.mudogroupware.platform.domain.model.DashboardPeriod;
 import com.academy.mudogroupware.platform.domain.model.DashboardScope;
+import com.academy.mudogroupware.platform.domain.model.StorageUsage;
 import com.academy.mudogroupware.platform.infrastructure.PlatformTenantRegistry;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -65,6 +70,39 @@ class PlatformDashboardQueryServiceTest {
 
     assertThat(result).isEqualTo(12L);
     verify(memberCountMetricsPort).activeMemberCount(List.of("academy-a"));
+  }
+
+  @Test
+  void operationalMetricsRequiresAcademyCodeWhenScopeIsAcademy() {
+    assertThatThrownBy(() -> service.operationalMetrics(DashboardScope.ACADEMY, null, DashboardPeriod.LAST_HOUR))
+        .isInstanceOf(PlatformException.class)
+        .extracting(exception -> ((PlatformException) exception).getErrorCode())
+        .isEqualTo(PlatformErrorCode.ACADEMY_CODE_REQUIRED);
+  }
+
+  @Test
+  void academiesReturnsAllFromTenantRegistry() {
+    AcademyRuntime academyA = academy("academy-a");
+    AcademyRuntime academyB = academy("academy-b");
+    when(tenantRegistry.findAll()).thenReturn(List.of(academyA, academyB));
+
+    var result = service.academies();
+
+    assertThat(result).containsExactly(academyA, academyB);
+  }
+
+  @Test
+  void storageUsageCombinesDatabaseAndS3BytesForSelectedAcademy() {
+    AcademyRuntime academy = academy("academy-a");
+    when(tenantRegistry.get("academy-a")).thenReturn(academy);
+    when(databaseUsageMetricsPort.databaseBytes(List.of("academy-a"))).thenReturn(1000L);
+    when(storageUsagePort.s3Bytes(academy)).thenReturn(2000L);
+
+    StorageUsage result = service.storageUsage("academy-a");
+
+    assertThat(result.academyCode()).isEqualTo("academy-a");
+    assertThat(result.databaseBytes()).isEqualTo(1000L);
+    assertThat(result.s3Bytes()).isEqualTo(2000L);
   }
 
   private AcademyRuntime academy(String code) {
