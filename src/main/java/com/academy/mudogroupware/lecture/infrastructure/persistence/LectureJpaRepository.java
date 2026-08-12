@@ -2,6 +2,7 @@ package com.academy.mudogroupware.lecture.infrastructure.persistence;
 
 import java.time.DayOfWeek;
 import java.time.LocalTime;
+import java.util.List;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
@@ -37,4 +38,23 @@ public interface LectureJpaRepository extends JpaRepository<LectureEntity, Long>
                            @Param("dayOfWeek") DayOfWeek dayOfWeek,
                            @Param("startTime") LocalTime startTime,
                            @Param("endTime") LocalTime endTime);
+
+    /**
+     * 매출 리포트 집계 전용 조회. Lecture aggregate(schedules 포함)를 통째로 복원하지 않고
+     * 필요한 열만 뽑는다 — 이전에는 findAll()로 전체를 복원하다가 스케줄러(트랜잭션 밖 호출)에서
+     * schedules 지연로딩이 LazyInitializationException을 던졌었다.
+     */
+    @Query("select l.id as id, l.name as name, l.teacherName as teacherName, l.feeAmount as feeAmount "
+            + "from LectureEntity l")
+    List<LectureRevenueProjection> findAllRevenueProjection();
+
+    interface LectureRevenueProjection {
+        Long getId();
+
+        String getName();
+
+        String getTeacherName();
+
+        Integer getFeeAmount();
+    }
 }

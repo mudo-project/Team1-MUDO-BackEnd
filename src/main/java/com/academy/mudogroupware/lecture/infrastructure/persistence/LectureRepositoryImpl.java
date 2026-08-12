@@ -8,7 +8,6 @@ import java.util.Optional;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
 
 import com.academy.mudogroupware.global.domain.common.page.PageResult;
 import com.academy.mudogroupware.lecture.domain.model.Lecture;
@@ -52,16 +51,6 @@ public class LectureRepositoryImpl implements LectureRepository {
     @Override
     public List<Lecture> findAllById(List<Long> ids) {
         return lectureJpaRepository.findAllById(ids).stream().map(this::toDomain).toList();
-    }
-
-    /**
-     * 스케줄러(RevenueReportBatchScheduler) 같은 트랜잭션 밖 호출자도 있어서, schedules
-     * 지연 로딩이 세션 종료 후 실패하지 않도록 이 메서드 자체가 트랜잭션 경계를 가진다.
-     */
-    @Override
-    @Transactional(readOnly = true)
-    public List<Lecture> findAll() {
-        return lectureJpaRepository.findAll().stream().map(this::toDomain).toList();
     }
 
     @Override
