@@ -1,6 +1,7 @@
 package com.academy.mudogroupware.users.presentation.api;
 
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -17,6 +18,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import com.academy.mudogroupware.global.domain.auth.AccountType;
 import com.academy.mudogroupware.global.infrastructure.security.jwt.JwtTokenProvider;
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
 import com.academy.mudogroupware.global.presentation.security.JwtAuthenticationConverter;
@@ -24,6 +26,7 @@ import com.academy.mudogroupware.users.application.usecase.ChangeMyPasswordUseCa
 import com.academy.mudogroupware.users.application.usecase.ChangeUserStatusUseCase;
 import com.academy.mudogroupware.users.application.usecase.CreateAccountUseCase;
 import com.academy.mudogroupware.users.application.usecase.GetMemberDetailUseCase;
+import com.academy.mudogroupware.users.application.usecase.GetMyPermissionsUseCase;
 import com.academy.mudogroupware.users.application.usecase.GetMyProfileUseCase;
 import com.academy.mudogroupware.users.application.usecase.ListMembersUseCase;
 import com.academy.mudogroupware.users.application.usecase.PasswordSetupUseCase;
@@ -62,6 +65,8 @@ class UserControllerTest {
     @MockitoBean
     private ChangeUserStatusUseCase changeUserStatusUseCase;
     @MockitoBean
+    private GetMyPermissionsUseCase getMyPermissionsUseCase;
+    @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
     @MockitoBean
     private JwtAuthenticationConverter jwtAuthenticationConverter;
@@ -76,6 +81,20 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.code").value("COMMON_400_1"));
 
         verifyNoInteractions(listMembersUseCase);
+    }
+
+    @Test
+    void getMyPermissionsReturnsResolvedPermissionsForAuthenticatedUser() throws Exception {
+        when(getMyPermissionsUseCase.getMyPermissions(7L, AccountType.MEMBER, null))
+                .thenReturn(List.of("ACCOUNT:MANAGE", "ROLE:MANAGE"));
+
+        mockMvc
+                .perform(get("/api/users/me/permissions")
+                        .with(authentication(authenticatedUser("ACCOUNT:MANAGE", "ROLE:MANAGE"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("USER_200_7"))
+                .andExpect(jsonPath("$.data.permissions[0]").value("ACCOUNT:MANAGE"))
+                .andExpect(jsonPath("$.data.permissions[1]").value("ROLE:MANAGE"));
     }
 
     private Authentication authenticatedUser(String... authorities) {
