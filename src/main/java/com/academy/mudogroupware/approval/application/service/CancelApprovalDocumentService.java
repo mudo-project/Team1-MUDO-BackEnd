@@ -13,6 +13,7 @@ import com.academy.mudogroupware.approval.domain.event.ApprovalDocumentDecidedEv
 import com.academy.mudogroupware.approval.domain.exception.ApprovalErrorCode;
 import com.academy.mudogroupware.approval.domain.exception.ApprovalException;
 import com.academy.mudogroupware.approval.domain.model.ApprovalDocument;
+import com.academy.mudogroupware.approval.domain.model.ApprovalStatus;
 import com.academy.mudogroupware.approval.domain.repository.ApprovalDocumentRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -40,6 +41,6 @@ public class CancelApprovalDocumentService implements CancelApprovalDocumentUseC
         approvalDocumentRepository.save(approvalDocument);
 
         eventPublisher.publishEvent(new ApprovalDocumentDecidedEvent(approvalDocument.getId(),
-                approvalDocument.getCreatorId(), false, now));
+                approvalDocument.getCreatorId(), ApprovalStatus.CANCELLED, now));
     }
 }
