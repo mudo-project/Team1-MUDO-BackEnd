@@ -61,6 +61,7 @@ public class TimetableSetEntity extends BaseTimeEntity {
     private Long version;
 
     @ElementCollection(fetch = FetchType.EAGER)
+    @org.hibernate.annotations.Fetch(org.hibernate.annotations.FetchMode.SUBSELECT)
     @CollectionTable(name = "timetable_set_classroom", joinColumns = @JoinColumn(name = "timetable_set_id"))
     private List<TimetableClassroomEmbeddable> classrooms = new ArrayList<>();
 
