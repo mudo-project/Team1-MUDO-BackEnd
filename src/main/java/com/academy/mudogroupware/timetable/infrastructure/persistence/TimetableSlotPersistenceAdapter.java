@@ -23,6 +23,9 @@ public class TimetableSlotPersistenceAdapter implements TimetableSlotRepository 
         if (slot.getId() != null) {
             TimetableSlotEntity entity = updateExisting(slot);
             try {
+                // 슬롯 동시 쓰기는 이미 TimetableSet 비관적 락(CreateTimetableSlotService/UpdateTimetableSlotService의
+                // findByIdForUpdate)이 직렬화한다. 이 버전 검사는 그 락을 거치지 않는 향후 호출 경로에 대한
+                // 방어 계층이다.
                 timetableSlotJpaRepository.flush();
             } catch (OptimisticLockingFailureException exception) {
                 throw new TimetableSlotUpdateConflictException(exception);
