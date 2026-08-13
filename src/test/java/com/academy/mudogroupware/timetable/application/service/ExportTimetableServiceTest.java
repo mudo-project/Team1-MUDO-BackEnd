@@ -71,10 +71,10 @@ class ExportTimetableServiceTest {
 
         TimetableSlotView tuesdaySlot = new TimetableSlotView(
                 200L, ClassType.CLASS, DayOfWeek.TUESDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                Grade.HIGH_3, "정T", "미적분");
+                Grade.HIGH_3, "정T", "미적분", "FFCC00");
         TimetableSlotView mondaySlot = new TimetableSlotView(
                 100L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                Grade.HIGH_3, "정T", "미적분");
+                Grade.HIGH_3, "정T", "미적분", "FFCC00");
         when(getTimetableSlotsUseCase.getSlots(1L)).thenReturn(List.of(tuesdaySlot, mondaySlot));
 
         when(excelRenderer.supports(TimetableExportFormat.EXCEL)).thenReturn(true);
@@ -100,10 +100,10 @@ class ExportTimetableServiceTest {
 
         TimetableSlotView classSlot = new TimetableSlotView(
                 100L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                Grade.HIGH_3, "정T", "미적분");
+                Grade.HIGH_3, "정T", "미적분", "FFCC00");
         TimetableSlotView specialSlot = new TimetableSlotView(
                 200L, ClassType.SPECIAL, DayOfWeek.MONDAY, "601", LocalTime.of(13, 0), LocalTime.of(15, 0),
-                Grade.HIGH_2, "오T", "물리");
+                Grade.HIGH_2, "오T", "물리", "FFCC00");
         when(getTimetableSlotsUseCase.getSlots(1L)).thenReturn(List.of(classSlot, specialSlot));
 
         when(excelRenderer.supports(TimetableExportFormat.EXCEL)).thenReturn(true);
@@ -123,10 +123,10 @@ class ExportTimetableServiceTest {
 
         TimetableSlotView mondaySlot = new TimetableSlotView(
                 100L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                Grade.HIGH_3, "정T", "미적분");
+                Grade.HIGH_3, "정T", "미적분", "FFCC00");
         TimetableSlotView tuesdaySlot = new TimetableSlotView(
                 200L, ClassType.CLASS, DayOfWeek.TUESDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                Grade.HIGH_3, "정T", "미적분");
+                Grade.HIGH_3, "정T", "미적분", "FFCC00");
         when(getTimetableSlotsUseCase.getSlots(1L)).thenReturn(List.of(mondaySlot, tuesdaySlot));
 
         when(excelRenderer.supports(TimetableExportFormat.EXCEL)).thenReturn(true);
@@ -146,10 +146,10 @@ class ExportTimetableServiceTest {
 
         TimetableSlotView floor6Slot = new TimetableSlotView(
                 100L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                Grade.HIGH_3, "정T", "미적분");
+                Grade.HIGH_3, "정T", "미적분", "FFCC00");
         TimetableSlotView floor5Slot = new TimetableSlotView(
                 200L, ClassType.CLASS, DayOfWeek.MONDAY, "602", LocalTime.of(13, 0), LocalTime.of(15, 0),
-                Grade.HIGH_2, "오T", "물리");
+                Grade.HIGH_2, "오T", "물리", "FFCC00");
         when(getTimetableSlotsUseCase.getSlots(1L)).thenReturn(List.of(floor6Slot, floor5Slot));
 
         when(excelRenderer.supports(TimetableExportFormat.EXCEL)).thenReturn(true);
@@ -169,10 +169,10 @@ class ExportTimetableServiceTest {
 
         TimetableSlotView mondaySlot = new TimetableSlotView(
                 100L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                Grade.HIGH_3, "정T", "미적분");
+                Grade.HIGH_3, "정T", "미적분", "FFCC00");
         TimetableSlotView tuesdaySlot = new TimetableSlotView(
                 200L, ClassType.CLASS, DayOfWeek.TUESDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                Grade.HIGH_3, "정T", "미적분");
+                Grade.HIGH_3, "정T", "미적분", "FFCC00");
         when(getTimetableSlotsUseCase.getSlots(1L)).thenReturn(List.of(mondaySlot, tuesdaySlot));
 
         when(pdfRenderer.supports(TimetableExportFormat.PDF)).thenReturn(true);
