@@ -4,10 +4,14 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.regex.Pattern;
 
+import com.academy.mudogroupware.timetable.domain.exception.InvalidTimetableColorException;
 import com.academy.mudogroupware.timetable.domain.exception.InvalidTimetableSlotException;
 
 public final class TimetableSlot {
+
+    private static final Pattern HEX_COLOR = Pattern.compile("^[0-9A-Fa-f]{6}$");
 
     private final Long id;
     private final Long timetableSetId;
@@ -19,6 +23,7 @@ public final class TimetableSlot {
     private Grade grade;
     private String teacherName;
     private String subjectName;
+    private String color;
     private LocalDate effectiveFrom;
     private LocalDate effectiveUntil;
     private final LocalDateTime createdAt;
@@ -26,7 +31,7 @@ public final class TimetableSlot {
 
     private TimetableSlot(Long id, Long timetableSetId, ClassType classType, DayOfWeek dayOfWeek,
                            String classroomCode, LocalTime startTime, LocalTime endTime, Grade grade,
-                           String teacherName, String subjectName, LocalDate effectiveFrom,
+                           String teacherName, String subjectName, String color, LocalDate effectiveFrom,
                            LocalDate effectiveUntil, LocalDateTime createdAt, LocalDateTime updatedAt) {
         if (timetableSetId == null) {
             throw new InvalidTimetableSlotException("timetableSetId");
@@ -46,6 +51,9 @@ public final class TimetableSlot {
         if (grade == null) {
             throw new InvalidTimetableSlotException("grade");
         }
+        if (color == null || !HEX_COLOR.matcher(color).matches()) {
+            throw new InvalidTimetableColorException();
+        }
         if (effectiveFrom == null || effectiveUntil == null || effectiveUntil.isBefore(effectiveFrom)) {
             throw new InvalidTimetableSlotException("effectivePeriod");
         }
@@ -59,6 +67,7 @@ public final class TimetableSlot {
         this.grade = grade;
         this.teacherName = teacherName;
         this.subjectName = subjectName;
+        this.color = color;
         this.effectiveFrom = effectiveFrom;
         this.effectiveUntil = effectiveUntil;
         this.createdAt = createdAt;
@@ -67,22 +76,24 @@ public final class TimetableSlot {
 
     public static TimetableSlot create(Long timetableSetId, ClassType classType, DayOfWeek dayOfWeek,
                                         String classroomCode, LocalTime startTime, LocalTime endTime, Grade grade,
-                                        String teacherName, String subjectName, LocalDate effectiveFrom,
-                                        LocalDate effectiveUntil) {
+                                        String teacherName, String subjectName, String color,
+                                        LocalDate effectiveFrom, LocalDate effectiveUntil) {
         return new TimetableSlot(null, timetableSetId, classType, dayOfWeek, classroomCode, startTime, endTime,
-                grade, teacherName, subjectName, effectiveFrom, effectiveUntil, null, null);
+                grade, teacherName, subjectName, color, effectiveFrom, effectiveUntil, null, null);
     }
 
     public static TimetableSlot restore(Long id, Long timetableSetId, ClassType classType, DayOfWeek dayOfWeek,
                                          String classroomCode, LocalTime startTime, LocalTime endTime, Grade grade,
-                                         String teacherName, String subjectName, LocalDate effectiveFrom,
-                                         LocalDate effectiveUntil, LocalDateTime createdAt, LocalDateTime updatedAt) {
+                                         String teacherName, String subjectName, String color,
+                                         LocalDate effectiveFrom, LocalDate effectiveUntil, LocalDateTime createdAt,
+                                         LocalDateTime updatedAt) {
         return new TimetableSlot(id, timetableSetId, classType, dayOfWeek, classroomCode, startTime, endTime, grade,
-                teacherName, subjectName, effectiveFrom, effectiveUntil, createdAt, updatedAt);
+                teacherName, subjectName, color, effectiveFrom, effectiveUntil, createdAt, updatedAt);
     }
 
     public void applyFullUpdate(ClassType classType, DayOfWeek dayOfWeek, String classroomCode, LocalTime startTime,
-                                 LocalTime endTime, Grade grade, String teacherName, String subjectName) {
+                                 LocalTime endTime, Grade grade, String teacherName, String subjectName,
+                                 String color) {
         if (classroomCode == null || classroomCode.isBlank()) {
             throw new InvalidTimetableSlotException("classroomCode");
         }
@@ -92,6 +103,9 @@ public final class TimetableSlot {
         if (grade == null) {
             throw new InvalidTimetableSlotException("grade");
         }
+        if (color == null || !HEX_COLOR.matcher(color).matches()) {
+            throw new InvalidTimetableColorException();
+        }
         this.classType = classType;
         this.dayOfWeek = dayOfWeek;
         this.classroomCode = classroomCode;
@@ -100,6 +114,7 @@ public final class TimetableSlot {
         this.grade = grade;
         this.teacherName = teacherName;
         this.subjectName = subjectName;
+        this.color = color;
     }
 
     public void closeEffectiveUntil(LocalDate newEffectiveUntil) {
@@ -157,6 +172,10 @@ public final class TimetableSlot {
 
     public String getSubjectName() {
         return subjectName;
+    }
+
+    public String getColor() {
+        return color;
     }
 
     public LocalDate getEffectiveFrom() {
