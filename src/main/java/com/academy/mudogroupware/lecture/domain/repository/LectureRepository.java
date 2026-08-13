@@ -1,6 +1,7 @@
 package com.academy.mudogroupware.lecture.domain.repository;
 
 import java.time.DayOfWeek;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
@@ -19,4 +20,9 @@ public interface LectureRepository {
     PageResult<Lecture> findAll(LectureFilter filter, int page, int size);
 
     boolean existsOverlap(String classroomCode, DayOfWeek dayOfWeek, LocalTime startTime, LocalTime endTime);
+
+    boolean existsOverlapExcludingLecture(Long lectureId, String classroomCode, DayOfWeek dayOfWeek,
+                                          LocalTime startTime, LocalTime endTime);
+
+    void deleteById(Long id, LocalDateTime deletedAt);
 }
