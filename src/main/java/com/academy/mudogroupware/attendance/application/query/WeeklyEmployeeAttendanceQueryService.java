@@ -23,7 +23,7 @@ import com.academy.mudogroupware.attendance.domain.model.AttendancePolicy;
 import com.academy.mudogroupware.attendance.domain.model.MyAttendanceDayStatus;
 import com.academy.mudogroupware.attendance.domain.repository.AttendancePolicyRepository;
 import com.academy.mudogroupware.attendance.domain.repository.LeaveRequestRepository;
-import com.academy.mudogroupware.global.domain.common.page.PageResult;
+import com.academy.mudogroupware.global.domain.common.page.PagedResult;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -112,7 +112,7 @@ public class WeeklyEmployeeAttendanceQueryService implements GetWeeklyEmployeeAt
         int from = Math.min(page * size, filtered.size());
         int to = Math.min(from + size, filtered.size());
         WeeklyEmployeeAttendanceView result = new WeeklyEmployeeAttendanceView(startDate, endDate, scheduledWorkDays,
-                PageResult.of(filtered.subList(from, to), page, size, to < filtered.size()));
+                PagedResult.of(filtered.subList(from, to), page, size, filtered.size()));
         log.info("event=attendance_employee_weekly_read_완료 count={}", filtered.size());
         return result;
         } catch (RuntimeException e) {

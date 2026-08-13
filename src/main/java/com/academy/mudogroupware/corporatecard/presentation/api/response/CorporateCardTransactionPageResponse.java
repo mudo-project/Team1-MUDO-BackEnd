@@ -8,10 +8,16 @@ public record CorporateCardTransactionPageResponse(
         List<CorporateCardTransactionResponse> content,
         int page,
         int size,
-        boolean hasNext) {
+        long totalElements,
+        int totalPages,
+        boolean first,
+        boolean last,
+        boolean hasNext,
+        boolean hasPrevious) {
     public static CorporateCardTransactionPageResponse from(CardExpensePage page) {
         return new CorporateCardTransactionPageResponse(
                 page.content().stream().map(CorporateCardTransactionResponse::from).toList(),
-                page.page(), page.size(), page.hasNext());
+                page.page(), page.size(), page.totalElements(), page.totalPages(),
+                page.first(), page.last(), page.hasNext(), page.hasPrevious());
     }
 }

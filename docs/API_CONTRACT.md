@@ -63,10 +63,33 @@ Authorization: Bearer {accessToken}
 
 ### 페이지네이션
 
-- Query Parameter: `page`, `size`
-- `page`: 0부터 시작
-- 목록 응답 최소 필드: `content`, `page`, `size`, `hasNext`
-- 전체 개수가 불필요한 조회는 `Slice` 기반 응답을 우선 고려한다.
+목록 특성과 화면 요구사항에 따라 `Page`, `Slice`, `Cursor` 중 하나를 선택한다.
+
+| 방식 | 선택 기준 | 요청 | 응답 |
+| --- | --- | --- | --- |
+| `Page` | 페이지 번호 이동과 전체 항목·페이지 수가 필요할 때 | `page`, `size` | `content`, `page`, `size`, `totalElements`, `totalPages`, `first`, `last`, `hasNext`, `hasPrevious` |
+| `Slice` | 전체 개수 없이 이전·다음 순차 탐색 또는 더보기 UI만 필요할 때 | `page`, `size` | `content`, `page`, `size`, `hasNext` |
+| `Cursor` | 데이터가 계속 추가되어 offset 조회 중 중복·누락 가능성이 있거나, 깊은 페이지의 offset 비용을 피해야 할 때 | 첫 요청은 cursor 생략, 이후 응답의 cursor와 `size` 전달 | `content` 또는 도메인 목록 필드, `hasNext`, 다음 요청용 cursor 필드 |
+
+#### Page·Slice 공통 규칙
+
+- `page`는 0부터 시작한다.
+- 전체 개수와 번호 기반 페이지 이동이 필요하면 `Page`를 사용한다.
+- 전체 개수가 불필요하면 추가 COUNT 쿼리를 생략할 수 있는 `Slice`를 우선 고려한다.
+
+#### Cursor 규칙
+
+- 첫 페이지 요청은 cursor를 생략한다.
+- 다음 페이지 요청은 서버가 직전 응답으로 반환한 cursor를 변경하거나 해석하지 않고 그대로 전달한다.
+- 단일 불투명 cursor는 요청 `cursor`, 응답 `nextCursor`를 기본 이름으로 사용한다.
+- 정렬 키가 중복될 수 있어 복합 키셋 커서가 필요하면 의미가 드러나는 필드명을 사용한다. 예: 요청
+  `cursorCreatedAt` + `cursorMessageId`, 응답 `nextCursorCreatedAt` + `nextCursorMessageId`.
+- 복합 cursor 필드는 전부 전달하거나 전부 생략해야 한다.
+- `hasNext`가 `false`이면 다음 cursor 필드는 `null`이다.
+- DB 키셋 방식은 정렬 순서를 고정하고 유일한 타이브레이커를 포함한다. 예:
+  `createdAt DESC, id DESC`.
+- Cursor 응답은 전체 개수를 계산하지 않으므로 `page`, `totalElements`, `totalPages`를 제공하지 않는다.
+- 한 API에서 offset 기반 `page`와 cursor를 동시에 사용하지 않는다. 기존 API의 방식을 변경하면 응답 계약 변경으로 취급한다.
 
 ## 성공 응답 형식
 

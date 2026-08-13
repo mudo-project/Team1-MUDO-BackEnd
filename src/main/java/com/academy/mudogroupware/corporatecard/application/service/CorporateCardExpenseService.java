@@ -46,7 +46,9 @@ public class CorporateCardExpenseService {
                 .map(CardExpensePort.ExpenseView::approvalDocumentId).filter(java.util.Objects::nonNull).collect(Collectors.toSet()));
         CardExpensePage result = new CardExpensePage(
                 transactionPage.content().stream().map(t -> toView(t, expenses.get(t.id()), statuses)).toList(),
-                transactionPage.page(), transactionPage.size(), transactionPage.hasNext());
+                transactionPage.page(), transactionPage.size(), transactionPage.totalElements(),
+                transactionPage.totalPages(), transactionPage.first(), transactionPage.last(),
+                transactionPage.hasNext(), transactionPage.hasPrevious());
         log.info("event=corporate_card_transaction_list_read_완료 page={}, count={}", page, result.content().size());
         return result;
         } catch (RuntimeException e) {

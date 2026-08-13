@@ -1,11 +1,39 @@
 # corporatecard API 명세
 
-> corporatecard 모듈은 아직 문서(`docs/`)가 없다. 이 파일은 신규 추가된 영수증 대사 검증
-> 엔드포인트만 다룬다. `GET /api/corporate-card/transactions`, `GET /{transactionId}`,
-> `POST /{transactionId}/submit`, `PUT /{transactionId}/expense`, `POST /batch-submit`은
-> 아직 별도로 문서화되지 않았다.
+> corporatecard 모듈은 아직 모듈 내부 문서(`docs/`)가 없다. 이 파일은 법인카드 사용내역 목록과
+> 영수증 대사 검증 엔드포인트를 다룬다. 그 외 엔드포인트는 아직 별도로 문서화되지 않았다.
 
-## 1. 영수증-카드거래 대사 검증
+## 1. 법인카드 사용내역 조회
+
+`GET /api/corporate-card/transactions?page=0&size=20`
+
+필요 권한: `CORPORATE_CARD:EXPENSE`
+
+페이지는 0부터 시작하며 `size`는 1~100이다.
+
+```json
+{
+  "status": 200,
+  "code": "CORPORATE_CARD_TRANSACTIONS_RETRIEVED",
+  "message": "법인카드 사용내역 조회가 완료되었습니다.",
+  "data": {
+    "content": [],
+    "page": 0,
+    "size": 20,
+    "totalElements": 0,
+    "totalPages": 0,
+    "first": true,
+    "last": true,
+    "hasNext": false,
+    "hasPrevious": false
+  }
+}
+```
+
+페이지 응답은 `content`, `page`, `size`, `totalElements`, `totalPages`, `first`, `last`,
+`hasNext`, `hasPrevious`를 제공한다.
+
+## 2. 영수증-카드거래 대사 검증
 
 `POST /api/corporate-card/transactions/{transactionId}/reconcile-receipt`
 

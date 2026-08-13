@@ -13,6 +13,7 @@ import com.academy.mudogroupware.payroll.application.port.out.PayrollEmployeePor
 import com.academy.mudogroupware.payroll.application.port.out.PayrollRepository;
 import com.academy.mudogroupware.payroll.application.port.out.PayrollStatementDeliveryPort;
 import com.academy.mudogroupware.payroll.application.port.out.PayrollStatementDeliveryPort.DeliveryData;
+import com.academy.mudogroupware.payroll.application.port.out.PayrollStatementDeliveryPort.BatchData;
 import com.academy.mudogroupware.payroll.application.port.out.PayrollStatementPort;
 import com.academy.mudogroupware.payroll.application.port.out.PayrollStatementPort.StatementData;
 import com.academy.mudogroupware.payroll.domain.exception.PayrollException;
@@ -73,6 +74,24 @@ class PayrollStatementEmailServiceTest {
     assertThatThrownBy(() -> service.send(1L, 99L)).isInstanceOf(PayrollException.class);
     verify(deliveries, never()).create(any(), any(), any(), any(), any(), any(), any(), any(),
         any(), any(), any());
+  }
+
+  @Test
+  void 일괄_발송_결과에_전체_페이지_정보를_반환한다() {
+    when(deliveries.findBatch(30L)).thenReturn(Optional.of(
+        new BatchData(30L, YearMonth.of(2026, 8), 99L, LocalDateTime.now())));
+    when(deliveries.countByBatch(30L)).thenReturn(42L);
+    when(deliveries.findByBatch(30L, 21, 20)).thenReturn(List.of());
+    when(deliveries.countStatuses(30L)).thenReturn(List.of());
+
+    var result = service.getBatch(30L, 1, 20);
+
+    assertThat(result.deliveries().totalElements()).isEqualTo(42);
+    assertThat(result.deliveries().totalPages()).isEqualTo(3);
+    assertThat(result.deliveries().first()).isFalse();
+    assertThat(result.deliveries().last()).isFalse();
+    assertThat(result.deliveries().hasNext()).isTrue();
+    assertThat(result.deliveries().hasPrevious()).isTrue();
   }
 
   private Payroll confirmedPayroll() {

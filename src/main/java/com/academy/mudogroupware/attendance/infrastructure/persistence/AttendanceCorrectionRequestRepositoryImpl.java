@@ -6,13 +6,13 @@ import java.util.Locale;
 import java.util.Optional;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 import com.academy.mudogroupware.attendance.domain.exception.*;
 import com.academy.mudogroupware.attendance.domain.model.*;
 import com.academy.mudogroupware.attendance.domain.repository.AttendanceCorrectionRequestRepository;
-import com.academy.mudogroupware.global.domain.common.page.PageResult;
+import com.academy.mudogroupware.global.domain.common.page.PagedResult;
 import lombok.RequiredArgsConstructor;
 
 @Repository
@@ -39,16 +39,16 @@ public class AttendanceCorrectionRequestRepositoryImpl implements AttendanceCorr
     @Override public List<AttendanceCorrectionRequest> findAllByOwner(Long userId) {
         return repository.findAllByUserIdOrderByRequestedAtDesc(userId).stream().map(this::toDomain).toList();
     }
-    @Override public PageResult<AttendanceCorrectionRequest> findAll(
+    @Override public PagedResult<AttendanceCorrectionRequest> findAll(
             AttendanceCorrectionStatus status, int page, int size) {
         Sort sort = Sort.by(Sort.Direction.DESC, "requestedAt")
                 .and(Sort.by(Sort.Direction.DESC, "id"));
         PageRequest pageable = PageRequest.of(page, size, sort);
-        Slice<AttendanceCorrectionRequestJpaEntity> slice = status == null
+        Page<AttendanceCorrectionRequestJpaEntity> result = status == null
                 ? repository.findPage(pageable)
                 : repository.findAllByStatus(status, pageable);
-        return PageResult.of(slice.getContent().stream().map(this::toDomain).toList(),
-                slice.getNumber(), slice.getSize(), slice.hasNext());
+        return PagedResult.of(result.getContent().stream().map(this::toDomain).toList(),
+                result.getNumber(), result.getSize(), result.getTotalElements());
     }
     @Override public Optional<AttendanceCorrectionRequest> findByIdForUpdate(
             Long id) {
