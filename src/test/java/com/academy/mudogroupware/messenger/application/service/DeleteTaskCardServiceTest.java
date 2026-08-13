@@ -91,12 +91,12 @@ class DeleteTaskCardServiceTest {
         ChatTaskCard chatTaskCard = ChatTaskCard.restore(7L, 1L, 2L, "과제 제출", null,
                 List.of(ChatTaskAssignee.restore(3L, null)), CARD_CREATED_AT, firstDeletedAt);
         when(chatTaskCardRepository.findById(7L)).thenReturn(Optional.of(chatTaskCard));
-        when(chatTaskCardRepository.markDeleted(7L, firstDeletedAt)).thenReturn(false);
-        when(chatTaskCardRepository.isDeleted(7L)).thenReturn(true);
 
         service.delete(new DeleteTaskCardCommand(1L, 7L, 2L));
 
-        verify(chatTaskCardRepository).markDeleted(7L, firstDeletedAt);
+        // 조회 시점에 이미 삭제된 상태라 DB에 다시 쓸 것이 없으므로, markDeleted/isDeleted 호출 자체를 생략한다.
+        verify(chatTaskCardRepository, never()).markDeleted(any(), any());
+        verify(chatTaskCardRepository, never()).isDeleted(any());
         verify(eventPublisher, never()).publishEvent(any());
     }
 
@@ -106,12 +106,11 @@ class DeleteTaskCardServiceTest {
         ChatTaskCard chatTaskCard = ChatTaskCard.restore(7L, 1L, 2L, "과제 제출", null,
                 List.of(ChatTaskAssignee.restore(3L, CARD_CREATED_AT)), CARD_CREATED_AT, firstDeletedAt);
         when(chatTaskCardRepository.findById(7L)).thenReturn(Optional.of(chatTaskCard));
-        when(chatTaskCardRepository.markDeleted(7L, firstDeletedAt)).thenReturn(false);
-        when(chatTaskCardRepository.isDeleted(7L)).thenReturn(true);
 
         service.delete(new DeleteTaskCardCommand(1L, 7L, 2L));
 
-        verify(chatTaskCardRepository).markDeleted(7L, firstDeletedAt);
+        verify(chatTaskCardRepository, never()).markDeleted(any(), any());
+        verify(chatTaskCardRepository, never()).isDeleted(any());
         verify(eventPublisher, never()).publishEvent(any());
     }
 

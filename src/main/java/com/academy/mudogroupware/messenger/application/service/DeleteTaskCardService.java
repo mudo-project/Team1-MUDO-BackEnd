@@ -39,13 +39,22 @@ public class DeleteTaskCardService implements DeleteTaskCardUseCase {
         }
 
         // delete()는 이미 삭제된 카드엔 조용히 아무 것도 안 하는 idempotent 동작이다(권한 검증은 항상 수행).
-        // markDeleted는 deleted_at is null AND 완료된 담당자 없음 조건의 UPDATE라 행을 잠근다. 영향받은
-        // 행이 없으면 이유가 두 가지다: (1) 이미 삭제됨(동시 삭제 요청 중 하나가 먼저 커밋) (2) 조회
-        // 시점엔 완료된 담당자가 없었지만 이 트랜잭션이 카드를 읽은 뒤 다른 트랜잭션이 먼저 완료를
-        // 커밋함. 조회 시점 상태만으로는 이 둘을 구분할 수 없으므로(메모리 상 상태로 판단하면 (2)를
-        // 놓쳐 완료된 카드가 삭제될 수 있다), 0건일 때만 락을 걸어 카드의 현재 삭제 여부를 다시 확인한다.
+        // 조회 시점에 이미 삭제된 상태였다면 DB에 다시 쓸 것이 없으므로 markDeleted/isDeleted 호출 자체를
+        // 생략한다(재시도 요청이 많을 때 불필요한 DB 왕복을 줄인다).
         LocalDateTime deletedAt = LocalDateTime.now(clock);
+        boolean wasAlreadyDeleted = chatTaskCard.isDeleted();
         chatTaskCard.delete(command.requesterId(), deletedAt);
+        if (wasAlreadyDeleted) {
+            log.info("event=task_card_delete_완료 chatRoomId={}, cardId={}, requesterId={}, alreadyDeleted=true",
+                    command.chatRoomId(), command.cardId(), command.requesterId());
+            return;
+        }
+
+        // markDeleted는 deleted_at is null AND 완료된 담당자 없음 조건의 UPDATE라 행을 잠근다. 영향받은
+        // 행이 없으면 이유가 두 가지다: (1) 다른 트랜잭션이 먼저 삭제를 커밋 (2) 조회 시점엔 완료된
+        // 담당자가 없었지만 이 트랜잭션이 카드를 읽은 뒤 다른 트랜잭션이 먼저 완료를 커밋함. 조회 시점
+        // 상태만으로는 이 둘을 구분할 수 없으므로(메모리 상 상태로 판단하면 (2)를 놓쳐 완료된 카드가
+        // 삭제될 수 있다), 0건일 때만 락을 걸어 카드의 현재 삭제 여부를 다시 확인한다.
         boolean deleted = chatTaskCardRepository.markDeleted(chatTaskCard.getId(), chatTaskCard.getDeletedAt());
         if (!deleted) {
             if (!chatTaskCardRepository.isDeleted(chatTaskCard.getId())) {
