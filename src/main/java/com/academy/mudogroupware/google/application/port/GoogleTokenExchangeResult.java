@@ -4,9 +4,10 @@ public record GoogleTokenExchangeResult(
         String accessToken,
         String refreshToken,
         String scope,
-        Long refreshTokenExpiresInSeconds) {
+        Long refreshTokenExpiresInSeconds,
+        Long accessTokenExpiresInSeconds) {
 
     public GoogleTokenExchangeResult(String accessToken, String refreshToken, String scope) {
-        this(accessToken, refreshToken, scope, null);
+        this(accessToken, refreshToken, scope, null, null);
     }
 }
