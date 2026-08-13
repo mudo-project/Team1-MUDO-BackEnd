@@ -397,48 +397,76 @@ import 추가: `import jakarta.persistence.Version;`
 
 import 추가: `import org.springframework.dao.OptimisticLockingFailureException;`, `import com.academy.mudogroupware.timetable.domain.exception.TimetableSetUpdateConflictException;`
 
-- [ ] **Step 5: `TimetableSetPersistenceAdapterDataJpaTest`에 낙관적 락 충돌 테스트 추가**
+- [ ] **Step 5: 낙관적 락 충돌 테스트는 `@DataJpaTest`가 아니라 Mockito 단위 테스트로 작성한다**
 
-기존 테스트 파일 맨 아래(`deletesTimetableSetById` 다음)에 추가:
+`@DataJpaTest`에서 `entityManager.clear()`로 "두 세션"을 흉내 내는 방식은 실제로는 동작하지 않는다 — `clear()` 이후 `getReferenceById()`가 새로 프록시를 만들면서 그 시점의 최신(이미 첫 번째 수정이 반영된) row를 기준으로 버전을 잡기 때문에, 두 번째 저장도 조용히 성공해버린다(같은 트랜잭션/영속성 컨텍스트 안에서 `clear()`로 다른 세션을 재현하려는 시도 자체가 1차 캐시 동일성 보장을 깨뜨린다). 실제 프로덕션에서는 요청 하나 = 트랜잭션 하나 = 영속성 컨텍스트 하나라 이 문제가 없다.
+
+대신 이 코드베이스의 기존 동일 패턴(`UserRepositoryImplTest.convertsOptimisticLockConflictOnUpdateProfileToProfileUpdateConflictException`, `src/test/java/com/academy/mudogroupware/users/infrastructure/persistence/UserRepositoryImplTest.java`)을 그대로 따라간다 — JPA 리포지토리를 Mockito로 모킹하고 `flush()`가 `OptimisticLockingFailureException`을 던지도록 스텁한 뒤, 어댑터가 그걸 도메인 Conflict 예외로 바꾸는지만 검증한다. 실제 DB로 Hibernate의 낙관적 락 자체를 다시 증명할 필요는 없다(그건 라이브러리가 이미 보장하는 동작이다).
+
+`TimetableSetPersistenceAdapterDataJpaTest.java`는 이번 태스크에서 아예 건드리지 않는다. 새 파일을 만든다:
+
+`src/test/java/com/academy/mudogroupware/timetable/infrastructure/persistence/TimetableSetPersistenceAdapterTest.java`
 
 ```java
+package com.academy.mudogroupware.timetable.infrastructure.persistence;
+
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.List;
+import java.util.Set;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.dao.OptimisticLockingFailureException;
+
+import com.academy.mudogroupware.timetable.domain.exception.TimetableSetUpdateConflictException;
+import com.academy.mudogroupware.timetable.domain.model.TimetableClassroom;
+import com.academy.mudogroupware.timetable.domain.model.TimetableSet;
+
+class TimetableSetPersistenceAdapterTest {
+
     @Test
-    void secondConcurrentUpdateThrowsConflictExceptionAfterFirstCommits() {
-        TimetableSet set = TimetableSet.create(
-                "동시 수정 테스트", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16),
-                LocalTime.of(8, 30), LocalTime.of(22, 0), Set.of(DayOfWeek.MONDAY),
-                30, List.of(new TimetableClassroom("6층", "601")));
-        Long id = adapter.save(set).getId();
-        entityManager.flush();
-        entityManager.clear();
+    void convertsOptimisticLockConflictOnUpdateToTimetableSetUpdateConflictException() {
+        TimetableSetJpaRepository jpaRepository = mock(TimetableSetJpaRepository.class);
+        TimetableSetPersistenceAdapter adapter = new TimetableSetPersistenceAdapter(jpaRepository);
+        TimetableSetEntity entity = TimetableSetEntity.builder()
+                .id(1L)
+                .name("이름")
+                .startDate(LocalDate.of(2026, 7, 20))
+                .endDate(LocalDate.of(2026, 8, 16))
+                .operatingStartTime(LocalTime.of(8, 30))
+                .operatingEndTime(LocalTime.of(22, 0))
+                .operatingDays("MONDAY")
+                .slotUnitMinutes(30)
+                .classrooms(List.of(new TimetableClassroomEmbeddable("6층", "601")))
+                .build();
+        when(jpaRepository.getReferenceById(1L)).thenReturn(entity);
+        OptimisticLockingFailureException conflict = new OptimisticLockingFailureException("concurrent update");
+        doThrow(conflict).when(jpaRepository).flush();
 
-        TimetableSet first = adapter.findById(id).orElseThrow();
-        entityManager.flush();
-        entityManager.clear();
-        TimetableSet second = adapter.findById(id).orElseThrow();
+        TimetableSet domain = TimetableSet.restore(
+                1L, "수정된 이름", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16),
+                LocalTime.of(8, 30), LocalTime.of(22, 0), Set.of(DayOfWeek.MONDAY), 30,
+                List.of(new TimetableClassroom("6층", "601")), null, null);
 
-        first.update("첫 번째 수정", first.getStartDate(), first.getEndDate(), first.getOperatingStartTime(),
-                first.getOperatingEndTime(), first.getOperatingDays(), first.getSlotUnitMinutes(),
-                first.getClassrooms());
-        adapter.save(first);
-        entityManager.flush();
-        entityManager.clear();
-
-        second.update("두 번째 수정", second.getStartDate(), second.getEndDate(), second.getOperatingStartTime(),
-                second.getOperatingEndTime(), second.getOperatingDays(), second.getSlotUnitMinutes(),
-                second.getClassrooms());
-
-        assertThatThrownBy(() -> adapter.save(second))
-                .isInstanceOf(com.academy.mudogroupware.timetable.domain.exception.TimetableSetUpdateConflictException.class);
+        assertThatThrownBy(() -> adapter.save(domain))
+                .isInstanceOf(TimetableSetUpdateConflictException.class)
+                .hasCause(conflict);
     }
+}
 ```
 
-import 추가 필요: `import static org.assertj.core.api.Assertions.assertThatThrownBy;`
+이 코드는 실제 `TimetableSetEntity`/`TimetableClassroomEmbeddable`/`TimetableSet`의 정확한 생성자/빌더 시그니처를 다시 한 번 확인하고 필요하면 맞춰서 고친다(패턴과 검증하려는 동작 자체는 그대로 유지).
 
 - [ ] **Step 6: 테스트 실행**
 
-Run: `./gradlew test --tests "com.academy.mudogroupware.timetable.infrastructure.persistence.TimetableSetPersistenceAdapterDataJpaTest"`
-Expected: 전부 PASS. `@DataJpaTest(properties = "spring.jpa.hibernate.ddl-auto=create-drop")`라 Flyway 없이 엔티티 기준으로 스키마가 자동 생성되므로 Task 1의 마이그레이션이 아직 없어도 이 테스트는 통과한다(실제 DB 검증은 `FlywayFreshDatabaseMigrationTest`가 담당).
+Run: `./gradlew test --tests "com.academy.mudogroupware.timetable.infrastructure.persistence.TimetableSetPersistenceAdapterTest" --tests "com.academy.mudogroupware.timetable.infrastructure.persistence.TimetableSetPersistenceAdapterDataJpaTest"`
+Expected: 전부 PASS. `TimetableSetPersistenceAdapterDataJpaTest`는 이번 태스크에서 손대지 않았으므로 기존 그대로 통과해야 한다(엔티티에 `@Version`이 추가된 상태에서도 정상 동작하는지 확인하는 회귀 검증 겸).
 
 - [ ] **Step 7: 커밋**
 
@@ -447,7 +475,7 @@ git add src/main/java/com/academy/mudogroupware/timetable/domain/exception/Timet
         src/main/java/com/academy/mudogroupware/timetable/domain/exception/TimetableSetUpdateConflictException.java \
         src/main/java/com/academy/mudogroupware/timetable/infrastructure/persistence/TimetableSetEntity.java \
         src/main/java/com/academy/mudogroupware/timetable/infrastructure/persistence/TimetableSetPersistenceAdapter.java \
-        src/test/java/com/academy/mudogroupware/timetable/infrastructure/persistence/TimetableSetPersistenceAdapterDataJpaTest.java
+        src/test/java/com/academy/mudogroupware/timetable/infrastructure/persistence/TimetableSetPersistenceAdapterTest.java
 git commit -m "feat: TimetableSetEntity에 낙관적 락(@Version) 추가"
 ```
 
@@ -521,45 +549,73 @@ import 추가: `import jakarta.persistence.Version;`. `@Builder` 생성자와 `u
 
 import 추가: `import org.springframework.dao.OptimisticLockingFailureException;`, `import com.academy.mudogroupware.timetable.domain.exception.TimetableSlotUpdateConflictException;`
 
-- [ ] **Step 5: `TimetableSlotPersistenceAdapterDataJpaTest`에 테스트 추가**
+- [ ] **Step 5: 낙관적 락 충돌 테스트는 Task 3과 같은 이유로 `@DataJpaTest`가 아니라 Mockito 단위 테스트로 작성한다**
 
-파일 맨 아래(`deletesSlotById` 다음)에 추가:
+Task 3에서 확인했듯 `@DataJpaTest` + `entityManager.clear()`로 두 세션을 흉내 내는 방식은 실제로 충돌을 재현하지 못한다(1차 캐시 동일성이 깨지면서 `getReferenceById()`가 항상 최신 row를 기준으로 프록시를 만든다). `TimetableSlotPersistenceAdapterDataJpaTest.java`는 이번 태스크에서 건드리지 않는다. `UserRepositoryImplTest`/Task 3의 `TimetableSetPersistenceAdapterTest`와 동일한 패턴으로 새 파일을 만든다:
+
+`src/test/java/com/academy/mudogroupware/timetable/infrastructure/persistence/TimetableSlotPersistenceAdapterTest.java`
 
 ```java
+package com.academy.mudogroupware.timetable.infrastructure.persistence;
+
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.LocalTime;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.dao.OptimisticLockingFailureException;
+
+import com.academy.mudogroupware.timetable.domain.exception.TimetableSlotUpdateConflictException;
+import com.academy.mudogroupware.timetable.domain.model.ClassType;
+import com.academy.mudogroupware.timetable.domain.model.Grade;
+import com.academy.mudogroupware.timetable.domain.model.TimetableSlot;
+
+class TimetableSlotPersistenceAdapterTest {
+
     @Test
-    void secondConcurrentUpdateThrowsConflictExceptionAfterFirstCommits() {
-        TimetableSlot slot = TimetableSlot.create(
-                1L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                Grade.HIGH_3, "정T", "미적분", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16));
-        Long id = adapter.save(slot).getId();
-        entityManager.flush();
-        entityManager.clear();
+    void convertsOptimisticLockConflictOnUpdateToTimetableSlotUpdateConflictException() {
+        TimetableSlotJpaRepository jpaRepository = mock(TimetableSlotJpaRepository.class);
+        TimetableSlotPersistenceAdapter adapter = new TimetableSlotPersistenceAdapter(jpaRepository);
+        TimetableSlotEntity entity = TimetableSlotEntity.builder()
+                .id(1L)
+                .timetableSetId(1L)
+                .classType(ClassType.CLASS)
+                .dayOfWeek(DayOfWeek.MONDAY)
+                .classroomCode("601")
+                .startTime(LocalTime.of(9, 0))
+                .endTime(LocalTime.of(11, 0))
+                .grade(Grade.HIGH_3)
+                .teacherName("정T")
+                .subjectName("미적분")
+                .effectiveFrom(LocalDate.of(2026, 7, 20))
+                .effectiveUntil(LocalDate.of(2026, 8, 16))
+                .build();
+        when(jpaRepository.getReferenceById(1L)).thenReturn(entity);
+        OptimisticLockingFailureException conflict = new OptimisticLockingFailureException("concurrent update");
+        doThrow(conflict).when(jpaRepository).flush();
 
-        TimetableSlot first = adapter.findById(id).orElseThrow();
-        entityManager.flush();
-        entityManager.clear();
-        TimetableSlot second = adapter.findById(id).orElseThrow();
+        TimetableSlot domain = TimetableSlot.restore(
+                1L, 1L, ClassType.SPECIAL, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
+                Grade.HIGH_3, "정T", "수정됨", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16), null, null);
 
-        first.applyFullUpdate(ClassType.SPECIAL, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                Grade.HIGH_3, "정T", "첫 번째 수정");
-        adapter.save(first);
-        entityManager.flush();
-        entityManager.clear();
-
-        second.applyFullUpdate(ClassType.SPECIAL, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                Grade.HIGH_3, "정T", "두 번째 수정");
-
-        assertThatThrownBy(() -> adapter.save(second))
-                .isInstanceOf(com.academy.mudogroupware.timetable.domain.exception.TimetableSlotUpdateConflictException.class);
+        assertThatThrownBy(() -> adapter.save(domain))
+                .isInstanceOf(TimetableSlotUpdateConflictException.class)
+                .hasCause(conflict);
     }
+}
 ```
 
-import 추가 필요: `import static org.assertj.core.api.Assertions.assertThatThrownBy;`
+이 코드는 실제 `TimetableSlotEntity`/`TimetableSlot`의 정확한 생성자/빌더 시그니처를 다시 한 번 확인하고 필요하면 맞춰서 고친다(패턴과 검증하려는 동작 자체는 그대로 유지).
 
 - [ ] **Step 6: 테스트 실행**
 
-Run: `./gradlew test --tests "com.academy.mudogroupware.timetable.infrastructure.persistence.TimetableSlotPersistenceAdapterDataJpaTest"`
-Expected: 전부 PASS.
+Run: `./gradlew test --tests "com.academy.mudogroupware.timetable.infrastructure.persistence.TimetableSlotPersistenceAdapterTest" --tests "com.academy.mudogroupware.timetable.infrastructure.persistence.TimetableSlotPersistenceAdapterDataJpaTest"`
+Expected: 전부 PASS. `TimetableSlotPersistenceAdapterDataJpaTest`는 이번 태스크에서 손대지 않았으므로 기존 그대로 통과해야 한다.
 
 - [ ] **Step 7: 커밋**
 
@@ -568,7 +624,7 @@ git add src/main/java/com/academy/mudogroupware/timetable/domain/exception/Timet
         src/main/java/com/academy/mudogroupware/timetable/domain/exception/TimetableSlotUpdateConflictException.java \
         src/main/java/com/academy/mudogroupware/timetable/infrastructure/persistence/TimetableSlotEntity.java \
         src/main/java/com/academy/mudogroupware/timetable/infrastructure/persistence/TimetableSlotPersistenceAdapter.java \
-        src/test/java/com/academy/mudogroupware/timetable/infrastructure/persistence/TimetableSlotPersistenceAdapterDataJpaTest.java
+        src/test/java/com/academy/mudogroupware/timetable/infrastructure/persistence/TimetableSlotPersistenceAdapterTest.java
 git commit -m "feat: TimetableSlotEntity에 낙관적 락(@Version) 추가"
 ```
 
@@ -640,27 +696,25 @@ import 추가: `import jakarta.persistence.Version;`. `@Builder` 생성자와 `u
 
 import 추가: `import org.springframework.dao.OptimisticLockingFailureException;`, `import com.academy.mudogroupware.calendar.domain.exception.CalendarEventUpdateConflictException;`
 
-- [ ] **Step 5: 신규 `CalendarEventPersistenceAdapterDataJpaTest` 작성**
+- [ ] **Step 5: 낙관적 락 충돌은 Mockito 단위 테스트로, 저장/조회는 `@DataJpaTest`로 — 두 파일 다 신규 작성**
 
-이 도메인은 아직 `@DataJpaTest`가 없다. `TimetableSlotPersistenceAdapterDataJpaTest`와 동일한 구조로 새로 만든다.
+Task 3/4에서 확인했듯 `@DataJpaTest` + `entityManager.clear()`로 낙관적 락 충돌 자체를 재현하려는 시도는 실패한다. 그래서 이번 태스크는 신규 파일을 2개로 나눠 만든다: 저장/조회 같은 일반 동작은 `@DataJpaTest`로(이 도메인엔 아직 이런 테스트가 없다), 충돌 변환 로직은 `UserRepositoryImplTest`/`TimetableSetPersistenceAdapterTest`와 같은 Mockito 패턴으로.
+
+`src/test/java/com/academy/mudogroupware/calendar/infrastructure/persistence/CalendarEventPersistenceAdapterDataJpaTest.java`(신규):
 
 ```java
 package com.academy.mudogroupware.calendar.infrastructure.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
-
-import jakarta.persistence.EntityManager;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
 
-import com.academy.mudogroupware.calendar.domain.exception.CalendarEventUpdateConflictException;
 import com.academy.mudogroupware.calendar.domain.model.CalendarEvent;
 import com.academy.mudogroupware.global.infrastructure.config.TimeConfig;
 
@@ -670,9 +724,6 @@ class CalendarEventPersistenceAdapterDataJpaTest {
 
     @Autowired
     private CalendarEventPersistenceAdapter adapter;
-
-    @Autowired
-    private EntityManager entityManager;
 
     private CalendarEvent newEvent() {
         return CalendarEvent.create(
@@ -691,34 +742,74 @@ class CalendarEventPersistenceAdapterDataJpaTest {
     }
 
     @Test
-    void secondConcurrentUpdateThrowsConflictExceptionAfterFirstCommits() {
-        Long id = adapter.save(newEvent()).getId();
-        entityManager.flush();
-        entityManager.clear();
+    void updatesEventFields() {
+        CalendarEvent saved = adapter.save(newEvent());
+        CalendarEvent loaded = adapter.findById(saved.getId()).orElseThrow();
 
-        CalendarEvent first = adapter.findById(id).orElseThrow();
-        entityManager.flush();
-        entityManager.clear();
-        CalendarEvent second = adapter.findById(id).orElseThrow();
+        loaded.update("수정된 제목", "수정된 내용", loaded.getEventStartAt(), loaded.getEventEndAt(),
+                loaded.isAllDay(), loaded.getColor());
+        adapter.save(loaded);
 
-        first.update("첫 번째 수정", first.getContent(), first.getEventStartAt(), first.getEventEndAt(),
-                first.isAllDay(), first.getColor());
-        adapter.save(first);
-        entityManager.flush();
-        entityManager.clear();
-
-        second.update("두 번째 수정", second.getContent(), second.getEventStartAt(), second.getEventEndAt(),
-                second.isAllDay(), second.getColor());
-
-        assertThatThrownBy(() -> adapter.save(second))
-                .isInstanceOf(CalendarEventUpdateConflictException.class);
+        CalendarEvent reloaded = adapter.findById(saved.getId()).orElseThrow();
+        assertThat(reloaded.getTitle()).isEqualTo("수정된 제목");
     }
 }
 ```
 
+`src/test/java/com/academy/mudogroupware/calendar/infrastructure/persistence/CalendarEventPersistenceAdapterTest.java`(신규, Mockito 단위 테스트):
+
+```java
+package com.academy.mudogroupware.calendar.infrastructure.persistence;
+
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import java.time.LocalDateTime;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.dao.OptimisticLockingFailureException;
+
+import com.academy.mudogroupware.calendar.domain.exception.CalendarEventUpdateConflictException;
+import com.academy.mudogroupware.calendar.domain.model.CalendarEvent;
+
+class CalendarEventPersistenceAdapterTest {
+
+    @Test
+    void convertsOptimisticLockConflictOnUpdateToCalendarEventUpdateConflictException() {
+        CalendarEventJpaRepository jpaRepository = mock(CalendarEventJpaRepository.class);
+        CalendarEventPersistenceAdapter adapter = new CalendarEventPersistenceAdapter(jpaRepository);
+        CalendarEventEntity entity = CalendarEventEntity.builder()
+                .id(1L)
+                .title("제목")
+                .content("내용")
+                .eventStartAt(LocalDateTime.of(2026, 8, 20, 9, 0))
+                .eventEndAt(LocalDateTime.of(2026, 8, 20, 10, 0))
+                .allDay(false)
+                .color("FFCC00")
+                .createdBy(1L)
+                .build();
+        when(jpaRepository.getReferenceById(1L)).thenReturn(entity);
+        OptimisticLockingFailureException conflict = new OptimisticLockingFailureException("concurrent update");
+        doThrow(conflict).when(jpaRepository).flush();
+
+        CalendarEvent domain = CalendarEvent.restore(
+                1L, "수정된 제목", "내용", LocalDateTime.of(2026, 8, 20, 9, 0),
+                LocalDateTime.of(2026, 8, 20, 10, 0), false, "FFCC00", 1L, null, null);
+
+        assertThatThrownBy(() -> adapter.save(domain))
+                .isInstanceOf(CalendarEventUpdateConflictException.class)
+                .hasCause(conflict);
+    }
+}
+```
+
+이 코드는 실제 `CalendarEventEntity`/`CalendarEvent`의 정확한 생성자/빌더 시그니처를 다시 한 번 확인하고 필요하면 맞춰서 고친다(패턴과 검증하려는 동작 자체는 그대로 유지).
+
 - [ ] **Step 6: 테스트 실행**
 
-Run: `./gradlew test --tests "com.academy.mudogroupware.calendar.infrastructure.persistence.CalendarEventPersistenceAdapterDataJpaTest"`
+Run: `./gradlew test --tests "com.academy.mudogroupware.calendar.infrastructure.persistence.CalendarEventPersistenceAdapterDataJpaTest" --tests "com.academy.mudogroupware.calendar.infrastructure.persistence.CalendarEventPersistenceAdapterTest"`
 Expected: 전부 PASS.
 
 - [ ] **Step 7: 커밋**
@@ -728,7 +819,8 @@ git add src/main/java/com/academy/mudogroupware/calendar/domain/exception/Calend
         src/main/java/com/academy/mudogroupware/calendar/domain/exception/CalendarEventUpdateConflictException.java \
         src/main/java/com/academy/mudogroupware/calendar/infrastructure/persistence/CalendarEventEntity.java \
         src/main/java/com/academy/mudogroupware/calendar/infrastructure/persistence/CalendarEventPersistenceAdapter.java \
-        src/test/java/com/academy/mudogroupware/calendar/infrastructure/persistence/CalendarEventPersistenceAdapterDataJpaTest.java
+        src/test/java/com/academy/mudogroupware/calendar/infrastructure/persistence/CalendarEventPersistenceAdapterDataJpaTest.java \
+        src/test/java/com/academy/mudogroupware/calendar/infrastructure/persistence/CalendarEventPersistenceAdapterTest.java
 git commit -m "feat: CalendarEventEntity에 낙관적 락(@Version) 추가"
 ```
 
