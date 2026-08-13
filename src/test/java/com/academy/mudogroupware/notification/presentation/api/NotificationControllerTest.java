@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -28,6 +29,8 @@ import com.academy.mudogroupware.global.infrastructure.security.jwt.JwtTokenProv
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
 import com.academy.mudogroupware.global.presentation.security.JwtAuthenticationConverter;
 import com.academy.mudogroupware.notification.application.usecase.CountUnreadNotificationsUseCase;
+import com.academy.mudogroupware.notification.application.usecase.DeleteNotificationUseCase;
+import com.academy.mudogroupware.notification.application.usecase.DeleteReadNotificationsUseCase;
 import com.academy.mudogroupware.notification.application.usecase.ListNotificationsUseCase;
 import com.academy.mudogroupware.notification.application.usecase.MarkNotificationAsReadUseCase;
 import com.academy.mudogroupware.notification.domain.exception.NotificationErrorCode;
@@ -49,6 +52,10 @@ class NotificationControllerTest {
     private CountUnreadNotificationsUseCase countUnreadNotificationsUseCase;
     @MockitoBean
     private MarkNotificationAsReadUseCase markNotificationAsReadUseCase;
+    @MockitoBean
+    private DeleteNotificationUseCase deleteNotificationUseCase;
+    @MockitoBean
+    private DeleteReadNotificationsUseCase deleteReadNotificationsUseCase;
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
     @MockitoBean
@@ -164,5 +171,62 @@ class NotificationControllerTest {
                 .andExpect(status().isUnauthorized());
 
         verifyNoInteractions(markNotificationAsReadUseCase);
+    }
+
+    @Test
+    void deleteNotificationReturnsOk() throws Exception {
+        mockMvc.perform(delete("/api/notifications/1").with(authentication(auth())).with(csrf()))
+                .andExpect(status().isOk());
+
+        verify(deleteNotificationUseCase).delete(1L, 10L);
+    }
+
+    @Test
+    void deleteNotificationOfOthersReturnsNotFound() throws Exception {
+        doThrow(new NotificationException(NotificationErrorCode.NOT_FOUND))
+                .when(deleteNotificationUseCase).delete(eq(1L), eq(10L));
+
+        mockMvc.perform(delete("/api/notifications/1").with(authentication(auth())).with(csrf()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void deleteNotificationReturns401WhenUnauthenticated() throws Exception {
+        mockMvc.perform(delete("/api/notifications/1").with(csrf()))
+                .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(deleteNotificationUseCase);
+    }
+
+    @Test
+    void deleteReadNotificationsRequiresStatusReadParam() throws Exception {
+        mockMvc.perform(delete("/api/notifications")
+                        .param("status", "READ")
+                        .with(authentication(auth()))
+                        .with(csrf()))
+                .andExpect(status().isOk());
+
+        verify(deleteReadNotificationsUseCase).deleteRead(10L);
+    }
+
+    @Test
+    void deleteReadNotificationsRejectsUnsupportedStatusValue() throws Exception {
+        mockMvc.perform(delete("/api/notifications")
+                        .param("status", "UNREAD")
+                        .with(authentication(auth()))
+                        .with(csrf()))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(deleteReadNotificationsUseCase);
+    }
+
+    @Test
+    void deleteReadNotificationsReturns401WhenUnauthenticated() throws Exception {
+        mockMvc.perform(delete("/api/notifications")
+                        .param("status", "READ")
+                        .with(csrf()))
+                .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(deleteReadNotificationsUseCase);
     }
 }

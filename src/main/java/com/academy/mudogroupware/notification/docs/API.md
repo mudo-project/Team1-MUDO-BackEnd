@@ -184,9 +184,97 @@ Response Body
 
 ---
 
-## 다음 예정 API (아직 미구현)
+## **4. 알림 개별 삭제**
 
-- `DELETE /api/notifications/{notificationId}` — 개별 삭제
-- `DELETE /api/notifications?status=READ` — 읽은 알림 일괄 삭제
+`DELETE /api/notifications/{notificationId}`
 
-구현되면 이 문서에 섹션을 추가하고 이 목록에서 제거한다.
+권한: 없음(로그인만 필요, 본인 소유 알림만 삭제 가능)
+
+# **[request]**
+
+Request Header
+
+| **name** | **description** |
+| --- | --- |
+| `Authorization` | `Bearer {AccessToken}` 형식의 사용자 인증 토큰입니다. |
+
+Path Variable
+
+| **name** | **description** |
+| --- | --- |
+| `notificationId` | 삭제할 알림 ID |
+
+# **[response]**
+
+### **성공코드**
+
+| **HTTP 상태** | **설명** |
+| --- | --- |
+| `200 OK` | 삭제 성공(소프트 삭제) |
+
+Response Body
+
+```json
+{
+    "status": 200,
+    "code": "NOTIFICATION_200_4",
+    "message": "알림 삭제에 성공했습니다.",
+    "data": null
+}
+```
+
+### **실패 코드**
+
+| **HTTP 상태** | **code** | **message** | **설명** |
+| --- | --- | --- | --- |
+| `401 Unauthorized` | `COMMON_401_1` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않은 경우 |
+| `404 Not Found` | `NOTIFICATION_404_1` | 알림을 찾을 수 없습니다. | 존재하지 않거나 본인 소유가 아닌 `notificationId`인 경우 |
+
+---
+
+## **5. 읽은 알림 일괄 삭제**
+
+`DELETE /api/notifications?status=READ`
+
+권한: 없음(로그인만 필요, 본인 알림만 대상)
+
+# **[request]**
+
+Request Header
+
+| **name** | **description** |
+| --- | --- |
+| `Authorization` | `Bearer {AccessToken}` 형식의 사용자 인증 토큰입니다. |
+
+Request Parameter
+
+| **name** | **type** | **required** | **설명** |
+| --- | --- | --- | --- |
+| `status` | `String` | `true` | 삭제 대상 필터. `READ`만 지원(대소문자 무관) |
+
+# **[response]**
+
+### **성공코드**
+
+| **HTTP 상태** | **설명** |
+| --- | --- |
+| `200 OK` | 읽은 알림 일괄 삭제 성공(안읽은 알림은 삭제되지 않음, 대상이 0건이어도 200) |
+
+Response Body
+
+```json
+{
+    "status": 200,
+    "code": "NOTIFICATION_200_5",
+    "message": "읽은 알림 일괄 삭제에 성공했습니다.",
+    "data": null
+}
+```
+
+### **실패 코드**
+
+| **HTTP 상태** | **code** | **message** | **설명** |
+| --- | --- | --- | --- |
+| `400 Bad Request` | `COMMON_400_1` | 입력값이 올바르지 않습니다. | `status` 파라미터 자체가 없는 경우 |
+| `400 Bad Request` | `NOTIFICATION_400_1` | 일괄 삭제는 status=READ만 지원합니다. | `status` 값이 `READ`가 아닌 경우(예: `UNREAD`) |
+| `401 Unauthorized` | `COMMON_401_1` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않은 경우 |
