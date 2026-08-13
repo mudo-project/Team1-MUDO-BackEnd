@@ -111,6 +111,7 @@ Response Body
 
 > 존재 확인(워크스페이스 → 업무)을 참여자 확인·멘션 검증보다 먼저 수행한다.
 > 댓글 생성/수정/삭제/완료토글은 참여자 여부만 검증한다(권한 체크 없음, 2026-08-10 확정 — `WORKSPACE:CREATE`는 워크스페이스 생성에만 적용된다).
+> **멘션된 사용자에게는 실시간 WebSocket 알림(`/topic/workspaces/users/{userId}`)과 알림함 저장(`GET /api/notifications`)이 모두 발송된다.** 요청자 자신은 제외된다. 상세는 [COMMENT_API_FLOW.md](COMMENT_API_FLOW.md), 알림함 API는 [notification 모듈 API.md](../../notification/docs/API.md) 참고.
 
 ---
 
@@ -289,6 +290,7 @@ Response Body
 
 > 작성자 본인 여부는 확인하지 않는다 — 현재 워크스페이스 참여자면 누구나 수정할 수 있다.
 > 다른 업무에 속한 댓글 번호를 보내면 존재를 노출하지 않기 위해 `403`이 아니라 `WORKSPACE_404_4`를 반환한다.
+> 멘션은 전체 교체 방식이라, **새로 추가된 멘션에만** 알림(실시간 WebSocket + 알림함 저장)이 간다. 기존에 유지된 멘션은 재알림하지 않는다.
 
 ---
 
@@ -425,3 +427,4 @@ Response Body (완료 처리 시)
 - [COMMENT_API_FLOW.md](COMMENT_API_FLOW.md) — 댓글·멘션 CRUD API의 호출 흐름 상세
 - [TASK_API.md](TASK_API.md) — 업무(Task) 자체의 생성·수정·삭제 API 명세
 - [WORKSPACE_PERMISSIONS.md](WORKSPACE_PERMISSIONS.md) — 참여자 기반 권한 검증 정책과 `WORKSPACE:CREATE` TODO 현황
+- [notification 모듈 API.md](../../notification/docs/API.md) — 멘션·결재 알림이 저장되는 알림함 조회/읽음처리/삭제 API 명세
