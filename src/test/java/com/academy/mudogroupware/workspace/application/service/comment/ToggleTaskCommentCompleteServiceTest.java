@@ -55,7 +55,7 @@ class ToggleTaskCommentCompleteServiceTest {
     givenWorkspaceWithMembers(MEMBER_ID, OTHER_MEMBER_ID);
     givenTask(WORKSPACE_ID);
     givenComment(false, null, null);
-    when(taskCommentRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+    when(taskCommentRepository.updateCompletion(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     TaskComment result =
         service()
@@ -71,7 +71,7 @@ class ToggleTaskCommentCompleteServiceTest {
     givenWorkspaceWithMembers(MEMBER_ID);
     givenTask(WORKSPACE_ID);
     givenComment(true, MEMBER_ID, LocalDateTime.of(2026, 8, 6, 9, 0));
-    when(taskCommentRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+    when(taskCommentRepository.updateCompletion(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     TaskComment result =
         service()
