@@ -156,6 +156,14 @@ def validate_capacity(
     cells: dict[str, Any],
     deployment: bool,
 ) -> None:
+    dashboard_hosts = [
+        tenant for tenant in enabled_tenants if tenant.get("platform_dashboard_host")
+    ]
+    if len(dashboard_hosts) != 1:
+        raise DeploymentError(
+            "Exactly one enabled tenant must be the platform dashboard host."
+        )
+
     for cell_name, cell in cells.items():
         members = [tenant for tenant in enabled_tenants if tenant["cell"] == cell_name]
         if not members:
@@ -206,6 +214,29 @@ def shared_parameter_arn(region: str, account_id: str, name: str) -> str:
     return f"arn:aws:ssm:{region}:{account_id}:parameter/mudo/prod/shared/{name}"
 
 
+def render_platform_tenant_registry(
+    tenants: list[dict[str, Any]], cells: dict[str, Any]
+) -> str:
+    """Render only deployment metadata required by platform dashboard read APIs."""
+    registry = []
+    for tenant in tenants:
+        cell = cells[tenant["cell"]]
+        registry.append(
+            {
+                "code": tenant["code"],
+                "ecsCluster": cell["ecs_cluster"],
+                "ecsService": tenant["service"],
+                "rdsIdentifier": cell["rds_identifier"],
+                "rdsMaxConnections": cell["rds_max_connections"],
+                "rdsAppConnectionRatio": cell["rds_app_connection_ratio"],
+                "staffBucket": tenant["s3_bucket"],
+                "financeBucket": tenant["finance_s3_bucket"],
+                "s3Prefix": f"tenants/{tenant['code']}/",
+            }
+        )
+    return json.dumps(registry, separators=(",", ":"))
+
+
 def render_app_task(
     tenant: dict[str, Any],
     profile: dict[str, Any],
@@ -213,6 +244,7 @@ def render_app_task(
     region: str,
     app_image: str,
     deployment_sha: str,
+    platform_tenant_registry_json: str | None = None,
 ) -> dict[str, Any]:
     with (INFRA_ROOT / "ecs/app-task-definition.template.json").open(encoding="utf-8") as stream:
         task = json.load(stream)
@@ -279,6 +311,15 @@ def render_app_task(
             "value": "-XX:MaxRAMPercentage=65.0 -XX:InitialRAMPercentage=25.0 -Dfile.encoding=UTF-8",
         },
     ]
+    if platform_tenant_registry_json is not None:
+        container["environment"].extend([
+            {"name": "PLATFORM_DASHBOARD_ENABLED", "value": "true"},
+            {
+                "name": "PLATFORM_DASHBOARD_TENANT_REGISTRY_JSON",
+                "value": platform_tenant_registry_json,
+            },
+        ])
+
     secret_names = (
         "DB_URL",
         "DB_USERNAME",
@@ -463,6 +504,7 @@ def deploy(
     cells: dict[str, Any],
 ) -> None:
     aws = AwsDeployment(args.region)
+    platform_tenant_registry_json = render_platform_tenant_registry(tenants, cells)
     for tenant in tenants:
         code = tenant["code"]
         cell = cells[tenant["cell"]]
@@ -482,6 +524,7 @@ def deploy(
             args.region,
             args.app_image,
             args.deployment_sha,
+            platform_tenant_registry_json if tenant.get("platform_dashboard_host") else None,
         )
         new_task_arn = aws.register_task(app_task)
         try:

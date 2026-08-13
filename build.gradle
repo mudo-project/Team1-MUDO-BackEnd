@@ -26,6 +26,7 @@ dependencies {
     runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
     implementation platform('software.amazon.awssdk:bom:2.31.78')
     implementation 'software.amazon.awssdk:s3'
+    implementation 'software.amazon.awssdk:ecs'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'io.sentry:sentry-spring-boot-starter-jakarta:8.18.0'
     runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
