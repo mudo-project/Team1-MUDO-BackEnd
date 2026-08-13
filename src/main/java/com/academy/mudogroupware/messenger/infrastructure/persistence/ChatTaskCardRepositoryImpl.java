@@ -41,8 +41,8 @@ public class ChatTaskCardRepositoryImpl implements ChatTaskCardRepository {
     }
 
     @Override
-    public void markAssigneeCompleted(Long cardId, Long userId, LocalDateTime completedAt) {
-        chatTaskCardJpaRepository.markCompleted(cardId, userId, completedAt);
+    public boolean markAssigneeCompleted(Long cardId, Long userId, LocalDateTime completedAt) {
+        return chatTaskCardJpaRepository.markCompleted(cardId, userId, completedAt) > 0;
     }
 
     @Override

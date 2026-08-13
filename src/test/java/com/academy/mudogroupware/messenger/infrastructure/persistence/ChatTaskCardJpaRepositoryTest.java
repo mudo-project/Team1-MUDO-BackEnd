@@ -62,6 +62,19 @@ class ChatTaskCardJpaRepositoryTest {
     }
 
     @Test
+    void markCompletedSkipsWhenCardAlreadyDeleted() {
+        insertChatRoom(1L);
+        insertTaskCard(7L, 1L);
+        insertAssignee(7L, 3L, null);
+        chatTaskCardJpaRepository.markDeleted(7L, LocalDateTime.of(2026, 8, 6, 9, 0));
+
+        int updated = chatTaskCardJpaRepository.markCompleted(7L, 3L, LocalDateTime.of(2026, 8, 6, 9, 30));
+
+        assertThat(updated).isEqualTo(0);
+        assertThat(completedAtOf(7L, 3L)).isNull();
+    }
+
+    @Test
     void deleteAssigneesRemovesOnlySpecifiedUsers() {
         insertChatRoom(1L);
         insertTaskCard(7L, 1L);

@@ -31,9 +31,14 @@ public interface ChatTaskCardJpaRepository extends JpaRepository<ChatTaskCardEnt
                                        @Param("cursorCardId") Long cursorCardId,
                                        Pageable pageable);
 
+    // chat_task_card.deleted_at도 함께 확인해, 이 UPDATE 시점에 카드가 이미(동시에) 삭제됐다면
+    // 완료 처리를 반영하지 않는다(반환값 0으로 호출측이 감지). 서브쿼리 형태라 H2(테스트)/MySQL(운영)
+    // 양쪽에서 동일하게 동작한다(MySQL 전용 멀티테이블 UPDATE...JOIN 문법은 H2가 지원하지 않는다).
     @Modifying
     @Query(value = "update chat_task_assignee set completed_at = :completedAt "
-            + "where card_id = :cardId and user_id = :userId and completed_at is null", nativeQuery = true)
+            + "where card_id = :cardId and user_id = :userId and completed_at is null "
+            + "and exists (select 1 from chat_task_card where card_id = :cardId and deleted_at is null)",
+            nativeQuery = true)
     int markCompleted(@Param("cardId") Long cardId, @Param("userId") Long userId,
                        @Param("completedAt") LocalDateTime completedAt);
 

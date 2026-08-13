@@ -76,6 +76,9 @@ public class ChatRoomQueryService implements ChatRoomQueryUseCase {
     }
 
     private String toPreviewText(ChatMessage message) {
+        if (message.isDeleted()) {
+            return "삭제된 메시지입니다.";
+        }
         return switch (message.getMessageType()) {
             case TEXT -> message.getContent();
             case IMAGE -> "사진을 보냈습니다.";

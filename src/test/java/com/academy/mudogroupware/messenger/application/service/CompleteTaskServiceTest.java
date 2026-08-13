@@ -1,7 +1,10 @@
 package com.academy.mudogroupware.messenger.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -18,6 +21,8 @@ import org.springframework.context.ApplicationEventPublisher;
 
 import com.academy.mudogroupware.messenger.application.command.CompleteTaskCommand;
 import com.academy.mudogroupware.messenger.domain.event.TaskCardCompletedEvent;
+import com.academy.mudogroupware.messenger.domain.exception.MessengerErrorCode;
+import com.academy.mudogroupware.messenger.domain.exception.MessengerException;
 import com.academy.mudogroupware.messenger.domain.model.ChatTaskAssignee;
 import com.academy.mudogroupware.messenger.domain.model.ChatTaskCard;
 import com.academy.mudogroupware.messenger.domain.repository.ChatTaskCardRepository;
@@ -39,6 +44,7 @@ class CompleteTaskServiceTest {
         ChatTaskCard chatTaskCard = ChatTaskCard.restore(7L, 1L, 2L, "과제 제출", LocalDate.of(2026, 8, 10),
                 List.of(ChatTaskAssignee.restore(3L, null), ChatTaskAssignee.restore(4L, null)), CARD_CREATED_AT);
         when(chatTaskCardRepository.findById(7L)).thenReturn(Optional.of(chatTaskCard));
+        when(chatTaskCardRepository.markAssigneeCompleted(7L, 3L, NOW)).thenReturn(true);
 
         service.complete(new CompleteTaskCommand(1L, 7L, 3L));
 
@@ -61,6 +67,7 @@ class CompleteTaskServiceTest {
                 List.of(ChatTaskAssignee.restore(3L, CARD_CREATED_AT), ChatTaskAssignee.restore(4L, null)),
                 CARD_CREATED_AT);
         when(chatTaskCardRepository.findById(7L)).thenReturn(Optional.of(chatTaskCard));
+        when(chatTaskCardRepository.markAssigneeCompleted(7L, 4L, NOW)).thenReturn(true);
 
         service.complete(new CompleteTaskCommand(1L, 7L, 4L));
 
@@ -70,5 +77,51 @@ class CompleteTaskServiceTest {
         assertThat(event.completedCount()).isEqualTo(2L);
         assertThat(event.assigneeCount()).isEqualTo(2);
         assertThat(event.fullyCompleted()).isTrue();
+    }
+
+    @Test
+    void throwsTaskCardAlreadyDeletedWhenCardAlreadyDeletedBeforeRequest() {
+        ChatTaskCard chatTaskCard = ChatTaskCard.restore(7L, 1L, 2L, "과제 제출", LocalDate.of(2026, 8, 10),
+                List.of(ChatTaskAssignee.restore(3L, null)), CARD_CREATED_AT,
+                LocalDateTime.of(2026, 8, 6, 9, 0));
+        when(chatTaskCardRepository.findById(7L)).thenReturn(Optional.of(chatTaskCard));
+
+        assertThatThrownBy(() -> service.complete(new CompleteTaskCommand(1L, 7L, 3L)))
+                .isInstanceOf(MessengerException.class)
+                .extracting(exception -> ((MessengerException) exception).getErrorCode())
+                .isEqualTo(MessengerErrorCode.TASK_CARD_ALREADY_DELETED);
+
+        verify(chatTaskCardRepository, never()).markAssigneeCompleted(any(), any(), any());
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void throwsTaskCardAlreadyDeletedWhenConcurrentDeleteWinsTheRace() {
+        ChatTaskCard chatTaskCard = ChatTaskCard.restore(7L, 1L, 2L, "과제 제출", LocalDate.of(2026, 8, 10),
+                List.of(ChatTaskAssignee.restore(3L, null)), CARD_CREATED_AT);
+        when(chatTaskCardRepository.findById(7L)).thenReturn(Optional.of(chatTaskCard));
+        // 다른 트랜잭션이 먼저 삭제를 커밋해서 이 요청의 UPDATE는 0건에 영향을 준 상황을 흉내낸다.
+        when(chatTaskCardRepository.markAssigneeCompleted(7L, 3L, NOW)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.complete(new CompleteTaskCommand(1L, 7L, 3L)))
+                .isInstanceOf(MessengerException.class)
+                .extracting(exception -> ((MessengerException) exception).getErrorCode())
+                .isEqualTo(MessengerErrorCode.TASK_CARD_ALREADY_DELETED);
+
+        verify(chatTaskCardRepository).markAssigneeCompleted(7L, 3L, NOW);
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void idempotentReCompleteByAlreadyCompletedAssigneeDoesNotThrowEvenWhenUpdateAffectsNoRows() {
+        ChatTaskCard chatTaskCard = ChatTaskCard.restore(7L, 1L, 2L, "과제 제출", LocalDate.of(2026, 8, 10),
+                List.of(ChatTaskAssignee.restore(3L, CARD_CREATED_AT)), CARD_CREATED_AT);
+        when(chatTaskCardRepository.findById(7L)).thenReturn(Optional.of(chatTaskCard));
+        // completed_at is null 조건에 걸려 이미 완료된 담당자의 재요청은 원래도 0건 갱신이다(정상 흐름).
+        when(chatTaskCardRepository.markAssigneeCompleted(7L, 3L, NOW)).thenReturn(false);
+
+        service.complete(new CompleteTaskCommand(1L, 7L, 3L));
+
+        verify(chatTaskCardRepository).markAssigneeCompleted(7L, 3L, NOW);
     }
 }
