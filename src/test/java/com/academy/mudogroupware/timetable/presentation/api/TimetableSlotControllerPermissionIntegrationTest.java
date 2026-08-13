@@ -39,7 +39,8 @@ class TimetableSlotControllerPermissionIntegrationTest {
                   "classroomCode": "601",
                   "startTime": "09:00:00",
                   "endTime": "11:00:00",
-                  "grade": "HIGH_3"
+                  "grade": "HIGH_3",
+                  "color": "FFCC00"
                 }
                 """;
 
@@ -61,7 +62,8 @@ class TimetableSlotControllerPermissionIntegrationTest {
                   "classroomCode": "601",
                   "startTime": "09:00:00",
                   "endTime": "11:00:00",
-                  "grade": "HIGH_3"
+                  "grade": "HIGH_3",
+                  "color": "FFCC00"
                 }
                 """;
 
