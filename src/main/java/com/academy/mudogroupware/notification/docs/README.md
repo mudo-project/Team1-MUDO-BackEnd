@@ -16,7 +16,8 @@ WebSocket 연결이 끊긴 사용자에게 유실되던 알림을 저장하고, 
 - `GET /api/notifications` — 목록 조회 (offset 페이지네이션, 20개, 최신순, 필터 없음)
 - `GET /api/notifications/unread-count` — 안읽은 개수 조회
 - `PATCH /api/notifications/{notificationId}/read` — 읽음 처리
-- 개별/일괄 삭제 API는 아직 미구현(API.md의 "다음 예정 API" 참고)
+- `DELETE /api/notifications/{notificationId}` — 개별 삭제(소프트 삭제)
+- `DELETE /api/notifications?status=READ` — 읽은 알림 일괄 삭제(소프트 삭제)
 
 ## 다른 모듈에 요청하는 의존성
 

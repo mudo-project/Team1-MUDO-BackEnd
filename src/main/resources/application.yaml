@@ -67,3 +67,9 @@ app:
       api-key: ${REVENUE_REPORT_AI_API_KEY:}
       connect-timeout-ms: ${REVENUE_REPORT_AI_CONNECT_TIMEOUT_MS:2000}
       read-timeout-ms: ${REVENUE_REPORT_AI_READ_TIMEOUT_MS:15000}
+
+platform:
+  dashboard:
+    enabled: ${PLATFORM_DASHBOARD_ENABLED:false}
+    prometheus-url: ${PLATFORM_DASHBOARD_PROMETHEUS_URL:http://monitoring.mudo.internal:9090}
+    tenant-registry-json: '${PLATFORM_DASHBOARD_TENANT_REGISTRY_JSON:[]}'

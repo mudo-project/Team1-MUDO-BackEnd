@@ -6,6 +6,7 @@ from deploy_production import (
     load_manifests,
     render_app_task,
     render_migration_task,
+    render_platform_tenant_registry,
     validate_manifests,
 )
 
@@ -18,6 +19,7 @@ class DeploymentManifestTest(unittest.TestCase):
         tenants = copy.deepcopy(self.tenants)
         cells = copy.deepcopy(self.cells)
         tenants[0]["enabled"] = True
+        tenants[0]["platform_dashboard_host"] = True
         tenants[0]["s3_bucket"] = "mudo-prod-staff-123456789012"
         tenants[0]["finance_s3_bucket"] = "mudo-prod-finance-123456789012"
         cells["cell-1"]["ecs_registered_cpu"] = 4096
@@ -41,7 +43,7 @@ class DeploymentManifestTest(unittest.TestCase):
             validate_manifests(self.profiles, tenants, cells, deployment=True)
 
     def test_renders_tenant_billing_plan_and_runtime_profile_into_app_task(self):
-        tenants, _ = self.enabled_configuration()
+        tenants, cells = self.enabled_configuration()
         task = render_app_task(
             tenants[0],
             self.profiles["shared-default"],
@@ -49,6 +51,7 @@ class DeploymentManifestTest(unittest.TestCase):
             "ap-northeast-2",
             "registry/mudo:abc123",
             "abc123",
+            render_platform_tenant_registry(tenants, cells),
         )
         container = task["containerDefinitions"][0]
         environment = {item["name"]: item["value"] for item in container["environment"]}
@@ -59,6 +62,8 @@ class DeploymentManifestTest(unittest.TestCase):
         self.assertEqual("mudo-prod-staff-123456789012", environment["AWS_S3_STAFF_BUCKET_NAME"])
         self.assertEqual("mudo-prod-finance-123456789012", environment["AWS_S3_FINANCE_BUCKET_NAME"])
         self.assertEqual("basic", environment["TENANT_PLAN"])
+        self.assertEqual("true", environment["PLATFORM_DASHBOARD_ENABLED"])
+        self.assertIn('"code":"academy-a"', environment["PLATFORM_DASHBOARD_TENANT_REGISTRY_JSON"])
         self.assertEqual("30", environment["SERVER_TOMCAT_THREADS_MAX"])
         self.assertEqual(500, container["cpu"])
         self.assertEqual(640, container["memoryReservation"])
@@ -76,6 +81,16 @@ class DeploymentManifestTest(unittest.TestCase):
             secrets["SENTRY_DSN"],
         )
         self.assertNotIn("DB_PASSWORD", environment)
+
+    def test_non_dashboard_tenant_does_not_receive_platform_registry(self):
+        tenants, _ = self.enabled_configuration()
+        tenants[0]["platform_dashboard_host"] = False
+        task = render_app_task(
+            tenants[0], self.profiles["shared-default"], "123456789012", "ap-northeast-2",
+            "registry/mudo:abc123", "abc123")
+        environment = {item["name"]: item["value"] for item in task["containerDefinitions"][0]["environment"]}
+        self.assertNotIn("PLATFORM_DASHBOARD_ENABLED", environment)
+        self.assertNotIn("PLATFORM_DASHBOARD_TENANT_REGISTRY_JSON", environment)
 
     def test_billing_plan_does_not_change_runtime_resources(self):
         tenants, _ = self.enabled_configuration()

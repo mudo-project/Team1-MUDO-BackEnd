@@ -27,6 +27,8 @@ public interface UserRepository {
 
     Map<Long, Long> countActiveByRoleIds(Set<Long> roleIds);
 
+    long countActiveUsers();
+
     User save(User user);
 
     boolean completePasswordSetup(Long userId, String newPasswordHash, String phone, String email);
