@@ -3,8 +3,10 @@ package com.academy.mudogroupware.timetable.infrastructure.persistence;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Repository;
 
+import com.academy.mudogroupware.timetable.domain.exception.TimetableSlotUpdateConflictException;
 import com.academy.mudogroupware.timetable.domain.model.TimetableSlot;
 import com.academy.mudogroupware.timetable.domain.repository.TimetableSlotRepository;
 
@@ -18,8 +20,16 @@ public class TimetableSlotPersistenceAdapter implements TimetableSlotRepository 
 
     @Override
     public TimetableSlot save(TimetableSlot slot) {
-        TimetableSlotEntity entity = slot.getId() != null ? updateExisting(slot) : toEntity(slot);
-        return toDomain(timetableSlotJpaRepository.save(entity));
+        if (slot.getId() != null) {
+            TimetableSlotEntity entity = updateExisting(slot);
+            try {
+                timetableSlotJpaRepository.flush();
+            } catch (OptimisticLockingFailureException exception) {
+                throw new TimetableSlotUpdateConflictException(exception);
+            }
+            return toDomain(entity);
+        }
+        return toDomain(timetableSlotJpaRepository.save(toEntity(slot)));
     }
 
     @Override

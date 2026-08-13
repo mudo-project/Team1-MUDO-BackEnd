@@ -16,6 +16,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -67,6 +68,10 @@ public class TimetableSlotEntity extends BaseTimeEntity {
 
     @Column(name = "effective_until", nullable = false)
     private LocalDate effectiveUntil;
+
+    @Version
+    @Column(nullable = false)
+    private Long version;
 
     @Builder
     private TimetableSlotEntity(Long id, Long timetableSetId, ClassType classType, DayOfWeek dayOfWeek,
