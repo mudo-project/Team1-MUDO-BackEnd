@@ -36,37 +36,72 @@ public class SharedFileRootInitializer {
         if (existing.isPresent() && existing.get().isReady() && !event.accountChanged()) {
             return;
         }
-        createOrRecreateRoot();
+        createOrRecreateRoot(existing);
     }
 
-    // Drive 호출 결과를 계산하는 단계와 DB에 반영하는 단계를 분리한다 — 저장 단계에서 동시성 충돌이
-    // 나더라도 "실패로 덮어쓰기"를 다시 시도하지 않기 위함이다(아래 persist() 주석 참고).
-    private void createOrRecreateRoot() {
-        SharedFileRoot result = resolveRoot();
-        persist(result);
-    }
-
-    // Drive에 실제로 루트 폴더 생성을 시도한다. 실패해도 예외를 던지지 않고 FAILED로 계산해
-    // Google 연결 자체(트랜잭션 커밋)가 이미 끝난 뒤이므로 연결 흐름에 영향을 주지 않는다.
-    private SharedFileRoot resolveRoot() {
+    // 기존 행이 있으면 그 객체를 그대로 바꿔서(replaceWith/markFailed) version을 유지한 채 저장한다.
+    // find()로 읽은 뒤 완전히 새 SharedFileRoot.ready()/failed()를 만들어 버리면 version이 사라져,
+    // 이미 있는 행인데도 SharedFileRootPersistenceAdapter가 insert를 시도해 PK 충돌로 실패한다.
+    private void createOrRecreateRoot(Optional<SharedFileRoot> existing) {
+        String accessToken;
+        DriveItem folder;
         try {
-            String accessToken = getGoogleAccessTokenUseCase.getAccessToken();
-            DriveItem folder = sharedFileDrivePort.createRootFolder(accessToken, ROOT_FOLDER_NAME);
-            return SharedFileRoot.ready(folder.id());
+            accessToken = getGoogleAccessTokenUseCase.getAccessToken();
+            folder = sharedFileDrivePort.createRootFolder(accessToken, ROOT_FOLDER_NAME);
         } catch (RuntimeException e) {
             log.warn("event=shared_file_root_initialize_failed message={}", e.getMessage());
-            return SharedFileRoot.failed();
+            persist(markFailed(existing));
+            return;
         }
+
+        SharedFileRoot result = markReady(existing, folder.id());
+        persist(result, accessToken, folder.id());
     }
 
-    // 짧은 시간에 연결이 두 번 트리거되면(더블클릭 등) 두 스레드가 같은 행을 동시에 갱신할 수 있다.
-    // SharedFileRootEntity의 @Version이 이를 감지해 나중 저장을 DataAccessException으로 실패시키는데,
-    // 이때 "실패로 덮어쓰기"를 재시도하면 먼저 성공한 결과를 잘못 지울 수 있으므로 그냥 포기하고 로그만 남긴다.
+    private SharedFileRoot markReady(Optional<SharedFileRoot> existing, String googleRootFolderId) {
+        return existing
+                .map(root -> {
+                    root.replaceWith(googleRootFolderId);
+                    return root;
+                })
+                .orElseGet(() -> SharedFileRoot.ready(googleRootFolderId));
+    }
+
+    private SharedFileRoot markFailed(Optional<SharedFileRoot> existing) {
+        return existing
+                .map(root -> {
+                    root.markFailed();
+                    return root;
+                })
+                .orElseGet(SharedFileRoot::failed);
+    }
+
+    // Drive 호출 자체가 실패한 경우(폴더를 안 만들었으므로 보상할 대상이 없음) 저장만 시도한다.
     private void persist(SharedFileRoot result) {
         try {
             sharedFileRootRepository.save(result);
         } catch (DataAccessException e) {
             log.warn("event=shared_file_root_initialize_conflict message={}", e.getMessage());
+        }
+    }
+
+    // 짧은 시간에 연결이 두 번 트리거되면(더블클릭 등) 두 스레드가 같은 행을 동시에 갱신할 수 있다.
+    // SharedFileRootEntity의 @Version이 이를 감지해 나중 저장을 DataAccessException으로 실패시키는데,
+    // 이때 "실패로 덮어쓰기"를 재시도하면 먼저 성공한 결과를 잘못 지울 수 있으므로 재시도하지 않는다.
+    // 대신 이미 만들어버린 Drive 폴더가 고아로 남지 않도록 trash로 보상한다(RecreateSharedFileRootService와
+    // 동일한 정책). 보상 자체가 실패해도 로그만 남기고 원래 저장 실패를 삼킨다 — AFTER_COMMIT이라 예외를
+    // 던져도 받을 사람이 없다.
+    private void persist(SharedFileRoot result, String accessToken, String folderId) {
+        try {
+            sharedFileRootRepository.save(result);
+        } catch (DataAccessException e) {
+            log.warn("event=shared_file_root_initialize_conflict folderId={} message={}", folderId, e.getMessage());
+            try {
+                sharedFileDrivePort.trash(accessToken, folderId);
+            } catch (RuntimeException compensationFailure) {
+                log.error("event=shared_file_root_initialize_compensation_failed folderId={} message={}",
+                        folderId, compensationFailure.getMessage());
+            }
         }
     }
 }
