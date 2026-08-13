@@ -20,7 +20,13 @@ public interface ChatTaskCardRepository {
     List<ChatTaskCard> findPage(Long chatRoomId, LocalDateTime cursorCreatedAt, Long cursorCardId, int size);
 
     // 담당자 완료 행만 원자적으로 갱신한다(카드 전체를 다시 저장하는 방식은 동시 완료 처리 시 유실 위험이 있어 대신 사용).
-    void markAssigneeCompleted(Long cardId, Long userId, LocalDateTime completedAt);
+    // 카드가 삭제된 상태면 갱신하지 않는다(deleted_at is null 조건). 반환값이 false면 이미 완료된 상태였거나
+    // 이 갱신 시점에 카드가 (동시에) 삭제됐다는 뜻이다 — 어느 쪽인지는 isDeleted()로 다시 확인해야 한다.
+    boolean markAssigneeCompleted(Long cardId, Long userId, LocalDateTime completedAt);
+
+    // markAssigneeCompleted가 0건 갱신됐을 때 그 이유(이미 완료됨 vs 카드 삭제됨)를 가리기 위한 조회.
+    // 트랜잭션의 스냅샷이 아니라 커밋된 최신 상태를 봐야 하므로 잠금 조회로 구현한다.
+    boolean isDeleted(Long cardId);
 
     // 삭제된 카드는 갱신하지 않는다(deleted_at is null 조건). 반환값이 false면 이미 삭제된 카드라는 뜻이다.
     boolean updateContent(Long cardId, String content, LocalDate dueDate);

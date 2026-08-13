@@ -81,6 +81,7 @@ public final class ChatTaskCard {
     }
 
     public void complete(Long userId, LocalDateTime completedAt) {
+        validateNotDeleted();
         ChatTaskAssignee assignee = findAssignee(userId)
                 .orElseThrow(() -> new MessengerException(MessengerErrorCode.NOT_TASK_ASSIGNEE));
         assignee.complete(completedAt);

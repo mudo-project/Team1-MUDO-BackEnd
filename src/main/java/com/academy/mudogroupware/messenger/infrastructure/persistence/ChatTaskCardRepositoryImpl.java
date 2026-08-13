@@ -41,8 +41,8 @@ public class ChatTaskCardRepositoryImpl implements ChatTaskCardRepository {
     }
 
     @Override
-    public void markAssigneeCompleted(Long cardId, Long userId, LocalDateTime completedAt) {
-        chatTaskCardJpaRepository.markCompleted(cardId, userId, completedAt);
+    public boolean markAssigneeCompleted(Long cardId, Long userId, LocalDateTime completedAt) {
+        return chatTaskCardJpaRepository.markCompleted(cardId, userId, completedAt) > 0;
     }
 
     @Override
@@ -61,6 +61,11 @@ public class ChatTaskCardRepositoryImpl implements ChatTaskCardRepository {
     @Override
     public boolean markDeleted(Long cardId, LocalDateTime deletedAt) {
         return chatTaskCardJpaRepository.markDeleted(cardId, deletedAt) > 0;
+    }
+
+    @Override
+    public boolean isDeleted(Long cardId) {
+        return chatTaskCardJpaRepository.findDeletedAtForUpdate(cardId) != null;
     }
 
     private ChatTaskCardEntity toEntity(ChatTaskCard chatTaskCard) {
