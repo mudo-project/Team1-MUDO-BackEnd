@@ -7,8 +7,4 @@ public class InvalidTimetableColorException extends BadRequestException {
     public InvalidTimetableColorException() {
         super(TimetableErrorCode.INVALID_COLOR);
     }
-
-    public InvalidTimetableColorException(Throwable cause) {
-        super(TimetableErrorCode.INVALID_COLOR, TimetableErrorCode.INVALID_COLOR.getMessage(), cause);
-    }
 }
