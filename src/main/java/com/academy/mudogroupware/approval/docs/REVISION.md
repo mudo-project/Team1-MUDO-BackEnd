@@ -14,7 +14,7 @@
 - 내 결재 이력 삭제는 문서 원본 삭제가 아니라 개인별 숨김 처리로 구현했다.
 - 신청 취소는 신청자 본인만 가능하며, 아직 어떤 결재선도 승인/반려 처리되지 않은 `IN_PROGRESS` 문서만 허용한다.
 - 취소된 문서는 `CANCELLED` 상태로 남긴다.
-- 휴가 결재 취소 시 attendance의 pending 휴가도 취소될 수 있도록 기존 `ApprovalDocumentDecidedEvent(approved=false)`를 발행한다.
+- 휴가 결재 취소 시 attendance의 pending 휴가도 취소될 수 있도록 `ApprovalDocumentDecidedEvent(status=CANCELLED)`를 발행한다. 기존 attendance 연동 호환을 위해 이벤트의 `approved()` 메서드는 유지한다.
 
 ### 변경
 

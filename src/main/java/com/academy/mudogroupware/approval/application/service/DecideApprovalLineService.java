@@ -50,7 +50,7 @@ public class DecideApprovalLineService implements DecideApprovalLineUseCase {
                 || approvalDocument.getStatus() == ApprovalStatus.REJECTED) {
             eventPublisher.publishEvent(new ApprovalDocumentDecidedEvent(approvalDocument.getId(),
                     approvalDocument.getCreatorId(),
-                    approvalDocument.getStatus() == ApprovalStatus.APPROVED, now));
+                    approvalDocument.getStatus(), now));
         }
     }
 }

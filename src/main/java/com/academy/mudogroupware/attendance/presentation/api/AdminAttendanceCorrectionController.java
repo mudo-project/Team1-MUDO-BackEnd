@@ -34,7 +34,7 @@ public class AdminAttendanceCorrectionController {
             @AuthenticationPrincipal AuthUser user,
             @RequestParam(required = false) AttendanceCorrectionStatus status,
             @RequestParam(defaultValue = "0") @Min(0) int page,
-            @RequestParam(defaultValue = "30") @Min(1) @Max(100) int size) {
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
         return GlobalApiResponse.ok(AttendanceResponseCode.ATTENDANCE_CORRECTION_LIST_RETRIEVED,
                 PageResponse.from(useCase.getAll(status, page, size),
                         AdminAttendanceCorrectionResponse::from));
