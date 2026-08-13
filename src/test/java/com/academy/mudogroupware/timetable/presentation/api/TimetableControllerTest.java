@@ -43,7 +43,7 @@ import com.academy.mudogroupware.timetable.application.usecase.GetTimetableSetUs
 import com.academy.mudogroupware.timetable.application.usecase.GetTimetableSetsUseCase;
 import com.academy.mudogroupware.timetable.application.usecase.DeleteTimetableSetUseCase;
 import com.academy.mudogroupware.timetable.application.usecase.UpdateTimetableSetUseCase;
-import com.academy.mudogroupware.timetable.domain.exception.InvalidExportColorException;
+import com.academy.mudogroupware.timetable.domain.exception.InvalidTimetableColorException;
 import com.academy.mudogroupware.timetable.domain.exception.TimetableSetNotFoundException;
 import com.academy.mudogroupware.timetable.domain.model.TimetableClassroom;
 import com.academy.mudogroupware.timetable.domain.model.TimetableSetStatus;
@@ -249,7 +249,7 @@ class TimetableControllerTest {
     @Test
     void exportTimetableReturns400WhenColorInvalid() throws Exception {
         when(exportTimetableUseCase.export(any(ExportTimetableCommand.class)))
-                .thenThrow(new InvalidExportColorException());
+                .thenThrow(new InvalidTimetableColorException());
 
         mockMvc.perform(get("/api/timetables/1/export")
                         .param("format", "PNG")

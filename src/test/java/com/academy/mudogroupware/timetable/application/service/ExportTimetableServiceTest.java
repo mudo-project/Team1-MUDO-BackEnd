@@ -27,7 +27,7 @@ import com.academy.mudogroupware.timetable.application.query.TimetableSetDetailV
 import com.academy.mudogroupware.timetable.application.query.TimetableSlotView;
 import com.academy.mudogroupware.timetable.application.usecase.GetTimetableSetUseCase;
 import com.academy.mudogroupware.timetable.application.usecase.GetTimetableSlotsUseCase;
-import com.academy.mudogroupware.timetable.domain.exception.InvalidExportColorException;
+import com.academy.mudogroupware.timetable.domain.exception.InvalidTimetableColorException;
 import com.academy.mudogroupware.timetable.domain.exception.TimetableSetNotFoundException;
 import com.academy.mudogroupware.timetable.domain.model.ClassType;
 import com.academy.mudogroupware.timetable.domain.model.Grade;
@@ -207,7 +207,7 @@ class ExportTimetableServiceTest {
                 Map.of("601", "ZZZZZZ"), TimetableExportDensity.NORMAL, null, null, null);
 
         assertThatThrownBy(() -> service.export(command))
-                .isInstanceOf(InvalidExportColorException.class);
+                .isInstanceOf(InvalidTimetableColorException.class);
     }
 
     @Test

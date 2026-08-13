@@ -14,7 +14,7 @@ import com.academy.mudogroupware.timetable.application.usecase.ExportTimetableUs
 import com.academy.mudogroupware.timetable.application.usecase.GetTimetableSetUseCase;
 import com.academy.mudogroupware.timetable.application.usecase.GetTimetableSetsUseCase;
 import com.academy.mudogroupware.timetable.application.usecase.UpdateTimetableSetUseCase;
-import com.academy.mudogroupware.timetable.domain.exception.InvalidExportColorException;
+import com.academy.mudogroupware.timetable.domain.exception.InvalidTimetableColorException;
 import com.academy.mudogroupware.timetable.domain.model.ClassType;
 import com.academy.mudogroupware.timetable.domain.model.TimetableExportColorCriterion;
 import com.academy.mudogroupware.timetable.domain.model.TimetableExportDensity;
@@ -176,10 +176,10 @@ public class TimetableController {
             parsed = objectMapper.readValue(colorMap, new TypeReference<Map<String, String>>() {
             });
         } catch (JsonProcessingException e) {
-            throw new InvalidExportColorException(e);
+            throw new InvalidTimetableColorException(e);
         }
         if (parsed == null || parsed.containsValue(null)) {
-            throw new InvalidExportColorException();
+            throw new InvalidTimetableColorException();
         }
         return parsed;
     }
