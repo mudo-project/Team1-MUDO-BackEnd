@@ -34,6 +34,25 @@ class TaskCommentTest {
   }
 
   @Test
+  void createDeduplicatesMentionedUserIds() {
+    TaskComment comment =
+        TaskComment.create(TASK_ID, AUTHOR_ID, "내용", List.of(MENTIONED_ID, 30L, MENTIONED_ID), NOW);
+
+    assertThat(comment.getMentions()).extracting(TaskCommentMention::getMentionedUserId)
+        .containsExactly(MENTIONED_ID, 30L);
+  }
+
+  @Test
+  void updateContentDeduplicatesMentionedUserIds() {
+    TaskComment comment = TaskComment.create(TASK_ID, AUTHOR_ID, "원본", List.of(), NOW);
+
+    TaskComment updated = comment.updateContent("수정됨", List.of(30L, 31L, 30L), NOW.plusHours(1));
+
+    assertThat(updated.getMentions()).extracting(TaskCommentMention::getMentionedUserId)
+        .containsExactly(30L, 31L);
+  }
+
+  @Test
   void updateContentReplacesContentAndMentions() {
     TaskComment comment = TaskComment.create(TASK_ID, AUTHOR_ID, "원본", List.of(MENTIONED_ID), NOW);
     LocalDateTime later = NOW.plusHours(1);
