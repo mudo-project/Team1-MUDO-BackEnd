@@ -142,4 +142,39 @@ class TaskCommentPersistenceAdapterDataJpaTest {
     assertThat(page.content()).hasSize(1);
     assertThat(page.content().get(0).getContent()).isEqualTo("이 업무 댓글");
   }
+
+  @Test
+  void updateCompletionDoesNotTouchMentions() {
+    Long taskId = givenTaskId();
+    TaskComment created = adapter().save(
+        TaskComment.create(taskId, 10L, "댓글", List.of(20L, 21L), LocalDateTime.of(2026, 8, 7, 9, 0)));
+
+    TaskComment toggled = created.toggleComplete(10L, LocalDateTime.of(2026, 8, 7, 10, 0));
+    TaskComment saved = adapter().updateCompletion(toggled);
+
+    assertThat(saved.isCompleted()).isTrue();
+    assertThat(saved.getCompletedBy()).isEqualTo(10L);
+    assertThat(saved.getMentions()).extracting(m -> m.getMentionedUserId())
+        .containsExactlyInAnyOrder(20L, 21L);
+    assertThat(taskCommentMentionJpaRepository.findAllByCommentId(saved.getId())).hasSize(2);
+  }
+
+  @Test
+  void togglingCompletionRepeatedlyDoesNotThrowDuplicateMentionKeyException() {
+    Long taskId = givenTaskId();
+    TaskComment created = adapter().save(
+        TaskComment.create(taskId, 10L, "댓글", List.of(20L), LocalDateTime.of(2026, 8, 7, 9, 0)));
+
+    TaskComment completed = adapter().updateCompletion(
+        created.toggleComplete(10L, LocalDateTime.of(2026, 8, 7, 10, 0)));
+    TaskComment reopened = adapter().updateCompletion(
+        completed.toggleComplete(10L, LocalDateTime.of(2026, 8, 7, 11, 0)));
+
+    assertThat(completed.isCompleted()).isTrue();
+    assertThat(reopened.isCompleted()).isFalse();
+    assertThat(reopened.getCompletedBy()).isNull();
+    assertThat(taskCommentMentionJpaRepository.findAllByCommentId(created.getId()))
+        .extracting(m -> m.getMentionedUserId())
+        .containsExactly(20L);
+  }
 }
