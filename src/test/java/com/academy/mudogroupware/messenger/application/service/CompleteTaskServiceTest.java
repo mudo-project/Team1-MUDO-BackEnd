@@ -102,6 +102,7 @@ class CompleteTaskServiceTest {
         when(chatTaskCardRepository.findById(7L)).thenReturn(Optional.of(chatTaskCard));
         // 다른 트랜잭션이 먼저 삭제를 커밋해서 이 요청의 UPDATE는 0건에 영향을 준 상황을 흉내낸다.
         when(chatTaskCardRepository.markAssigneeCompleted(7L, 3L, NOW)).thenReturn(false);
+        when(chatTaskCardRepository.isDeleted(7L)).thenReturn(true);
 
         assertThatThrownBy(() -> service.complete(new CompleteTaskCommand(1L, 7L, 3L)))
                 .isInstanceOf(MessengerException.class)
@@ -119,9 +120,27 @@ class CompleteTaskServiceTest {
         when(chatTaskCardRepository.findById(7L)).thenReturn(Optional.of(chatTaskCard));
         // completed_at is null 조건에 걸려 이미 완료된 담당자의 재요청은 원래도 0건 갱신이다(정상 흐름).
         when(chatTaskCardRepository.markAssigneeCompleted(7L, 3L, NOW)).thenReturn(false);
+        when(chatTaskCardRepository.isDeleted(7L)).thenReturn(false);
 
         service.complete(new CompleteTaskCommand(1L, 7L, 3L));
 
         verify(chatTaskCardRepository).markAssigneeCompleted(7L, 3L, NOW);
+    }
+
+    @Test
+    void concurrentFirstCompletionRequestThatLosesTheRaceDoesNotThrowWhenCardIsNotDeleted() {
+        // CodeRabbit 지적 사항: 같은 담당자가 완료 요청을 동시에 두 번 보내면 둘 다 조회 시점엔
+        // 미완료 상태(wasAlreadyCompleted=false)라서, 하나만 반영되고 나머지 하나는 0건 갱신이다.
+        // 이 경우 카드가 삭제된 게 아니므로 예외를 던지면 안 된다.
+        ChatTaskCard chatTaskCard = ChatTaskCard.restore(7L, 1L, 2L, "과제 제출", LocalDate.of(2026, 8, 10),
+                List.of(ChatTaskAssignee.restore(3L, null)), CARD_CREATED_AT);
+        when(chatTaskCardRepository.findById(7L)).thenReturn(Optional.of(chatTaskCard));
+        when(chatTaskCardRepository.markAssigneeCompleted(7L, 3L, NOW)).thenReturn(false);
+        when(chatTaskCardRepository.isDeleted(7L)).thenReturn(false);
+
+        service.complete(new CompleteTaskCommand(1L, 7L, 3L));
+
+        verify(chatTaskCardRepository).markAssigneeCompleted(7L, 3L, NOW);
+        verify(chatTaskCardRepository).isDeleted(7L);
     }
 }

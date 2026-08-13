@@ -127,4 +127,22 @@ class ChatTaskCardJpaRepositoryTest {
                 "select deleted_at from chat_task_card where card_id = ?", LocalDateTime.class, 7L);
         assertThat(deletedAt).isEqualTo(LocalDateTime.of(2026, 8, 6, 15, 0));
     }
+
+    @Test
+    void findDeletedAtForUpdateReturnsNullWhenNotDeleted() {
+        insertChatRoom(1L);
+        insertTaskCard(7L, 1L);
+
+        assertThat(chatTaskCardJpaRepository.findDeletedAtForUpdate(7L)).isNull();
+    }
+
+    @Test
+    void findDeletedAtForUpdateReturnsTimestampWhenDeleted() {
+        insertChatRoom(1L);
+        insertTaskCard(7L, 1L);
+        chatTaskCardJpaRepository.markDeleted(7L, LocalDateTime.of(2026, 8, 6, 15, 0));
+
+        assertThat(chatTaskCardJpaRepository.findDeletedAtForUpdate(7L))
+                .isEqualTo(LocalDateTime.of(2026, 8, 6, 15, 0));
+    }
 }

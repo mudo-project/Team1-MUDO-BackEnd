@@ -64,4 +64,9 @@ public interface ChatTaskCardJpaRepository extends JpaRepository<ChatTaskCardEnt
     @Query(value = "update chat_task_card set deleted_at = :deletedAt "
             + "where card_id = :cardId and deleted_at is null", nativeQuery = true)
     int markDeleted(@Param("cardId") Long cardId, @Param("deletedAt") LocalDateTime deletedAt);
+
+    // 잠금 조회(FOR UPDATE)라 트랜잭션의 스냅샷이 아니라 커밋된 최신 deleted_at을 본다. H2/MySQL 둘 다
+    // 지원하는 표준 문법이라 markCompleted 때와 달리 별도 분기가 필요 없다.
+    @Query(value = "select deleted_at from chat_task_card where card_id = :cardId for update", nativeQuery = true)
+    LocalDateTime findDeletedAtForUpdate(@Param("cardId") Long cardId);
 }

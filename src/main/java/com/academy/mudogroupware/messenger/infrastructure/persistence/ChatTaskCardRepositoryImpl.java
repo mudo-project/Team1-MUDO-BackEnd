@@ -63,6 +63,11 @@ public class ChatTaskCardRepositoryImpl implements ChatTaskCardRepository {
         return chatTaskCardJpaRepository.markDeleted(cardId, deletedAt) > 0;
     }
 
+    @Override
+    public boolean isDeleted(Long cardId) {
+        return chatTaskCardJpaRepository.findDeletedAtForUpdate(cardId) != null;
+    }
+
     private ChatTaskCardEntity toEntity(ChatTaskCard chatTaskCard) {
         List<ChatTaskAssigneeEmbeddable> assignees = chatTaskCard.getAssignees().stream()
                 .map(assignee -> ChatTaskAssigneeEmbeddable.builder()
