@@ -57,7 +57,12 @@
       ],
       "page": 0,
       "size": 20,
-      "hasNext": false
+      "totalElements": 1,
+      "totalPages": 1,
+      "first": true,
+      "last": true,
+      "hasNext": false,
+      "hasPrevious": false
     }
   }
 }
@@ -81,7 +86,12 @@
 | `data.employees.content[].days[].clockOutAt` | 퇴근 시각이며 기록이 없으면 `null`입니다. |
 | `data.employees.page` | 현재 페이지입니다. |
 | `data.employees.size` | 페이지 크기입니다. |
+| `data.employees.totalElements` | 조회 조건에 맞는 전체 직원 수입니다. |
+| `data.employees.totalPages` | 전체 페이지 수입니다. |
+| `data.employees.first` | 첫 페이지 여부입니다. |
+| `data.employees.last` | 마지막 페이지 여부입니다. |
 | `data.employees.hasNext` | 다음 페이지 존재 여부입니다. |
+| `data.employees.hasPrevious` | 이전 페이지 존재 여부입니다. |
 
 ### 실패 코드
 
@@ -229,7 +239,12 @@
     ],
     "page": 0,
     "size": 30,
-    "hasNext": false
+    "totalElements": 1,
+    "totalPages": 1,
+    "first": true,
+    "last": true,
+    "hasNext": false,
+    "hasPrevious": false
   }
 }
 ```
@@ -256,7 +271,12 @@
 | `data.content[].rejectionReason` | 반려 사유이며 반려되지 않았으면 `null`입니다. |
 | `data.page` | 현재 페이지입니다. |
 | `data.size` | 페이지 크기입니다. |
+| `data.totalElements` | 조회 조건에 맞는 전체 근태 수정 요청 수입니다. |
+| `data.totalPages` | 전체 페이지 수입니다. |
+| `data.first` | 첫 페이지 여부입니다. |
+| `data.last` | 마지막 페이지 여부입니다. |
 | `data.hasNext` | 다음 페이지 존재 여부입니다. |
+| `data.hasPrevious` | 이전 페이지 존재 여부입니다. |
 
 ### 실패 코드
 

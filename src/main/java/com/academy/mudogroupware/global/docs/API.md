@@ -21,9 +21,27 @@
 | 컴포넌트 | 종류 | 사용 방법 | 기능 요약 |
 | --- | --- | --- | --- |
 | `PageResult<T>` | record (`global.domain.common.page`) | 도메인 Repository 인터페이스가 반환, Application 계층에서 `.map()`으로 View 타입 변환 | `content`/`page`/`size`/`hasNext`만 담는 프레임워크-비의존 페이지 결과. Spring Data `Pageable`/`Slice`를 domain 계층에 노출하지 않기 위한 래퍼 |
+| `PagedResult<T>` | record (`global.domain.common.page`) | 전체 개수와 번호 기반 페이지 이동이 필요한 조회에서 사용 | `content`/`page`/`size`/`totalElements`/`totalPages`/`first`/`last`/`hasNext`/`hasPrevious`를 담는 프레임워크-비의존 페이지 결과 |
+| `PageResponse<T>` | record (`global.presentation.api.common`) | `PagedResult`를 일반 페이지 응답으로 변환 | 전체 개수와 페이지 수를 포함하는 공용 HTTP 응답 DTO |
 | `SliceResponse<T>` | record (`global.presentation.api.common`) | Controller에서 `SliceResponse.from(pageResult, ResponseDto::from)`로 생성, `GlobalApiResponse<SliceResponse<T>>`로 감싸 반환 | `docs/API_CONTRACT.md` 페이지네이션 규칙(`content`/`page`/`size`/`hasNext`)을 만족하는 응답 포맷 |
 
-세부 명세: [PageResult.java](../domain/common/page/PageResult.java) · [SliceResponse.java](../presentation/api/common/SliceResponse.java)
+세부 명세: [PageResult.java](../domain/common/page/PageResult.java) · [PagedResult.java](../domain/common/page/PagedResult.java) · [SliceResponse.java](../presentation/api/common/SliceResponse.java) · [PageResponse.java](../presentation/api/common/PageResponse.java)
+
+### 방식 선택
+
+| 방식 | 적합한 경우 | 전체 COUNT | 현재 예시 |
+| --- | --- | --- | --- |
+| `Page` | 페이지 번호와 `totalPages`가 필요한 관리 화면 | 필요 | 구성원, 근태, 법인카드, 급여 목록 |
+| `Slice` | 전체 개수 없이 더보기·순차 탐색만 필요한 목록 | 불필요 | 공지, 결재, 강의 등 |
+| `Cursor` | 데이터가 계속 쌓이거나 깊은 offset 조회를 피해야 하는 목록 | 불필요 | 메신저 메시지·업무지시 카드, 공유파일 목록·검색 |
+
+Cursor는 정렬 키와 cursor 표현이 도메인별로 다르므로 현재 공용 `global` DTO를 제공하지 않습니다.
+
+- 메신저는 `createdAt DESC, id DESC` 정렬의 복합 키셋 cursor를 사용합니다. 요청의
+  `cursorCreatedAt`과 ID cursor를 함께 전달하고, 응답의 `nextCursorCreatedAt`과 다음 ID cursor를
+  다음 요청에 사용합니다.
+- 공유파일은 Google Drive의 불투명 page token을 요청 `cursor`, 응답 `nextCursor`로 그대로 전달합니다.
+- 신규 Cursor API는 `docs/API_CONTRACT.md`의 첫 요청, cursor 전달, `hasNext`, 안정 정렬 규칙을 따릅니다.
 
 ---
 
@@ -71,14 +89,15 @@ Cron/시간대는 `app.scheduler.retention.cron`/`app.scheduler.retention.zone` 
 - 도메인 엔티티에서 `LocalDateTime.now()`를 직접 호출하지 않습니다. 필요하면 이 문서의 `Clock` 빈을 주입받아 사용해주세요.
 - `markDeleted(null)`을 호출하면 예외(`NullPointerException`)가 발생합니다. 이미 삭제된 엔티티에 다시 `markDeleted()`를 호출하면 `IllegalStateException`이 발생하며, 기존 `deletedAt`은 덮어써지지 않습니다. 삭제를 되돌려야 하면 `markDeleted()`를 재사용하지 말고 별도의 `restore()` 메서드를 도메인 엔티티에 명시적으로 추가해주세요.
 - **소프트 삭제 조회 필터 정책**: `SoftDeleteTimeEntity`는 조회 쿼리를 자동으로 걸러주지 않습니다(`@Where`, `@SQLRestriction` 등을 적용하지 않음). `SoftDeleteTimeEntity`를 상속하는 도메인 엔티티의 Repository/QueryDSL 조회 조건에는 `deleted_at IS NULL`(또는 이에 대응하는 조건)을 **직접 추가**해야 합니다. 누락하면 삭제된 데이터가 목록/상세 조회에 그대로 노출됩니다.
-- **페이지네이션**: 목록 API는 전체 개수(`totalElements`/`totalPages`)가 필요 없다면 `Page` 대신 `Slice`를 우선 고려하세요(추가 COUNT 쿼리를 생략). 도메인 Repository 인터페이스는 Spring Data의 `Pageable`/`Slice`를 직접 노출하지 말고, Infrastructure 계층에서 `PageResult`로 변환해 반환하세요.
+- **페이지네이션**: 페이지 번호와 전체 개수가 필요하면 `Page`, 전체 개수 없이 offset 기반 순차 조회만 필요하면 `Slice`, 데이터가 계속 쌓이거나 깊은 offset 비용과 조회 중 중복·누락을 피해야 하면 `Cursor`를 선택합니다. 도메인 Repository 인터페이스에는 Spring Data의 `Pageable`/`Page`/`Slice`를 직접 노출하지 않습니다. Cursor도 persistence 또는 외부 API token을 도메인 계약에 맞는 값으로 변환해 노출합니다.
 - **WebSocket 알림**: 도메인 Notifier는 목적지 문자열과 payload만 정하고 실제 전송은 `WebSocketEventPublisher.publish(...)`에 위임합니다. 도메인 코드에서 `SimpMessagingTemplate`을 직접 주입하지 않습니다.
 - **WebSocket 목적지**: 브로드캐스트는 `/topic/...`, 큐성 알림은 `/queue/...`로만 발행합니다. 클라이언트가 서버로 보내는 `/app/...` 목적지는 서버 발행 목적지로 사용하지 않습니다.
 
 ## 📝 문서 정보
 
-- 업데이트일: `2026-08-10`
+- 업데이트일: `2026-08-13`
 - 변경 사항(요약):
+  - 목록 API가 요구하는 전체 개수, 데이터 변경 빈도, 깊은 offset 비용에 따라 `Page`/`Slice`/`Cursor` 중 하나를 선택하는 기준을 추가했습니다. 📄
   - `WebSocketEventPublisher`를 추가해 결재/메신저 실시간 알림 전송 경로를 공통화했습니다.
   - `Clock` 빈과 JPA Auditing `DateTimeProvider`를 추가했습니다. ⏰
   - `CreatedAtEntity` / `BaseTimeEntity` / `SoftDeleteTimeEntity` 3종 Base Entity를 추가했습니다. 🧱
