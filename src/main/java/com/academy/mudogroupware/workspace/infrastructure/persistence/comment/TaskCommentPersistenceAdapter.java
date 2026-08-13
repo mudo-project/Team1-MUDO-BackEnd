@@ -56,6 +56,17 @@ public class TaskCommentPersistenceAdapter implements TaskCommentRepository {
   }
 
   @Override
+  public TaskComment updateCompletion(TaskComment comment) {
+    TaskCommentJpaEntity entity =
+        taskCommentJpaRepository
+            .findById(comment.getId())
+            .orElseThrow(TaskCommentNotFoundException::new);
+    syncCompletion(entity, comment);
+    return taskCommentPersistenceMapper.toDomain(
+        entity, taskCommentMentionJpaRepository.findAllByCommentId(entity.getId()));
+  }
+
+  @Override
   public Optional<TaskComment> findById(Long commentId) {
     return taskCommentJpaRepository
         .findById(commentId)
