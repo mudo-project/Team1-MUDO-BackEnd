@@ -132,6 +132,11 @@ public class UserRepositoryImpl implements UserRepository {
     }
 
     @Override
+    public long countActiveUsers() {
+        return userJpaRepository.countByStatus(UserStatus.ACTIVE);
+    }
+
+    @Override
     public User save(User user) {
         UserEntity entity = UserEntity.builder()
                 .username(user.getUsername())
