@@ -4,8 +4,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Repository;
 
+import com.academy.mudogroupware.calendar.domain.exception.CalendarEventUpdateConflictException;
 import com.academy.mudogroupware.calendar.domain.model.CalendarEvent;
 import com.academy.mudogroupware.calendar.domain.repository.CalendarEventRepository;
 
@@ -19,10 +21,16 @@ public class CalendarEventPersistenceAdapter implements CalendarEventRepository 
 
     @Override
     public CalendarEvent save(CalendarEvent calendarEvent) {
-        CalendarEventEntity entity = calendarEvent.getId() != null
-                ? updateExisting(calendarEvent)
-                : toEntity(calendarEvent);
-        return toDomain(calendarEventJpaRepository.save(entity));
+        if (calendarEvent.getId() != null) {
+            CalendarEventEntity entity = updateExisting(calendarEvent);
+            try {
+                calendarEventJpaRepository.flush();
+            } catch (OptimisticLockingFailureException exception) {
+                throw new CalendarEventUpdateConflictException(exception);
+            }
+            return toDomain(entity);
+        }
+        return toDomain(calendarEventJpaRepository.save(toEntity(calendarEvent)));
     }
 
     @Override
