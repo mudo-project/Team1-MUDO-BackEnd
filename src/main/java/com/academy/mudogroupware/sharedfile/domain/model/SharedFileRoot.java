@@ -6,21 +6,32 @@ public final class SharedFileRoot {
 
     private SharedFileRootStatus status;
     private String googleRootFolderId;
+    // 영속성 계층에서 읽어온 낙관적 락 버전. 아직 저장된 적 없는 인스턴스(ready/failed)는 null이며,
+    // SharedFileRootPersistenceAdapter는 이 값으로 insert(null)와 update(non-null)를 구분한다.
+    private final Long version;
 
-    private SharedFileRoot(SharedFileRootStatus status, String googleRootFolderId) {
+    private SharedFileRoot(SharedFileRootStatus status, String googleRootFolderId, Long version) {
         this.status = status;
         this.googleRootFolderId = googleRootFolderId;
+        this.version = version;
     }
 
-    // Drive에 루트 폴더 생성이 성공했을 때 사용한다.
+    // Drive에 루트 폴더 생성이 성공했을 때 사용한다. 아직 저장되지 않은 인스턴스이므로 version은 null이다.
     public static SharedFileRoot ready(String googleRootFolderId) {
         requireNonBlankFolderId(googleRootFolderId);
-        return new SharedFileRoot(SharedFileRootStatus.READY, googleRootFolderId);
+        return new SharedFileRoot(SharedFileRootStatus.READY, googleRootFolderId, null);
     }
 
-    // 최초 생성 또는 재생성이 실패했을 때 사용한다. 폴더 ID는 갖지 않는다.
+    // 최초 생성 또는 재생성이 실패했을 때 사용한다. 폴더 ID는 갖지 않는다. 아직 저장되지 않은 인스턴스이므로
+    // version은 null이다.
     public static SharedFileRoot failed() {
-        return new SharedFileRoot(SharedFileRootStatus.FAILED, null);
+        return new SharedFileRoot(SharedFileRootStatus.FAILED, null, null);
+    }
+
+    // 영속성 계층에서 읽은 상태를 그대로 복원한다. version을 보존해야 이후 저장 시 낙관적 락 충돌을
+    // 감지할 수 있으므로, SharedFileRootPersistenceAdapter의 조회 경로에서만 사용한다.
+    public static SharedFileRoot restore(SharedFileRootStatus status, String googleRootFolderId, Long version) {
+        return new SharedFileRoot(status, googleRootFolderId, version);
     }
 
     // Drive에서 루트 폴더의 404(실제 삭제)가 확인됐을 때 FAILED로 전환하고 이전 폴더 ID를 지운다.
@@ -46,6 +57,10 @@ public final class SharedFileRoot {
 
     public String getGoogleRootFolderId() {
         return googleRootFolderId;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     private static void requireNonBlankFolderId(String googleRootFolderId) {
