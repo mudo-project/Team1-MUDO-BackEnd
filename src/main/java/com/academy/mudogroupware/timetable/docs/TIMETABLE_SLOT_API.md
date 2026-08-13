@@ -199,6 +199,7 @@ HTTP `204 No Content` (응답 본문 없음)
 | `404 Not Found` | `TIMETABLE_404_1` | 시간표 세트가 존재하지 않거나 다른 학원 소속인 경우 |
 | `404 Not Found` | `TIMETABLE_404_2` | 슬롯이 존재하지 않는 경우 |
 | `409 Conflict` | `TIMETABLE_409_1` | 변경하려는 강의실/요일/시간이 다른 슬롯과 겹치는 경우 |
+| `409 Conflict` | `TIMETABLE_409_3` | 다른 요청이 먼저 같은 수업 슬롯을 수정한 경우 |
 | `500 Internal Server Error` | `COMMON_500_1` | 처리되지 않은 서버 오류 |
 
 ## 수업 슬롯 삭제
