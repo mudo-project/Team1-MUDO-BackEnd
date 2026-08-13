@@ -35,6 +35,11 @@ public class TimetableSetPersistenceAdapter implements TimetableSetRepository {
     }
 
     @Override
+    public Optional<TimetableSet> findByIdForUpdate(Long id) {
+        return timetableSetJpaRepository.findByIdForUpdate(id).map(this::toDomain);
+    }
+
+    @Override
     public List<TimetableSet> findAll() {
         return timetableSetJpaRepository.findAllByOrderByStartDateDesc().stream()
                 .map(this::toDomain)

@@ -53,7 +53,7 @@ class CreateTimetableSlotServiceTest {
 
     @Test
     void createSlotSavesAndReturnsIdWhenNoConflict() {
-        when(timetableSetRepository.findById(1L)).thenReturn(Optional.of(timetableSet()));
+        when(timetableSetRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(timetableSet()));
         when(timetableSlotRepository.findAllByTimetableSetIdAndClassroomCode(1L, "601")).thenReturn(List.of());
         TimetableSlot saved = TimetableSlot.restore(
                 100L, 1L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
@@ -71,7 +71,7 @@ class CreateTimetableSlotServiceTest {
 
     @Test
     void createSlotThrowsWhenTimetableSetNotFound() {
-        when(timetableSetRepository.findById(999L)).thenReturn(Optional.empty());
+        when(timetableSetRepository.findByIdForUpdate(999L)).thenReturn(Optional.empty());
         CreateTimetableSlotCommand command = new CreateTimetableSlotCommand(
                 999L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
                 Grade.HIGH_3, "정T", "미적분");
@@ -82,7 +82,7 @@ class CreateTimetableSlotServiceTest {
 
     @Test
     void createSlotThrowsWhenClassroomTimeConflicts() {
-        when(timetableSetRepository.findById(1L)).thenReturn(Optional.of(timetableSet()));
+        when(timetableSetRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(timetableSet()));
         TimetableSlot existing = TimetableSlot.restore(
                 50L, 1L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
                 Grade.HIGH_3, "정T", "미적분", SET_START, SET_END, null, null);
