@@ -9,3 +9,4 @@
 | `WORKSPACE_TASK_COMMENT_MENTION` | `TaskCommentMentionedEvent` | workspace | `{이름}님이 댓글에서 회원님을 언급했습니다` |
 | `APPROVAL_LINE_ACTIVATED` | `ApprovalLineActivatedEvent` | approval | `결재 문서 [{documentTitle}] 결재 차례가 되었습니다` |
 | `APPROVAL_DOCUMENT_DECIDED` | `ApprovalDocumentDecidedEvent` | approval | `status`로 분기: `APPROVED` → `결재 문서가 승인되었습니다` / `REJECTED` → `결재 문서가 반려되었습니다` / `CANCELLED` → `결재 문서가 취소되었습니다` |
+| `REVENUE_REPORT_GENERATED` | `RevenueReportGeneratedEvent` | revenuereport | `{yyyy년 M월} 매출 리포트가 생성되었습니다` (수신자: 원장(ACADEMY:OWNER), 원장 계정이 없으면 발행하지 않음) |
