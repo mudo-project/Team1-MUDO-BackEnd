@@ -1,5 +1,11 @@
 # 📚 Workspace Changelog
 
+## 2026-08-13 (댓글 수정 멘션 동기화를 diff 기반으로 변경)
+
+- `TaskCommentPersistenceAdapter.save()`의 멘션 동기화 방식을 "전체 삭제 후 재생성"에서 "달라진 것만 삭제/추가"하는 diff 기반으로 바꿨습니다. 이전 방식은 수정 전후 멘션 목록에 겹치는 사용자 ID가 있으면(완전히 동일한 재전송 포함) Hibernate의 insert-before-delete flush 순서와 멘션 PK의 `IDENTITY` 생성 전략이 겹쳐 `uk_task_comment_mention_comment_user` 유니크 제약을 위반할 수 있었습니다 — 댓글 완료 토글에서 났던 것(이슈 [#462](https://github.com/mudo-project/Team1-MUDO-BackEnd/issues/462))과 동일 계열 결함이 내용 수정 경로에도 남아있던 것을 예방 차원에서 수정했습니다.
+- `TaskCommentMentionJpaRepository`에 `deleteAllByCommentIdAndMentionedUserIdIn(commentId, userIds)`을 추가했습니다.
+- API 요청/응답 계약은 변경되지 않았습니다(최종 멘션 목록은 여전히 요청한 `mentionedUserIds`로 전체 교체된 것처럼 보임) — `COMMENT_API.md`는 갱신 대상이 아니며, 내부 구현을 설명하는 `COMMENT_API_FLOW.md`만 갱신했습니다(이슈 [#467](https://github.com/mudo-project/Team1-MUDO-BackEnd/issues/467)).
+
 ## 2026-08-13 (댓글 완료 토글 멘션 중복 INSERT 409 수정)
 
 - 댓글 완료 토글 API(`PATCH .../comments/{commentId}/complete`)가 멘션이 전혀 바뀌지 않는데도 `TaskCommentRepository.save()`를 재사용하면서 멘션 전체를 delete-then-insert 하다가, Hibernate flush 순서(Insertion이 Deletion보다 항상 먼저 실행)와 `TaskCommentMentionJpaEntity`의 `IDENTITY` 생성 전략(즉시 insert) 조합으로 `uk_task_comment_mention_comment_user` 유니크 제약을 위반해 `409`가 나던 버그를 수정했습니다.
