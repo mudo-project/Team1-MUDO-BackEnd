@@ -11,6 +11,7 @@ import com.academy.mudogroupware.timetable.domain.model.UpdateScope;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 
 public record UpdateTimetableSlotRequest(
         @Schema(description = "적용 범위. 현재는 ALL만 지원") @NotNull UpdateScope scope,
@@ -21,11 +22,13 @@ public record UpdateTimetableSlotRequest(
         @Schema(description = "종료 시각") @NotNull LocalTime endTime,
         @Schema(description = "학년(초1~고3 중 하나)") @NotNull Grade grade,
         @Schema(description = "강사명") String teacherName,
-        @Schema(description = "과목") String subjectName
+        @Schema(description = "과목") String subjectName,
+        @Schema(description = "색상(6자리 16진수, RRGGBB)", example = "FFCC00")
+        @NotBlank @Pattern(regexp = "^[0-9A-Fa-f]{6}$") String color
 ) {
 
     public UpdateTimetableSlotCommand toCommand(Long timetableSetId, Long timetableSlotId) {
         return new UpdateTimetableSlotCommand(timetableSetId, timetableSlotId, scope, classType,
-                dayOfWeek, classroomCode, startTime, endTime, grade, teacherName, subjectName);
+                dayOfWeek, classroomCode, startTime, endTime, grade, teacherName, subjectName, color);
     }
 }
