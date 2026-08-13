@@ -17,6 +17,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -54,6 +55,10 @@ public class TimetableSetEntity extends BaseTimeEntity {
 
     @Column(name = "slot_unit_minutes", nullable = false)
     private int slotUnitMinutes;
+
+    @Version
+    @Column(nullable = false)
+    private Long version;
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "timetable_set_classroom", joinColumns = @JoinColumn(name = "timetable_set_id"))

@@ -22,7 +22,8 @@ public enum TimetableErrorCode implements ErrorCode {
     EXPORT_IMAGE_TOO_LARGE(HttpStatus.BAD_REQUEST, "TIMETABLE_400_6", "내보내기 이미지 크기가 너무 큽니다. 수업 슬롯 수를 줄여주세요."),
     INVALID_SET_CONFIGURATION(HttpStatus.BAD_REQUEST, "TIMETABLE_400_7", "시간표 세트 설정이 올바르지 않습니다."),
     INVALID_SLOT_CONFIGURATION(HttpStatus.BAD_REQUEST, "TIMETABLE_400_8", "수업 슬롯 설정이 올바르지 않습니다."),
-    INVALID_CLASSROOM(HttpStatus.BAD_REQUEST, "TIMETABLE_400_9", "강의실 정보가 올바르지 않습니다.");
+    INVALID_CLASSROOM(HttpStatus.BAD_REQUEST, "TIMETABLE_400_9", "강의실 정보가 올바르지 않습니다."),
+    SET_UPDATE_CONFLICT(HttpStatus.CONFLICT, "TIMETABLE_409_2", "다른 요청이 먼저 정보를 수정했습니다. 다시 조회한 뒤 시도해주세요.");
 
     private final HttpStatus httpStatus;
     private final String code;
