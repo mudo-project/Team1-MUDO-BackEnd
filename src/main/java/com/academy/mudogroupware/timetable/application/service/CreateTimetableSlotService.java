@@ -30,7 +30,7 @@ public class CreateTimetableSlotService implements CreateTimetableSlotUseCase {
         TimetableSlot candidate = TimetableSlot.create(
                 set.getId(), command.classType(), command.dayOfWeek(), command.classroomCode(),
                 command.startTime(), command.endTime(), command.grade(), command.teacherName(),
-                command.subjectName(), set.getStartDate(), set.getEndDate());
+                command.subjectName(), command.color(), set.getStartDate(), set.getEndDate());
 
         boolean conflicts = timetableSlotRepository
                 .findAllByTimetableSetIdAndClassroomCode(set.getId(), command.classroomCode()).stream()
