@@ -1,5 +1,12 @@
 # 📚 Workspace Changelog
 
+## 2026-08-13 (댓글 완료 토글 멘션 중복 INSERT 409 수정)
+
+- 댓글 완료 토글 API(`PATCH .../comments/{commentId}/complete`)가 멘션이 전혀 바뀌지 않는데도 `TaskCommentRepository.save()`를 재사용하면서 멘션 전체를 delete-then-insert 하다가, Hibernate flush 순서(Insertion이 Deletion보다 항상 먼저 실행)와 `TaskCommentMentionJpaEntity`의 `IDENTITY` 생성 전략(즉시 insert) 조합으로 `uk_task_comment_mention_comment_user` 유니크 제약을 위반해 `409`가 나던 버그를 수정했습니다.
+- `TaskCommentRepository`에 완료 상태(`completed`/`completedBy`/`completedAt`)만 갱신하는 `updateCompletion(TaskComment)`을 추가하고, `ToggleTaskCommentCompleteService`가 `save()` 대신 이 메서드를 쓰도록 바꿨습니다. 멘션 테이블은 아예 건드리지 않으므로 토글을 반복해도 더 이상 충돌하지 않습니다.
+- 내용 수정(`UpdateTaskCommentService`)이 쓰는 `save()`의 delete-then-insert 구조 자체는 이번 수정 범위 밖입니다(이슈 [#462](https://github.com/mudo-project/Team1-MUDO-BackEnd/issues/462), PR [#463](https://github.com/mudo-project/Team1-MUDO-BackEnd/pull/463)).
+- API 요청/응답 계약은 변경되지 않았습니다(내부 persist 경로 분리만) — `COMMENT_API.md`는 갱신 대상이 아니며, 호출 흐름 문서(`COMMENT_API_FLOW.md`)만 갱신했습니다.
+
 ## 2026-08-10 (workspace BC academyId 제거)
 
 - workspace BC 전체에서 "같은 학원인지" 검증 코드를 제거했습니다 — 실제 배포가 학원별 DB 스키마 분리 구조라 애플리케이션 레벨 검증이 애초에 불필요했습니다. `WorkspaceDetailQueryService`/`TaskDetailQueryService`/`TaskCommentListQueryService`/`GetRecurringTaskTemplatesService`/`WorkspaceListQueryPort`/`WorkspaceRecentAccessService`에서 academyId 비교·필터를 걷어냈습니다.

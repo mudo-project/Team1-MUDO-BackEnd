@@ -210,7 +210,7 @@ PATCH /api/workspaces/{workspaceId}/tasks/{taskId}/comments/{commentId}/complete
   → TaskCommentRepository.findById (락 없음)
   → TaskCommentPersistenceAdapter
   → TaskComment.toggleComplete (Domain Model)
-  → TaskCommentRepository.save
+  → TaskCommentRepository.updateCompletion
   → TaskCommentPersistenceAdapter
 ```
 
@@ -221,6 +221,8 @@ PATCH /api/workspaces/{workspaceId}/tasks/{taskId}/comments/{commentId}/complete
 ### 5. 완료↔취소 반전
 
 `comment.toggleComplete(requesterId, now)`가 호출마다 완료 상태를 반전한다. 완료로 전환되면 `completedBy = requesterId`, `completedAt = now`. 취소로 전환되면 둘 다 `null`로 초기화된다. **호출마다 반전**하므로, 두 참여자가 거의 동시에 같은 댓글을 토글하면 나중 트랜잭션이 앞선 트랜잭션의 결과를 반전시킨다(예: A가 완료시킨 걸 B가 취소로 되돌림) — 이는 "워크스페이스가 실시간으로 공유되고 있음"을 드러내는 의도된 동작이며 버그가 아니다.
+
+토글은 `TaskCommentRepository.save` 대신 전용 메서드 `updateCompletion`을 쓴다(2026-08-13, [#462](https://github.com/mudo-project/Team1-MUDO-BackEnd/issues/462)). `save`는 update 분기에서 멘션을 항상 전체 삭제 후 재삽입하는데, 토글은 멘션을 전혀 바꾸지 않아 삭제 전 동일 값을 재삽입하다 유니크 제약(`uk_task_comment_mention_comment_user`) 위반이 났다. `updateCompletion`은 `completed`/`completedBy`/`completedAt`만 갱신하고 멘션 테이블은 조회 외에 건드리지 않는다.
 
 ### 6. 응답
 
