@@ -6,6 +6,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
@@ -24,6 +25,7 @@ import com.academy.mudogroupware.notification.application.port.NotificationUserI
 import com.academy.mudogroupware.notification.application.query.NotificationUserInfo;
 import com.academy.mudogroupware.notification.application.usecase.CreateNotificationUseCase;
 import com.academy.mudogroupware.notification.domain.model.NotificationType;
+import com.academy.mudogroupware.revenuereport.domain.event.RevenueReportGeneratedEvent;
 import com.academy.mudogroupware.workspace.domain.event.TaskCommentMentionedEvent;
 
 @ExtendWith(MockitoExtension.class)
@@ -111,6 +113,20 @@ class NotificationCreationListenerTest {
         ArgumentCaptor<CreateNotificationCommand> captor = ArgumentCaptor.forClass(CreateNotificationCommand.class);
         verify(createNotificationUseCase).create(captor.capture());
         assertThat(captor.getValue().message()).isEqualTo("결재 문서가 취소되었습니다");
+    }
+
+    @Test
+    void revenueReportGeneratedEventCreatesNotificationForRecipient() {
+        RevenueReportGeneratedEvent event = new RevenueReportGeneratedEvent(7L, 99L, LocalDate.of(2026, 8, 1));
+
+        listener().handle(event);
+
+        ArgumentCaptor<CreateNotificationCommand> captor = ArgumentCaptor.forClass(CreateNotificationCommand.class);
+        verify(createNotificationUseCase).create(captor.capture());
+        assertThat(captor.getValue().recipientUserId()).isEqualTo(7L);
+        assertThat(captor.getValue().type()).isEqualTo(NotificationType.REVENUE_REPORT_GENERATED.name());
+        assertThat(captor.getValue().targetId()).isEqualTo(99L);
+        assertThat(captor.getValue().message()).isEqualTo("2026년 8월 매출 리포트가 생성되었습니다");
     }
 
     @Test

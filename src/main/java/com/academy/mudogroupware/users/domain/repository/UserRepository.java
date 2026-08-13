@@ -42,4 +42,6 @@ public interface UserRepository {
     Set<Long> findActiveUserIds(Long academyId, Set<Long> userIds);
 
     List<User> findAllById(Set<Long> ids);
+
+    Optional<Long> findAcademyOwnerId();
 }

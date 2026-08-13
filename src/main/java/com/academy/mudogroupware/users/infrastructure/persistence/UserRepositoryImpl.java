@@ -12,6 +12,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Repository;
 
+import com.academy.mudogroupware.global.domain.auth.AccountType;
+import com.academy.mudogroupware.global.domain.auth.AdminScope;
 import com.academy.mudogroupware.users.domain.exception.EmailDuplicateException;
 import com.academy.mudogroupware.users.domain.exception.ProfileUpdateConflictException;
 import com.academy.mudogroupware.users.domain.exception.RoleNotFoundException;
@@ -190,6 +192,13 @@ public class UserRepositoryImpl implements UserRepository {
             return List.of();
         }
         return userJpaRepository.findAllById(ids).stream().map(this::toDomain).toList();
+    }
+
+    @Override
+    public Optional<Long> findAcademyOwnerId() {
+        return userJpaRepository
+                .findFirstByAccountTypeAndAdminScopeAndStatus(AccountType.ADMIN, AdminScope.ACADEMY, UserStatus.ACTIVE)
+                .map(UserEntity::getId);
     }
 
     private User toDomain(UserEntity entity) {
