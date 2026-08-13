@@ -129,6 +129,20 @@ class ChatTaskCardJpaRepositoryTest {
     }
 
     @Test
+    void markDeletedSkipsWhenAssigneeAlreadyCompleted() {
+        insertChatRoom(1L);
+        insertTaskCard(7L, 1L);
+        insertAssignee(7L, 3L, LocalDateTime.of(2026, 8, 6, 9, 30));
+
+        int deleted = chatTaskCardJpaRepository.markDeleted(7L, LocalDateTime.of(2026, 8, 6, 15, 0));
+
+        assertThat(deleted).isEqualTo(0);
+        LocalDateTime deletedAt = jdbcTemplate.queryForObject(
+                "select deleted_at from chat_task_card where card_id = ?", LocalDateTime.class, 7L);
+        assertThat(deletedAt).isNull();
+    }
+
+    @Test
     void findDeletedAtForUpdateReturnsNullWhenNotDeleted() {
         insertChatRoom(1L);
         insertTaskCard(7L, 1L);

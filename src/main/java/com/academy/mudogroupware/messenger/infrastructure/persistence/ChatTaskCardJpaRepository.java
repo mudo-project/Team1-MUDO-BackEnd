@@ -60,9 +60,14 @@ public interface ChatTaskCardJpaRepository extends JpaRepository<ChatTaskCardEnt
     int updateContent(@Param("cardId") Long cardId, @Param("content") String content,
                        @Param("dueDate") LocalDate dueDate);
 
+    // 완료된 담당자가 있는지도 함께 확인해, 이 UPDATE 시점에 담당자가 (동시에) 완료 처리됐다면
+    // 삭제를 반영하지 않는다(반환값 0으로 호출측이 감지). NOT EXISTS 서브쿼리는 표준 SQL이라
+    // H2(테스트)/MySQL(운영) 양쪽에서 동일하게 동작한다.
     @Modifying
     @Query(value = "update chat_task_card set deleted_at = :deletedAt "
-            + "where card_id = :cardId and deleted_at is null", nativeQuery = true)
+            + "where card_id = :cardId and deleted_at is null "
+            + "and not exists (select 1 from chat_task_assignee "
+            + "where card_id = :cardId and completed_at is not null)", nativeQuery = true)
     int markDeleted(@Param("cardId") Long cardId, @Param("deletedAt") LocalDateTime deletedAt);
 
     // 잠금 조회(FOR UPDATE)라 트랜잭션의 스냅샷이 아니라 커밋된 최신 deleted_at을 본다. H2/MySQL 둘 다
