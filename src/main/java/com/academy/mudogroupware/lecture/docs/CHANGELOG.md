@@ -1,5 +1,14 @@
 # lecture Changelog
 
+## 2026-08-13
+
+- 강의 목록 조회 필터를 프론트 화면 값 기준(`subjectName`, `teacherName`, `classroomCode`)으로 변경했다.
+
+- 강의 수정 API(`PATCH /api/lectures/{lectureId}`)를 추가했다.
+- 강의 삭제 API(`DELETE /api/lectures/{lectureId}`)를 추가했다.
+- 강의 삭제는 `deleted_at` 기반 소프트 삭제로 처리하며, 조회/충돌 검사/매출 리포트 조회에서 삭제된 강의를 제외한다.
+- 강의 수정 시 자기 자신을 제외하고 교실·요일·시간대 충돌을 검사한다.
+
 ## 2026-08-11
 
 - 강의 등록 요청을 캘린더 슬롯 형태(`classType`, `dayOfWeek`, `classroomCode`, `startTime`, `endTime`)로 변경했다.
