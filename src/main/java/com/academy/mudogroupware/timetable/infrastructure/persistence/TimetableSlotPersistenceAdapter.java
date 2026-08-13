@@ -51,7 +51,7 @@ public class TimetableSlotPersistenceAdapter implements TimetableSlotRepository 
         TimetableSlotEntity entity = timetableSlotJpaRepository.getReferenceById(domain.getId());
         entity.update(domain.getClassType(), domain.getDayOfWeek(), domain.getClassroomCode(),
                 domain.getStartTime(), domain.getEndTime(), domain.getGrade(), domain.getTeacherName(),
-                domain.getSubjectName(), domain.getEffectiveFrom(), domain.getEffectiveUntil());
+                domain.getSubjectName(), domain.getColor(), domain.getEffectiveFrom(), domain.getEffectiveUntil());
         return entity;
     }
 
@@ -67,6 +67,7 @@ public class TimetableSlotPersistenceAdapter implements TimetableSlotRepository 
                 .grade(domain.getGrade())
                 .teacherName(domain.getTeacherName())
                 .subjectName(domain.getSubjectName())
+                .color(domain.getColor())
                 .effectiveFrom(domain.getEffectiveFrom())
                 .effectiveUntil(domain.getEffectiveUntil())
                 .build();
@@ -76,7 +77,7 @@ public class TimetableSlotPersistenceAdapter implements TimetableSlotRepository 
         return TimetableSlot.restore(
                 entity.getId(), entity.getTimetableSetId(), entity.getClassType(), entity.getDayOfWeek(),
                 entity.getClassroomCode(), entity.getStartTime(), entity.getEndTime(), entity.getGrade(),
-                entity.getTeacherName(), entity.getSubjectName(), entity.getEffectiveFrom(),
+                entity.getTeacherName(), entity.getSubjectName(), entity.getColor(), entity.getEffectiveFrom(),
                 entity.getEffectiveUntil(), entity.getCreatedAt(), entity.getUpdatedAt());
     }
 }
