@@ -19,7 +19,9 @@
 
 - [ ] **Step 1: 마이그레이션 파일 작성**
 
-먼저 `origin/develop`의 `src/main/resources/db/migration/be5/` 최신 버전을 확인한다. 이 계획을 쓴 시점 기준으로는 `V5.1.11`까지 있고, 별도로 진행 중인 시간표 색상 PR이 `V5.1.12`를 예약해뒀다. 그 PR이 이미 머지됐으면 아래 파일명을 그대로 쓰고, 아직이면 `V5.1.12`로 낮춰서 쓴다.
+먼저 `origin/develop`의 `src/main/resources/db/migration/be5/` 최신 버전을 확인한다. 이 계획을 쓴 시점 기준으로는 `V5.1.11`까지 있었고, 별도로 진행 중이던 시간표 색상 PR이 `V5.1.12`를 예약해둔 상태였다.
+
+> **(해결됨 — 최종 브랜치 리뷰에서 확인)** 구현 시점에는 그 색상 PR이 아직 `origin/develop`에 머지되지 않아 이 마이그레이션 파일을 `V5.1.12`로 만들었다. 이후 해당 색상 PR(`V5.1.12__add_color_to_timetable_slot.sql`)이 이 브랜치보다 먼저 `origin/develop`에 머지되면서 두 파일이 같은 버전 번호(`V5.1.12`)를 갖게 되어 Flyway 검증이 깨지는 충돌이 발생했다. 최종 홀리스틱 리뷰에서 이를 발견했고, SQL 내용은 그대로 둔 채 파일명만 `V5.1.13__add_version_columns_for_optimistic_lock.sql`로 재변경해 해결했다.
 
 ```sql
 ALTER TABLE calendar_events ADD COLUMN version BIGINT NOT NULL DEFAULT 0;
@@ -867,16 +869,22 @@ class TimetableSetPersistenceAdapterDataJpaTest {
         List<TimetableSet> found = adapter.findAll();
 
         assertThat(found).hasSize(3);
-        assertThat(statistics.getQueryExecutionCount()).isLessThanOrEqualTo(2);
+        // Statistics.getQueryExecutionCount()는 명시적 HQL/JPQL 쿼리 실행만 집계하며, EAGER 컬렉션을
+        // 엔티티별로 초기화할 때 발생하는 묵시적 select는 집계하지 않는다(N+1이 있어도 항상 1로 남는다).
+        // 실제 DB로 나가는 SQL 왕복 횟수를 재려면 getPrepareStatementCount()를 써야 한다:
+        // 세트 목록 1번 + classrooms 컬렉션 로딩(N+1이면 세트당 1번, SUBSELECT면 총 1번)을 모두 집계한다.
+        assertThat(statistics.getPrepareStatementCount()).isLessThanOrEqualTo(2);
     }
 ```
 
 import 추가 필요: `import java.util.List;`(이미 있음), 나머지는 완전 정규화된 이름을 그대로 썼으므로 추가 import 불필요.
 
+> **(구현 중 수정됨)** 초안에서는 `getQueryExecutionCount()`를 썼으나, 이 메서드는 명시적 HQL/JPQL 실행만 세고 EAGER 컬렉션의 묵시적 select(N+1의 원인)는 집계하지 않아 N+1이 있어도 항상 1로 남는 문제가 있었다. 실제 커밋된 테스트는 `getPrepareStatementCount()`로 교체해 DB로 나가는 실제 SQL 왕복 횟수를 센다.
+
 - [ ] **Step 2: 실패 확인**
 
 Run: `./gradlew test --tests "com.academy.mudogroupware.timetable.infrastructure.persistence.TimetableSetPersistenceAdapterDataJpaTest.findAllDoesNotIssueOneQueryPerSetForClassrooms"`
-Expected: FAIL — 지금은 세트 목록 쿼리 1번 + 세트당 classrooms 쿼리 3번 = 총 4번이라 `getQueryExecutionCount() <= 2`를 만족 못 한다.
+Expected: FAIL — 지금은 세트 목록 쿼리 1번 + 세트당 classrooms 쿼리 3번 = 총 4번이라 `getPrepareStatementCount() <= 2`를 만족 못 한다.
 
 - [ ] **Step 3: `TimetableSetEntity.classrooms`에 `@Fetch(FetchMode.SUBSELECT)` 추가**
 

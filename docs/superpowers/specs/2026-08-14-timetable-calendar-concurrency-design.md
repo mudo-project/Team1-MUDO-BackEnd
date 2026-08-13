@@ -118,7 +118,7 @@ private List<TimetableClassroomEmbeddable> classrooms = new ArrayList<>();
 
 `src/main/resources/db/migration/be5/V5.1.13__add_version_columns_for_optimistic_lock.sql`
 
-> 버전 번호는 구현 시점에 `origin/develop`의 `be5` 폴더 최신 상태를 다시 확인해서 확정한다. 현재 별도로 진행 중인 시간표 색상 PR이 `V5.1.12`를 이미 쓰고 있어서, 그 PR이 먼저 머지되면 `V5.1.13`이 맞고, 혹시 이 작업이 먼저 머지되면 `V5.1.12`로 낮춰야 한다.
+> **(해결됨 — 최종 브랜치 리뷰에서 확인)** 별도로 진행 중이던 시간표 색상 PR이 `V5.1.12`를 먼저 예약해둔 상태였다. 구현 시점에는 그 PR이 아직 `origin/develop`에 머지되지 않아 이 파일을 `V5.1.12`로 만들었는데, 이후 그 색상 PR(`V5.1.12__add_color_to_timetable_slot.sql`)이 이 브랜치보다 먼저 `origin/develop`에 머지되면서 버전 번호가 충돌했다. 최종 홀리스틱 리뷰에서 이를 발견해 SQL 내용은 그대로 두고 파일명만 `V5.1.13`으로 재변경해 해결했다.
 
 ```sql
 ALTER TABLE calendar_events ADD COLUMN version BIGINT NOT NULL DEFAULT 0;
@@ -136,7 +136,7 @@ ALTER TABLE timetable_set ADD COLUMN version BIGINT NOT NULL DEFAULT 0;
 
 - **레이스 컨디션**: 실제 DB(Testcontainers) 기준으로 같은 `TimetableSet`·같은 강의실·겹치는 시간대에 두 스레드가 동시에 슬롯 생성을 시도하는 테스트를 추가한다. `CountDownLatch`로 두 스레드가 동시에 트랜잭션을 시작하도록 맞추고, 하나는 성공(id 반환)하고 다른 하나는 `ClassroomTimeConflictException`으로 실패하는지 확인한다. H2 등 인메모리 DB는 InnoDB 락 동작을 정확히 재현하지 못하므로 반드시 Testcontainers MySQL로 검증한다.
 - **낙관적 락**: `@DataJpaTest` 또는 `@SpringBootTest`에서 같은 행을 두 번 조회(영속성 컨텍스트를 `EntityManager.clear()`로 분리)한 뒤, 첫 번째 수정을 커밋하고 두 번째 수정을 시도하면 각 도메인의 Conflict 예외가 발생하는지 확인한다. 세 엔티티(calendar/slot/set) 각각에 대해 작성한다.
-- **N+1**: 강의실이 여러 개인 세트를 여러 개 만든 뒤 목록 조회 시 실행되는 SQL 쿼리 수를 세는 테스트를 추가한다(Hibernate `Statistics` API로 `getQueryExecutionCount()` 확인, 또는 기존 프로젝트에 datasource-proxy류 도구가 있으면 그걸 재사용).
+- **N+1**: 강의실이 여러 개인 세트를 여러 개 만든 뒤 목록 조회 시 실행되는 SQL 쿼리 수를 세는 테스트를 추가한다(Hibernate `Statistics` API로 `getPrepareStatementCount()` 확인, 또는 기존 프로젝트에 datasource-proxy류 도구가 있으면 그걸 재사용). 초안에서는 `getQueryExecutionCount()`를 검토했으나, 이 메서드는 명시적 HQL/JPQL 쿼리 실행만 집계하고 EAGER 컬렉션을 엔티티별로 초기화할 때 발생하는 묵시적 select(N+1의 원인)는 집계하지 않아 N+1이 있어도 값이 항상 1로 남는 것이 확인되어, DB로 나가는 실제 SQL 왕복 횟수를 재는 `getPrepareStatementCount()`로 교체했다.
 - 기존 회귀 테스트(도메인/서비스/컨트롤러)는 전부 그대로 통과해야 한다 — 락/버전 추가가 기존 성공 경로의 동작을 바꾸지 않는지 확인한다.
 
 ## 성공 기준
