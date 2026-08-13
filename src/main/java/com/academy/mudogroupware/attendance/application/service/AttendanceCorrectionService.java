@@ -33,20 +33,20 @@ public class AttendanceCorrectionService implements CreateAttendanceCorrectionUs
         AttendanceCorrectionView result = AttendanceCorrectionView.from(correctionRepository.save(request));
         log.info("event=attendance_correction_create_완료 userId={}, date={}", c.userId(), c.date());
         return result;
-        } catch (RuntimeException e) { log.warn("event=attendance_correction_create_실패 userId={}, reason={}", c.userId(), e.getMessage()); throw e; }
+        } catch (RuntimeException e) { log.warn("event=attendance_correction_create_실패 userId={}, errorType={}", c.userId(), e.getClass().getSimpleName()); throw e; }
     }
     @Override public List<AttendanceCorrectionView> getAll(Long userId) {
         log.info("event=attendance_correction_list_read_시작 userId={}", userId);
         try { List<AttendanceCorrectionView> result = correctionRepository.findAllByOwner(userId).stream().map(AttendanceCorrectionView::from).toList();
         log.info("event=attendance_correction_list_read_완료 userId={}, count={}", userId, result.size()); return result;
-        } catch (RuntimeException e) { log.warn("event=attendance_correction_list_read_실패 userId={}, reason={}", userId, e.getMessage()); throw e; }
+        } catch (RuntimeException e) { log.warn("event=attendance_correction_list_read_실패 userId={}, errorType={}", userId, e.getClass().getSimpleName()); throw e; }
     }
     @Override public AttendanceCorrectionView get(Long requestId, Long userId) {
         log.info("event=attendance_correction_detail_read_시작 userId={}, requestId={}", userId, requestId);
         try { AttendanceCorrectionView result = correctionRepository.findByIdAndOwner(requestId, userId).map(AttendanceCorrectionView::from)
                 .orElseThrow(() -> new AttendanceException(AttendanceErrorCode.CORRECTION_REQUEST_NOT_FOUND));
         log.info("event=attendance_correction_detail_read_완료 requestId={}", requestId); return result;
-        } catch (RuntimeException e) { log.warn("event=attendance_correction_detail_read_실패 requestId={}, reason={}", requestId, e.getMessage()); throw e; }
+        } catch (RuntimeException e) { log.warn("event=attendance_correction_detail_read_실패 requestId={}, errorType={}", requestId, e.getClass().getSimpleName()); throw e; }
     }
     @Override public MyAttendanceDayView get(Long userId, LocalDate date) {
         log.info("event=attendance_day_detail_read_시작 userId={}, date={}", userId, date);
@@ -56,7 +56,7 @@ public class AttendanceCorrectionService implements CreateAttendanceCorrectionUs
                 r == null ? null : r.getClockInNote(), r == null ? null : r.getClockOutNote(),
                 correctionRepository.existsPending(userId, date));
         log.info("event=attendance_day_detail_read_완료 userId={}, date={}", userId, date); return result;
-        } catch (RuntimeException e) { log.warn("event=attendance_day_detail_read_실패 userId={}, date={}, reason={}", userId, date, e.getMessage()); throw e; }
+        } catch (RuntimeException e) { log.warn("event=attendance_day_detail_read_실패 userId={}, date={}, errorType={}", userId, date, e.getClass().getSimpleName()); throw e; }
     }
     private void validateDate(LocalDate date) {
         if (date == null || date.isAfter(LocalDate.now(clock)))

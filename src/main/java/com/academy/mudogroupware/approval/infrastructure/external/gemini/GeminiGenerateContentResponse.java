@@ -2,7 +2,7 @@ package com.academy.mudogroupware.approval.infrastructure.external.gemini;
 
 import java.util.List;
 
-record GeminiGenerateContentResponse(List<Candidate> candidates) {
+record GeminiGenerateContentResponse(List<Candidate> candidates, UsageMetadata usageMetadata) {
 
     record Candidate(Content content) {
     }
@@ -11,6 +11,10 @@ record GeminiGenerateContentResponse(List<Candidate> candidates) {
     }
 
     record Part(String text) {
+    }
+
+    // Gemini가 매 응답마다 함께 내려주는 토큰 사용량. 요청 실패 등으로 응답 자체가 비어 있으면 null일 수 있다.
+    record UsageMetadata(Integer promptTokenCount, Integer candidatesTokenCount, Integer totalTokenCount) {
     }
 
     String firstText() {

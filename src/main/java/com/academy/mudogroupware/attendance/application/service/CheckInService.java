@@ -37,7 +37,7 @@ public class CheckInService implements CheckInUseCase {
 
     @Override
     public CheckInResult checkIn(CheckInCommand command) {
-        log.info("event=attendance_check_in_시작 userId={}={}", command.userId());
+        log.info("event=attendance_check_in_시작 userId={}", command.userId());
         try {
             if (command.userId() == null) {
                 throw new AttendanceException(AttendanceErrorCode.CHECK_IN_FORBIDDEN);
@@ -67,12 +67,12 @@ public class CheckInService implements CheckInUseCase {
                 command.userId(), now, workStartTime,
                 policy.getLateGraceMinutes(), command.clockInNote());
             CheckInResult result = CheckInResult.from(attendanceRecordRepository.save(record));
-            log.info("event=attendance_check_in_완료 userId={}={}, status={}",
+            log.info("event=attendance_check_in_완료 userId={}, status={}",
                     command.userId(), result.status());
             return result;
         } catch (RuntimeException e) {
-            log.warn("event=attendance_check_in_실패 userId={}={}, reason={}",
-                    command.userId(), e.getMessage());
+            log.warn("event=attendance_check_in_실패 userId={}, errorType={}",
+                    command.userId(), e.getClass().getSimpleName());
             throw e;
         }
     }
@@ -88,8 +88,9 @@ public class CheckInService implements CheckInUseCase {
             return policy.getDefaultStartTime();
         }
         AttendancePolicyWeekday setting = weekday.get();
+        // 비근무일 출퇴근 기록은 payroll에서 휴일근로로 집계한다.
         if (!setting.workday()) {
-            throw new AttendanceException(AttendanceErrorCode.ATTENDANCE_NON_WORKDAY);
+            return policy.getDefaultStartTime();
         }
         return setting.startTime() == null
                 ? policy.getDefaultStartTime()

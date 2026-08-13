@@ -28,8 +28,8 @@ public class DeleteWifiIpService implements DeleteWifiIpUseCase {
             }
             log.info("event=attendance_wifi_ip_delete_완료 requesterId={}, wifiIpId={}", requesterId, wifiIpId);
         } catch (RuntimeException e) {
-            log.warn("event=attendance_wifi_ip_delete_실패 requesterId={}, wifiIpId={}, reason={}",
-                    requesterId, wifiIpId, e.getMessage());
+            log.warn("event=attendance_wifi_ip_delete_실패 requesterId={}, wifiIpId={}, errorType={}",
+                    requesterId, wifiIpId, e.getClass().getSimpleName());
             throw e;
         }
     }

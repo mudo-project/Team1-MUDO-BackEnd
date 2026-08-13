@@ -12,6 +12,8 @@ public interface ApprovalTemplateRepository {
 
     Optional<ApprovalTemplate> findById(Long id);
 
+    Optional<ApprovalTemplate> findByIdForUpdate(Long id);
+
     List<ApprovalTemplate> findAllById(List<Long> ids);
 
     PageResult<ApprovalTemplate> findAll(int page, int size);

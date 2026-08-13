@@ -56,7 +56,7 @@ public class ManageAttendanceCorrectionService implements ManageAttendanceCorrec
                 AttendanceCorrectionView.from(request), requesters.get(request.getUserId())));
         log.info("event=attendance_admin_correction_list_read_완료 count={}", mapped.content().size());
         return mapped;
-        } catch (RuntimeException e) { log.warn("event=attendance_admin_correction_list_read_실패 reason={}", e.getMessage()); throw e; }
+        } catch (RuntimeException e) { log.warn("event=attendance_admin_correction_list_read_실패 errorType={}", e.getClass().getSimpleName()); throw e; }
     }
 
     @Override
@@ -69,7 +69,7 @@ public class ManageAttendanceCorrectionService implements ManageAttendanceCorrec
                 .get(request.getUserId());
         AdminAttendanceCorrectionView result = new AdminAttendanceCorrectionView(AttendanceCorrectionView.from(request), requester);
         log.info("event=attendance_admin_correction_detail_read_완료 requestId={}", requestId); return result;
-        } catch (RuntimeException e) { log.warn("event=attendance_admin_correction_detail_read_실패 requestId={}, reason={}", requestId, e.getMessage()); throw e; }
+        } catch (RuntimeException e) { log.warn("event=attendance_admin_correction_detail_read_실패 requestId={}, errorType={}", requestId, e.getClass().getSimpleName()); throw e; }
     }
 
     @Override
@@ -87,7 +87,7 @@ public class ManageAttendanceCorrectionService implements ManageAttendanceCorrec
                 .approve(processorId, now);
         correctionRepository.save(processed);
         log.info("event=attendance_admin_correction_approve_완료 requestId={}", requestId);
-        } catch (RuntimeException e) { log.warn("event=attendance_admin_correction_approve_실패 requestId={}, reason={}", requestId, e.getMessage()); throw e; }
+        } catch (RuntimeException e) { log.warn("event=attendance_admin_correction_approve_실패 requestId={}, errorType={}", requestId, e.getClass().getSimpleName()); throw e; }
     }
 
     @Override
@@ -98,7 +98,7 @@ public class ManageAttendanceCorrectionService implements ManageAttendanceCorrec
         AttendanceCorrectionRequest request = findRequestForUpdate(requestId);
         correctionRepository.save(request.reject(processorId, LocalDateTime.now(clock), reason));
         log.info("event=attendance_admin_correction_reject_완료 requestId={}", requestId);
-        } catch (RuntimeException e) { log.warn("event=attendance_admin_correction_reject_실패 requestId={}, reason={}", requestId, e.getMessage()); throw e; }
+        } catch (RuntimeException e) { log.warn("event=attendance_admin_correction_reject_실패 requestId={}, errorType={}", requestId, e.getClass().getSimpleName()); throw e; }
     }
 
     private AttendanceCorrectionRequest findRequest(Long requestId) {

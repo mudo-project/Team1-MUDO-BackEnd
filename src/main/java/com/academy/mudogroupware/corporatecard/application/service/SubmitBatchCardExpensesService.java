@@ -74,7 +74,8 @@ public class SubmitBatchCardExpensesService implements SubmitBatchCardExpensesUs
                 userId, result.successCount(), result.failureCount());
         return result;
         } catch (RuntimeException e) {
-            log.warn("event=corporate_card_expense_batch_submit_실패 userId={}, reason={}", userId, e.getMessage());
+            log.warn("event=corporate_card_expense_batch_submit_실패 userId={}, errorType={}",
+                    userId, e.getClass().getSimpleName());
             throw e;
         }
     }

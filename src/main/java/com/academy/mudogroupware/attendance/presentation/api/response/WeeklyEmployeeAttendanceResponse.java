@@ -26,18 +26,23 @@ public record WeeklyEmployeeAttendanceResponse(
     public record Employee(
             Long userId,
             String name,
+            String roleName,
             int attendedDays,
             int scheduledWorkDays,
             List<Day> days) {
         private static Employee from(WeeklyEmployeeAttendanceView.Employee employee) {
-            return new Employee(employee.userId(), employee.name(), employee.attendedDays(),
+            return new Employee(employee.userId(), employee.name(), employee.roleName(), employee.attendedDays(),
                     employee.scheduledWorkDays(), employee.days().stream().map(Day::from).toList());
         }
     }
 
-    public record Day(LocalDate date, MyAttendanceDayStatus status, LocalDateTime clockInAt) {
+    public record Day(
+            LocalDate date,
+            MyAttendanceDayStatus status,
+            LocalDateTime clockInAt,
+            LocalDateTime clockOutAt) {
         private static Day from(WeeklyEmployeeAttendanceView.Day day) {
-            return new Day(day.date(), day.status(), day.clockInAt());
+            return new Day(day.date(), day.status(), day.clockInAt(), day.clockOutAt());
         }
     }
 }
