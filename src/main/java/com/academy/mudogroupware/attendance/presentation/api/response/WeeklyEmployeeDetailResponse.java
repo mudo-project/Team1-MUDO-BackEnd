@@ -12,12 +12,12 @@ public record WeeklyEmployeeDetailResponse(
 
     public static WeeklyEmployeeDetailResponse from(WeeklyEmployeeDetailView view) {
         return new WeeklyEmployeeDetailResponse(
-                new Employee(view.employee().userId(), view.employee().name(), view.employee().position()),
+                new Employee(view.employee().userId(), view.employee().name(), view.employee().roleName()),
                 new Week(view.startDate(), view.endDate()), view.days().stream().map(Day::from).toList(),
                 new WeeklySummary(view.scheduledWorkDays(), view.attendedDays()));
     }
 
-    public record Employee(Long userId, String name, String position) {}
+    public record Employee(Long userId, String name, String roleName) {}
     public record Week(LocalDate startDate, LocalDate endDate) {}
     public record Day(LocalDate date, MyAttendanceDayStatus status,
                       LocalDateTime clockInAt, LocalDateTime clockOutAt) {

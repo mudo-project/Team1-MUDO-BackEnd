@@ -6,18 +6,18 @@ import java.util.List;
 
 import com.academy.mudogroupware.attendance.application.query.WeeklyEmployeeAttendanceView;
 import com.academy.mudogroupware.attendance.domain.model.MyAttendanceDayStatus;
-import com.academy.mudogroupware.global.presentation.api.common.SliceResponse;
+import com.academy.mudogroupware.global.presentation.api.common.PageResponse;
 
 public record WeeklyEmployeeAttendanceResponse(
         Week week,
         int scheduledWorkDays,
-        SliceResponse<Employee> employees) {
+        PageResponse<Employee> employees) {
 
     public static WeeklyEmployeeAttendanceResponse from(WeeklyEmployeeAttendanceView view) {
         return new WeeklyEmployeeAttendanceResponse(
                 new Week(view.startDate(), view.endDate()),
                 view.scheduledWorkDays(),
-                SliceResponse.from(view.employees(), Employee::from));
+                PageResponse.from(view.employees(), Employee::from));
     }
 
     public record Week(LocalDate startDate, LocalDate endDate) {
@@ -26,11 +26,12 @@ public record WeeklyEmployeeAttendanceResponse(
     public record Employee(
             Long userId,
             String name,
+            String roleName,
             int attendedDays,
             int scheduledWorkDays,
             List<Day> days) {
         private static Employee from(WeeklyEmployeeAttendanceView.Employee employee) {
-            return new Employee(employee.userId(), employee.name(), employee.attendedDays(),
+            return new Employee(employee.userId(), employee.name(), employee.roleName(), employee.attendedDays(),
                     employee.scheduledWorkDays(), employee.days().stream().map(Day::from).toList());
         }
     }

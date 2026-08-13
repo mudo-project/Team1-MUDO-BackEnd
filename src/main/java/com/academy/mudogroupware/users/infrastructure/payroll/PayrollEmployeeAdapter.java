@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 public class PayrollEmployeeAdapter implements PayrollEmployeePort {
   private final UserJpaRepository repository;
 
-  /** Consumer: payroll. Purpose: 월 급여 생성 및 조회를 위한 직원 정보 조회. */
+  /** Consumer: payroll. Purpose: 월 급여 생성, 조회 및 급여명세서 이메일 수신 주소 조회. */
   @Override
   public Optional<EmployeeView> findById(Long userId) {
     return repository.findById(userId).map(this::toView);
@@ -37,7 +37,7 @@ public class PayrollEmployeeAdapter implements PayrollEmployeePort {
   }
 
   private EmployeeView toView(UserEntity user) {
-    return new EmployeeView(user.getId(), user.getName(),
+    return new EmployeeView(user.getId(), user.getName(), user.getEmail(),
         user.getJoinedAt() == null ? null : user.getJoinedAt().toLocalDate());
   }
 }

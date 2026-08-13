@@ -41,7 +41,8 @@ public class TodayTeamAttendanceQueryService implements GetTodayTeamAttendanceUs
 
     @Override
     public TodayTeamAttendanceView getToday(Long requesterId) {
-        log.info("event=attendance_team_today_read_시작 requesterId={}={}", requesterId);
+        log.info("event=attendance_team_today_read_시작 requesterId={}", requesterId);
+        try {
         AttendancePolicy policy = attendancePolicyRepository.findCurrent()
                 .orElseThrow(() -> new AttendanceException(
                         AttendanceErrorCode.ATTENDANCE_POLICY_NOT_FOUND));
@@ -78,6 +79,11 @@ public class TodayTeamAttendanceQueryService implements GetTodayTeamAttendanceUs
                 employees);
         log.info("event=attendance_team_today_read_완료 count={}", employees.size());
         return result;
+        } catch (RuntimeException e) {
+            log.warn("event=attendance_team_today_read_실패 requesterId={}, errorType={}",
+                    requesterId, e.getClass().getSimpleName());
+            throw e;
+        }
     }
 
     private TodayTeamAttendanceView.Employee toEmployee(

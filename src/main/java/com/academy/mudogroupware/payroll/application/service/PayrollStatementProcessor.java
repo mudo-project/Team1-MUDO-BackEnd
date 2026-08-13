@@ -50,8 +50,8 @@ public class PayrollStatementProcessor {
       log.info("event=payroll_statement_generation_완료 payrollId={}", payrollId);
     } catch (Exception e) {
       statements.markFailed(payrollId, e.getMessage());
-      log.error("event=payroll_statement_generation_실패 payrollId={}, reason={}",
-          payrollId, e.getMessage(), e);
+      log.error("event=payroll_statement_generation_실패 payrollId={}, errorType={}",
+          payrollId, e.getClass().getSimpleName());
     }
   }
 }

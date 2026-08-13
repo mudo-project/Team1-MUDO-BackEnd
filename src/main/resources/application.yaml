@@ -3,6 +3,24 @@ spring:
     name: mudo-groupware
   profiles:
     active: local
+    group:
+      prod:
+        - mailgun
+  mail:
+    host: smtp.mailgun.org
+    port: 587
+    username: ${MAILGUN_SMTP_USERNAME:}
+    password: ${MAILGUN_SMTP_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: ${MAIL_SMTP_CONNECTION_TIMEOUT_MS:5000}
+          timeout: ${MAIL_SMTP_READ_TIMEOUT_MS:10000}
+          writetimeout: ${MAIL_SMTP_WRITE_TIMEOUT_MS:10000}
   flyway:
     locations: classpath:db/migration
     baseline-on-migrate: true
@@ -25,6 +43,10 @@ security:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:8080}
 
 app:
+  mail:
+    from: ${MAIL_FROM:no-reply@mg.market-app.org}
+    webhook-signing-key: ${MAILGUN_WEBHOOK_SIGNING_KEY:}
+    sending-timeout: ${MAIL_SENDING_TIMEOUT:PT15M}
   instance:
     tenant-id: ${TENANT_ID:local}
     plan: ${TENANT_PLAN:local}
@@ -37,3 +59,17 @@ app:
     await-termination-seconds: ${APP_ASYNC_AWAIT_TERMINATION_SECONDS:30}
   heavy-job:
     max-concurrency: ${APP_HEAVY_JOB_MAX_CONCURRENCY:2}
+  revenue-report:
+    batch-cron: "${REVENUE_REPORT_BATCH_CRON:0 30 0 1 * *}"
+    ai:
+      base-url: ${REVENUE_REPORT_AI_BASE_URL:}
+      generate-path: ${REVENUE_REPORT_AI_PATH:/api/revenue-report/generate}
+      api-key: ${REVENUE_REPORT_AI_API_KEY:}
+      connect-timeout-ms: ${REVENUE_REPORT_AI_CONNECT_TIMEOUT_MS:2000}
+      read-timeout-ms: ${REVENUE_REPORT_AI_READ_TIMEOUT_MS:15000}
+
+platform:
+  dashboard:
+    enabled: ${PLATFORM_DASHBOARD_ENABLED:false}
+    prometheus-url: ${PLATFORM_DASHBOARD_PROMETHEUS_URL:http://monitoring.mudo.internal:9090}
+    tenant-registry-json: '${PLATFORM_DASHBOARD_TENANT_REGISTRY_JSON:[]}'

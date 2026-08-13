@@ -9,5 +9,5 @@ public interface PayrollEmployeePort {
   Optional<EmployeeView> findActiveById(Long userId);
   List<EmployeeView> findAllActive(String keyword);
 
-  record EmployeeView(Long id, String name, LocalDate joinedAt) {}
+  record EmployeeView(Long id, String name, String email, LocalDate joinedAt) {}
 }

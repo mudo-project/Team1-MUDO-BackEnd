@@ -188,7 +188,7 @@ No `notification` package was created. Messenger realtime updates are handled in
 
 ### 남은 구조 부채
 
-`ChatMemberInfoEntity`는 아직 `users` 테이블에서 이름과 academyId를 직접 읽는 임시 shim이다. 활성 사용자 검증은 users 공개 UseCase로 옮겼지만, 이름·소속 조회까지 완전히 정리하려면 users 도메인에 공개 조회 계약 추가가 필요하다. 다른 도메인 코드 직접 수정 금지 규칙 때문에 이번 변경에서는 messenger 내부 보완까지만 적용했다.
+`ChatMemberInfoEntity`는 아직 `users` 테이블에서 이름을 직접 읽는 임시 shim이다(academyId는 2026-08-12에 제거함). 활성 사용자 검증은 users 공개 UseCase로 옮겼지만, 이름 조회까지 완전히 정리하려면 users 도메인에 공개 조회 계약 추가가 필요하다. 다른 도메인 코드 직접 수정 금지 규칙 때문에 이번 변경에서는 messenger 내부 보완까지만 적용했다.
 
 ### 완료 기준
 

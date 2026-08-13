@@ -66,7 +66,7 @@ public class MemoRepositoryImpl implements MemoRepository {
 
     @Override
     public void deleteById(Long id) {
-        memoJpaRepository.deleteById(id);
+        memoJpaRepository.deleteByIdIfExists(id);
     }
 
     private MemoEntity toEntity(Memo memo) {

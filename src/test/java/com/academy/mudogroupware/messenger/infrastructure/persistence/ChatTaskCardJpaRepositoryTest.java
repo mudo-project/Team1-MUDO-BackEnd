@@ -62,6 +62,19 @@ class ChatTaskCardJpaRepositoryTest {
     }
 
     @Test
+    void markCompletedSkipsWhenCardAlreadyDeleted() {
+        insertChatRoom(1L);
+        insertTaskCard(7L, 1L);
+        insertAssignee(7L, 3L, null);
+        chatTaskCardJpaRepository.markDeleted(7L, LocalDateTime.of(2026, 8, 6, 9, 0));
+
+        int updated = chatTaskCardJpaRepository.markCompleted(7L, 3L, LocalDateTime.of(2026, 8, 6, 9, 30));
+
+        assertThat(updated).isEqualTo(0);
+        assertThat(completedAtOf(7L, 3L)).isNull();
+    }
+
+    @Test
     void deleteAssigneesRemovesOnlySpecifiedUsers() {
         insertChatRoom(1L);
         insertTaskCard(7L, 1L);
@@ -113,5 +126,37 @@ class ChatTaskCardJpaRepositoryTest {
         LocalDateTime deletedAt = jdbcTemplate.queryForObject(
                 "select deleted_at from chat_task_card where card_id = ?", LocalDateTime.class, 7L);
         assertThat(deletedAt).isEqualTo(LocalDateTime.of(2026, 8, 6, 15, 0));
+    }
+
+    @Test
+    void markDeletedSkipsWhenAssigneeAlreadyCompleted() {
+        insertChatRoom(1L);
+        insertTaskCard(7L, 1L);
+        insertAssignee(7L, 3L, LocalDateTime.of(2026, 8, 6, 9, 30));
+
+        int deleted = chatTaskCardJpaRepository.markDeleted(7L, LocalDateTime.of(2026, 8, 6, 15, 0));
+
+        assertThat(deleted).isEqualTo(0);
+        LocalDateTime deletedAt = jdbcTemplate.queryForObject(
+                "select deleted_at from chat_task_card where card_id = ?", LocalDateTime.class, 7L);
+        assertThat(deletedAt).isNull();
+    }
+
+    @Test
+    void findDeletedAtForUpdateReturnsNullWhenNotDeleted() {
+        insertChatRoom(1L);
+        insertTaskCard(7L, 1L);
+
+        assertThat(chatTaskCardJpaRepository.findDeletedAtForUpdate(7L)).isNull();
+    }
+
+    @Test
+    void findDeletedAtForUpdateReturnsTimestampWhenDeleted() {
+        insertChatRoom(1L);
+        insertTaskCard(7L, 1L);
+        chatTaskCardJpaRepository.markDeleted(7L, LocalDateTime.of(2026, 8, 6, 15, 0));
+
+        assertThat(chatTaskCardJpaRepository.findDeletedAtForUpdate(7L))
+                .isEqualTo(LocalDateTime.of(2026, 8, 6, 15, 0));
     }
 }

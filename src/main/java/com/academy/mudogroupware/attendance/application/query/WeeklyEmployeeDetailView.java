@@ -14,7 +14,7 @@ public record WeeklyEmployeeDetailView(
         int attendedDays,
         List<Day> days) {
 
-    public record Employee(Long userId, String name, String position) {
+    public record Employee(Long userId, String name, String roleName) {
     }
 
     public record Day(LocalDate date, MyAttendanceDayStatus status,

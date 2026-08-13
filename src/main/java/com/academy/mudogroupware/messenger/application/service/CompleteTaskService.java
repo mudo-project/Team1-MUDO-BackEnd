@@ -40,7 +40,18 @@ public class CompleteTaskService implements CompleteTaskUseCase {
 
         LocalDateTime completedAt = LocalDateTime.now(clock);
         chatTaskCard.complete(command.userId(), completedAt);
-        chatTaskCardRepository.markAssigneeCompleted(command.cardId(), command.userId(), completedAt);
+
+        // markAssigneeCompleted가 0건이면 이유가 두 가지다: (1) 담당자가 이미 완료된 상태였음(정상,
+        // idempotent) (2) 이 트랜잭션이 카드를 읽은 뒤 다른 트랜잭션이 먼저 삭제를 커밋함. 조회 시점의
+        // 완료 여부로는 이 둘을 구분할 수 없다(동시에 같은 완료 요청이 두 번 오면 둘 다 조회 시점엔
+        // 미완료였다가 하나만 반영되므로) — 0건일 때만 락을 걸어 카드의 현재 삭제 여부를 다시 확인해서
+        // 진짜 이유를 가린다.
+        boolean updated = chatTaskCardRepository.markAssigneeCompleted(command.cardId(), command.userId(),
+                completedAt);
+        if (!updated && chatTaskCardRepository.isDeleted(command.cardId())) {
+            throw new MessengerException(MessengerErrorCode.TASK_CARD_ALREADY_DELETED);
+        }
+
         eventPublisher.publishEvent(new TaskCardCompletedEvent(chatTaskCard.getChatRoomId(),
                 chatTaskCard.getId(), command.userId(), completedAt, chatTaskCard.getCompletedCount(),
                 chatTaskCard.getAssigneeCount(), chatTaskCard.isFullyCompleted()));

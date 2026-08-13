@@ -45,8 +45,8 @@ public class SaveAttendancePolicyService implements SaveAttendancePolicyUseCase 
                     command.requesterId(), result.policyId());
             return result;
         } catch (RuntimeException e) {
-            log.warn("event=attendance_policy_save_실패 requesterId={}, reason={}",
-                    command.requesterId(), e.getMessage());
+            log.warn("event=attendance_policy_save_실패 requesterId={}, errorType={}",
+                    command.requesterId(), e.getClass().getSimpleName());
             throw e;
         }
     }

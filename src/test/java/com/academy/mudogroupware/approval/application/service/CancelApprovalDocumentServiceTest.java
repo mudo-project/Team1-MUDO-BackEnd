@@ -55,6 +55,7 @@ class CancelApprovalDocumentServiceTest {
                 .isInstanceOfSatisfying(ApprovalDocumentDecidedEvent.class, event -> {
                     assertThat(event.documentId()).isEqualTo(1L);
                     assertThat(event.requesterId()).isEqualTo(7L);
+                    assertThat(event.status()).isEqualTo(ApprovalStatus.CANCELLED);
                     assertThat(event.approved()).isFalse();
                     assertThat(event.decidedAt()).isEqualTo(NOW);
                 });

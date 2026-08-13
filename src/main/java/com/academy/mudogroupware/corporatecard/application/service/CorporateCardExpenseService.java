@@ -46,11 +46,14 @@ public class CorporateCardExpenseService {
                 .map(CardExpensePort.ExpenseView::approvalDocumentId).filter(java.util.Objects::nonNull).collect(Collectors.toSet()));
         CardExpensePage result = new CardExpensePage(
                 transactionPage.content().stream().map(t -> toView(t, expenses.get(t.id()), statuses)).toList(),
-                transactionPage.page(), transactionPage.size(), transactionPage.hasNext());
+                transactionPage.page(), transactionPage.size(), transactionPage.totalElements(),
+                transactionPage.totalPages(), transactionPage.first(), transactionPage.last(),
+                transactionPage.hasNext(), transactionPage.hasPrevious());
         log.info("event=corporate_card_transaction_list_read_완료 page={}, count={}", page, result.content().size());
         return result;
         } catch (RuntimeException e) {
-            log.warn("event=corporate_card_transaction_list_read_실패 page={}, reason={}", page, e.getMessage());
+            log.warn("event=corporate_card_transaction_list_read_실패 page={}, errorType={}",
+                    page, e.getClass().getSimpleName());
             throw e;
         }
     }
@@ -68,7 +71,8 @@ public class CorporateCardExpenseService {
         log.info("event=corporate_card_transaction_detail_read_완료 transactionId={}, status={}", transactionId, result.status());
         return result;
         } catch (RuntimeException e) {
-            log.warn("event=corporate_card_transaction_detail_read_실패 transactionId={}, reason={}", transactionId, e.getMessage());
+            log.warn("event=corporate_card_transaction_detail_read_실패 transactionId={}, errorType={}",
+                    transactionId, e.getClass().getSimpleName());
             throw e;
         }
     }
@@ -92,8 +96,8 @@ public class CorporateCardExpenseService {
                     transactionId, result.overallStatus());
             return result;
         } catch (RuntimeException e) {
-            log.warn("event=corporate_card_receipt_reconcile_실패 transactionId={}, reason={}",
-                    transactionId, e.getMessage());
+            log.warn("event=corporate_card_receipt_reconcile_실패 transactionId={}, errorType={}",
+                    transactionId, e.getClass().getSimpleName());
             throw e;
         }
     }
@@ -135,8 +139,8 @@ public class CorporateCardExpenseService {
                 command.userId(), command.transactionId(), result.expenseId(), result.approvalDocumentId());
         return result;
         } catch (RuntimeException e) {
-            log.warn("event=corporate_card_expense_submit_실패 userId={}, transactionId={}, reason={}",
-                    command.userId(), command.transactionId(), e.getMessage());
+            log.warn("event=corporate_card_expense_submit_실패 userId={}, transactionId={}, errorType={}",
+                    command.userId(), command.transactionId(), e.getClass().getSimpleName());
             throw e;
         }
     }
@@ -154,7 +158,7 @@ public class CorporateCardExpenseService {
 
     @Transactional
     public CardExpenseView saveExpense(Long transactionId, Long userId, ExpenseCategory category, String purpose) {
-        log.info("event=corporate_card_expense_save_start userId={}, transactionId={}", userId, transactionId);
+        log.info("event=corporate_card_expense_save_시작 userId={}, transactionId={}", userId, transactionId);
         try {
             var transaction = transactionPort.findForUpdate(transactionId)
                     .orElseThrow(() -> new IllegalArgumentException("카드 사용내역을 찾을 수 없습니다."));
@@ -174,12 +178,12 @@ public class CorporateCardExpenseService {
                     ? Map.<Long, ApprovalSubmissionPort.ApprovalStatusView>of()
                     : approvalSubmissionPort.findStatuses(java.util.Set.of(saved.approvalDocumentId()));
             CardExpenseView result = toView(transaction, saved, statuses);
-            log.info("event=corporate_card_expense_save_success userId={}, transactionId={}, expenseId={}",
+            log.info("event=corporate_card_expense_save_완료 userId={}, transactionId={}, expenseId={}",
                     userId, transactionId, result.expenseId());
             return result;
         } catch (RuntimeException e) {
-            log.warn("event=corporate_card_expense_save_failure userId={}, transactionId={}, reason={}",
-                    userId, transactionId, e.getMessage());
+            log.warn("event=corporate_card_expense_save_실패 userId={}, transactionId={}, errorType={}",
+                    userId, transactionId, e.getClass().getSimpleName());
             throw e;
         }
     }

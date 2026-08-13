@@ -7,6 +7,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 
 import com.academy.mudogroupware.corporatecard.application.port.CorporateCardTransactionPort;
+import com.academy.mudogroupware.global.domain.common.page.PagedResult;
 
 import lombok.RequiredArgsConstructor;
 
@@ -16,10 +17,11 @@ public class CorporateCardTransactionPersistenceAdapter implements CorporateCard
     private final CorporateCardTransactionJpaRepository repository;
 
     @Override
-    public TransactionPage findPage(int page, int size) {
-        var slice = repository.findAllBy(
+    public PagedResult<TransactionView> findPage(int page, int size) {
+        var result = repository.findAllBy(
                 PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "approvedAt").and(Sort.by(Sort.Direction.DESC, "id"))));
-        return new TransactionPage(slice.getContent().stream().map(this::toView).toList(), page, size, slice.hasNext());
+        return PagedResult.of(result.getContent().stream().map(this::toView).toList(),
+                result.getNumber(), result.getSize(), result.getTotalElements());
     }
 
     @Override

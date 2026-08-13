@@ -43,7 +43,8 @@ public class WeeklyEmployeeDetailQueryService implements GetWeeklyEmployeeDetail
     @Override
     public WeeklyEmployeeDetailView getWeeklyDetail(
             Long requesterId, Long userId, LocalDate date) {
-        log.info("event=attendance_employee_weekly_detail_read_시작 requesterId={}={}, userId={}, date={}", requesterId, userId, date);
+        log.info("event=attendance_employee_weekly_detail_read_시작 requesterId={}, userId={}, date={}", requesterId, userId, date);
+        try {
         if (date == null || userId == null) {
             throw new AttendanceException(AttendanceErrorCode.INVALID_ATTENDANCE_QUERY_PERIOD);
         }
@@ -92,10 +93,15 @@ public class WeeklyEmployeeDetailQueryService implements GetWeeklyEmployeeDetail
                 .count();
         WeeklyEmployeeDetail employee = rows.get(0);
         WeeklyEmployeeDetailView result = new WeeklyEmployeeDetailView(
-                new WeeklyEmployeeDetailView.Employee(employee.userId(), employee.name(), employee.position()),
+                new WeeklyEmployeeDetailView.Employee(employee.userId(), employee.name(), employee.roleName()),
                 startDate, endDate, scheduledWorkDays, attendedDays, days);
         log.info("event=attendance_employee_weekly_detail_read_완료 userId={}, attendedDays={}", userId, attendedDays);
         return result;
+        } catch (RuntimeException e) {
+            log.warn("event=attendance_employee_weekly_detail_read_실패 requesterId={}, userId={}, errorType={}",
+                    requesterId, userId, e.getClass().getSimpleName());
+            throw e;
+        }
     }
 
     private MyAttendanceDayStatus resolveStatus(

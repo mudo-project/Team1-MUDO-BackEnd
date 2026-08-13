@@ -3,6 +3,8 @@ package com.academy.mudogroupware.workspace.application.service.comment;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.academy.mudogroupware.workspace.application.command.comment.ToggleTaskCommentCompleteCommand;
@@ -55,7 +57,7 @@ class ToggleTaskCommentCompleteServiceTest {
     givenWorkspaceWithMembers(MEMBER_ID, OTHER_MEMBER_ID);
     givenTask(WORKSPACE_ID);
     givenComment(false, null, null);
-    when(taskCommentRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+    when(taskCommentRepository.updateCompletion(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     TaskComment result =
         service()
@@ -64,6 +66,8 @@ class ToggleTaskCommentCompleteServiceTest {
 
     assertThat(result.isCompleted()).isTrue();
     assertThat(result.getCompletedBy()).isEqualTo(OTHER_MEMBER_ID);
+    verify(taskCommentRepository).updateCompletion(any());
+    verify(taskCommentRepository, never()).save(any());
   }
 
   @Test
@@ -71,7 +75,7 @@ class ToggleTaskCommentCompleteServiceTest {
     givenWorkspaceWithMembers(MEMBER_ID);
     givenTask(WORKSPACE_ID);
     givenComment(true, MEMBER_ID, LocalDateTime.of(2026, 8, 6, 9, 0));
-    when(taskCommentRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+    when(taskCommentRepository.updateCompletion(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     TaskComment result =
         service()
@@ -79,6 +83,8 @@ class ToggleTaskCommentCompleteServiceTest {
 
     assertThat(result.isCompleted()).isFalse();
     assertThat(result.getCompletedBy()).isNull();
+    verify(taskCommentRepository).updateCompletion(any());
+    verify(taskCommentRepository, never()).save(any());
   }
 
   @Test

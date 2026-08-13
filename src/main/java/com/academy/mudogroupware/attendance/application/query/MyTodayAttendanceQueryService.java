@@ -33,7 +33,8 @@ public class MyTodayAttendanceQueryService implements GetMyTodayAttendanceUseCas
 
     @Override
     public MyTodayAttendanceView getToday(Long userId) {
-        log.info("event=attendance_today_read_시작 userId={}={}", userId);
+        log.info("event=attendance_today_read_시작 userId={}", userId);
+        try {
         LocalDateTime now = LocalDateTime.now(clock);
         LocalDate today = now.toLocalDate();
         LocalTime currentTime = now.toLocalTime();
@@ -57,8 +58,13 @@ public class MyTodayAttendanceQueryService implements GetMyTodayAttendanceUseCas
                 toOffset(record == null ? null : record.getClockOutAt()),
                 status,
                 now.atZone(clock.getZone()).toOffsetDateTime());
-        log.info("event=attendance_today_read_완료 userId={}={}, status={}", userId, status);
+        log.info("event=attendance_today_read_완료 userId={}, status={}", userId, status);
         return result;
+        } catch (RuntimeException e) {
+            log.warn("event=attendance_today_read_실패 userId={}, errorType={}",
+                    userId, e.getClass().getSimpleName());
+            throw e;
+        }
     }
 
     private java.time.OffsetDateTime toOffset(LocalDateTime dateTime) {

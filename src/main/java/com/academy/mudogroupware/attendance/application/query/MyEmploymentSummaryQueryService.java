@@ -26,14 +26,20 @@ public class MyEmploymentSummaryQueryService implements GetMyEmploymentSummaryUs
 
     @Override
     public MyEmploymentSummaryView getSummary(Long userId) {
-        log.info("event=attendance_employment_summary_read_시작 userId={}={}", userId);
+        log.info("event=attendance_employment_summary_read_시작 userId={}", userId);
+        try {
         LocalDate hireDate = employmentSummaryPort.findByUserId(userId)
                 .orElseThrow(() -> new AttendanceException(
                         AttendanceErrorCode.EMPLOYMENT_INFO_NOT_FOUND))
                 .hireDate();
         long tenureDays = Math.max(0, ChronoUnit.DAYS.between(hireDate, LocalDate.now(clock)));
         MyEmploymentSummaryView result = new MyEmploymentSummaryView(hireDate, tenureDays);
-        log.info("event=attendance_employment_summary_read_완료 userId={}={}, tenureDays={}", userId, tenureDays);
+        log.info("event=attendance_employment_summary_read_완료 userId={}, tenureDays={}", userId, tenureDays);
         return result;
+        } catch (RuntimeException e) {
+            log.warn("event=attendance_employment_summary_read_실패 userId={}, errorType={}",
+                    userId, e.getClass().getSimpleName());
+            throw e;
+        }
     }
 }

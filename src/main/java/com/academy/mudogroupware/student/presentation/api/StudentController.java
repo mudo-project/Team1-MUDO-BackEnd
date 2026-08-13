@@ -79,7 +79,7 @@ public class StudentController {
     public ResponseEntity<GlobalApiResponse<SliceResponse<StudentSummaryResponse>>> getStudents(
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") @Min(0) int page,
-            @RequestParam(defaultValue = "30") @Min(1) @Max(100) int size) {
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
         SliceResponse<StudentSummaryResponse> response = SliceResponse.from(
                 studentQueryUseCase.getStudents(keyword, page, size),
                 StudentSummaryResponse::from);

@@ -44,7 +44,8 @@ public class MyMonthlyAttendanceQueryService implements GetMyMonthlyAttendanceUs
     @Override
     public MyMonthlyAttendanceView getMonthly(
             Long userId, int year, int month) {
-        log.info("event=attendance_monthly_read_시작 userId={}={}, year={}, month={}", userId, year, month);
+        log.info("event=attendance_monthly_read_시작 userId={}, year={}, month={}", userId, year, month);
+        try {
         YearMonth targetMonth = toYearMonth(year, month);
         LocalDate today = LocalDate.now(clock);
         LocalDate hireDate = employmentSummaryPort.findByUserId(userId)
@@ -55,7 +56,7 @@ public class MyMonthlyAttendanceQueryService implements GetMyMonthlyAttendanceUs
         LocalDate endDate = earlierOf(targetMonth.atEndOfMonth(), today);
         if (startDate.isAfter(endDate)) {
             MyMonthlyAttendanceView result = new MyMonthlyAttendanceView(year, month, List.of());
-            log.info("event=attendance_monthly_read_완료 userId={}={}, count=0", userId); return result;
+            log.info("event=attendance_monthly_read_완료 userId={}, count=0", userId); return result;
         }
 
         AttendancePolicy policy = attendancePolicyRepository.findCurrent()
@@ -75,8 +76,13 @@ public class MyMonthlyAttendanceQueryService implements GetMyMonthlyAttendanceUs
                         date, policy, records.get(date), approvedLeaves, today, currentTime))
                 .toList();
         MyMonthlyAttendanceView result = new MyMonthlyAttendanceView(year, month, days);
-        log.info("event=attendance_monthly_read_완료 userId={}={}, count={}", userId, days.size());
+        log.info("event=attendance_monthly_read_완료 userId={}, count={}", userId, days.size());
         return result;
+        } catch (RuntimeException e) {
+            log.warn("event=attendance_monthly_read_실패 userId={}, year={}, month={}, errorType={}",
+                    userId, year, month, e.getClass().getSimpleName());
+            throw e;
+        }
     }
 
     private MyMonthlyAttendanceView.Day toDay(

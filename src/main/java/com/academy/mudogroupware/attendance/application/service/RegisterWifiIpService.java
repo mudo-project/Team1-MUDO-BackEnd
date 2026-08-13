@@ -45,8 +45,8 @@ public class RegisterWifiIpService implements RegisterWifiIpUseCase {
                     command.requesterId(), result.wifiIpId());
             return result;
         } catch (RuntimeException e) {
-            log.warn("event=attendance_wifi_ip_register_실패 requesterId={}, reason={}",
-                    command.requesterId(), e.getMessage());
+            log.warn("event=attendance_wifi_ip_register_실패 requesterId={}, errorType={}",
+                    command.requesterId(), e.getClass().getSimpleName());
             throw e;
         }
     }

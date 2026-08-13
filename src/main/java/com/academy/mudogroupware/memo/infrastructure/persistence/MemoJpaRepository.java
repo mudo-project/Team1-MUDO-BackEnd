@@ -42,4 +42,13 @@ public interface MemoJpaRepository extends JpaRepository<MemoEntity, Long> {
     void updatePosition(@Param("id") Long id, @Param("positionX") int positionX,
                          @Param("positionY") int positionY, @Param("width") int width,
                          @Param("height") int height, @Param("updatedAt") LocalDateTime updatedAt);
+
+    // JpaRepository의 기본 deleteById()는 대상이 없으면 EmptyResultDataAccessException을 던져,
+    // 같은 메모에 대한 삭제 요청이 동시에 두 번 오면(더블클릭 등) 나중 요청이 500으로 응답됐다(#464).
+    // 벌크 삭제 쿼리는 대상이 없어도 0건을 반환할 뿐 예외를 던지지 않아 재삭제가 idempotent해진다.
+    // clearAutomatically = true: 벌크 쿼리는 영속성 컨텍스트(1차 캐시)를 자동으로 갱신하지 않아, 같은
+    // 트랜잭션에서 삭제 직후 findById를 호출하면 캐시된 엔티티가 그대로 반환될 수 있어 명시적으로 비운다.
+    @Modifying(clearAutomatically = true)
+    @Query("delete from MemoEntity m where m.id = :id")
+    int deleteByIdIfExists(@Param("id") Long id);
 }
