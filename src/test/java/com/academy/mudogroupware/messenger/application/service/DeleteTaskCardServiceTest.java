@@ -91,11 +91,12 @@ class DeleteTaskCardServiceTest {
         ChatTaskCard chatTaskCard = ChatTaskCard.restore(7L, 1L, 2L, "과제 제출", null,
                 List.of(ChatTaskAssignee.restore(3L, null)), CARD_CREATED_AT, firstDeletedAt);
         when(chatTaskCardRepository.findById(7L)).thenReturn(Optional.of(chatTaskCard));
-        when(chatTaskCardRepository.markDeleted(7L, firstDeletedAt)).thenReturn(false);
 
         service.delete(new DeleteTaskCardCommand(1L, 7L, 2L));
 
-        verify(chatTaskCardRepository).markDeleted(7L, firstDeletedAt);
+        // 조회 시점에 이미 삭제된 상태라 DB에 다시 쓸 것이 없으므로, markDeleted/isDeleted 호출 자체를 생략한다.
+        verify(chatTaskCardRepository, never()).markDeleted(any(), any());
+        verify(chatTaskCardRepository, never()).isDeleted(any());
         verify(eventPublisher, never()).publishEvent(any());
     }
 
@@ -105,11 +106,11 @@ class DeleteTaskCardServiceTest {
         ChatTaskCard chatTaskCard = ChatTaskCard.restore(7L, 1L, 2L, "과제 제출", null,
                 List.of(ChatTaskAssignee.restore(3L, CARD_CREATED_AT)), CARD_CREATED_AT, firstDeletedAt);
         when(chatTaskCardRepository.findById(7L)).thenReturn(Optional.of(chatTaskCard));
-        when(chatTaskCardRepository.markDeleted(7L, firstDeletedAt)).thenReturn(false);
 
         service.delete(new DeleteTaskCardCommand(1L, 7L, 2L));
 
-        verify(chatTaskCardRepository).markDeleted(7L, firstDeletedAt);
+        verify(chatTaskCardRepository, never()).markDeleted(any(), any());
+        verify(chatTaskCardRepository, never()).isDeleted(any());
         verify(eventPublisher, never()).publishEvent(any());
     }
 
@@ -120,8 +121,29 @@ class DeleteTaskCardServiceTest {
         when(chatTaskCardRepository.findById(7L)).thenReturn(Optional.of(chatTaskCard));
         // 다른 트랜잭션이 먼저 삭제를 커밋해서 이 요청의 UPDATE는 0건에 영향을 준 상황을 흉내낸다.
         when(chatTaskCardRepository.markDeleted(7L, NOW)).thenReturn(false);
+        when(chatTaskCardRepository.isDeleted(7L)).thenReturn(true);
 
         service.delete(new DeleteTaskCardCommand(1L, 7L, 2L));
+
+        verify(chatTaskCardRepository).markDeleted(7L, NOW);
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void throwsTaskCardHasCompletionWhenConcurrentCompletionWinsTheRace() {
+        // CodeRabbit 지적 사항(#457): 조회 시점엔 완료된 담당자가 없어 도메인 검증은 통과하지만,
+        // 이 트랜잭션이 카드를 읽은 뒤 다른 트랜잭션이 먼저 완료를 커밋해서 markDeleted가 0건인 상황.
+        // 카드가 실제로 삭제된 게 아니므로 조용히 넘어가지 말고 TASK_CARD_HAS_COMPLETION을 던져야 한다.
+        ChatTaskCard chatTaskCard = ChatTaskCard.restore(7L, 1L, 2L, "과제 제출", null,
+                List.of(ChatTaskAssignee.restore(3L, null)), CARD_CREATED_AT);
+        when(chatTaskCardRepository.findById(7L)).thenReturn(Optional.of(chatTaskCard));
+        when(chatTaskCardRepository.markDeleted(7L, NOW)).thenReturn(false);
+        when(chatTaskCardRepository.isDeleted(7L)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.delete(new DeleteTaskCardCommand(1L, 7L, 2L)))
+                .isInstanceOf(MessengerException.class)
+                .extracting(exception -> ((MessengerException) exception).getErrorCode())
+                .isEqualTo(MessengerErrorCode.TASK_CARD_HAS_COMPLETION);
 
         verify(chatTaskCardRepository).markDeleted(7L, NOW);
         verify(eventPublisher, never()).publishEvent(any());

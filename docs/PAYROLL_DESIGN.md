@@ -2022,7 +2022,12 @@ GET /api/payrolls?year=2026&month=8&page=0&size=20
 content
 page
 size
+totalElements
+totalPages
+first
+last
 hasNext
+hasPrevious
 ```
 
 ---
@@ -2954,7 +2959,12 @@ GET /api/payrolls/statement/email-delivery-batches/{batchId}?page=0&size=20
     "content": [],
     "page": 0,
     "size": 20,
-    "hasNext": false
+    "totalElements": 20,
+    "totalPages": 1,
+    "first": true,
+    "last": true,
+    "hasNext": false,
+    "hasPrevious": false
   }
 }
 ```

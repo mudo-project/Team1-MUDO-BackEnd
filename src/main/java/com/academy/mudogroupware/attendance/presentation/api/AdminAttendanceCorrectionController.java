@@ -6,7 +6,7 @@ import com.academy.mudogroupware.attendance.presentation.api.common.AttendanceRe
 import com.academy.mudogroupware.attendance.presentation.api.request.RejectAttendanceCorrectionRequest;
 import com.academy.mudogroupware.attendance.presentation.api.response.AdminAttendanceCorrectionResponse;
 import com.academy.mudogroupware.global.presentation.api.common.GlobalApiResponse;
-import com.academy.mudogroupware.global.presentation.api.common.SliceResponse;
+import com.academy.mudogroupware.global.presentation.api.common.PageResponse;
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -30,13 +30,13 @@ public class AdminAttendanceCorrectionController {
     @Operation(summary = "근태 수정 요청 목록 조회")
     @GetMapping
     @PreAuthorize("hasAuthority('ATTENDANCE:CORRECTION_READ')")
-    public GlobalApiResponse<SliceResponse<AdminAttendanceCorrectionResponse>> getAll(
+    public GlobalApiResponse<PageResponse<AdminAttendanceCorrectionResponse>> getAll(
             @AuthenticationPrincipal AuthUser user,
             @RequestParam(required = false) AttendanceCorrectionStatus status,
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
         return GlobalApiResponse.ok(AttendanceResponseCode.ATTENDANCE_CORRECTION_LIST_RETRIEVED,
-                SliceResponse.from(useCase.getAll(status, page, size),
+                PageResponse.from(useCase.getAll(status, page, size),
                         AdminAttendanceCorrectionResponse::from));
     }
 

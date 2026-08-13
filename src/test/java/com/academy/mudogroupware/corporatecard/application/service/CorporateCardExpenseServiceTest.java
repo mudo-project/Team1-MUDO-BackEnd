@@ -7,6 +7,8 @@ import static org.mockito.Mockito.when;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -17,6 +19,7 @@ import com.academy.mudogroupware.corporatecard.application.port.CardExpensePort;
 import com.academy.mudogroupware.corporatecard.application.port.CorporateCardTransactionPort;
 import com.academy.mudogroupware.corporatecard.application.query.ReceiptReconciliationView;
 import com.academy.mudogroupware.corporatecard.domain.model.ExpenseCategory;
+import com.academy.mudogroupware.global.domain.common.page.PagedResult;
 
 class CorporateCardExpenseServiceTest {
 
@@ -75,5 +78,22 @@ class CorporateCardExpenseServiceTest {
 
         assertThat(result.transactionId()).isEqualTo(TRANSACTION_ID);
         assertThat(result.overallStatus()).isEqualTo(ReceiptReconciliationView.OverallStatus.MATCH);
+    }
+
+    @Test
+    void returnsTransactionPageMetadata() {
+        when(transactionPort.findPage(0, 20))
+                .thenReturn(PagedResult.of(List.of(transaction()), 0, 20, 42));
+        when(expensePort.findByTransactionIds(List.of(TRANSACTION_ID))).thenReturn(Map.of());
+        when(approvalSubmissionPort.findStatuses(java.util.Set.of())).thenReturn(Map.of());
+
+        var result = service.getTransactions(0, 20);
+
+        assertThat(result.totalElements()).isEqualTo(42);
+        assertThat(result.totalPages()).isEqualTo(3);
+        assertThat(result.first()).isTrue();
+        assertThat(result.last()).isFalse();
+        assertThat(result.hasNext()).isTrue();
+        assertThat(result.hasPrevious()).isFalse();
     }
 }

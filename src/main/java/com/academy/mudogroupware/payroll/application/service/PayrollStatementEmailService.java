@@ -2,7 +2,7 @@ package com.academy.mudogroupware.payroll.application.service;
 
 import static com.academy.mudogroupware.payroll.domain.model.PayrollTypes.*;
 
-import com.academy.mudogroupware.global.domain.common.page.PageResult;
+import com.academy.mudogroupware.global.domain.common.page.PagedResult;
 import com.academy.mudogroupware.payroll.application.event.PayrollStatementEmailRequestedEvent;
 import com.academy.mudogroupware.payroll.application.port.out.PayrollEmployeePort;
 import com.academy.mudogroupware.payroll.application.port.out.PayrollRepository;
@@ -76,7 +76,7 @@ public class PayrollStatementEmailService {
     if (hasNext) content = content.subList(0, size);
     Map<DeliveryStatus, Long> counts = counts(batchId);
     return new BatchResult(batch.id(), batch.yearMonth().atDay(1), status(counts, total),
-        Summary.from(counts, total), PageResult.of(content, page, size, hasNext));
+        Summary.from(counts, total), PagedResult.of(content, page, size, total));
   }
 
   private void createBatchDelivery(Long batchId, Payroll payroll, Long requestedBy) {
@@ -193,7 +193,7 @@ public class PayrollStatementEmailService {
       long targetCount, DeliveryBatchStatus status) {}
 
   public record BatchResult(Long batchId, java.time.LocalDate payrollYearMonth,
-      DeliveryBatchStatus status, Summary summary, PageResult<DeliveryView> deliveries) {}
+      DeliveryBatchStatus status, Summary summary, PagedResult<DeliveryView> deliveries) {}
 
   public record Summary(long totalCount, long pendingCount, long sendingCount, long sentCount,
       long deliveredCount, long failedCount, long skippedCount) {

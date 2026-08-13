@@ -1,6 +1,6 @@
 # 🌐 global 모듈
 
-> 업데이트: 2026-08-10 · WebSocket 알림 전송 공통 발행기(`WebSocketEventPublisher`)와 삭제·정리 배치 공통 스케줄러(`GlobalRetentionScheduler`)를 추가했습니다.
+> 업데이트: 2026-08-13 · 목록 특성에 따라 Page·Slice·Cursor 페이지네이션을 선택하는 기준을 문서화했습니다.
 
 ## 📦 책임과 범위
 
@@ -19,7 +19,7 @@
 
 - ⏰ **시간 정책**: `TimeConfig` — `Clock` 빈(`Asia/Seoul` 고정), JPA Auditing용 `DateTimeProvider`
 - 🧱 **공통 타임스탬프 Base Entity**: `CreatedAtEntity`, `BaseTimeEntity`, `SoftDeleteTimeEntity`
-- 📄 **공용 페이지네이션**: `PageResult<T>`(domain 계층), `SliceResponse<T>`(presentation 계층) — `docs/API_CONTRACT.md`의 `page`/`size`/`content`/`hasNext` 규칙을 구현한 프레임워크-비의존 래퍼
+- 📄 **공용 페이지네이션**: 번호 기반 전체 페이지 응답은 `PagedResult<T>`/`PageResponse<T>`, 전체 개수 없는 offset 응답은 `PageResult<T>`/`SliceResponse<T>`를 사용한다. Cursor 방식은 정렬 키나 외부 page token이 도메인마다 달라 공용 DTO로 강제하지 않고 `docs/API_CONTRACT.md`의 Cursor 규칙을 따라 도메인 전용 응답을 정의한다.
 - 🔌 **WebSocket 인프라**: `WebSocketConfig`, `WebSocketEventPublisher` — 도메인 Notifier가 정한 STOMP destination/payload를 실제로 발행
 - 🧹 **삭제·정리 배치 공통 스케줄러**: `RetentionJob`, `RetentionJobResult`, `GlobalRetentionScheduler` — 도메인별 `RetentionJob` 구현체를 자동 수집해 매일 실행. 첫 적용 사례는 `student`(소프트 삭제 30일 후 하드 삭제). 자세한 내용은 [BOILER_PLATE.md](BOILER_PLATE.md) 참고
 - 🔐 그 외 보안(JWT/CORS), 공통 예외 응답, AOP 성능 로깅, TraceId 필터
