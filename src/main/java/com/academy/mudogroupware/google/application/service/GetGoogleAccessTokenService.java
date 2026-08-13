@@ -3,6 +3,8 @@ package com.academy.mudogroupware.google.application.service;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -62,18 +64,8 @@ public class GetGoogleAccessTokenService implements GetGoogleAccessTokenUseCase 
             throw new GoogleAccountConnectionInvalidException();
         }
 
-        Instant now = clock.instant();
-        CachedAccessToken cached = accessTokenCache.getIfPresent(connection.getRefreshToken());
-        if (cached != null && now.isBefore(cached.expiresAt())) {
-            log.debug("event=google_access_token_cache_hit connectionId={}", connection.getId());
-            return cached.accessToken();
-        }
-
         try {
-            GoogleTokenExchangeResult result = googleOAuthPort.refreshAccessToken(connection.getRefreshToken());
-            cacheIfExpirationKnown(connection.getRefreshToken(), result, now);
-            log.info("event=google_access_token_refreshed connectionId={}", connection.getId());
-            return result.accessToken();
+            return getOrRefreshAccessToken(connection);
         } catch (GoogleTokenRevokedException e) {
             log.warn("event=google_access_token_refresh_failed connectionId={} reason=token_revoked",
                     connection.getId());
@@ -87,14 +79,37 @@ public class GetGoogleAccessTokenService implements GetGoogleAccessTokenUseCase 
         }
     }
 
-    private void cacheIfExpirationKnown(String refreshToken, GoogleTokenExchangeResult result, Instant now) {
+    // ConcurrentMap#compute()는 같은 키에 대해 원자적으로 실행되므로, 같은 refreshToken으로
+    // 동시에 들어온 요청들은 이 블록 안에서 직렬화된다 — 캐시 미스 시 Google 호출이 단 1회만
+    // 나가는 single-flight를 별도 락 없이 보장한다.
+    private String getOrRefreshAccessToken(GoogleAccountConnection connection) {
+        String refreshToken = connection.getRefreshToken();
+        ConcurrentMap<String, CachedAccessToken> cacheMap = accessTokenCache.asMap();
+        AtomicReference<String> accessTokenHolder = new AtomicReference<>();
+
+        cacheMap.compute(refreshToken, (key, existing) -> {
+            Instant now = clock.instant();
+            if (existing != null && now.isBefore(existing.expiresAt())) {
+                log.debug("event=google_access_token_cache_hit connectionId={}", connection.getId());
+                accessTokenHolder.set(existing.accessToken());
+                return existing;
+            }
+
+            GoogleTokenExchangeResult result = googleOAuthPort.refreshAccessToken(refreshToken);
+            log.info("event=google_access_token_refreshed connectionId={}", connection.getId());
+            accessTokenHolder.set(result.accessToken());
+            return toCacheEntryIfExpirationKnown(result, now);
+        });
+
+        return accessTokenHolder.get();
+    }
+
+    private CachedAccessToken toCacheEntryIfExpirationKnown(GoogleTokenExchangeResult result, Instant now) {
         if (result.accessTokenExpiresInSeconds() == null) {
-            return;
+            return null;
         }
         Instant expiresAt = now.plusSeconds(result.accessTokenExpiresInSeconds())
                 .minusSeconds(ACCESS_TOKEN_EXPIRY_BUFFER_SECONDS);
-        if (expiresAt.isAfter(now)) {
-            accessTokenCache.put(refreshToken, new CachedAccessToken(result.accessToken(), expiresAt));
-        }
+        return expiresAt.isAfter(now) ? new CachedAccessToken(result.accessToken(), expiresAt) : null;
     }
 }

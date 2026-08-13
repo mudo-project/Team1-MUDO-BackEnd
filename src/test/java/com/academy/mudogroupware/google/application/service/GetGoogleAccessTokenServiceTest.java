@@ -14,8 +14,13 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -233,6 +238,43 @@ class GetGoogleAccessTokenServiceTest {
         assertThat(afterSwitch).isEqualTo("new-access-token");
         verify(googleOAuthPort).refreshAccessToken("old-refresh-token");
         verify(googleOAuthPort).refreshAccessToken("new-refresh-token");
+    }
+
+    @Test
+    void getAccessTokenCallsGoogleOnlyOnceForConcurrentRequestsOnCacheMiss() throws Exception {
+        GoogleAccountConnection connection = GoogleAccountConnection.restore(
+                10L, "academy@mudo.co.kr", 7L, "openid email drive.file", "refresh-token",
+                CONNECTED_AT, CONNECTED_AT.plusDays(60), CONNECTED_AT, false);
+        when(googleAccountConnectionRepository.find()).thenReturn(Optional.of(connection));
+        when(googleOAuthPort.refreshAccessToken("refresh-token")).thenAnswer(invocation -> {
+            Thread.sleep(100);
+            return new GoogleTokenExchangeResult(
+                    "new-access-token", "refresh-token", "openid email drive.file", null, 3600L);
+        });
+
+        int threadCount = 10;
+        ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+        CountDownLatch ready = new CountDownLatch(threadCount);
+        CountDownLatch start = new CountDownLatch(1);
+        List<Future<String>> futures = new ArrayList<>();
+        for (int i = 0; i < threadCount; i++) {
+            futures.add(executor.submit(() -> {
+                ready.countDown();
+                start.await();
+                return service.getAccessToken();
+            }));
+        }
+        ready.await();
+        start.countDown();
+
+        List<String> results = new ArrayList<>();
+        for (Future<String> future : futures) {
+            results.add(future.get());
+        }
+        executor.shutdown();
+
+        assertThat(results).allMatch("new-access-token"::equals);
+        verify(googleOAuthPort, org.mockito.Mockito.times(1)).refreshAccessToken("refresh-token");
     }
 
     @Test
