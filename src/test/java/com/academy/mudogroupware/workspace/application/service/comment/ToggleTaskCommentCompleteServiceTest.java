@@ -3,6 +3,8 @@ package com.academy.mudogroupware.workspace.application.service.comment;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.academy.mudogroupware.workspace.application.command.comment.ToggleTaskCommentCompleteCommand;
@@ -64,6 +66,8 @@ class ToggleTaskCommentCompleteServiceTest {
 
     assertThat(result.isCompleted()).isTrue();
     assertThat(result.getCompletedBy()).isEqualTo(OTHER_MEMBER_ID);
+    verify(taskCommentRepository).updateCompletion(any());
+    verify(taskCommentRepository, never()).save(any());
   }
 
   @Test
@@ -79,6 +83,8 @@ class ToggleTaskCommentCompleteServiceTest {
 
     assertThat(result.isCompleted()).isFalse();
     assertThat(result.getCompletedBy()).isNull();
+    verify(taskCommentRepository).updateCompletion(any());
+    verify(taskCommentRepository, never()).save(any());
   }
 
   @Test
