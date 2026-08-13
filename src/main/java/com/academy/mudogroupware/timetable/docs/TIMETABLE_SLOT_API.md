@@ -187,7 +187,7 @@ HTTP `200 OK`
 | name | type | required | description |
 | --- | --- | --- | --- |
 | `scope` | Enum | true | `THIS_OCCURRENCE`/`FROM_NOW`/`ALL` 중 하나. **현재는 `ALL`만 실제로 처리된다.** |
-| `classType`/`dayOfWeek`/`classroomCode`/`startTime`/`endTime`/`grade`/`teacherName`/`subjectName` | - | - | 등록 API와 동일 |
+| `classType`/`dayOfWeek`/`classroomCode`/`startTime`/`endTime`/`grade`/`teacherName`/`subjectName`/`color` | - | - | 등록 API와 동일 |
 
 ### Success Response
 
