@@ -13,6 +13,8 @@ public interface MemoRepository {
 
     Optional<Memo> findById(Long id);
 
+    Optional<Memo> findMostRecentByUserId(Long userId);
+
     List<Memo> findAllByUserIdOrderByCreatedAtDescIdDesc(Long userId);
 
     List<Memo> findAllByUserIdOrderByCreatedAtAscIdAsc(Long userId);

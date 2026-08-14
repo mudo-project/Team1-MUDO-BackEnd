@@ -271,3 +271,7 @@ infra/monitoring/runtime/
 /CONCURRENCY_ANALYSIS.md
 /PRESENTATION_CANDIDATES.md
 /ACCESS_TOKEN_CACHING.md
+
+# Python bytecode cache (infra/scripts 실행 시 생성)
+__pycache__/
+*.pyc
