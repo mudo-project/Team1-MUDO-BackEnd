@@ -1401,10 +1401,10 @@ Actuator는 기존 앱 포트 8080을 사용한다. Alloy는 같은 호스트에
 6. Health check protocol → HTTP
 7. Health check path → `/actuator/health`
 8. Success codes → `200`
-9. **Advanced health check settings**(AWS 기본값을 그대로 두지 말 것 — 2026-08-15 실측 기준, 기본값(interval 30초·healthy threshold 5회·deregistration delay 300초)으로는 테넌트 1개 롤링 배포에 약 8분이 걸린다. 아래 값으로 조정하면 약 2분대로 줄어든다):
+9. **Advanced health check settings**(AWS 기본값을 그대로 두지 말 것 — 2026-08-15 실측 기준, 기본값(interval 30초·healthy threshold 5회·unhealthy threshold 2회·deregistration delay 300초)으로는 테넌트 1개 롤링 배포에 약 8분이 걸린다. 아래 값으로 조정하면 약 2~3분대로 줄어든다):
    - Health check interval → `10`초 (기본 30초)
-   - Healthy threshold → `3`회 (기본 5회)
-   - Unhealthy threshold → `2`회(기본값 유지)
+   - Healthy threshold → `3`회 = 30초 (기본 5회=150초)
+   - Unhealthy threshold → `6`회 = 60초 (기본 2회=60초와 **동일하게 유지** — interval을 줄인 만큼 횟수를 올려서 장애 허용 시간(60초)은 원래대로 지킨다. 2026-08-15에 unhealthy threshold를 2회로 뒀다가 배포 중 순간적 지연(신구 Task가 동시에 RDS 커넥션을 다투는 구간 등)만으로 정상 Task가 20초 만에 강제 종료되는 사고가 실제로 있었다.)
    - Target group attributes → `deregistration_delay.timeout_seconds` → `90`초 (기본 300초)
      - WebSocket(채팅/알림)을 쓰는 앱이라 0에 가깝게 낮추지는 않는다 — 배포 중 열려있던 연결이 정상 종료할 시간은 남겨둔다.
 10. Create
@@ -1416,7 +1416,8 @@ CLI로 기존 Target Group에 적용할 때:
 $AWSCLI elbv2 modify-target-group \
   --target-group-arn <TARGET_GROUP_ARN> \
   --health-check-interval-seconds 10 \
-  --healthy-threshold-count 3
+  --healthy-threshold-count 3 \
+  --unhealthy-threshold-count 6
 
 $AWSCLI elbv2 modify-target-group-attributes \
   --target-group-arn <TARGET_GROUP_ARN> \
