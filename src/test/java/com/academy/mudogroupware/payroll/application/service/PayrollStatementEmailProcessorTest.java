@@ -1,0 +1,127 @@
+package com.academy.mudogroupware.payroll.application.service;
+
+import static com.academy.mudogroupware.payroll.domain.model.PayrollTypes.DeliveryStatus.SENDING;
+import static com.academy.mudogroupware.payroll.domain.model.PayrollTypes.StatementStatus.READY;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import com.academy.mudogroupware.payroll.application.port.out.PayrollRepository;
+import com.academy.mudogroupware.payroll.application.port.out.PayrollStatementDeliveryPort.DeliveryData;
+import com.academy.mudogroupware.payroll.application.port.out.PayrollStatementEmailSender;
+import com.academy.mudogroupware.payroll.application.port.out.PayrollStatementEmailSender.FailureType;
+import com.academy.mudogroupware.payroll.application.port.out.PayrollStatementEmailSender.SendException;
+import com.academy.mudogroupware.payroll.application.port.out.PayrollStatementPort;
+import com.academy.mudogroupware.payroll.application.port.out.PayrollStatementPort.StatementData;
+import com.academy.mudogroupware.payroll.application.port.out.PayrollStatementStoragePort;
+import com.academy.mudogroupware.payroll.domain.model.Payroll;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.YearMonth;
+import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+@ExtendWith(MockitoExtension.class)
+class PayrollStatementEmailProcessorTest {
+  @Mock PayrollStatementEmailExecutor executor;
+  @Mock PayrollRepository payrolls;
+  @Mock PayrollStatementPort statements;
+  @Mock PayrollStatementStoragePort storage;
+  @Mock PayrollStatementEmailSender sender;
+  @Mock Payroll payroll;
+  private PayrollStatementEmailProcessor processor;
+
+  @BeforeEach
+  void setUp() {
+    processor = new PayrollStatementEmailProcessor(executor, payrolls, statements, storage, sender,
+        new PayrollStatementEmailPolicy(20, 3, Duration.ofMinutes(1), Duration.ofMinutes(30),
+            Duration.ofMinutes(10), Duration.ofMinutes(5)));
+  }
+
+  @Test
+  void Mailgun_응답_ID를_SENT_이력에_저장한다() {
+    allowProcessing(delivery(1));
+    when(sender.send(anyString(), anyString(), anyString(), anyString(), any(), anyString()))
+        .thenReturn(PayrollStatementEmailSender.SendResult.success("<message@mailgun>"));
+
+    processor.processPending(30L);
+
+    verify(executor).sent(30L, "<message@mailgun>");
+  }
+
+  @Test
+  void 명확한_일시_오류는_재시도를_예약한다() {
+    allowProcessing(delivery(1));
+    when(sender.send(anyString(), anyString(), anyString(), anyString(), any(), anyString()))
+        .thenThrow(new SendException(FailureType.RETRYABLE, "MAILGUN_RATE_LIMITED", null));
+
+    processor.processPending(30L);
+
+    verify(executor).retry(eq(30L), eq("MAILGUN_RATE_LIMITED"), anyString(),
+        any(LocalDateTime.class));
+    verify(executor, never()).unknown(any(), anyString(), anyString());
+  }
+
+  @Test
+  void 접수_여부가_불명확하면_재발송하지_않고_UNKNOWN으로_전환한다() {
+    allowProcessing(delivery(1));
+    when(sender.send(anyString(), anyString(), anyString(), anyString(), any(), anyString()))
+        .thenThrow(new SendException(FailureType.UNKNOWN, "MAILGUN_RESULT_UNKNOWN", null));
+
+    processor.processPending(30L);
+
+    verify(executor).unknown(30L, "MAILGUN_RESULT_UNKNOWN",
+        "Mailgun 접수 여부를 확인할 수 없어 대사가 필요합니다.");
+    verify(executor, never()).retry(any(), anyString(), anyString(), any());
+  }
+
+  @Test
+  void 최대_시도_횟수를_채우면_최종_실패한다() {
+    allowProcessing(delivery(3));
+    when(sender.send(anyString(), anyString(), anyString(), anyString(), any(), anyString()))
+        .thenThrow(new SendException(FailureType.RETRYABLE, "MAILGUN_RATE_LIMITED", null));
+
+    processor.processPending(30L);
+
+    verify(executor).failed(30L, "RETRY_EXHAUSTED", "이메일 발송 최대 재시도 횟수를 초과했습니다.");
+    verify(executor, never()).retry(any(), anyString(), anyString(), any());
+  }
+
+  @Test
+  void Mailgun_접수_후_SENT_기록이_실패해도_재발송을_예약하지_않는다() {
+    allowProcessing(delivery(1));
+    when(sender.send(anyString(), anyString(), anyString(), anyString(), any(), anyString()))
+        .thenReturn(PayrollStatementEmailSender.SendResult.success("<message@mailgun>"));
+    doThrow(new IllegalStateException("database unavailable"))
+        .when(executor).sent(30L, "<message@mailgun>");
+
+    processor.processPending(30L);
+
+    verify(executor, never()).retry(any(), anyString(), anyString(), any());
+    verify(executor, never()).unknown(any(), anyString(), anyString());
+  }
+
+  private void allowProcessing(DeliveryData delivery) {
+    when(executor.claim(30L)).thenReturn(Optional.of(delivery));
+    when(statements.findById(20L)).thenReturn(Optional.of(new StatementData(
+        20L, 1L, READY, "statement.pdf", "application/pdf", 10L, "checksum",
+        LocalDateTime.now(), null)));
+    when(payrolls.findById(1L)).thenReturn(Optional.of(payroll));
+    when(payroll.getYearMonth()).thenReturn(YearMonth.of(2026, 8));
+    when(storage.download("statement.pdf")).thenReturn(new byte[] {1});
+  }
+
+  private DeliveryData delivery(int attempts) {
+    return new DeliveryData(30L, null, 20L, 1L, 10L, "staff@example.com", SENDING,
+        null, null, "delivery-token", null, 99L, LocalDateTime.now(), LocalDateTime.now(),
+        null, null, null, attempts, null, LocalDateTime.now(), null);
+  }
+}

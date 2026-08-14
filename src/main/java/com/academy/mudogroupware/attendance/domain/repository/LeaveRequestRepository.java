@@ -2,6 +2,7 @@ package com.academy.mudogroupware.attendance.domain.repository;
 
 import java.time.LocalDate;
 import java.util.Optional;
+import java.util.Map;
 import java.util.List;
 import java.util.Set;
 
@@ -18,6 +19,9 @@ public interface LeaveRequestRepository {
      * APPROVED 상태인 휴가의 userId를 한 번에 모아서 반환한다.
      */
     Set<Long> findApprovedUserIds(LocalDate date);
+
+    Map<LocalDate, Set<Long>> findApprovedUserIdsBetween(
+            LocalDate startDate, LocalDate endDate);
 
     boolean existsOverlapping(Long userId, LocalDate startDate, LocalDate endDate);
 

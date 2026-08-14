@@ -5,16 +5,22 @@ import com.academy.mudogroupware.payroll.domain.model.PayrollTypes.StatementStat
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
 public class PayrollStatementPersistenceAdapter implements PayrollStatementPort {
   private final JdbcTemplate jdbc;
+  private final NamedParameterJdbcTemplate namedJdbc;
 
   @Override public StatementData createPendingIfAbsent(Long payrollId) {
     jdbc.update("insert into payroll_statement (payroll_id, status) select ?, 'PENDING' "
@@ -32,6 +38,24 @@ public class PayrollStatementPersistenceAdapter implements PayrollStatementPort 
       return Optional.ofNullable(jdbc.queryForObject(
           "select * from payroll_statement where payroll_id=? for update", this::map, payrollId));
     } catch (EmptyResultDataAccessException e) { return Optional.empty(); }
+  }
+  @Override public Map<Long, StatementData> findByPayrollIds(Set<Long> payrollIds) {
+    if (payrollIds.isEmpty()) return Map.of();
+    var rows = namedJdbc.query("select * from payroll_statement "
+            + "where payroll_id in (:payrollIds) order by payroll_id",
+        new MapSqlParameterSource("payrollIds", payrollIds), this::map);
+    Map<Long, StatementData> result = new LinkedHashMap<>();
+    for (StatementData row : rows) result.put(row.payrollId(), row);
+    return result;
+  }
+  @Override public Map<Long, StatementData> findByPayrollIdsForUpdate(Set<Long> payrollIds) {
+    if (payrollIds.isEmpty()) return Map.of();
+    var rows = namedJdbc.query("select * from payroll_statement "
+            + "where payroll_id in (:payrollIds) order by payroll_id for update",
+        new MapSqlParameterSource("payrollIds", payrollIds), this::map);
+    Map<Long, StatementData> result = new LinkedHashMap<>();
+    for (StatementData row : rows) result.put(row.payrollId(), row);
+    return result;
   }
   @Override public Optional<StatementData> findById(Long statementId) {
     try {

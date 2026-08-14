@@ -2,6 +2,8 @@ package com.academy.mudogroupware.attendance.infrastructure.persistence;
 
 import java.time.LocalDate;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.List;
 import java.util.Set;
@@ -45,6 +47,25 @@ public class LeaveRequestRepositoryImpl implements LeaveRequestRepository {
     public Set<Long> findApprovedUserIds(LocalDate date) {
         return new HashSet<>(leaveRequestJpaRepository
                 .findUserIdsByStatusAndDateBetween(LeaveRequestStatus.APPROVED, date));
+    }
+
+    @Override
+    public Map<LocalDate, Set<Long>> findApprovedUserIdsBetween(
+            LocalDate startDate, LocalDate endDate) {
+        Map<LocalDate, Set<Long>> result = new LinkedHashMap<>();
+        for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
+            result.put(date, new HashSet<>());
+        }
+        for (LeaveRequestJpaEntity leave : leaveRequestJpaRepository.findAllOverlapping(
+                LeaveRequestStatus.APPROVED, startDate, endDate)) {
+            LocalDate from = leave.getStartDate().isBefore(startDate)
+                    ? startDate : leave.getStartDate();
+            LocalDate to = leave.getEndDate().isAfter(endDate) ? endDate : leave.getEndDate();
+            for (LocalDate date = from; !date.isAfter(to); date = date.plusDays(1)) {
+                result.get(date).add(leave.getUserId());
+            }
+        }
+        return result;
     }
 
     @Override

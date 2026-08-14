@@ -6,21 +6,6 @@ spring:
     group:
       prod:
         - mailgun
-  mail:
-    host: smtp.mailgun.org
-    port: 587
-    username: ${MAILGUN_SMTP_USERNAME:}
-    password: ${MAILGUN_SMTP_PASSWORD:}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
-            required: true
-          connectiontimeout: ${MAIL_SMTP_CONNECTION_TIMEOUT_MS:5000}
-          timeout: ${MAIL_SMTP_READ_TIMEOUT_MS:10000}
-          writetimeout: ${MAIL_SMTP_WRITE_TIMEOUT_MS:10000}
   flyway:
     locations: classpath:db/migration
     baseline-on-migrate: true
@@ -46,7 +31,22 @@ app:
   mail:
     from: ${MAIL_FROM:no-reply@mg.market-app.org}
     webhook-signing-key: ${MAILGUN_WEBHOOK_SIGNING_KEY:}
+    api-base-url: ${MAILGUN_API_BASE_URL:https://api.mailgun.net}
+    domain: ${MAILGUN_DOMAIN:mg.market-app.org}
+    api-key: ${MAILGUN_API_KEY:}
+    connect-timeout: ${MAILGUN_CONNECT_TIMEOUT:PT5S}
+    read-timeout: ${MAILGUN_READ_TIMEOUT:PT10S}
     sending-timeout: ${MAIL_SENDING_TIMEOUT:PT15M}
+    recovery-interval-ms: ${MAIL_RECOVERY_INTERVAL_MS:300000}
+    dispatch-interval-ms: ${MAIL_DISPATCH_INTERVAL_MS:10000}
+    dispatch-batch-size: ${MAIL_DISPATCH_BATCH_SIZE:20}
+    max-attempts: ${MAIL_MAX_ATTEMPTS:3}
+    retry-base-delay: ${MAIL_RETRY_BASE_DELAY:PT1M}
+    retry-max-delay: ${MAIL_RETRY_MAX_DELAY:PT30M}
+    reconcile-after: ${MAIL_RECONCILE_AFTER:PT10M}
+    reconcile-cooldown: ${MAIL_RECONCILE_COOLDOWN:PT5M}
+    reconcile-interval-ms: ${MAIL_RECONCILE_INTERVAL_MS:300000}
+    metrics-interval-ms: ${MAIL_METRICS_INTERVAL_MS:60000}
   instance:
     tenant-id: ${TENANT_ID:local}
     plan: ${TENANT_PLAN:local}

@@ -12,8 +12,6 @@ import jakarta.persistence.LockModeType;
 
 public interface LeaveGrantJpaRepository extends JpaRepository<LeaveGrantJpaEntity, Long> {
 
-    boolean existsByUserIdAndGrantDate(Long userId, LocalDate grantDate);
-
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select g from LeaveGrantJpaEntity g "
             + "where g.userId = :userId "

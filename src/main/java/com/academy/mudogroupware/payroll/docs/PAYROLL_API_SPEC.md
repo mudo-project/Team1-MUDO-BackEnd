@@ -2464,8 +2464,9 @@ Request Body
 없음
 ## 처리 흐름
 1. 급여가 확정된 최신 정정본인지 확인합니다.
-2. 급여명세서가 `READY` 상태이고 직원 이메일이 등록되어 있는지 확인합니다.
-3. `PENDING` 발송 이력을 생성하고 커밋 후 비동기 발송을 시작합니다.
+2. `READY` 급여명세서 행을 잠그고 기존 활성 발송 이력을 확인합니다.
+3. 기존 이력이 있으면 해당 이력을 반환하고, 없으면 직원 이메일을 확인한 뒤 `PENDING` 발송 이력을 생성합니다.
+4. 새 이력을 생성한 경우에만 커밋 후 비동기 발송을 시작합니다.
 # **\[response\]**
 ### 성공코드
 <table header-row="true">
@@ -2481,6 +2482,12 @@ Request Body
 <td>급여명세서 이메일 발송을 시작했습니다.</td>
 <td>생성된 발송 이력을 반환합니다.</td>
 </tr>
+<tr>
+<td>`200 OK`</td>
+<td>`PAYROLL_200_17`</td>
+<td>기존 급여명세서 이메일 발송 이력을 조회했습니다.</td>
+<td>동일 명세서의 기존 활성 발송 이력을 멱등 응답으로 반환합니다.</td>
+</tr>
 </table>
 Response Body
 ```json
@@ -2492,7 +2499,8 @@ Response Body
     "deliveryId": 501,
     "payrollId": 100,
     "status": "PENDING",
-    "requestedAt": "2026-08-12T14:30:00"
+    "requestedAt": "2026-08-12T14:30:00",
+    "reused": false
   }
 }
 ```
@@ -2524,11 +2532,15 @@ Response Body
 </tr>
 <tr>
 <td>`data.status`</td>
-<td>생성 시점 발송 상태이며 `PENDING`입니다.</td>
+<td>발송 이력 상태입니다. 새 이력은 `PENDING`, 재사용 이력은 기존 상태를 반환합니다.</td>
 </tr>
 <tr>
 <td>`data.requestedAt`</td>
 <td>발송 요청 시각입니다.</td>
+</tr>
+<tr>
+<td>`data.reused`</td>
+<td>기존 활성 발송 이력을 재사용한 멱등 응답이면 `true`입니다.</td>
 </tr>
 </table>
 ### 실패 코드
@@ -2576,12 +2588,6 @@ Response Body
 <td>최신 정정본이 아닙니다.</td>
 </tr>
 <tr>
-<td>`409 Conflict`</td>
-<td>`PAYROLL_EMAIL_409_2`</td>
-<td>이미 전달됐거나 발송 처리 중인 급여명세서입니다.</td>
-<td>차단 상태의 발송 이력이 있습니다.</td>
-</tr>
-<tr>
 <td>`422 Unprocessable Entity`</td>
 <td>`PAYROLL_EMAIL_422_1`</td>
 <td>직원 이메일이 등록되어 있지 않습니다.</td>
@@ -2590,7 +2596,7 @@ Response Body
 </table>
 ## 비즈니스 규칙
 - API 성공은 메일 수신 완료가 아니라 발송 작업 등록 성공을 뜻합니다.
-- 동일 명세서가 이미 전달됐거나 발송 처리 중이면 중복 발송하지 않습니다.
+- 동일 명세서가 이미 전달됐거나 발송 처리 중이면 새 작업을 만들지 않고 기존 이력을 `200 OK`, `reused=true`로 반환합니다.
 - Mailgun 발송 및 Webhook 결과에 따라 이후 상태가 변경됩니다.
 
 ---
@@ -2836,6 +2842,8 @@ Response Body
       "pendingCount": 0,
       "sendingCount": 0,
       "sentCount": 20,
+      "retryWaitCount": 0,
+      "unknownCount": 0,
       "deliveredCount": 2,
       "failedCount": 1,
       "skippedCount": 2
@@ -2893,7 +2901,7 @@ Response Body
 </tr>
 <tr>
 <td>`data.summary.*Count`</td>
-<td>전체 및 `PENDING`, `SENDING`, `SENT`, `DELIVERED`, `FAILED`, `SKIPPED` 상태별 건수입니다.</td>
+<td>전체 및 `PENDING`, `SENDING`, `RETRY_WAIT`, `UNKNOWN`, `SENT`, `DELIVERED`, `FAILED`, `SKIPPED` 상태별 건수입니다.</td>
 </tr>
 <tr>
 <td>`data.deliveries.content[].deliveryId`</td>
@@ -2983,8 +2991,8 @@ Response Body
 </table>
 ## 상태 규칙
 - `PENDING`: 전체 건이 아직 대기 중입니다.
-- `PROCESSING`: 한 건 이상이 대기 또는 발송 처리 중이고 전체가 대기 상태는 아닙니다.
-- `AWAITING_DELIVERY`: 처리 중인 건은 없지만 Mailgun 접수 후 Webhook 결과를 기다리는 `SENT` 건이 있습니다.
+- `PROCESSING`: `PENDING`, `SENDING`, `RETRY_WAIT` 건이 하나 이상 있고 전체가 대기 상태는 아닙니다.
+- `AWAITING_DELIVERY`: 처리 중인 건은 없지만 Webhook 또는 대사를 기다리는 `SENT`, `UNKNOWN` 건이 있습니다.
 - `COMPLETED`: `DELIVERED`, `FAILED`, `SKIPPED`처럼 모든 건이 종결됐거나 대상이 없습니다.
 
 ---

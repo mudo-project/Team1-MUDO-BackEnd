@@ -60,6 +60,6 @@ class PayrollEmailWebhookServiceTest {
   private DeliveryData delivery() {
     return new DeliveryData(1L, null, 2L, 3L, 4L, "staff@example.com", SENT,
         null, null, "delivery-token", null, 5L, LocalDateTime.now(), null,
-        LocalDateTime.now(), null, null);
+        LocalDateTime.now(), null, null, 1, null, LocalDateTime.now(), null);
   }
 }
