@@ -1,5 +1,15 @@
 # 출결 Changelog
 
+## 2026-08-14 - 출결 SMS 발송 재시도 중복 방지 (#354)
+
+**최종 정책**: 학생별 발송 시도를 `attendance_message_send_record`(유니크 키: 강의+학생+출결날짜+출결상태)에 저장한다. 상태는 `PENDING`/`SENDING`/`SENT`/`FAILED`/`INDETERMINATE` 다섯 가지다. 이미 `SENT`면 재요청이 와도 SOLAPI를 다시 호출하지 않는다. `INDETERMINATE`(SOLAPI 응답을 못 받아 결과를 모름)는 **자동 재시도를 차단**하고 관리자 확인이 필요하다 — 실제로는 이미 발송됐을 수 있어 다시 호출하면 중복 발송 위험이 있기 때문이다. 출결이 정정되면(결석→지각 등) 새 조합으로 취급해 재발송을 막지 않는다.
+
+- `attendance_message_send_record` 테이블 추가, 이슈 #354 해결.
+- `SolapiSmsAdapter`가 SOLAPI 호출 실패를 "명확한 실패"(`FAILED`)와 "응답을 못 받아 결과를 모름"(`INDETERMINATE`, 타임아웃/연결 끊김)으로 구분해서 기록한다.
+- (셀프 리뷰·코드래빗 리뷰 반영) `SENDING` 상태와 조건부 UPDATE(`claimForSending`)로 동시 요청 중 하나만 실제 SOLAPI를 호출하도록 강화. 이미 발송된 건을 스킵할 때 사용량 집계가 중복 카운트되던 버그 수정, 실패 사유(`failure_reason`) 저장 추가.
+- 유니크 키에 `attendance_status` 추가. 안 쓰이던 `now` 파라미터 정리.
+- (코드래빗 2차 리뷰 반영) `claimForSending`에 빠져있던 `@Transactional` 추가(운영 DB에서 실패할 수 있던 문제). `claimed_at`으로 `SENDING` 중 서버가 죽은 레코드를 5분 뒤 감지해 `INDETERMINATE`로 전환(자동 재발송은 여전히 안 함, 관리자 확인 필요). 완료 로그의 실패 건수 계산 오류 수정.
+
 ## 2026-08-11 - 문자 템플릿 변수 치환
 
 - 실제 SMS 발송 직전에 문자 템플릿의 `{학생명}`, `{강의명}`, `{날짜}` 변수를 실제 값으로 치환하도록 변경했다.
