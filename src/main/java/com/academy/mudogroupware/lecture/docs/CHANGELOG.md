@@ -1,5 +1,10 @@
 # lecture Changelog
 
+## 2026-08-14
+
+- 강의 담당 선생님 목록 조회 API(`GET /api/lectures/teachers`)를 추가했다.
+- 삭제되지 않은 강의에 실제로 쓰인 `teacherName`을 중복 없이 이름순으로 반환하며, 강의 목록 조회의 `teacherName` 검색 셀렉트박스를 채우는 용도다.
+
 ## 2026-08-13
 
 - 강의 목록 조회 필터를 프론트 화면 값 기준(`subjectName`, `teacherName`, `classroomCode`)으로 변경했다.
