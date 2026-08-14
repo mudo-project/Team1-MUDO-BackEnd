@@ -48,8 +48,9 @@ public class GoogleDriveAdapter implements SharedFileDrivePort {
     @Override
     public Optional<DriveItem> getItem(String accessToken, String itemId) {
         try {
+            URI uri = fileUriBuilder(itemId).queryParam("fields", FILE_FIELDS).build().encode().toUri();
             GoogleDriveFileResponse response = googleDriveRestClient.get()
-                    .uri(FILES_ENDPOINT + "/" + itemId + "?fields=" + FILE_FIELDS)
+                    .uri(uri)
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                     .retrieve()
                     .body(GoogleDriveFileResponse.class);
@@ -159,26 +160,20 @@ public class GoogleDriveAdapter implements SharedFileDrivePort {
         };
     }
 
-    // files.update(PATCH, name만). 확장자 유지 등 업로드 파일의 이름 규칙은 UseCase 책임이다(Task5).
+    // files.update(PATCH) 하나로 name 변경과 addParents/removeParents 이동을 함께 반영한다. name이
+    // null이면 body 자체를 생략해 이름은 건드리지 않고, toParentId가 null이면 쿼리에 부모 교체 파라미터를
+    // 안 붙여 부모는 그대로 둔다 — 두 변경을 별도 요청으로 나누면 그 사이에 부분 실패가 생길 수 있어서다.
     @Override
-    public DriveItem rename(String accessToken, String itemId, String name) {
+    public DriveItem updateItem(String accessToken, String itemId, String name, String fromParentId,
+            String toParentId) {
         try {
-            GoogleDriveUpdateFileRequest request = new GoogleDriveUpdateFileRequest(name, null);
-            return patch(accessToken, FILES_ENDPOINT + "/" + itemId + "?fields=" + FILE_FIELDS, request);
-        } catch (RestClientException e) {
-            throw new SharedFileDriveFailureException(e);
-        }
-    }
-
-    // files.update(PATCH, addParents/removeParents 쿼리). 본문 없이 부모만 교체한다(Task5).
-    @Override
-    public DriveItem move(String accessToken, String itemId, String fromParentId, String toParentId) {
-        try {
-            String uri = FILES_ENDPOINT + "/" + itemId
-                    + "?addParents=" + toParentId
-                    + "&removeParents=" + fromParentId
-                    + "&fields=" + FILE_FIELDS;
-            return patch(accessToken, uri, null);
+            UriComponentsBuilder uriBuilder = fileUriBuilder(itemId).queryParam("fields", FILE_FIELDS);
+            if (toParentId != null) {
+                uriBuilder.queryParam("addParents", toParentId).queryParam("removeParents", fromParentId);
+            }
+            URI uri = uriBuilder.build().encode().toUri();
+            GoogleDriveUpdateFileRequest request = name == null ? null : new GoogleDriveUpdateFileRequest(name, null);
+            return patch(accessToken, uri, request);
         } catch (RestClientException e) {
             throw new SharedFileDriveFailureException(e);
         }
@@ -189,7 +184,8 @@ public class GoogleDriveAdapter implements SharedFileDrivePort {
     public void trash(String accessToken, String itemId) {
         try {
             GoogleDriveUpdateFileRequest request = new GoogleDriveUpdateFileRequest(null, true);
-            patch(accessToken, FILES_ENDPOINT + "/" + itemId + "?fields=" + FILE_FIELDS, request);
+            URI uri = fileUriBuilder(itemId).queryParam("fields", FILE_FIELDS).build().encode().toUri();
+            patch(accessToken, uri, request);
         } catch (RestClientException e) {
             throw new SharedFileDriveFailureException(e);
         }
@@ -200,8 +196,9 @@ public class GoogleDriveAdapter implements SharedFileDrivePort {
     public DriveBinary downloadOriginal(String accessToken, String itemId) {
         DriveItem metadata = requireItem(accessToken, itemId);
         try {
+            URI uri = fileUriBuilder(itemId).queryParam("alt", "media").build().encode().toUri();
             byte[] content = googleDriveRestClient.get()
-                    .uri(FILES_ENDPOINT + "/" + itemId + "?alt=media")
+                    .uri(uri)
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                     .retrieve()
                     .body(byte[].class);
@@ -216,8 +213,11 @@ public class GoogleDriveAdapter implements SharedFileDrivePort {
     public DriveBinary export(String accessToken, String itemId, GoogleWorkspaceExportFormat format) {
         DriveItem metadata = requireItem(accessToken, itemId);
         try {
+            URI uri = fileUriBuilder(itemId).pathSegment("export")
+                    .queryParam("mimeType", format.getExportMimeType())
+                    .build().encode().toUri();
             byte[] content = googleDriveRestClient.get()
-                    .uri(FILES_ENDPOINT + "/" + itemId + "/export?mimeType=" + format.getExportMimeType())
+                    .uri(uri)
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                     .retrieve()
                     .body(byte[].class);
@@ -233,8 +233,16 @@ public class GoogleDriveAdapter implements SharedFileDrivePort {
         return getItem(accessToken, itemId).orElseThrow(() -> new SharedFileItemNotFoundException(itemId));
     }
 
-    // rename/move/trash가 공유하는 PATCH 실행. move는 본문이 필요 없어 request에 null을 넘긴다.
-    private DriveItem patch(String accessToken, String uri, GoogleDriveUpdateFileRequest request) {
+    // getItem/updateItem/trash/downloadOriginal/export가 공유하는 "FILES_ENDPOINT/{itemId}" 빌더.
+    // itemId를 문자열 연결로 이어붙이면 '&'·'#'·'=' 등이 섞였을 때 쿼리 구조가 깨지거나 의도치 않은
+    // 파라미터가 주입될 수 있어(URI 인젝션), pathSegment()로 값 하나를 그대로 인코딩해 넣는다.
+    private UriComponentsBuilder fileUriBuilder(String itemId) {
+        return UriComponentsBuilder.fromUriString(FILES_ENDPOINT).pathSegment(itemId);
+    }
+
+    // updateItem/trash가 공유하는 PATCH 실행. request가 null이면 본문 없이 보낸다(updateItem이 이름은
+    // 안 바꾸고 부모만 바꿀 때 사용).
+    private DriveItem patch(String accessToken, URI uri, GoogleDriveUpdateFileRequest request) {
         RestClient.RequestBodySpec spec = googleDriveRestClient.patch()
                 .uri(uri)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken);

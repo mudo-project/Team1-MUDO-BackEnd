@@ -114,19 +114,25 @@ SharedFileController.createGoogleFile() ✅
 
 ### 9. PATCH /api/shared-files/items/{itemId} — 이름 변경·이동
 
+> **2026-08-14 변경**: `RenameSharedFileItemUseCase`/`MoveSharedFileItemUseCase` 두 개로 나뉘어 있던
+> 구현을 `UpdateSharedFileItemUseCase` 하나로 합쳤다. 예전에는 name과 parentId가 둘 다 오면
+> Drive에 rename → move 순서로 별도 요청 2번을 보내서, 이름 변경이 성공한 뒤 이동이 실패하면 절반만
+> 반영된 채로 남는 원자성 문제가 있었다(이슈 #406). `SharedFileDrivePort.updateItem()`이 이름·부모
+> 변경을 Drive `files.update` PATCH 요청 **1번**에 함께 실어, 그 요청이 통째로 성공하거나 통째로
+> 실패하거나 둘 중 하나만 있게 만들었다.
+
 ```text
 SharedFileController.updateItem() ✅
-  → RenameSharedFileItemUseCase(✅) / RenameSharedFileItemService(✅)
+  → UpdateSharedFileItemUseCase(✅) / UpdateSharedFileItemService(✅)
     → SharedFileRootRepository.find() ✅ (READY 확인)
     → GetGoogleAccessTokenUseCase.getAccessToken() ✅
-    → SharedFileRootGuard.requireDescendant() ✅ (대상)
-    → SharedFileDrivePort.getItem() ✅ (일반 업로드 파일이면 확장자 동일성 검사, 다르면 SharedFileInvalidNameException ✅)
-    → SharedFileDrivePort.rename() ✅
-
-  → MoveSharedFileItemUseCase(✅) / MoveSharedFileItemService(✅)
-    → SharedFileRootGuard.requireDescendant() ✅ (대상, 목적지가 루트 자신이 아니면 목적지도 검증)
-    → SharedFileDrivePort.getItem() ✅ (현재 parentId 확인 — PATCH 요청엔 새 parentId만 오므로 직접 조회)
-    → SharedFileDrivePort.move() ✅
+    → SharedFileRootGuard.requireDescendant() ✅ (대상 itemId)
+    → parentId 변경 요청 시: 대상 자신을 목적지로 지정했는지, 목적지가 루트 자신이 아니면
+      SharedFileRootGuard.requireDescendant()(목적지) + SharedFileDrivePort.getItem()(목적지가
+      폴더인지, 순환 이동인지) ✅
+    → SharedFileDrivePort.getItem() ✅ (대상 itemId 조회 — 일반 업로드 파일이면 확장자 동일성 검사,
+      다르면 SharedFileInvalidNameException ✅ / parentId 변경 시 현재 parentId 확인용)
+    → SharedFileDrivePort.updateItem() ✅ (name·parentId 중 실제로 바뀌는 값만 실어 한 번에 반영)
 ```
 
 ### 10. DELETE /api/shared-files/items/{itemId} — 휴지통 삭제

@@ -28,11 +28,11 @@ public interface SharedFileDrivePort {
     // Docs/Sheets/Slides 중 하나의 빈 파일을 생성한다.
     DriveItem createWorkspaceFile(String accessToken, String parentId, String name, GoogleWorkspaceFileType type);
 
-    // 이름만 변경한다(확장자 유지 여부는 UseCase 책임).
-    DriveItem rename(String accessToken, String itemId, String name);
-
-    // 같은 시스템 루트 내부의 다른 폴더로 부모를 교체한다.
-    DriveItem move(String accessToken, String itemId, String fromParentId, String toParentId);
+    // 이름 변경과 부모 교체를 하나의 Drive 요청으로 함께 반영한다. name이 null이면 이름은 그대로 두고,
+    // toParentId가 null이면(fromParentId도 null) 부모는 그대로 둔다. 이름+이동을 각각 별도 호출로
+    // 나누면 그 사이에 한쪽만 성공하는 부분 실패가 생길 수 있어, Google Drive files.update가 둘을 한
+    // 요청에 함께 받는 기능을 그대로 활용한다(확장자 유지 등 이름 규칙은 UseCase 책임).
+    DriveItem updateItem(String accessToken, String itemId, String name, String fromParentId, String toParentId);
 
     // Drive 휴지통으로 이동한다(영구 삭제 아님).
     void trash(String accessToken, String itemId);

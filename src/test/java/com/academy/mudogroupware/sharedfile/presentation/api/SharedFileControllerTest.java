@@ -3,6 +3,7 @@ package com.academy.mudogroupware.sharedfile.presentation.api;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -47,11 +48,10 @@ import com.academy.mudogroupware.sharedfile.application.usecase.DownloadSharedFi
 import com.academy.mudogroupware.sharedfile.application.usecase.GetSharedFileItemUseCase;
 import com.academy.mudogroupware.sharedfile.application.usecase.GetSharedFileRootUseCase;
 import com.academy.mudogroupware.sharedfile.application.usecase.ListSharedFileItemsUseCase;
-import com.academy.mudogroupware.sharedfile.application.usecase.MoveSharedFileItemUseCase;
 import com.academy.mudogroupware.sharedfile.application.usecase.RecreateSharedFileRootUseCase;
-import com.academy.mudogroupware.sharedfile.application.usecase.RenameSharedFileItemUseCase;
 import com.academy.mudogroupware.sharedfile.application.usecase.SearchSharedFileItemsUseCase;
 import com.academy.mudogroupware.sharedfile.application.usecase.TrashSharedFileItemUseCase;
+import com.academy.mudogroupware.sharedfile.application.usecase.UpdateSharedFileItemUseCase;
 import com.academy.mudogroupware.sharedfile.application.usecase.UploadSharedFileUseCase;
 
 @WebMvcTest(SharedFileController.class)
@@ -80,9 +80,7 @@ class SharedFileControllerTest {
     @MockitoBean
     private CreateGoogleWorkspaceFileUseCase createGoogleWorkspaceFileUseCase;
     @MockitoBean
-    private RenameSharedFileItemUseCase renameSharedFileItemUseCase;
-    @MockitoBean
-    private MoveSharedFileItemUseCase moveSharedFileItemUseCase;
+    private UpdateSharedFileItemUseCase updateSharedFileItemUseCase;
     @MockitoBean
     private TrashSharedFileItemUseCase trashSharedFileItemUseCase;
     @MockitoBean
@@ -295,7 +293,7 @@ class SharedFileControllerTest {
 
     @Test
     void updateItemRenamesWhenOnlyNameGiven() throws Exception {
-        when(renameSharedFileItemUseCase.rename("item-1", "새이름.docx"))
+        when(updateSharedFileItemUseCase.update("item-1", "새이름.docx", null))
                 .thenReturn(item("item-1", "새이름.docx"));
 
         mockMvc.perform(patch("/api/shared-files/items/item-1")
@@ -305,8 +303,24 @@ class SharedFileControllerTest {
                         .content("{\"name\":\"새이름.docx\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.name").value("새이름.docx"));
+    }
 
-        verifyNoInteractions(moveSharedFileItemUseCase);
+    // 이름변경+이동 원자성의 핵심: 두 필드가 함께 오면 UpdateSharedFileItemUseCase.update() 호출 1번으로
+    // 넘어간다(예전처럼 rename UseCase·move UseCase를 순서대로 따로 부르지 않는다).
+    @Test
+    void updateItemUpdatesNameAndParentIdInOneCallWhenBothGiven() throws Exception {
+        when(updateSharedFileItemUseCase.update("item-1", "새이름.docx", "new-parent-id"))
+                .thenReturn(item("item-1", "새이름.docx"));
+
+        mockMvc.perform(patch("/api/shared-files/items/item-1")
+                        .with(authentication(manageUser()))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"새이름.docx\",\"parentId\":\"new-parent-id\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.name").value("새이름.docx"));
+
+        verify(updateSharedFileItemUseCase, times(1)).update(any(), any(), any());
     }
 
     @Test
@@ -318,7 +332,7 @@ class SharedFileControllerTest {
                         .content("{}"))
                 .andExpect(status().isBadRequest());
 
-        verifyNoInteractions(renameSharedFileItemUseCase, moveSharedFileItemUseCase);
+        verifyNoInteractions(updateSharedFileItemUseCase);
     }
 
     @Test
