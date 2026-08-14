@@ -26,8 +26,8 @@ tenants:
     finance_s3_bucket: mudo-prod-finance-635249349258
   - code: academy-d
     # 2026-08-14 실운영 온보딩(사이드A). 표시명/서브도메인은 sidea-test.ieum.store.
-    # AWS 리소스 준비 완료 후 enabled: true로 전환.
-    enabled: false
+    # AWS DB·SSM·S3·Target Group·ECS Service 준비 완료. enabled: true.
+    enabled: true
     billing_plan: basic
     runtime_profile: shared-default
     cell: cell-1
