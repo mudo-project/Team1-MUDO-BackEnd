@@ -19,4 +19,6 @@ public interface StudentRepository {
 
     // 소프트 삭제된 학생은 findById/findAll 조회에서 제외된다(deleted_at is null 조건).
     void markDeleted(Long id, LocalDateTime deletedAt);
+
+    long countAll();
 }

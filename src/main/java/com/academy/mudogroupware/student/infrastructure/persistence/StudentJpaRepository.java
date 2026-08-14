@@ -27,6 +27,8 @@ public interface StudentJpaRepository extends JpaRepository<StudentEntity, Long>
 
     Optional<StudentEntity> findByIdAndDeletedAtIsNull(Long id);
 
+    long countByDeletedAtIsNull();
+
     @Modifying
     @Query(value = "update student set deleted_at = :deletedAt "
             + "where student_id = :id and deleted_at is null", nativeQuery = true)

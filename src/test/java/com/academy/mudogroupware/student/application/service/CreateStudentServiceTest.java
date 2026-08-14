@@ -76,5 +76,10 @@ class CreateStudentServiceTest {
         public void markDeleted(Long id, java.time.LocalDateTime deletedAt) {
             students.removeIf(student -> student.getId().equals(id));
         }
+
+        @Override
+        public long countAll() {
+            return students.size();
+        }
     }
 }
