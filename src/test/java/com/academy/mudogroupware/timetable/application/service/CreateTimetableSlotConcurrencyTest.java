@@ -73,7 +73,7 @@ class CreateTimetableSlotConcurrencyTest {
                         try {
                             createTimetableSlotUseCase.createSlot(new CreateTimetableSlotCommand(
                                     timetableSetId, ClassType.CLASS, DayOfWeek.MONDAY, "601",
-                                    LocalTime.of(9, 0), LocalTime.of(11, 0), Grade.HIGH_3, "정T", "미적분"));
+                                    LocalTime.of(9, 0), LocalTime.of(11, 0), Grade.HIGH_3, "정T", "미적분", "FFCC00"));
                             successCount.incrementAndGet();
                         } catch (com.academy.mudogroupware.timetable.domain.exception.ClassroomTimeConflictException e) {
                             conflictCount.incrementAndGet();
