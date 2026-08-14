@@ -7,8 +7,9 @@ import java.util.List;
 import org.hibernate.annotations.BatchSize;
 
 import com.academy.mudogroupware.approval.domain.model.ApprovalContentType;
-import com.academy.mudogroupware.approval.domain.model.ApprovalStatus;
 import com.academy.mudogroupware.approval.domain.model.ApprovalDocumentSourceType;
+import com.academy.mudogroupware.approval.domain.model.ApprovalRetentionPolicy;
+import com.academy.mudogroupware.approval.domain.model.ApprovalStatus;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -68,6 +69,19 @@ public class ApprovalDocumentEntity {
     @Column(name = "resubmitted_at")
     private LocalDateTime resubmittedAt;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "retention_policy", nullable = false, length = 30)
+    private ApprovalRetentionPolicy retentionPolicy;
+
+    @Column(name = "retention_until", nullable = false)
+    private LocalDateTime retentionUntil;
+
+    @Column(name = "legal_hold", nullable = false)
+    private boolean legalHold;
+
+    @Column(name = "archived_at")
+    private LocalDateTime archivedAt;
+
     @OneToMany(mappedBy = "approvalDocument", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("stepOrder asc")
     @BatchSize(size = 100)
@@ -80,7 +94,12 @@ public class ApprovalDocumentEntity {
     @Builder
     private ApprovalDocumentEntity(Long id, Long templateId, ApprovalDocumentSourceType sourceType, String title,
                                     ApprovalContentType contentType, String text, Long creatorId,
-                                    ApprovalStatus status, LocalDateTime createdAt, LocalDateTime resubmittedAt) {
+                                    ApprovalStatus status, LocalDateTime createdAt, LocalDateTime resubmittedAt,
+                                    ApprovalRetentionPolicy retentionPolicy, LocalDateTime retentionUntil,
+                                    Boolean legalHold, LocalDateTime archivedAt) {
+        ApprovalRetentionPolicy resolvedRetentionPolicy = retentionPolicy == null
+                ? ApprovalRetentionPolicy.fromSourceType(sourceType)
+                : retentionPolicy;
         this.id = id;
         this.templateId = templateId;
         this.sourceType = sourceType;
@@ -91,6 +110,12 @@ public class ApprovalDocumentEntity {
         this.status = status;
         this.createdAt = createdAt;
         this.resubmittedAt = resubmittedAt;
+        this.retentionPolicy = resolvedRetentionPolicy;
+        this.retentionUntil = retentionUntil == null && createdAt != null
+                ? resolvedRetentionPolicy.calculateRetentionUntil(createdAt)
+                : retentionUntil;
+        this.legalHold = Boolean.TRUE.equals(legalHold);
+        this.archivedAt = archivedAt;
     }
 
     public void addLine(ApprovalDocumentLineEntity line) {
