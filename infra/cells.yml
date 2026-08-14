@@ -7,11 +7,10 @@ cells:
     ecs_app_capacity_ratio: 0.80
 
     # AWS 리소스 생성 후 실제 값을 기록한다. null인 동안 운영 배포는 실패하도록 설계한다.
-    # 2026-08-14 실측: academy-a/b/c/d 4개 전부 enabled: true로 복귀. 라이브 ASG는 현재
-    # 2대로 4개 테넌트를 문제없이 감당 중이지만(binpack으로 2대에 몰아 배치됨), 롤링 배포
-    # 여유(용량 검사의 surge 마진)를 확보하기 위해 3대 기준으로 기록한다. ASG Max=4이므로
-    # Managed Scaling이 필요 시 3대까지는 자동으로 늘려준다. 인스턴스 1대당 cpu 2048 /
-    # mem 1913 (t3.small) x 3대.
-    ecs_registered_cpu: 6144
-    ecs_registered_memory_mib: 5739
+    # 2026-08-15 실측: academy-b/c는 다시 enabled: false(리허설 테넌트, 트래픽 없음)로
+    # 전환했고, ASG도 desired 2대로 되돌렸다(academy-a/d만 라이브). 인스턴스 1대당
+    # cpu 2048 / mem 1913 (t3.small) x 2대 = 4096/3826. ASG Max=4이므로 Managed
+    # Scaling이 필요 시 늘어난다.
+    ecs_registered_cpu: 4096
+    ecs_registered_memory_mib: 3826
     rds_max_connections: 144
