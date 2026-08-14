@@ -8,6 +8,7 @@ import com.academy.mudogroupware.sharedfile.application.port.SharedFileDrivePort
 import com.academy.mudogroupware.sharedfile.application.query.SharedFileItemView;
 import com.academy.mudogroupware.sharedfile.application.query.SharedFileItemViewMapper;
 import com.academy.mudogroupware.sharedfile.application.usecase.UploadSharedFileUseCase;
+import com.academy.mudogroupware.global.domain.common.exception.BadRequestException;
 import com.academy.mudogroupware.sharedfile.domain.exception.SharedFileInvalidNameException;
 import com.academy.mudogroupware.sharedfile.domain.exception.SharedFileRootUnavailableException;
 import com.academy.mudogroupware.sharedfile.domain.exception.SharedFileUploadTooLargeException;
@@ -38,6 +39,9 @@ public class UploadSharedFileService implements UploadSharedFileUseCase {
         }
         if (filename == null || filename.isBlank()) {
             throw new SharedFileInvalidNameException();
+        }
+        if (parentId != null && parentId.isBlank()) {
+            throw new BadRequestException();
         }
         SharedFileRoot root = sharedFileRootRepository.find()
                 .filter(SharedFileRoot::isReady)

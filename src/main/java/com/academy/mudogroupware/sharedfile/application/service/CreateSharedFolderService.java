@@ -8,6 +8,7 @@ import com.academy.mudogroupware.sharedfile.application.port.SharedFileDrivePort
 import com.academy.mudogroupware.sharedfile.application.query.SharedFileItemView;
 import com.academy.mudogroupware.sharedfile.application.query.SharedFileItemViewMapper;
 import com.academy.mudogroupware.sharedfile.application.usecase.CreateSharedFolderUseCase;
+import com.academy.mudogroupware.global.domain.common.exception.BadRequestException;
 import com.academy.mudogroupware.sharedfile.domain.exception.SharedFileInvalidNameException;
 import com.academy.mudogroupware.sharedfile.domain.exception.SharedFileRootUnavailableException;
 import com.academy.mudogroupware.sharedfile.domain.model.SharedFileRoot;
@@ -30,6 +31,9 @@ public class CreateSharedFolderService implements CreateSharedFolderUseCase {
     public SharedFileItemView create(String parentId, String name) {
         if (name == null || name.isBlank()) {
             throw new SharedFileInvalidNameException();
+        }
+        if (parentId != null && parentId.isBlank()) {
+            throw new BadRequestException();
         }
         SharedFileRoot root = sharedFileRootRepository.find()
                 .filter(SharedFileRoot::isReady)

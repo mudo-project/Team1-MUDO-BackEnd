@@ -104,6 +104,16 @@ class SharedFileControllerTest {
     }
 
     @Test
+    void getRootReturnsNotReadyStateWithNullRootId() throws Exception {
+        when(getSharedFileRootUseCase.getRoot()).thenReturn(new SharedFileRootView(false, null));
+
+        mockMvc.perform(get("/api/shared-files/root").with(authentication(manageUser())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.ready").value(false))
+                .andExpect(jsonPath("$.data.rootId").value(org.hamcrest.Matchers.nullValue()));
+    }
+
+    @Test
     void getRootRequiresAuthentication() throws Exception {
         mockMvc.perform(get("/api/shared-files/root"))
                 .andExpect(status().isUnauthorized());

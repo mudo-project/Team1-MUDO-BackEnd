@@ -69,6 +69,14 @@ class CreateGoogleWorkspaceFileServiceTest {
     }
 
     @Test
+    void throwsWhenParentIdIsBlank() {
+        assertThatThrownBy(() -> service.create(" ", "새 문서", GoogleWorkspaceFileType.DOCS))
+                .isInstanceOf(BadRequestException.class);
+
+        verify(drivePort, never()).createWorkspaceFile(any(), any(), any(), any());
+    }
+
+    @Test
     void throwsWhenTypeIsNull() {
         when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
 

@@ -33,6 +33,9 @@ public class CreateGoogleWorkspaceFileService implements CreateGoogleWorkspaceFi
         if (name == null || name.isBlank()) {
             throw new SharedFileInvalidNameException();
         }
+        if (parentId != null && parentId.isBlank()) {
+            throw new BadRequestException();
+        }
         if (type == null) {
             throw new BadRequestException();
         }

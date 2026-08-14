@@ -24,6 +24,7 @@ import com.academy.mudogroupware.sharedfile.domain.exception.SharedFileRootUnava
 import com.academy.mudogroupware.sharedfile.domain.exception.SharedFileUploadTooLargeException;
 import com.academy.mudogroupware.sharedfile.domain.model.SharedFileRoot;
 import com.academy.mudogroupware.sharedfile.domain.repository.SharedFileRootRepository;
+import com.academy.mudogroupware.global.domain.common.exception.BadRequestException;
 
 class UploadSharedFileServiceTest {
 
@@ -79,6 +80,14 @@ class UploadSharedFileServiceTest {
 
         assertThat(view.id()).isEqualTo("uploaded-id");
         verify(rootGuard, never()).requireDescendant(any(), any(), any());
+    }
+
+    @Test
+    void throwsWhenParentIdIsBlank() {
+        assertThatThrownBy(() -> service.upload(" ", "a.txt", "text/plain", CONTENT))
+                .isInstanceOf(BadRequestException.class);
+
+        verify(drivePort, never()).upload(any(), any(), any(), any(), any());
     }
 
     @Test
