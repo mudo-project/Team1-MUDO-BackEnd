@@ -23,7 +23,7 @@ class AttendanceRecordRepositoryImplTest {
         AttendanceRecordJpaRepository jpaRepository = mock(AttendanceRecordJpaRepository.class);
         AttendanceRecordRepositoryImpl repository = new AttendanceRecordRepositoryImpl(jpaRepository);
         DataIntegrityViolationException violation = new DataIntegrityViolationException(
-                "Duplicate entry for key 'uk_attendance_record_academy_user_date'");
+                "Duplicate entry for key 'uk_attendance_record_user_date'");
         when(jpaRepository.saveAndFlush(any(AttendanceRecordJpaEntity.class)))
                 .thenThrow(violation);
         AttendanceRecord record = AttendanceRecord.checkIn(

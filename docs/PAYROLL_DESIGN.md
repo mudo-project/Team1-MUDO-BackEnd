@@ -2558,7 +2558,7 @@ Purpose: 급여명세서 이메일 수신 주소 조회
 
 ## 이메일 발송 Port / Adapter
 
-Payroll Application은 SMTP 구현을 직접 참조하지 않고 다음 Port에 의존한다.
+Payroll Application은 Mailgun HTTP 구현을 직접 참조하지 않고 다음 Port에 의존한다.
 
 ```java
 public interface PayrollStatementEmailSender {
@@ -2572,13 +2572,13 @@ public interface PayrollStatementEmailSender {
         String deliveryToken
     );
 
-    record SendResult(boolean sent, String skipCode) {
+    record SendResult(boolean sent, String skipCode, String providerMessageId) {
     }
 }
 ```
 
-Mailgun SMTP 제출 성공 시 `sent = true`, 로컬 발송 비활성화처럼 실제 발송을 수행하지 않은 경우
-`sent = false`와 `skipCode`를 반환한다.
+Mailgun HTTP 제출 성공 시 `sent = true`와 `providerMessageId`를 반환한다.
+로컬 발송 비활성화처럼 실제 발송을 수행하지 않은 경우 `sent = false`와 `skipCode`를 반환한다.
 
 Adapter 구성:
 
@@ -2588,8 +2588,9 @@ PayrollStatementEmailSender
 └── MailgunPayrollStatementEmailSender   @Profile("mailgun")
 ```
 
-PDF 첨부가 필요하므로 `SimpleMailMessage`가 아니라 `MimeMessageHelper`를 사용한다.
-Mailgun SMTP 발송에는 `spring-boot-starter-mail`을 사용한다.
+Mailgun Adapter는 미국 리전 `POST /v3/{domain}/messages`를 multipart로 호출하고
+`v:deliveryToken`, 동일 값의 `o:tag`, PDF 첨부를 전달한다. 성공 응답의 `id`를 즉시
+Delivery에 저장한다.
 
 Finance S3에 저장된 PDF를 읽기 위해 Storage Port를 확장한다.
 
@@ -2614,11 +2615,13 @@ public interface PayrollStatementStoragePort {
 
 ## 이메일 발송 상태
 
-`payroll_statement_delivery.status`는 다음 여섯 상태만 사용한다.
+`payroll_statement_delivery.status`는 다음 여덟 상태만 사용한다.
 
 ```text
 PENDING
 SENDING
+RETRY_WAIT
+UNKNOWN
 SENT
 DELIVERED
 FAILED
@@ -2628,8 +2631,10 @@ SKIPPED
 | 상태 | 의미 |
 | --- | --- |
 | `PENDING` | 발송 요청 이력 생성 후 비동기 작업 대기 |
-| `SENDING` | 작업자가 발송 건을 선점하고 S3 조회 및 SMTP 제출 처리 중 |
-| `SENT` | Mailgun SMTP 제출 성공 후 최종 전달 Webhook 대기 |
+| `SENDING` | 작업자가 발송 건을 선점하고 S3 조회 및 Mailgun HTTP 제출 처리 중 |
+| `RETRY_WAIT` | Mailgun의 명확한 거절 또는 호출 전 준비 실패로 안전한 재시도를 대기 |
+| `UNKNOWN` | Mailgun 접수 여부가 불명확하여 대사가 필요하며 자동 재발송하지 않음 |
+| `SENT` | Mailgun HTTP 제출 성공 후 최종 전달 Webhook 대기 |
 | `DELIVERED` | 수신 이메일 서버가 메일을 받아들였음을 Mailgun Webhook으로 확인 |
 | `FAILED` | 애플리케이션 발송 또는 Mailgun 전달이 최종 실패 |
 | `SKIPPED` | 일괄 발송 조건 미충족 또는 로컬 발송 비활성화로 발송하지 않음 |
@@ -2646,10 +2651,12 @@ SENT
 DELIVERED
 ```
 
-애플리케이션 단계 실패:
+애플리케이션 단계 실패와 복구:
 
 ```text
+PENDING → SENDING → RETRY_WAIT → SENDING
 PENDING → SENDING → FAILED
+PENDING → SENDING → UNKNOWN → 대사
 ```
 
 Mailgun 최종 전달 실패:
@@ -2666,6 +2673,8 @@ PENDING → SENDING → SKIPPED
 
 Mailgun의 일시적인 전달 실패는 별도 상태로 만들지 않는다.
 Mailgun이 자체 재시도하는 동안 `SENT`를 유지하고 최종 결과에 따라 `DELIVERED` 또는 `FAILED`로 변경한다.
+HTTP `429`와 Mailgun 호출 전 준비 실패만 자동 재시도한다.
+연결 단절, timeout, HTTP `5xx`처럼 접수 여부가 불명확한 결과는 `UNKNOWN`으로 전환한다.
 
 `DELIVERED`는 직원이 이메일이나 PDF를 열었다는 의미가 아니다.
 Gmail, 네이버 등 수신 이메일 서버가 메시지를 받아들였다는 의미다.
@@ -2724,6 +2733,10 @@ sending_started_at NULL
 sent_at NULL
 delivered_at NULL
 failed_at NULL
+attempt_count
+next_attempt_at NULL
+last_attempt_at NULL
+last_reconciled_at NULL
 
 created_at
 updated_at
@@ -2745,10 +2758,11 @@ FOREIGN KEY (requested_by) REFERENCES users(id)
 UNIQUE(delivery_token)
 INDEX(batch_id, delivery_id)
 INDEX(statement_id, requested_at)
-CHECK(status IN ('PENDING', 'SENDING', 'SENT', 'DELIVERED', 'FAILED', 'SKIPPED'))
+CHECK(status IN ('PENDING', 'SENDING', 'RETRY_WAIT', 'UNKNOWN', 'SENT', 'DELIVERED', 'FAILED', 'SKIPPED'))
+UNIQUE(active_statement_id)
 ```
 
-`failure_reason`에는 SMTP 예외 원문, 자격증명, 이메일 본문 또는 S3 정보를 그대로 저장하지 않는다.
+`failure_reason`에는 HTTP 예외 원문, 자격증명, 이메일 본문 또는 S3 정보를 그대로 저장하지 않는다.
 운영 화면에 노출 가능한 정제된 메시지만 최대 길이를 제한해 저장한다.
 
 실패 후 다시 발송하면 기존 Delivery 행을 수정하지 않고 새 행을 생성한다.
@@ -2774,9 +2788,10 @@ WHERE delivery_id = ?
 ```
 
 갱신된 행이 1개인 작업자만 실제 메일을 발송한다.
-중복 이벤트 또는 여러 애플리케이션 인스턴스가 같은 Delivery를 처리해도 한 번만 SMTP에 제출한다.
+중복 이벤트 또는 여러 애플리케이션 인스턴스가 같은 Delivery를 처리해도 한 번만 Mailgun에 제출한다.
 
-같은 명세서에 `PENDING`, `SENDING`, `SENT`, `DELIVERED` 이력이 존재하면 새 개별 발송 요청을 거절한다.
+같은 명세서에 `PENDING`, `SENDING`, `RETRY_WAIT`, `UNKNOWN`, `SENT`, `DELIVERED` 이력이 존재하면
+새 개별 발송 요청을 만들지 않고 기존 활성 이력을 멱등 응답으로 반환한다.
 `FAILED` 이력만 있으면 같은 발송 API를 다시 호출하여 새 Delivery를 생성할 수 있다.
 
 새 Delivery 생성은 `payroll_statement` 행을 잠근 하나의 트랜잭션에서 처리한다.
@@ -2784,7 +2799,7 @@ WHERE delivery_id = ?
 ```text
 payroll_statement SELECT ... FOR UPDATE
 → 같은 statement_id의 Delivery 이력 재조회
-→ PENDING / SENDING / SENT / DELIVERED 존재 여부 검증
+→ PENDING / SENDING / RETRY_WAIT / UNKNOWN / SENT / DELIVERED 존재 여부 검증
 → 검증 통과 시 PENDING Delivery 생성
 ```
 
@@ -2792,8 +2807,8 @@ payroll_statement SELECT ... FOR UPDATE
 따라서 동시에 들어와도 먼저 잠금을 획득한 요청만 Delivery를 생성하고 뒤 요청은 갱신된 이력을 보고 제외 또는 충돌 처리한다.
 발송 이력은 보존해야 하므로 `statement_id` 자체에는 Unique Constraint를 두지 않는다.
 
-애플리케이션이 비정상 종료되어 `SENDING`에 장시간 머무른 건은 복구 작업이 `FAILED`로 전환한다.
-복구 작업은 자동 재발송하지 않는다. 관리자가 결과를 확인한 뒤 동일 발송 API를 다시 호출한다.
+애플리케이션이 비정상 종료되어 `SENDING`에 장시간 머무른 건은 Mailgun 접수 여부를 알 수 없으므로
+복구 작업이 `UNKNOWN`으로 전환한다. `UNKNOWN`은 대사 결과가 확인되기 전에는 자동 재발송하지 않는다.
 
 ## 이메일 발송 트랜잭션과 비동기 경계
 
@@ -2806,7 +2821,7 @@ Delivery PENDING 생성
 발송 요청 Event 발행
 ```
 
-실제 S3 다운로드와 SMTP 호출은 트랜잭션 커밋 이후 비동기로 처리한다.
+실제 S3 다운로드와 Mailgun HTTP 호출은 트랜잭션 커밋 이후 비동기로 처리한다.
 네트워크 I/O 동안 DB 트랜잭션을 열어두지 않는다.
 
 ```text
@@ -2814,11 +2829,13 @@ Delivery PENDING 생성
 → DeliveryRequestedEvent
 → 짧은 트랜잭션에서 PENDING을 SENDING으로 선점
 → Finance S3 PDF 다운로드
-→ Mailgun SMTP 제출
-→ 짧은 트랜잭션에서 SENT 또는 FAILED 기록
+→ Mailgun HTTP 제출
+→ 짧은 트랜잭션에서 SENT, RETRY_WAIT, UNKNOWN 또는 FAILED 기록
 ```
 
 발송 요청 Event는 중복 수신될 수 있으므로 `PENDING → SENDING` 조건부 갱신으로 멱등 처리한다.
+Event는 빠른 실행 경로일 뿐이며, 영속 디스패처가 DB의 `PENDING`과 재시도 시각이 지난
+`RETRY_WAIT`을 주기적으로 조회한다. 따라서 커밋 직후 프로세스가 종료돼도 재기동 후 처리한다.
 비동기 실행은 기존 `applicationTaskExecutor`를 사용하되,
 일괄 발송이 다른 비동기 작업을 고갈시키지 않도록 발송 동시성 상한을 환경설정으로 제한한다.
 
@@ -2855,7 +2872,7 @@ payroll_statement.status = READY인가
 }
 ```
 
-`PENDING`, `SENDING`, `SENT`, `DELIVERED` 이력이 있으면 `409 Conflict`로 거절한다.
+활성 이력이 있으면 새 이력을 만들지 않고 기존 이력을 `200 OK`, `reused=true`로 반환한다.
 `FAILED` 이력만 있으면 새 Delivery를 생성하여 재발송한다.
 개별 발송의 필수조건이 충족되지 않으면 `SKIPPED` 행을 만들지 않고 요청 오류를 반환한다.
 
@@ -2933,8 +2950,8 @@ GET /api/payrolls/statement/email-delivery-batches/{batchId}?page=0&size=20
 | 배치 상태 | 계산 조건 |
 | --- | --- |
 | `PENDING` | 모든 항목이 아직 `PENDING` |
-| `PROCESSING` | `PENDING` 또는 `SENDING` 항목이 하나 이상 존재 |
-| `AWAITING_DELIVERY` | 제출 작업은 끝났지만 `SENT` 항목이 하나 이상 존재 |
+| `PROCESSING` | `PENDING`, `SENDING`, `RETRY_WAIT` 항목이 하나 이상 존재 |
+| `AWAITING_DELIVERY` | `SENT` 또는 대사 중인 `UNKNOWN` 항목이 하나 이상 존재 |
 | `COMPLETED` | 모든 항목이 `DELIVERED`, `FAILED`, `SKIPPED` 중 하나 |
 
 발송 후보가 0명인 빈 Batch도 즉시 `COMPLETED`로 계산한다.
@@ -2951,6 +2968,8 @@ GET /api/payrolls/statement/email-delivery-batches/{batchId}?page=0&size=20
     "pendingCount": 0,
     "sendingCount": 0,
     "sentCount": 0,
+    "retryWaitCount": 0,
+    "unknownCount": 0,
     "deliveredCount": 16,
     "failedCount": 1,
     "skippedCount": 3
@@ -2991,8 +3010,8 @@ message = 급여명세서 일괄 이메일 발송 결과를 조회했습니다.
 | Payroll 미확정 | `409 Conflict` | 확정본만 발송 가능 |
 | 최신 Revision 아님 | `409 Conflict` | 과거 Revision 오발송 방지 |
 | Statement 미준비 | `409 Conflict` | PDF가 `READY`가 아님 |
-| 이미 처리 중 또는 전달 완료 | `409 Conflict` | 중복 발송 방지 |
-| S3 또는 SMTP 처리 실패 | 비동기 `FAILED` | 요청 응답 이후 Delivery 결과에 기록 |
+| 이미 처리 중 또는 전달 완료 | `200 OK` | 기존 활성 Delivery 멱등 반환 |
+| S3 또는 Mailgun 처리 실패 | 비동기 상태 전이 | 안전한 실패만 재시도하고 불명확한 결과는 대사 |
 
 일괄 발송에서는 직원 한 명의 조건 미충족을 전체 HTTP 오류로 반환하지 않고 해당 Delivery를 `SKIPPED`로 기록한다.
 배치 요청 자체가 유효하지 않거나 저장에 실패한 경우에만 요청 전체를 오류로 응답한다.
@@ -3017,11 +3036,11 @@ Webhook 처리 규칙:
 
 ```text
 delivered
-→ SENDING, SENT 또는 FAILED를 DELIVERED로 변경
+→ SENDING, RETRY_WAIT, UNKNOWN, SENT 또는 FAILED를 DELIVERED로 변경
 → delivered_at 기록
 
 permanent_fail 또는 failed + permanent
-→ SENDING 또는 SENT를 FAILED로 변경
+→ SENDING, RETRY_WAIT, UNKNOWN 또는 SENT를 FAILED로 변경
 → 실패 코드와 failed_at 기록
 
 temporary_fail
@@ -3032,14 +3051,16 @@ temporary_fail
 Webhook은 중복 수신될 수 있으므로 조건부 상태 갱신으로 멱등 처리한다.
 이미 `DELIVERED`인 Delivery는 이전 상태로 되돌리지 않는다.
 
-SMTP 작업자의 완료 갱신도 다음 조건을 사용한다.
+HTTP 작업자의 완료 갱신도 다음 조건을 사용한다.
 
 ```text
-SMTP 성공: SENDING → SENT
-SMTP 실패: SENDING → FAILED
+HTTP 성공: SENDING → SENT
+안전한 일시 실패: SENDING → RETRY_WAIT
+영구 거절: SENDING → FAILED
+접수 여부 불명확: SENDING → UNKNOWN
 ```
 
-Webhook이 먼저 도착한 경우 SMTP 작업자의 조건부 갱신은 Webhook 결과를 덮어쓰지 않는다.
+Webhook이 먼저 도착한 경우 HTTP 작업자의 조건부 갱신은 Webhook 결과를 덮어쓰지 않는다.
 `DELIVERED`는 수신 서버 접수 결과이며 직원 열람 여부는 의미하지 않는다.
 
 ## 로컬 / 운영 발송 전환
@@ -3067,7 +3088,7 @@ mailgun 비활성
 
 mailgun 활성
 → MailgunPayrollStatementEmailSender
-→ 실제 SMTP 발송
+→ 실제 Mailgun HTTP API 발송
 ```
 
 운영 `prod` Profile Group에는 `mailgun`을 포함한다.
@@ -3076,8 +3097,9 @@ mailgun 활성
 환경변수:
 
 ```text
-MAILGUN_SMTP_USERNAME
-MAILGUN_SMTP_PASSWORD
+MAILGUN_API_KEY
+MAILGUN_API_BASE_URL
+MAILGUN_DOMAIN
 MAIL_FROM
 MAILGUN_WEBHOOK_SIGNING_KEY
 MAIL_SENDING_TIMEOUT
@@ -3090,13 +3112,49 @@ APP_MAIL_RECOVERY_INTERVAL_MS 기본값: 300000
 ```
 
 `MAIL_SENDING_TIMEOUT`을 초과해 `SENDING`에 머문 Delivery는 복구 대상이 된다.
-복구 작업은 `APP_MAIL_RECOVERY_INTERVAL_MS` 간격으로 실행하며 해당 Delivery를 `FAILED`로 변경한다.
+복구 작업은 해당 Delivery를 `UNKNOWN`으로 변경하고 대사 대상으로 넘긴다.
 
 실제 값은 `.env`, 서버 환경변수 또는 Secret Manager에만 저장한다.
-SMTP 자격증명이 포함된 참고 문서는 Git에 커밋하지 않는다.
+Mailgun API 자격증명이 포함된 참고 문서는 Git에 커밋하지 않는다.
 
-SMTP 연결, 읽기와 쓰기 timeout은 환경설정으로 반드시 지정한다.
-애플리케이션은 SMTP 제출 실패를 자동 재시도하지 않는다.
+Mailgun HTTP 연결 및 읽기 timeout은 환경설정으로 반드시 지정한다.
+애플리케이션은 최대 3회까지만 안전한 실패를 지수 백오프로 재시도한다.
+`SENT`와 `UNKNOWN`은 Mailgun Logs API 대사 대상으로 조회한다.
+
+## 영속 디스패치, 재시도와 대사
+
+`payroll_statement_delivery` 자체를 급여명세서 이메일 전용 영속 작업 큐로 사용한다.
+별도 범용 Outbox 테이블을 추가하지 않으며, `PENDING` 저장과 업무 이력이 한 트랜잭션에서 커밋된다.
+
+```text
+PENDING 또는 실행 시각이 지난 RETRY_WAIT 조회
+→ status 조건부 UPDATE로 SENDING 선점
+→ attempt_count 증가
+→ Mailgun HTTP 호출
+```
+
+재시도 기본 정책은 최대 3회, 1분부터 최대 30분까지 지수 백오프다.
+HTTP `429`처럼 Mailgun이 요청을 받지 않았음이 명확한 경우와 Mailgun 호출 전 준비 실패만 재시도한다.
+timeout, 연결 단절, HTTP `5xx`는 결과를 단정하지 않고 `UNKNOWN`으로 전환한다.
+
+대사 스케줄러는 오래된 `SENT`와 `UNKNOWN`을 조회한다.
+Mailgun Logs API에서 개인정보가 없는 `delivery_token` 태그를 정확히 일치시켜 조회하고,
+응답의 Mailgun 메시지 ID도 Delivery에 보완한다. `DELIVERED`와 영구 실패만 최종 상태로 보정한다.
+Mailgun에서 검색되지 않았다는 이유만으로 `UNKNOWN`을 자동 재발송하지 않는다.
+
+운영 지표:
+
+```text
+mudo.payroll.email.pending
+mudo.payroll.email.retry.wait
+mudo.payroll.email.unknown
+mudo.payroll.email.oldest.waiting.age.seconds
+mudo.payroll.email.retry.attempts
+mudo.payroll.email.reconciliation.failures
+```
+
+`PENDING` 정체, `RETRY_WAIT` 지속, 반복 재시도, `UNKNOWN` 지속과 대사 실패는
+Prometheus Alert Rule로 감시한다.
 Mailgun에 제출된 뒤의 일시적 전달 실패는 Mailgun 자체 재시도에 맡긴다.
 
 ## 이메일 발송 로그
@@ -3118,7 +3176,7 @@ payroll_statement_email_webhook_실패
 ```
 
 로그에는 `deliveryId`, `batchId`, `payrollId`, 상태와 처리 건수만 남긴다.
-직원 이메일 원문, PDF 내용, S3 Key, SMTP 자격증명은 남기지 않는다.
+직원 이메일 원문, PDF 내용, S3 Key, Mailgun API 자격증명은 남기지 않는다.
 
 ---
 
@@ -4061,7 +4119,7 @@ READY
    ↓
 권한 있는 관리자 개별 / 일괄 이메일 발송 요청
    ↓
-Delivery PENDING → SENDING → SENT 또는 FAILED
+Delivery PENDING → SENDING → SENT / RETRY_WAIT / UNKNOWN / FAILED
 ```
 
 확정 후 오류가 발견되면:

@@ -18,6 +18,7 @@ import java.time.YearMonth;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -38,18 +39,19 @@ public class PayrollStatementEmailService {
     Payroll payroll = payroll(payrollId);
     requireConfirmedLatest(payroll);
     StatementData statement = readyStatementForUpdate(payrollId);
+    Optional<DeliveryData> existing = deliveries.findBlocking(statement.id());
+    if (existing.isPresent()) {
+      return DeliveryResult.reused(existing.get());
+    }
     var employee = employees.findById(payroll.getUserId())
         .orElseThrow(() -> new PayrollException(PayrollErrorCode.PAYROLL_EMPLOYEE_EMAIL_MISSING));
     if (employee.email() == null || employee.email().isBlank()) {
       throw new PayrollException(PayrollErrorCode.PAYROLL_EMPLOYEE_EMAIL_MISSING);
     }
-    if (deliveries.existsBlocking(statement.id())) {
-      throw new PayrollException(PayrollErrorCode.PAYROLL_EMAIL_DELIVERY_CONFLICT);
-    }
     DeliveryData delivery = create(null, payroll, statement, employee.email(), requestedBy,
         DeliveryStatus.PENDING, null, null);
     events.publishEvent(new PayrollStatementEmailRequestedEvent(delivery.id()));
-    return DeliveryResult.from(delivery);
+    return DeliveryResult.created(delivery);
   }
 
   @Transactional
@@ -99,7 +101,7 @@ public class PayrollStatementEmailService {
           "NO_EMAIL", "직원 이메일이 등록되어 있지 않습니다.");
       return;
     }
-    if (deliveries.existsBlocking(statement.id())) {
+    if (deliveries.findBlocking(statement.id()).isPresent()) {
       create(batchId, payroll, statement, email, requestedBy, DeliveryStatus.SKIPPED,
           "ALREADY_DELIVERED_OR_IN_PROGRESS", "이미 전달됐거나 발송 처리 중입니다.");
       return;
@@ -175,17 +177,28 @@ public class PayrollStatementEmailService {
     if (total == 0) return DeliveryBatchStatus.COMPLETED;
     long pending = counts.getOrDefault(DeliveryStatus.PENDING, 0L);
     long sending = counts.getOrDefault(DeliveryStatus.SENDING, 0L);
+    long retryWait = counts.getOrDefault(DeliveryStatus.RETRY_WAIT, 0L);
+    long unknown = counts.getOrDefault(DeliveryStatus.UNKNOWN, 0L);
     long sent = counts.getOrDefault(DeliveryStatus.SENT, 0L);
     if (pending == total) return DeliveryBatchStatus.PENDING;
-    if (pending + sending > 0) return DeliveryBatchStatus.PROCESSING;
-    if (sent > 0) return DeliveryBatchStatus.AWAITING_DELIVERY;
+    if (pending + sending + retryWait > 0) return DeliveryBatchStatus.PROCESSING;
+    if (sent + unknown > 0) return DeliveryBatchStatus.AWAITING_DELIVERY;
     return DeliveryBatchStatus.COMPLETED;
   }
 
   public record DeliveryResult(Long deliveryId, Long payrollId, DeliveryStatus status,
-      LocalDateTime requestedAt) {
-    static DeliveryResult from(DeliveryData data) {
-      return new DeliveryResult(data.id(), data.payrollId(), data.status(), data.requestedAt());
+      LocalDateTime requestedAt, boolean reused) {
+    static DeliveryResult created(DeliveryData data) {
+      return from(data, false);
+    }
+
+    static DeliveryResult reused(DeliveryData data) {
+      return from(data, true);
+    }
+
+    private static DeliveryResult from(DeliveryData data, boolean reused) {
+      return new DeliveryResult(data.id(), data.payrollId(), data.status(), data.requestedAt(),
+          reused);
     }
   }
 
@@ -196,11 +209,14 @@ public class PayrollStatementEmailService {
       DeliveryBatchStatus status, Summary summary, PagedResult<DeliveryView> deliveries) {}
 
   public record Summary(long totalCount, long pendingCount, long sendingCount, long sentCount,
-      long deliveredCount, long failedCount, long skippedCount) {
+      long retryWaitCount, long unknownCount, long deliveredCount, long failedCount,
+      long skippedCount) {
     static Summary from(Map<DeliveryStatus, Long> counts, long total) {
       return new Summary(total, counts.getOrDefault(DeliveryStatus.PENDING, 0L),
           counts.getOrDefault(DeliveryStatus.SENDING, 0L),
           counts.getOrDefault(DeliveryStatus.SENT, 0L),
+          counts.getOrDefault(DeliveryStatus.RETRY_WAIT, 0L),
+          counts.getOrDefault(DeliveryStatus.UNKNOWN, 0L),
           counts.getOrDefault(DeliveryStatus.DELIVERED, 0L),
           counts.getOrDefault(DeliveryStatus.FAILED, 0L),
           counts.getOrDefault(DeliveryStatus.SKIPPED, 0L));

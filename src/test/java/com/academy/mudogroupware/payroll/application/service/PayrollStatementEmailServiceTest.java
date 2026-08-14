@@ -48,6 +48,7 @@ class PayrollStatementEmailServiceTest {
     when(payrolls.findById(1L)).thenReturn(Optional.of(payroll));
     when(payrolls.findLatest(10L, YearMonth.of(2026, 8))).thenReturn(Optional.of(payroll));
     when(statements.findByPayrollIdForUpdate(1L)).thenReturn(Optional.of(statement));
+    when(deliveries.findBlocking(20L)).thenReturn(Optional.empty());
     when(employees.findById(10L)).thenReturn(Optional.of(
         new PayrollEmployeePort.EmployeeView(10L, "직원", "staff@example.com",
             LocalDate.of(2026, 1, 1))));
@@ -59,7 +60,26 @@ class PayrollStatementEmailServiceTest {
 
     assertThat(result.deliveryId()).isEqualTo(30L);
     assertThat(result.status()).isEqualTo(PENDING);
+    assertThat(result.reused()).isFalse();
     verify(events).publishEvent(new PayrollStatementEmailRequestedEvent(30L));
+  }
+
+  @Test
+  void 진행중이거나_완료된_발송이_있으면_기존_이력을_반환한다() {
+    Payroll payroll = confirmedPayroll();
+    DeliveryData delivery = delivery();
+    when(payrolls.findById(1L)).thenReturn(Optional.of(payroll));
+    when(payrolls.findLatest(10L, YearMonth.of(2026, 8))).thenReturn(Optional.of(payroll));
+    when(statements.findByPayrollIdForUpdate(1L)).thenReturn(Optional.of(readyStatement()));
+    when(deliveries.findBlocking(20L)).thenReturn(Optional.of(delivery));
+
+    var result = service.send(1L, 99L);
+
+    assertThat(result.deliveryId()).isEqualTo(30L);
+    assertThat(result.reused()).isTrue();
+    verifyNoInteractions(employees, events);
+    verify(deliveries, never()).create(any(), any(), any(), any(), any(), any(), any(), any(),
+        any(), any(), any());
   }
 
   @Test
@@ -68,6 +88,7 @@ class PayrollStatementEmailServiceTest {
     when(payrolls.findById(1L)).thenReturn(Optional.of(payroll));
     when(payrolls.findLatest(10L, YearMonth.of(2026, 8))).thenReturn(Optional.of(payroll));
     when(statements.findByPayrollIdForUpdate(1L)).thenReturn(Optional.of(readyStatement()));
+    when(deliveries.findBlocking(20L)).thenReturn(Optional.empty());
     when(employees.findById(10L)).thenReturn(Optional.of(
         new PayrollEmployeePort.EmployeeView(10L, "직원", null, LocalDate.of(2026, 1, 1))));
 
@@ -107,6 +128,7 @@ class PayrollStatementEmailServiceTest {
 
   private DeliveryData delivery() {
     return new DeliveryData(30L, null, 20L, 1L, 10L, "staff@example.com", PENDING,
-        null, null, "token", null, 99L, LocalDateTime.now(), null, null, null, null);
+        null, null, "token", null, 99L, LocalDateTime.now(), null, null, null, null,
+        0, null, null, null);
   }
 }

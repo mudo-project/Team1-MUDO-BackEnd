@@ -20,6 +20,8 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
@@ -142,10 +144,15 @@ public class PayrollController {
 
   @PostMapping("/api/payrolls/{payrollId}/statement/email-deliveries")
   @Operation(summary = "급여명세서 개별 이메일 발송")
-  public GlobalApiResponse<PayrollStatementEmailService.DeliveryResult> sendStatementEmail(
+  public ResponseEntity<GlobalApiResponse<PayrollStatementEmailService.DeliveryResult>> sendStatementEmail(
       @AuthenticationPrincipal AuthUser authUser, @PathVariable Long payrollId) {
-    return GlobalApiResponse.created(STATEMENT_EMAIL_SEND_STARTED,
-        statementEmailService.send(payrollId, authUser.userId()));
+    PayrollStatementEmailService.DeliveryResult result =
+        statementEmailService.send(payrollId, authUser.userId());
+    if (result.reused()) {
+      return ResponseEntity.ok(GlobalApiResponse.ok(STATEMENT_EMAIL_DELIVERY_REUSED, result));
+    }
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(GlobalApiResponse.created(STATEMENT_EMAIL_SEND_STARTED, result));
   }
 
   @PostMapping("/api/payrolls/statement/email-delivery-batches")

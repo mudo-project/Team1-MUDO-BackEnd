@@ -18,6 +18,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -74,6 +75,11 @@ class SubmitLeaveRequestServiceTest {
         verify(leaveRequestRepository).save(captor.capture());
         assertEquals(2, captor.getValue().getUsedDays());
         assertEquals(LeaveRequestStatus.PENDING, captor.getValue().getStatus());
+        InOrder inOrder = org.mockito.Mockito.inOrder(
+                leaveGrantRepository, attendancePolicyRepository);
+        inOrder.verify(leaveGrantRepository).findActiveForUpdate(
+                USER_ID, SUBMITTED_AT.toLocalDate());
+        inOrder.verify(attendancePolicyRepository).findCurrent();
     }
 
     @Test

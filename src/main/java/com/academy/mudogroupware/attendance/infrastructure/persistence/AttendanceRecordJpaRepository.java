@@ -7,6 +7,8 @@ import java.util.List;
 
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import jakarta.persistence.LockModeType;
 
@@ -25,6 +27,12 @@ public interface AttendanceRecordJpaRepository
 
     Optional<AttendanceRecordJpaEntity> findByUserIdAndWorkDate(
             Long userId, LocalDate workDate);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select a from AttendanceRecordJpaEntity a "
+            + "where a.userId = :userId and a.workDate = :workDate")
+    Optional<AttendanceRecordJpaEntity> findByUserIdAndWorkDateForUpdate(
+            @Param("userId") Long userId, @Param("workDate") LocalDate workDate);
 
     List<AttendanceRecordJpaEntity> findAllByUserIdAndWorkDateBetweenOrderByWorkDate(
             Long userId, LocalDate startDate, LocalDate endDate);
