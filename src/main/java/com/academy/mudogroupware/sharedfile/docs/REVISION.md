@@ -1,5 +1,21 @@
 # 🔄 공유파일 도메인 변경 이력
 
+## ✅ 2026-08-14 · PR #492 CodeRabbit 리뷰 반영
+
+### 변경 목적
+
+PR #492(루트 id 노출 + parentId 생략 허용)에 대한 CodeRabbit 리뷰 3건을 반영한다.
+
+### 구현 변경
+
+- **parentId 빈 값 처리 불일치**: `parentId == null`일 때만 루트로 대체하고 `""`/공백은 걸러지지 않아, `SharedFileRootGuard`가 빈 id로 Drive 조회를 시도하며 엉뚱한 예외(`SharedFileItemNotFoundException` 등)로 새던 문제를 고쳤다. `CreateSharedFolderService`/`CreateGoogleWorkspaceFileService`/`UploadSharedFileService` 3곳에 `parentId != null && parentId.isBlank()`일 때만 `BadRequestException`을 던지는 체크를 다시 넣었다. `@NotBlank`로는 "null 허용, blank 거부"를 동시에 표현할 수 없어 DTO가 아니라 서비스 레이어에 뒀다. `ListSharedFileItemsService`에도 같은 gap이 있지만 이번 PR이 건드리지 않은 기존 코드라 범위에서 제외했다.
+- **빈 parentId 경계값 테스트 누락**: 위 3개 서비스 테스트에 parentId가 `" "`일 때 여전히 400인지 검증하는 케이스를 추가했다.
+- **`ready=false` 응답의 HTTP 레벨 테스트 누락**: `SharedFileControllerTest`에 `ready=false`일 때 `rootId`가 JSON에 `null`로 내려가는지 검증하는 테스트를 추가했다. `SharedFileRootResponse`에 `@JsonInclude(NON_NULL)`이 없어 필드가 생략되지 않고 `null`로 직렬화되는 걸 먼저 확인한 뒤, 프로젝트에 이미 있는 패턴(`GoogleAccountConnectionControllerTest`)대로 `jsonPath(...).value(nullValue())`를 썼다.
+
+### 검증
+
+- 전체 `./gradlew test --tests "com.academy.mudogroupware.sharedfile.*"` 통과(134개), 전체 프로젝트 `./gradlew test` 회귀 없이 통과.
+
 ## ✅ 2026-08-14 · 루트 id 노출 + 생성·업로드 API의 parentId 생략(=루트) 허용
 
 ### 변경 목적
