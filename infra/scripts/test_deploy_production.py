@@ -83,6 +83,7 @@ class DeploymentManifestTest(unittest.TestCase):
         self.assertIn("MAIL_FROM", secret_names)
         self.assertIn("MAILGUN_WEBHOOK_SIGNING_KEY", secret_names)
         self.assertIn("GEMINI_API_KEY", secret_names)
+        self.assertIn("CLIENT_IP_SIGNING_SECRET", secret_names)
         self.assertEqual(
             "arn:aws:ssm:ap-northeast-2:123456789012:parameter/mudo/prod/shared/SENTRY_DSN",
             secrets["SENTRY_DSN"],
