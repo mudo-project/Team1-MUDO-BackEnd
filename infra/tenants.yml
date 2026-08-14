@@ -14,10 +14,8 @@ tenants:
     s3_bucket: mudo-prod-staff-635249349258
     finance_s3_bucket: mudo-prod-finance-635249349258
   - code: academy-b
-    # 2026-08-14 온보딩 리허설. AWS 리소스는 준비돼 있으나 비용 절감을 위해 ECS Service
-    # desired-count를 0으로 내려 트래픽을 받지 않는 상태. 다시 켤 때는 enabled: true 전환과
-    # 함께 desired-count도 1로 올린다.
-    enabled: false
+    # 2026-08-14 온보딩 리허설. AWS DB·SSM·S3·Target Group·ECS Service 준비 완료. enabled: true.
+    enabled: true
     billing_plan: basic
     runtime_profile: shared-default
     cell: cell-1
@@ -39,10 +37,8 @@ tenants:
     s3_bucket: mudo-prod-staff-635249349258
     finance_s3_bucket: mudo-prod-finance-635249349258
   - code: academy-c
-    # 2026-08-14 온보딩 리허설. AWS 리소스는 준비돼 있으나 비용 절감을 위해 ECS Service
-    # desired-count를 0으로 내려 트래픽을 받지 않는 상태. 다시 켤 때는 enabled: true 전환과
-    # 함께 desired-count도 1로 올린다.
-    enabled: false
+    # 2026-08-14 온보딩 리허설. AWS DB·SSM·S3·Target Group·ECS Service 준비 완료. enabled: true.
+    enabled: true
     billing_plan: basic
     runtime_profile: shared-default
     cell: cell-1
