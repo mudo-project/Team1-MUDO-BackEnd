@@ -31,7 +31,8 @@ class TimetableSlotPersistenceAdapterTest {
 
         TimetableSlot domain = TimetableSlot.restore(
                 1L, 1L, ClassType.SPECIAL, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                Grade.HIGH_3, "정T", "수정됨", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16), null, null);
+                Grade.HIGH_3, "정T", "수정됨", "FFCC00", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16), null,
+                null);
 
         assertThatThrownBy(() -> adapter.save(domain))
                 .isInstanceOf(TimetableSlotNotFoundException.class);
@@ -61,7 +62,8 @@ class TimetableSlotPersistenceAdapterTest {
 
         TimetableSlot domain = TimetableSlot.restore(
                 1L, 1L, ClassType.SPECIAL, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                Grade.HIGH_3, "정T", "수정됨", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16), null, null);
+                Grade.HIGH_3, "정T", "수정됨", "FFCC00", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16), null,
+                null);
 
         assertThatThrownBy(() -> adapter.save(domain))
                 .isInstanceOf(TimetableSlotUpdateConflictException.class)
