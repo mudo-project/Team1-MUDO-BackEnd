@@ -1,6 +1,6 @@
 ﻿# 근태 API 명세
 
-> 기준일: 2026-08-13
+> 기준일: 2026-08-14
 > 기준: Notion `API 명세서` 데이터베이스의 `EPIC = 근태` 항목과 현재 Controller, Request/Response DTO, Security, 성공·오류 코드 구현
 > 충돌 시 현재 코드 계약을 우선합니다.
 
@@ -12,6 +12,28 @@
 - `GET /api/attendance/wifi-ips/current`는 메서드 수준 권한 어노테이션이 없지만, 전역 Security 설정의 `anyRequest().authenticated()` 적용 대상입니다.
 - 별도 권한이 적혀 있지 않은 API는 인증된 사용자라면 호출할 수 있습니다.
 - 성공 응답은 `GlobalApiResponse`를 사용합니다.
+
+### Next 서버의 클라이언트 IP 전달
+
+- 운영 환경에서 현재 IP 조회, Wi-Fi IP 등록, 출근, 퇴근 요청은 Next 서버가 백엔드로 전달합니다.
+- Next 서버는 신뢰할 수 있는 앞단 프록시에서 확인한 IP를 아래 헤더로 전달해야 합니다.
+- 브라우저가 보낸 동일 이름의 헤더는 제거하고 Next 서버가 값을 새로 설정해야 합니다.
+
+| 헤더 | 값 |
+| --- | --- |
+| `X-Client-IP` | 검증한 IPv4 또는 IPv6 주소 |
+| `X-Client-IP-Timestamp` | 요청 서명 시각의 Unix epoch seconds |
+| `X-Client-IP-Signature` | 아래 payload의 HMAC-SHA256 서명을 Base64 URL-safe, padding 없이 인코딩한 값 |
+
+서명 payload는 다음 네 값을 줄바꿈 문자(`\n`)로 연결합니다. 경로에는 query string을 포함하지 않습니다.
+
+```text
+{HTTP_METHOD}\n{REQUEST_PATH}\n{CLIENT_IP}\n{TIMESTAMP}
+```
+
+- Next 서버와 백엔드는 동일한 `CLIENT_IP_SIGNING_SECRET`을 사용합니다.
+- 백엔드는 기본값 기준 현재 시각과 60초를 초과하여 차이 나는 요청을 거절합니다.
+- 헤더 누락, 잘못된 서명, 만료 시각, 유효하지 않은 IP는 `403 Forbidden`으로 응답합니다.
 
 ```json
 {
@@ -28,7 +50,7 @@
 | --- | --- | --- | --- |
 | `400 Bad Request` | `COMMON_400_1` | 입력값이 올바르지 않습니다. | Bean Validation 또는 요청 형식 검증 실패 |
 | `401 Unauthorized` | `COMMON_401_1` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않음 |
-| `403 Forbidden` | `COMMON_403_1` | 접근 권한이 없습니다. | 필요한 권한이 없음 |
+| `403 Forbidden` | `COMMON_403_1` | 접근 권한이 없습니다. | 필요한 권한이 없거나 Next IP 전달 서명 검증 실패 |
 | `404 Not Found` | `COMMON_404_1` | 요청한 리소스를 찾을 수 없습니다. | 매핑되지 않은 리소스 요청 |
 | `500 Internal Server Error` | `COMMON_500_1` | 서버 내부 오류가 발생했습니다. | 처리되지 않은 서버 오류 |
 
