@@ -10,6 +10,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -46,6 +47,10 @@ public class CalendarEventEntity extends BaseTimeEntity {
 
     @Column(name = "created_by", nullable = false)
     private Long createdBy;
+
+    @Version
+    @Column(nullable = false)
+    private Long version;
 
     @Builder
     private CalendarEventEntity(Long id, String title, String content,
