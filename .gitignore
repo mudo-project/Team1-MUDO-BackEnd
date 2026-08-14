@@ -229,7 +229,6 @@ $RECYCLE.BIN/
 !.env.example
 
 # Monitoring runtime data
-/monitoring/
 logs/
 loki-data/
 monitoring/loki/data/

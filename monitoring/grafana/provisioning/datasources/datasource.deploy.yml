@@ -1,0 +1,22 @@
+# Grafana datasource provisioning 설정
+# 역할: Docker/배포 환경에서 Grafana 실행 시 Prometheus, Loki datasource를 자동 등록한다.
+# 로컬 Windows Grafana 실행 시에는 UI에서 직접 datasource를 등록한다.
+
+# Grafana provisioning 설정 버전
+apiVersion: 1
+
+# Grafana에 자동 등록할 datasource 목록입니다.
+datasources:
+  - name: Prometheus
+    uid: bfq9v4tckaosgf
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    # Grafana에서 기본 datasource로 Prometheus를 사용합니다.
+    isDefault: true
+
+  - name: Loki
+    uid: loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
