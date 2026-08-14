@@ -2,6 +2,7 @@ package com.academy.mudogroupware.payroll.application.service;
 
 import static com.academy.mudogroupware.payroll.domain.model.PayrollTypes.DeliveryStatus.SENDING;
 import static com.academy.mudogroupware.payroll.domain.model.PayrollTypes.StatementStatus.READY;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -135,6 +136,65 @@ class PayrollStatementEmailProcessorTest {
     verifyNoInteractions(sender);
   }
 
+  @Test
+  void 동시에_처리되는_두_발송_중_한도를_넘기는_한_건은_건너뛴다() throws Exception {
+    java.util.concurrent.atomic.AtomicLong mailUsage = new java.util.concurrent.atomic.AtomicLong(99L);
+    when(executor.claim(30L)).thenReturn(Optional.of(delivery(1)));
+    when(executor.claim(31L)).thenReturn(Optional.of(deliveryWithId(31L, 1)));
+    when(currentPlanProvider.currentLimits()).thenReturn(PlanLimits.of(Plan.FREE));
+    when(resourceUsageQueryPort.sumByTypeAndPeriod(eq(ResourceUsageType.MAIL), any(), any()))
+        .thenAnswer(invocation -> mailUsage.get());
+    org.mockito.Mockito.doAnswer(invocation -> {
+      mailUsage.incrementAndGet();
+      return null;
+    }).when(resourceUsageRecorder).recordMailUsage(any());
+    when(statements.findById(20L)).thenReturn(Optional.of(new StatementData(
+        20L, 1L, READY, "statement.pdf", "application/pdf", 10L, "checksum",
+        LocalDateTime.now(), null)));
+    when(payrolls.findById(1L)).thenReturn(Optional.of(payroll));
+    when(payroll.getYearMonth()).thenReturn(YearMonth.of(2026, 8));
+    when(storage.download("statement.pdf")).thenReturn(new byte[] {1});
+    when(sender.send(anyString(), anyString(), anyString(), anyString(), any(), anyString()))
+        .thenReturn(PayrollStatementEmailSender.SendResult.success("<message@mailgun>"));
+
+    java.util.concurrent.CountDownLatch ready = new java.util.concurrent.CountDownLatch(2);
+    java.util.concurrent.CountDownLatch start = new java.util.concurrent.CountDownLatch(1);
+    java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(2);
+    try {
+      var first = pool.submit(() -> {
+        ready.countDown();
+        awaitUninterruptibly(start);
+        processor.processPending(30L);
+      });
+      var second = pool.submit(() -> {
+        ready.countDown();
+        awaitUninterruptibly(start);
+        processor.processPending(31L);
+      });
+      ready.await();
+      start.countDown();
+      first.get(10, java.util.concurrent.TimeUnit.SECONDS);
+      second.get(10, java.util.concurrent.TimeUnit.SECONDS);
+    } finally {
+      pool.shutdown();
+    }
+
+    verify(sender, org.mockito.Mockito.times(1))
+        .send(anyString(), anyString(), anyString(), anyString(), any(), anyString());
+    verify(executor, org.mockito.Mockito.times(1))
+        .skipped(org.mockito.ArgumentMatchers.anyLong(), eq("PLAN_MAIL_LIMIT_EXCEEDED"));
+    assertThat(mailUsage.get()).isEqualTo(100L);
+  }
+
+  private static void awaitUninterruptibly(java.util.concurrent.CountDownLatch latch) {
+    try {
+      latch.await();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException(e);
+    }
+  }
+
   private void allowProcessing(DeliveryData delivery) {
     when(executor.claim(30L)).thenReturn(Optional.of(delivery));
     when(currentPlanProvider.currentLimits()).thenReturn(PlanLimits.of(Plan.PAID));
@@ -149,8 +209,12 @@ class PayrollStatementEmailProcessorTest {
   }
 
   private DeliveryData delivery(int attempts) {
-    return new DeliveryData(30L, null, 20L, 1L, 10L, "staff@example.com", SENDING,
-        null, null, "delivery-token", null, 99L, LocalDateTime.now(), LocalDateTime.now(),
+    return deliveryWithId(30L, attempts);
+  }
+
+  private DeliveryData deliveryWithId(long deliveryId, int attempts) {
+    return new DeliveryData(deliveryId, null, 20L, 1L, 10L, "staff@example.com", SENDING,
+        null, null, "delivery-token-" + deliveryId, null, 99L, LocalDateTime.now(), LocalDateTime.now(),
         null, null, null, attempts, null, LocalDateTime.now(), null);
   }
 }

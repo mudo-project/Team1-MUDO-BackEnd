@@ -93,6 +93,40 @@ class SendAttendanceMessagesServiceTest {
     }
 
     @Test
+    void stopsSendingOnceMonthlyLimitIsExhaustedMidBatch() {
+        when(resourceUsageQueryPort.sumByTypeAndPeriod(eq(ResourceUsageType.SMS), any(), any()))
+                .thenReturn(148L);
+        when(currentPlanProvider.currentPlan()).thenReturn(Plan.FREE);
+        when(currentPlanProvider.currentLimits()).thenReturn(PlanLimits.of(Plan.FREE));
+        MessageTemplate template = MessageTemplate.restore(
+                7L, "결석 안내", AttendanceStatus.ABSENT, "결석했습니다", 1L, NOW, NOW);
+        MessageSendCandidateView first = new MessageSendCandidateView(
+                10L, "학생1", AttendanceStatus.ABSENT, "010-1111-1111", 7L, "결석 안내", true);
+        MessageSendCandidateView second = new MessageSendCandidateView(
+                11L, "학생2", AttendanceStatus.ABSENT, "010-2222-2222", 7L, "결석 안내", true);
+        MessageSendCandidateView third = new MessageSendCandidateView(
+                12L, "학생3", AttendanceStatus.ABSENT, "010-3333-3333", 7L, "결석 안내", true);
+        when(getMessageSendCandidatesUseCase.getCandidates(LECTURE_ID, DATE))
+                .thenReturn(List.of(first, second, third));
+        when(messageTemplateRepository.findById(7L)).thenReturn(Optional.of(template));
+        // 학생 순회 순서(Set 기반이라 보장되지 않음)에 상관없이 예산 소진 이후 첫 시도는 실제 발송을
+        // 안 하므로, 셋 다 성공하도록 스텁해두고 "정확히 2건만 실제로 보내졌는지"를 검증한다.
+        when(smsSenderPort.send("010-1111-1111", "결석했습니다")).thenReturn(SmsSendResult.succeeded());
+        when(smsSenderPort.send("010-2222-2222", "결석했습니다")).thenReturn(SmsSendResult.succeeded());
+        when(smsSenderPort.send("010-3333-3333", "결석했습니다")).thenReturn(SmsSendResult.succeeded());
+
+        List<MessageSendResultView> results = service.send(
+                new SendAttendanceMessagesCommand(LECTURE_ID, DATE, List.of(10L, 11L, 12L)));
+
+        assertThat(results).filteredOn(MessageSendResultView::sent).hasSize(2);
+        assertThat(results).filteredOn(r -> !r.sent())
+                .hasSize(1)
+                .allSatisfy(r -> assertThat(r.failureReason()).contains("한도"));
+        verify(smsSenderPort, org.mockito.Mockito.times(2)).send(any(), any());
+        verify(resourceUsageRecorder).recordSmsMessages(new RecordSmsUsageCommand("rollcall-attendance-sms", 2));
+    }
+
+    @Test
     void throwsWhenNoStudentsSelected() {
         assertThatThrownBy(() -> service.send(
                 new SendAttendanceMessagesCommand(LECTURE_ID, DATE, List.of())))

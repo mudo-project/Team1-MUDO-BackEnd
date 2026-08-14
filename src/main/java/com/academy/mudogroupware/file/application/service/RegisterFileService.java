@@ -35,6 +35,7 @@ public class RegisterFileService implements RegisterFileUseCase {
         long currentUsage = resourceUsageQueryPort.sumByType(ResourceUsageType.S3_STORAGE);
         long limit = currentPlanProvider.currentLimits().s3BytesLimit();
         if (currentUsage + fileSize > limit) {
+            fileStoragePort.delete(command.objectKey());
             throw new PlanLimitExceededException(PlanLimitErrorCode.S3_LIMIT_EXCEEDED,
                     currentPlanProvider.currentPlan(), limit, currentUsage + fileSize);
         }

@@ -60,4 +60,17 @@ class RegisterFileServiceTest {
         verifyNoInteractions(fileMetadataJpaRepository);
         verifyNoInteractions(resourceUsageRecorder);
     }
+
+    @Test
+    void deletesOrphanedS3ObjectWhenUploadWouldExceedLimit() {
+        when(fileStoragePort.headObjectSize("key1")).thenReturn(400L * 1024 * 1024);
+        when(resourceUsageQueryPort.sumByType(ResourceUsageType.S3_STORAGE)).thenReturn(150L * 1024 * 1024);
+        when(currentPlanProvider.currentPlan()).thenReturn(Plan.FREE);
+        when(currentPlanProvider.currentLimits()).thenReturn(PlanLimits.of(Plan.FREE));
+
+        assertThatThrownBy(() -> service.register(new RegisterFileCommand("key1", "image/png")))
+                .isInstanceOf(PlanLimitExceededException.class);
+
+        verify(fileStoragePort).delete("key1");
+    }
 }

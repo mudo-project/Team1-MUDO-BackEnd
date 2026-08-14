@@ -31,6 +31,14 @@ class DatabaseQuotaAspectTest {
     }
 
     @Test
+    void blocksWriteTransactionWhenUsageExactlyEqualsLimit() {
+        when(databaseUsagePort.databaseBytes()).thenReturn(500L * 1024 * 1024);
+
+        assertThatThrownBy(probeService::writeSomething)
+                .isInstanceOf(PlanLimitExceededException.class);
+    }
+
+    @Test
     void allowsWriteTransactionWhenUnderLimit() {
         when(databaseUsagePort.databaseBytes()).thenReturn(10L);
 

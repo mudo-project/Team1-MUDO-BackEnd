@@ -17,6 +17,12 @@ payroll, rollcall, approval, dataimport)이 이 도메인이 제공하는 공용
   예외. HTTP 429(Too Many Requests), 응답 메시지에 플랜명+리소스명이 포함된다.
 - `DatabaseQuotaAspect`: RDS 저장용량 — 모든 쓰기 트랜잭션(`@Transactional(readOnly
   = false)`) 진입 시 `CurrentTenantDatabaseUsagePort`로 현재 DB 용량을 확인한다.
+  포인트컷(`..service..`)이 앱 전체 서비스 계층에 걸리므로 **`@Order(HIGHEST_PRECEDENCE
+  + 1)`로 대상 메서드의 트랜잭션이 열리기 전에 반드시 먼저 실행되도록 고정**돼
+  있다 — 순서를 풀면 한도 체크 쿼리가 대상 트랜잭션의 첫 쿼리가 되어 MySQL
+  REPEATABLE READ 스냅샷을 조기 고정시키고, 그 트랜잭션 안에서 비관적 락을 쓰는
+  다른 도메인(예: `timetable` 교실 중복 예약 방지)의 동시성 방어가 무력화된다.
+  자세한 재현 과정은 REVISION.md 참고.
 - `TenantS3UsagePort`/`TenantS3UsageAdapter`: 이 테넌트 자신의 S3 사용량만 항상
   조회 가능한 전용 어댑터(`platform.StorageUsagePort`와 달리
   `platform.dashboard.enabled` 플래그에 의존하지 않는다).
