@@ -28,6 +28,11 @@ server:
       max-queue-capacity: 100
 
 app:
+  client-ip:
+    next-proxy:
+      enabled: true
+      signing-secret: ${CLIENT_IP_SIGNING_SECRET}
+      max-clock-skew-seconds: ${CLIENT_IP_MAX_CLOCK_SKEW_SECONDS:60}
   mail:
     from: ${MAIL_FROM}
     webhook-signing-key: ${MAILGUN_WEBHOOK_SIGNING_KEY}

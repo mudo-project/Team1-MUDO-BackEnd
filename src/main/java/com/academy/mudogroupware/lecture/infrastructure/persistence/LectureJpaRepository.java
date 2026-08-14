@@ -57,6 +57,25 @@ public interface LectureJpaRepository extends JpaRepository<LectureEntity, Long>
                                            @Param("startTime") LocalTime startTime,
                                            @Param("endTime") LocalTime endTime);
 
+    @Query("select distinct l.teacherName from LectureEntity l "
+            + "where l.deletedAt is null and l.teacherName is not null "
+            + "order by l.teacherName")
+    List<String> findDistinctTeacherNames();
+
+    @Query("select distinct l.subjectName from LectureEntity l "
+            + "where l.deletedAt is null and l.subjectName is not null "
+            + "order by l.subjectName")
+    List<String> findDistinctSubjectNames();
+
+    @Query("select distinct l.classroomCode from LectureEntity l "
+            + "where l.deletedAt is null and l.classroomCode is not null "
+            + "order by l.classroomCode")
+    List<String> findDistinctClassroomCodes();
+
+    @Query("select distinct l.termId from LectureEntity l "
+            + "where l.deletedAt is null and l.termId is not null")
+    List<Long> findDistinctTermIds();
+
     /**
      * 매출 리포트 집계 전용 조회. Lecture aggregate(schedules 포함)를 통째로 복원하지 않고
      * 필요한 열만 뽑는다 — 이전에는 findAll()로 전체를 복원하다가 스케줄러(트랜잭션 밖 호출)에서

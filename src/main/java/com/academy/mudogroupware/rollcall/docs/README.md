@@ -21,6 +21,7 @@
 |---|---|---|
 | `AttendanceEntry` | `academyId`, `lectureId`, `studentId`, `date`, `status`, `note` | 강의·학생·날짜 단위 출결 기록. |
 | `MessageTemplate` | `academyId`, `name`, `status`, `content`, `createdBy`, `createdAt`, `updatedAt` | 출결 상태별 템플릿. |
+| `AttendanceMessageSendRecord` | `lectureId`, `studentId`, `date`, `attendanceStatus`, `status`(`PENDING`/`SENDING`/`SENT`/`FAILED`/`INDETERMINATE`), `failureReason` | 강의·학생·출결날짜·출결상태 단위 SMS 발송 시도 기록. 재시도 시 중복 발송을 막는 데 쓰인다(`lectureId`+`studentId`+`date`+`attendanceStatus` 유니크) — 출결 상태가 정정되면(예: 결석→지각) 새 조합으로 취급해 재발송을 막지 않는다. `SENDING`은 "지금 이 요청이 발송 권한을 가져갔다"는 원자적 표시로, 동시 요청 중 하나만 실제 SOLAPI 호출까지 진행하게 한다. |
 
 ## 외부에 공개하는 Application API
 
@@ -44,7 +45,8 @@
 
 - 발신번호(`SOLAPI_SENDER_NUMBER`)는 솔라피 사이트에 사전 등록이 필요하다.
 - 개인 계정은 사업자 인증 없이 바로 API Key를 발급받을 수 있지만 일일 발송량이 50~500건으로 제한된다(사업자 계정은 1,000건 이상).
-- 발송 이력 저장, 실패 자동 재시도, 과금 정책은 아직 없다(향후 필요해지면 추가).
+- 학생별 발송 시도는 `AttendanceMessageSendRecordRepository`에 저장된다(2026-08-14) — 같은 (강의, 학생, 출결 날짜, 출결 상태)로 이미 발송 성공했으면 재요청이 와도 SOLAPI를 다시 호출하지 않는다. 동시 요청은 `SENDING` 상태로의 조건부 전환(`claimForSending`)을 통해 정확히 하나만 실제 호출까지 진행한다.
+- 응답을 못 받은 경우(타임아웃/연결 끊김)는 `INDETERMINATE`로 기록하고 **자동 재시도를 차단**한다 — 실제로 발송됐을 수도 있는 상태라 다시 호출하면 중복 발송 위험이 있기 때문이다. 관리자가 확인 후 강제로 재발송할 수 있는 절차/API는 아직 없다. 실패 자동 재시도 스케줄링, 과금 정책도 아직 없다.
 
 ## 발행·소비하는 Event
 
@@ -59,6 +61,14 @@
 - 문자 템플릿 본문의 `{학생명}`, `{강의명}`, `{날짜}`는 실제 SMS 발송 직전에만 치환된다. 목록 조회에서는 저장된 템플릿 원문을 그대로 보여준다.
 - `ROLLCALL:MANAGE` 권한은 출결관리 탭 접근, 출결부 조회, 출결 저장/수정, 엑셀 다운로드, 문자 발송 대상 후보 조회, 실제 문자 발송(`POST .../message-candidates/send`)에 적용되어 있다.
 - `ROLLCALL:TEMPLATE_MANAGE` 권한은 문자 템플릿 생성/수정/삭제에 적용되어 있다. 템플릿 목록 조회는 출결 담당자도 문구를 확인할 수 있도록 `ROLLCALL:MANAGE` 또는 `ROLLCALL:TEMPLATE_MANAGE` 중 하나가 있으면 허용한다.
+
+## 데이터 생명주기 정책
+
+- 출결 기록은 학생·학부모 응대와 운영 증빙에 필요한 기본 기록으로 보고, 플랜에 따라 과거 출결 보관 여부를 나누지 않는다.
+- 플랜 차등은 보관기간보다 SMS 발송량, 엑셀 다운로드, 리포트 같은 사용량·편의 기능에 둔다.
+- 현재 구현은 강의·학생·날짜 단위 출결 기록을 저장하고, 문자 발송 성공 건수는 `resource_usage_event`에 `SMS` 사용량으로 기록한다.
+- 후속 구현에서는 오래된 출결을 일반 조회와 분리한 아카이브 기준으로 관리한다.
+- 담당 도메인 기준은 [DATA_LIFECYCLE_POLICY.md](../../../../../../../../docs/DATA_LIFECYCLE_POLICY.md)를 따른다.
 
 ## 화면 구성 참고
 

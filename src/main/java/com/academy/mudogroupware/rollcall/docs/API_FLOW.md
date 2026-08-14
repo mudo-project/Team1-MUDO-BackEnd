@@ -74,16 +74,22 @@ DELETE /api/rollcall/message-templates/{templateId}
 → 학원 소속 검증 후 삭제
 ```
 
-## 실제 SMS 발송이 필요한 경우
+## 출결 안내 문자 발송
 
 ```text
-출결 저장
-→ 후보 조회
-→ 프론트에서 발송 제외 학생 체크 해제
-→ 실제 발송 API 호출
-→ SmsSenderPort
-→ 외부 SMS Adapter
-→ 발송 결과 저장
+POST /api/rollcall/lectures/{lectureId}/attendance/message-candidates/send
+→ SendAttendanceMessagesService.send
+→ GetMessageSendCandidatesUseCase.getCandidates (eligible 여부 확인)
+→ (학생별) AttendanceMessageSendRecordRepository.createOrGetExisting(lectureId, studentId, date, candidate.status())
+  → 이미 SENT면 SOLAPI 호출 없이 그 결과 반환
+  → INDETERMINATE면 SOLAPI 호출 없이 "자동 재발송 차단" 응답(관리자 확인 필요)
+→ AttendanceMessageSendRecordRepository.claimForSending(id)
+  → PENDING/FAILED일 때만 SENDING으로 원자적 전환 — 동시 요청 중 하나만 통과
+  → 실패하면(다른 요청이 이미 가져감) SOLAPI 호출 없이 "처리 중이거나 이미 처리됨" 응답
+→ SmsSenderPort.send → SolapiSmsAdapter
+  → 응답 명확(성공/실패) 또는 ResourceAccessException(INDETERMINATE)
+→ AttendanceMessageSendRecord.markResult + repository.save
+→ MessageSendResultView(학생별 성공/실패), 실제로 새로 발송한 건수만 사용량 집계
 ```
 
-마지막 네 단계는 아직 구현되지 않았다. SMS 공급자와 운영 정책이 확정된 뒤 별도 작업으로 진행한다.
+같은 (강의, 학생, 출결 날짜, 출결 상태)로 재요청이 와도 이미 발송 성공(`SENT`)한 건 중복 발송하지 않는다(이슈 #354, 2026-08-14). 출결 상태가 정정되면(예: 결석→지각) 새 조합으로 취급해 재발송을 막지 않는다.
