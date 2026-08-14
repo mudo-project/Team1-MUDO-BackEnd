@@ -7,8 +7,9 @@ cells:
     ecs_app_capacity_ratio: 0.80
 
     # AWS 리소스 생성 후 실제 값을 기록한다. null인 동안 운영 배포는 실패하도록 설계한다.
-    # 2026-08-14 실측: academy-d(sidea-test) 추가로 라이브 ASG 인스턴스 3대 기준으로 갱신.
-    # 인스턴스 1대당 cpu 2048 / mem 1913 (t3.small) x 3대.
-    ecs_registered_cpu: 6144
-    ecs_registered_memory_mib: 5739
+    # 2026-08-14 실측: academy-b, academy-c를 enabled: false로 전환(비용 절감)하면서
+    # 라이브 ASG가 2대로 스케일인됨. 현재 활성 테넌트는 academy-a, academy-d 2개뿐이라
+    # 2대 기준으로 갱신. 인스턴스 1대당 cpu 2048 / mem 1913 (t3.small) x 2대.
+    ecs_registered_cpu: 4096
+    ecs_registered_memory_mib: 3826
     rds_max_connections: 144
