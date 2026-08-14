@@ -2,6 +2,7 @@ package com.academy.mudogroupware.memo.infrastructure.persistence;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -14,6 +15,8 @@ import com.academy.mudogroupware.memo.domain.model.MemoColor;
 import jakarta.persistence.LockModeType;
 
 public interface MemoJpaRepository extends JpaRepository<MemoEntity, Long> {
+
+    Optional<MemoEntity> findFirstByUserIdOrderByCreatedAtDescIdDesc(Long userId);
 
     List<MemoEntity> findAllByUserIdOrderByCreatedAtDescIdDesc(Long userId);
 
