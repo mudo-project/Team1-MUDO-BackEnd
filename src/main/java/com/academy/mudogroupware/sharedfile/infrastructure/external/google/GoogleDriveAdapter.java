@@ -159,26 +159,23 @@ public class GoogleDriveAdapter implements SharedFileDrivePort {
         };
     }
 
-    // files.update(PATCH, name만). 확장자 유지 등 업로드 파일의 이름 규칙은 UseCase 책임이다(Task5).
+    // files.update(PATCH) 하나로 name 변경과 addParents/removeParents 이동을 함께 반영한다. name이
+    // null이면 body 자체를 생략해 이름은 건드리지 않고, toParentId가 null이면 쿼리에 부모 교체 파라미터를
+    // 안 붙여 부모는 그대로 둔다 — 두 변경을 별도 요청으로 나누면 그 사이에 부분 실패가 생길 수 있어서다.
     @Override
-    public DriveItem rename(String accessToken, String itemId, String name) {
+    public DriveItem updateItem(String accessToken, String itemId, String name, String fromParentId,
+            String toParentId) {
         try {
-            GoogleDriveUpdateFileRequest request = new GoogleDriveUpdateFileRequest(name, null);
-            return patch(accessToken, FILES_ENDPOINT + "/" + itemId + "?fields=" + FILE_FIELDS, request);
-        } catch (RestClientException e) {
-            throw new SharedFileDriveFailureException(e);
-        }
-    }
-
-    // files.update(PATCH, addParents/removeParents 쿼리). 본문 없이 부모만 교체한다(Task5).
-    @Override
-    public DriveItem move(String accessToken, String itemId, String fromParentId, String toParentId) {
-        try {
-            String uri = FILES_ENDPOINT + "/" + itemId
-                    + "?addParents=" + toParentId
-                    + "&removeParents=" + fromParentId
-                    + "&fields=" + FILE_FIELDS;
-            return patch(accessToken, uri, null);
+            StringBuilder uri = new StringBuilder(FILES_ENDPOINT).append("/").append(itemId);
+            uri.append('?');
+            if (toParentId != null) {
+                uri.append("addParents=").append(toParentId)
+                        .append("&removeParents=").append(fromParentId)
+                        .append('&');
+            }
+            uri.append("fields=").append(FILE_FIELDS);
+            GoogleDriveUpdateFileRequest request = name == null ? null : new GoogleDriveUpdateFileRequest(name, null);
+            return patch(accessToken, uri.toString(), request);
         } catch (RestClientException e) {
             throw new SharedFileDriveFailureException(e);
         }

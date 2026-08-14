@@ -235,34 +235,55 @@ class GoogleDriveAdapterTest {
     }
 
     @Test
-    void renameSendsPatchWithNewName() {
+    void updateItemSendsPatchWithNewNameOnly() {
         server.expect(requestTo(containsString("/files/item-id")))
                 .andExpect(method(HttpMethod.PATCH))
                 .andExpect(header("Authorization", "Bearer access-token"))
                 .andExpect(content().string(containsString("\"name\":\"바뀐 이름.pdf\"")))
+                .andExpect(requestTo(org.hamcrest.Matchers.not(containsString("addParents"))))
                 .andRespond(withSuccess("""
                         {"id": "item-id", "name": "바뀐 이름.pdf", "mimeType": "application/pdf",
                          "parents": ["parent-id"], "trashed": false}
                         """, MediaType.APPLICATION_JSON));
 
-        DriveItem renamed = adapter.rename("access-token", "item-id", "바뀐 이름.pdf");
+        DriveItem renamed = adapter.updateItem("access-token", "item-id", "바뀐 이름.pdf", null, null);
 
         assertThat(renamed.name()).isEqualTo("바뀐 이름.pdf");
     }
 
     @Test
-    void moveSendsPatchWithAddAndRemoveParents() {
+    void updateItemSendsPatchWithAddAndRemoveParentsOnly() {
         server.expect(requestTo(containsString("addParents=to-parent")))
                 .andExpect(requestTo(containsString("removeParents=from-parent")))
                 .andExpect(method(HttpMethod.PATCH))
+                .andExpect(content().string(""))
                 .andRespond(withSuccess("""
                         {"id": "item-id", "name": "파일.pdf", "mimeType": "application/pdf",
                          "parents": ["to-parent"], "trashed": false}
                         """, MediaType.APPLICATION_JSON));
 
-        DriveItem moved = adapter.move("access-token", "item-id", "from-parent", "to-parent");
+        DriveItem moved = adapter.updateItem("access-token", "item-id", null, "from-parent", "to-parent");
 
         assertThat(moved.parentIds()).containsExactly("to-parent");
+    }
+
+    // 이름변경+이동 원자성의 핵심 증거: 두 변경이 같은 PATCH 요청 하나에 함께 실린다(호출이 2번이 아니라 1번).
+    @Test
+    void updateItemSendsNameAndParentsInASinglePatchRequest() {
+        server.expect(requestTo(containsString("/files/item-id")))
+                .andExpect(requestTo(containsString("addParents=to-parent")))
+                .andExpect(requestTo(containsString("removeParents=from-parent")))
+                .andExpect(method(HttpMethod.PATCH))
+                .andExpect(content().string(containsString("\"name\":\"바뀐 이름.pdf\"")))
+                .andRespond(withSuccess("""
+                        {"id": "item-id", "name": "바뀐 이름.pdf", "mimeType": "application/pdf",
+                         "parents": ["to-parent"], "trashed": false}
+                        """, MediaType.APPLICATION_JSON));
+
+        DriveItem updated = adapter.updateItem("access-token", "item-id", "바뀐 이름.pdf", "from-parent", "to-parent");
+
+        assertThat(updated.name()).isEqualTo("바뀐 이름.pdf");
+        assertThat(updated.parentIds()).containsExactly("to-parent");
     }
 
     @Test

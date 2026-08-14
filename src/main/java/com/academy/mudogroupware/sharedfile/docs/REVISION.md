@@ -1,5 +1,25 @@
 # 🔄 공유파일 도메인 변경 이력
 
+## ✅ 2026-08-14 · PATCH(이름 변경+이동) 원자성 확보 — UpdateSharedFileItemUseCase 통합 (이슈 #406)
+
+### 변경 목적
+
+PR #404 CodeRabbit 리뷰(Major)에서 지적되어 이슈 #406으로 분리해뒀던 부분 실패 문제를 고친다. `PATCH /api/shared-files/items/{itemId}`에 `name`과 `parentId`를 둘 다 보내면, 예전 `SharedFileController.updateItem()`이 `RenameSharedFileItemUseCase.rename()` → `MoveSharedFileItemUseCase.move()`를 순서대로 호출했다. rename이 Drive에 실제로 반영되고 성공한 뒤 move가 실패하면(잘못된 목적지, 네트워크 오류 등) 이름은 바뀐 채로 남고 클라이언트에는 실패만 반환됐다.
+
+### 구현 변경
+
+- `SharedFileDrivePort.rename()`/`move()`를 제거하고 `updateItem(accessToken, itemId, name, fromParentId, toParentId)` 하나로 합쳤다. `GoogleDriveAdapter`를 보면 두 메서드가 애초에 같은 Drive 엔드포인트(`PATCH /files/{itemId}`, `files.update`)를 치고 있었다 — rename은 body에 `name`을, move는 body 없이 쿼리파라미터 `addParents`/`removeParents`만 썼을 뿐이다. `updateItem()`은 이 둘을 **한 번의 PATCH 요청**에 함께 실어, name이 null이면 body를 생략하고 toParentId가 null이면 쿼리파라미터를 안 붙인다.
+- `RenameSharedFileItemUseCase`/`RenameSharedFileItemService`, `MoveSharedFileItemUseCase`/`MoveSharedFileItemService`를 삭제하고, 이름 변경·이동 검증 로직(확장자 동일성 검사, 목적지 폴더·순환·루트자신 검사)을 전부 흡수한 `UpdateSharedFileItemUseCase`/`UpdateSharedFileItemService`를 신설했다. 목적지 검증(Drive 조회 불필요한 순수 비교)을 대상 itemId 조회보다 먼저 하도록 순서를 유지해, "새 부모가 자기 자신" 같은 요청은 Drive를 한 번도 안 부르고 즉시 거부한다(기존 동작 그대로).
+- `SharedFileController.updateItem()`이 `updateSharedFileItemUseCase.update(itemId, name, parentId)` 한 번만 호출한다. HTTP 요청/응답 계약(`SHAREDFILE_API.md` 9번)은 그대로다 — 내부 구현만 바뀌었다.
+- 이 두 UseCase를 부르는 곳이 Controller뿐이었어서(다른 도메인·API에서 재사용 없음) 안전하게 통째로 교체했다.
+
+### 검증
+
+- `GoogleDriveAdapterTest`에 `updateItem()` 검증 3건(name만/parent만/**둘 다 한 PATCH 요청에 함께 실림**) — 마지막 테스트가 원자성의 직접 증거다.
+- `UpdateSharedFileItemServiceTest`(12건)로 기존 `RenameSharedFileItemServiceTest`(5)+`MoveSharedFileItemServiceTest`(7) 커버리지를 이관하고, `updatesNameAndParentInASingleDrivePortCallWhenBothGiven`으로 `sharedFileDrivePort.updateItem()`이 정확히 1번만 호출됨을 검증.
+- `SharedFileControllerTest`에 둘 다 준 경우 UseCase가 1번만 호출되는 걸 검증하는 테스트 추가.
+- 전체 `./gradlew test --tests "com.academy.mudogroupware.sharedfile.*"` 통과, 전체 프로젝트 `./gradlew test` 회귀 없이 통과.
+
 ## ✅ 2026-08-14 · PR #492 CodeRabbit 리뷰 반영
 
 ### 변경 목적
