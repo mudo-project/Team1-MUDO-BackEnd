@@ -94,12 +94,23 @@ class SharedFileControllerTest {
 
     @Test
     void getRootReturnsReadyState() throws Exception {
-        when(getSharedFileRootUseCase.getRoot()).thenReturn(new SharedFileRootView(true));
+        when(getSharedFileRootUseCase.getRoot()).thenReturn(new SharedFileRootView(true, "root-id"));
 
         mockMvc.perform(get("/api/shared-files/root").with(authentication(manageUser())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("SHAREDFILE_200_1"))
-                .andExpect(jsonPath("$.data.ready").value(true));
+                .andExpect(jsonPath("$.data.ready").value(true))
+                .andExpect(jsonPath("$.data.rootId").value("root-id"));
+    }
+
+    @Test
+    void getRootReturnsNotReadyStateWithNullRootId() throws Exception {
+        when(getSharedFileRootUseCase.getRoot()).thenReturn(new SharedFileRootView(false, null));
+
+        mockMvc.perform(get("/api/shared-files/root").with(authentication(manageUser())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.ready").value(false))
+                .andExpect(jsonPath("$.data.rootId").value(org.hamcrest.Matchers.nullValue()));
     }
 
     @Test
@@ -128,13 +139,14 @@ class SharedFileControllerTest {
 
     @Test
     void recreateRootSucceedsWithRootManageAuthority() throws Exception {
-        when(recreateSharedFileRootUseCase.recreate()).thenReturn(new SharedFileRootView(true));
+        when(recreateSharedFileRootUseCase.recreate()).thenReturn(new SharedFileRootView(true, "root-id"));
 
         mockMvc.perform(post("/api/shared-files/root/recreation")
                         .with(authentication(rootManageUser()))
                         .with(csrf()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value("SHAREDFILE_200_2"));
+                .andExpect(jsonPath("$.code").value("SHAREDFILE_200_2"))
+                .andExpect(jsonPath("$.data.rootId").value("root-id"));
     }
 
     @Test
@@ -197,6 +209,20 @@ class SharedFileControllerTest {
     }
 
     @Test
+    void createFolderSucceedsWithoutParentId() throws Exception {
+        when(createSharedFolderUseCase.create(null, "수업 운영"))
+                .thenReturn(item("folder-1", "수업 운영"));
+
+        mockMvc.perform(post("/api/shared-files/folders")
+                        .with(authentication(manageUser()))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"수업 운영\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.id").value("folder-1"));
+    }
+
+    @Test
     void createFolderRejectsBlankName() throws Exception {
         mockMvc.perform(post("/api/shared-files/folders")
                         .with(authentication(manageUser()))
@@ -225,6 +251,21 @@ class SharedFileControllerTest {
     }
 
     @Test
+    void uploadItemSucceedsWithoutParentId() throws Exception {
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "수업계획.docx", "application/octet-stream", "content".getBytes());
+        when(uploadSharedFileUseCase.upload(eq(null), eq("수업계획.docx"), any(), any()))
+                .thenReturn(item("item-1", "수업계획.docx"));
+
+        mockMvc.perform(multipart("/api/shared-files/items/upload")
+                        .file(file)
+                        .with(authentication(manageUser()))
+                        .with(csrf()))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.id").value("item-1"));
+    }
+
+    @Test
     void createGoogleFileReturns201() throws Exception {
         when(createGoogleWorkspaceFileUseCase.create("root-id", "9월 수업계획", GoogleWorkspaceFileType.DOCS))
                 .thenReturn(item("gdoc-1", "9월 수업계획"));
@@ -234,6 +275,20 @@ class SharedFileControllerTest {
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"parentId\":\"root-id\",\"name\":\"9월 수업계획\",\"type\":\"DOCS\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.id").value("gdoc-1"));
+    }
+
+    @Test
+    void createGoogleFileSucceedsWithoutParentId() throws Exception {
+        when(createGoogleWorkspaceFileUseCase.create(null, "9월 수업계획", GoogleWorkspaceFileType.DOCS))
+                .thenReturn(item("gdoc-1", "9월 수업계획"));
+
+        mockMvc.perform(post("/api/shared-files/google-files")
+                        .with(authentication(manageUser()))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"9월 수업계획\",\"type\":\"DOCS\"}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.id").value("gdoc-1"));
     }

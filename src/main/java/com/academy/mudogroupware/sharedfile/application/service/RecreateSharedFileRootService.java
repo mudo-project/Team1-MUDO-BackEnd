@@ -45,7 +45,7 @@ public class RecreateSharedFileRootService implements RecreateSharedFileRootUseC
         existing.ifPresent(r -> r.replaceWith(folder.id()));
         save(root, accessToken, folder);
 
-        return new SharedFileRootView(true);
+        return new SharedFileRootView(true, folder.id());
     }
 
     // DB 저장이 실패하면(동시 재생성 경합 등) 방금 만든 Drive 폴더가 고아로 남는다. 삭제(trash)로
