@@ -26,13 +26,12 @@ public class CreateGoogleWorkspaceFileService implements CreateGoogleWorkspaceFi
     private final SharedFileDrivePort sharedFileDrivePort;
     private final GetGoogleAccessTokenUseCase getGoogleAccessTokenUseCase;
 
+    // parentId를 생략하면(null) 시스템 루트 바로 아래에 만든다 — ListSharedFileItemsService의 목록 조회와
+    // 동일한 규칙이다.
     @Override
     public SharedFileItemView create(String parentId, String name, GoogleWorkspaceFileType type) {
         if (name == null || name.isBlank()) {
             throw new SharedFileInvalidNameException();
-        }
-        if (parentId == null || parentId.isBlank()) {
-            throw new BadRequestException();
         }
         if (type == null) {
             throw new BadRequestException();
@@ -43,11 +42,12 @@ public class CreateGoogleWorkspaceFileService implements CreateGoogleWorkspaceFi
         String accessToken = getGoogleAccessTokenUseCase.getAccessToken();
 
         String rootId = root.getGoogleRootFolderId();
-        if (!parentId.equals(rootId)) {
-            sharedFileRootGuard.requireDescendant(accessToken, rootId, parentId);
+        String targetParentId = parentId == null ? rootId : parentId;
+        if (!targetParentId.equals(rootId)) {
+            sharedFileRootGuard.requireDescendant(accessToken, rootId, targetParentId);
         }
 
-        DriveItem created = sharedFileDrivePort.createWorkspaceFile(accessToken, parentId, name, type);
+        DriveItem created = sharedFileDrivePort.createWorkspaceFile(accessToken, targetParentId, name, type);
         return SharedFileItemViewMapper.toView(created);
     }
 }

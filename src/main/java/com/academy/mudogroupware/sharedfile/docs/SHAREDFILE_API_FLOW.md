@@ -83,7 +83,7 @@ SharedFileController.createFolder() ✅
     → 이름 검증 실패 시 SharedFileInvalidNameException ✅
     → SharedFileRootRepository.find() ✅ (READY 확인)
     → GetGoogleAccessTokenUseCase.getAccessToken() ✅
-    → SharedFileRootGuard.requireDescendant() ✅ (parentId, 루트 자신이면 생략)
+    → parentId 없으면 루트 ID를 기본값으로 사용, 있으면 SharedFileRootGuard.requireDescendant() ✅ (루트 자신이면 생략)
     → SharedFileDrivePort.createFolder() ✅
 ```
 
@@ -96,7 +96,7 @@ SharedFileController.uploadItem() ✅
     → 이름 검증 실패 시 SharedFileInvalidNameException ✅
     → SharedFileRootRepository.find() ✅ (READY 확인)
     → GetGoogleAccessTokenUseCase.getAccessToken() ✅
-    → SharedFileRootGuard.requireDescendant() ✅ (parentId, 루트 자신이면 생략)
+    → parentId 없으면 루트 ID를 기본값으로 사용, 있으면 SharedFileRootGuard.requireDescendant() ✅ (루트 자신이면 생략)
     → SharedFileDrivePort.upload() ✅ (GoogleDriveAdapter가 multipart/related 본문을 직접 구성해 업로드)
 ```
 
@@ -108,7 +108,7 @@ SharedFileController.createGoogleFile() ✅
     → 이름 검증 실패 시 SharedFileInvalidNameException ✅
     → SharedFileRootRepository.find() ✅ (READY 확인)
     → GetGoogleAccessTokenUseCase.getAccessToken() ✅
-    → SharedFileRootGuard.requireDescendant() ✅ (parentId, 루트 자신이면 생략)
+    → parentId 없으면 루트 ID를 기본값으로 사용, 있으면 SharedFileRootGuard.requireDescendant() ✅ (루트 자신이면 생략)
     → SharedFileDrivePort.createWorkspaceFile(GoogleWorkspaceFileType) ✅
 ```
 

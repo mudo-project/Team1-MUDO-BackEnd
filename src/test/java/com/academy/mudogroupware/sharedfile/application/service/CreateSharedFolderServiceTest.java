@@ -23,7 +23,6 @@ import com.academy.mudogroupware.sharedfile.domain.exception.SharedFileOutOfRoot
 import com.academy.mudogroupware.sharedfile.domain.exception.SharedFileRootUnavailableException;
 import com.academy.mudogroupware.sharedfile.domain.model.SharedFileRoot;
 import com.academy.mudogroupware.sharedfile.domain.repository.SharedFileRootRepository;
-import com.academy.mudogroupware.global.domain.common.exception.BadRequestException;
 
 class CreateSharedFolderServiceTest {
 
@@ -54,11 +53,17 @@ class CreateSharedFolderServiceTest {
     }
 
     @Test
-    void throwsWhenParentIdIsNull() {
-        assertThatThrownBy(() -> service.create(null, "새 폴더"))
-                .isInstanceOf(BadRequestException.class);
+    void createsFolderUnderRootWhenParentIdIsOmitted() {
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
+        when(drivePort.createFolder("access-token", "root-id", "새 폴더")).thenReturn(
+                new DriveItem("new-id", "새 폴더", "application/vnd.google-apps.folder",
+                        List.of("root-id"), null, false, null, false));
 
-        verify(drivePort, never()).createFolder(any(), any(), any());
+        SharedFileItemView view = service.create(null, "새 폴더");
+
+        assertThat(view.id()).isEqualTo("new-id");
+        verify(rootGuard, never()).requireDescendant(any(), any(), any());
     }
 
     @Test

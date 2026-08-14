@@ -55,11 +55,17 @@ class CreateGoogleWorkspaceFileServiceTest {
     }
 
     @Test
-    void throwsWhenParentIdIsNull() {
-        assertThatThrownBy(() -> service.create(null, "새 문서", GoogleWorkspaceFileType.DOCS))
-                .isInstanceOf(BadRequestException.class);
+    void createsWorkspaceFileUnderRootWhenParentIdIsOmitted() {
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
+        when(drivePort.createWorkspaceFile("access-token", "root-id", "새 문서", GoogleWorkspaceFileType.DOCS))
+                .thenReturn(new DriveItem("new-id", "새 문서", "application/vnd.google-apps.document",
+                        List.of("root-id"), null, false, null, false));
 
-        verify(drivePort, never()).createWorkspaceFile(any(), any(), any(), any());
+        SharedFileItemView view = service.create(null, "새 문서", GoogleWorkspaceFileType.DOCS);
+
+        assertThat(view.id()).isEqualTo("new-id");
+        verify(rootGuard, never()).requireDescendant(any(), any(), any());
     }
 
     @Test
