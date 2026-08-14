@@ -2,11 +2,13 @@
 
 ## 2026-08-14 - 출결 SMS 발송 재시도 중복 방지 (#354)
 
-- 학생별 발송 시도를 저장하는 `attendance_message_send_record` 테이블을 추가해, 같은 (강의, 학생, 출결 날짜)로 이미 발송에 성공했으면 재요청이 와도 SOLAPI를 다시 호출하지 않고 그 결과를 그대로 돌려주도록 변경했다.
-- SOLAPI 호출 실패를 "명확한 실패"와 "응답을 못 받아 결과를 모름"(타임아웃/연결 끊김)으로 구분해서 기록한다. 후자는 실제로는 발송됐을 수 있어 재시도를 막지 않되, 상태를 남겨 추적할 수 있게 했다.
-- (같은 날 셀프 리뷰·코드래빗 리뷰 반영 추가) `SENDING` 상태와 조건부 UPDATE로 동시 요청 중 하나만 실제 SOLAPI를 호출하도록 강화하고, `INDETERMINATE`는 자동 재시도 대상에서 제외했다. 이미 발송된 건을 스킵할 때 사용량 집계가 중복 카운트되던 버그를 고치고, 실패 사유(`failure_reason`)를 발송 이력에 저장하도록 추가했다.
-- (같은 날 추가) 유니크 키에 `attendance_status`를 포함시켜, 출결이 정정되면(결석→지각 등) 새 발송으로 취급해 재발송을 막지 않도록 변경했다. 안 쓰이던 `now` 파라미터 정리, `EntityManager.clear()` 주석도 정확하게 고쳤다.
-- (같은 날 코드래빗 2차 리뷰 반영) `claimForSending`에 빠져있던 `@Transactional`을 추가해 운영 DB에서 실패할 수 있던 문제를 막고, `claimed_at` 컬럼으로 `SENDING` 상태에서 서버가 죽어도 5분 뒤엔 재시도가 가능하게 했다. 완료 로그의 실패 건수 계산 오류도 수정했다.
+**최종 정책**: 학생별 발송 시도를 `attendance_message_send_record`(유니크 키: 강의+학생+출결날짜+출결상태)에 저장한다. 상태는 `PENDING`/`SENDING`/`SENT`/`FAILED`/`INDETERMINATE` 다섯 가지다. 이미 `SENT`면 재요청이 와도 SOLAPI를 다시 호출하지 않는다. `INDETERMINATE`(SOLAPI 응답을 못 받아 결과를 모름)는 **자동 재시도를 차단**하고 관리자 확인이 필요하다 — 실제로는 이미 발송됐을 수 있어 다시 호출하면 중복 발송 위험이 있기 때문이다. 출결이 정정되면(결석→지각 등) 새 조합으로 취급해 재발송을 막지 않는다.
+
+- `attendance_message_send_record` 테이블 추가, 이슈 #354 해결.
+- `SolapiSmsAdapter`가 SOLAPI 호출 실패를 "명확한 실패"(`FAILED`)와 "응답을 못 받아 결과를 모름"(`INDETERMINATE`, 타임아웃/연결 끊김)으로 구분해서 기록한다.
+- (셀프 리뷰·코드래빗 리뷰 반영) `SENDING` 상태와 조건부 UPDATE(`claimForSending`)로 동시 요청 중 하나만 실제 SOLAPI를 호출하도록 강화. 이미 발송된 건을 스킵할 때 사용량 집계가 중복 카운트되던 버그 수정, 실패 사유(`failure_reason`) 저장 추가.
+- 유니크 키에 `attendance_status` 추가. 안 쓰이던 `now` 파라미터 정리.
+- (코드래빗 2차 리뷰 반영) `claimForSending`에 빠져있던 `@Transactional` 추가(운영 DB에서 실패할 수 있던 문제). `claimed_at`으로 `SENDING` 중 서버가 죽은 레코드를 5분 뒤 감지해 `INDETERMINATE`로 전환(자동 재발송은 여전히 안 함, 관리자 확인 필요). 완료 로그의 실패 건수 계산 오류 수정.
 
 ## 2026-08-11 - 문자 템플릿 변수 치환
 

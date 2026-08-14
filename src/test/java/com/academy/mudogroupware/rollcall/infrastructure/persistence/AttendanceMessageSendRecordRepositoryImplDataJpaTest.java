@@ -134,19 +134,54 @@ class AttendanceMessageSendRecordRepositoryImplDataJpaTest {
 
     @Test
     @Transactional
-    void claimForSendingSucceedsForAStaleSendingRecord() {
+    void neverReclaimsAStaleSendingRecordForAnotherLiveSendAttempt() {
         AttendanceMessageSendRecord record = attendanceMessageSendRecordRepository
                 .createOrGetExisting(1L, 10L, DATE, ATTENDANCE_STATUS);
         attendanceMessageSendRecordRepository.claimForSending(record.getId());
-        // 발송 도중 프로세스가 죽은 상황을 흉내낸다: claimed_at을 충분히 오래된 시각으로 되돌린다.
-        entityManager.createQuery("update AttendanceMessageSendRecordEntity e set e.claimedAt = :old where e.id = :id")
-                .setParameter("old", LocalDateTime.now().minusMinutes(10))
-                .setParameter("id", record.getId())
-                .executeUpdate();
-        entityManager.clear();
+        backdateClaimedAt(record.getId(), LocalDateTime.now().minusMinutes(10));
 
+        // claimForSending 자체는 만료됐다고 다시 SENDING을 내주지 않는다 — 공급자 상태 조회 없이
+        // 시간만으로 재발송을 허용하면, 원래 요청이 실제로는 살아있는 경우 중복 발송이 될 수 있다.
         boolean reclaimed = attendanceMessageSendRecordRepository.claimForSending(record.getId());
 
-        assertThat(reclaimed).isTrue();
+        assertThat(reclaimed).isFalse();
+    }
+
+    @Test
+    @Transactional
+    void treatsAStaleSendingRecordAsIndeterminateOnNextLookupInsteadOfAutoResending() {
+        AttendanceMessageSendRecord record = attendanceMessageSendRecordRepository
+                .createOrGetExisting(1L, 10L, DATE, ATTENDANCE_STATUS);
+        attendanceMessageSendRecordRepository.claimForSending(record.getId());
+        backdateClaimedAt(record.getId(), LocalDateTime.now().minusMinutes(10));
+
+        AttendanceMessageSendRecord reconciled = attendanceMessageSendRecordRepository
+                .createOrGetExisting(1L, 10L, DATE, ATTENDANCE_STATUS);
+
+        assertThat(reconciled.getId()).isEqualTo(record.getId());
+        assertThat(reconciled.getStatus()).isEqualTo(AttendanceMessageSendStatus.INDETERMINATE);
+        assertThat(reconciled.isIndeterminate()).isTrue();
+    }
+
+    @Test
+    @Transactional
+    void doesNotReconcileASendingRecordThatIsStillWithinTheClaimWindow() {
+        AttendanceMessageSendRecord record = attendanceMessageSendRecordRepository
+                .createOrGetExisting(1L, 10L, DATE, ATTENDANCE_STATUS);
+        attendanceMessageSendRecordRepository.claimForSending(record.getId());
+
+        AttendanceMessageSendRecord result = attendanceMessageSendRecordRepository
+                .createOrGetExisting(1L, 10L, DATE, ATTENDANCE_STATUS);
+
+        assertThat(result.getStatus()).isEqualTo(AttendanceMessageSendStatus.SENDING);
+    }
+
+    private void backdateClaimedAt(Long id, LocalDateTime claimedAt) {
+        // 발송 도중 프로세스가 죽은 상황을 흉내낸다: claimed_at을 충분히 오래된 시각으로 되돌린다.
+        entityManager.createQuery("update AttendanceMessageSendRecordEntity e set e.claimedAt = :claimedAt where e.id = :id")
+                .setParameter("claimedAt", claimedAt)
+                .setParameter("id", id)
+                .executeUpdate();
+        entityManager.clear();
     }
 }

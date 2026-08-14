@@ -26,10 +26,8 @@ public interface AttendanceMessageSendRecordJpaRepository
     @Transactional
     @Modifying(clearAutomatically = true)
     @Query("update AttendanceMessageSendRecordEntity e set e.status = :sending, e.claimedAt = :now "
-            + "where e.id = :id and (e.status in :claimableStatuses "
-            + "or (e.status = :sendingStatus and e.claimedAt < :staleBefore))")
+            + "where e.id = :id and e.status in :claimableStatuses")
     int claimForSending(@Param("id") Long id, @Param("sending") AttendanceMessageSendStatus sending,
                         @Param("claimableStatuses") List<AttendanceMessageSendStatus> claimableStatuses,
-                        @Param("sendingStatus") AttendanceMessageSendStatus sendingStatus,
-                        @Param("staleBefore") LocalDateTime staleBefore, @Param("now") LocalDateTime now);
+                        @Param("now") LocalDateTime now);
 }
