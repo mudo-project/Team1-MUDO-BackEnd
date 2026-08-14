@@ -37,16 +37,12 @@ app:
     connect-timeout: ${MAILGUN_CONNECT_TIMEOUT:PT5S}
     read-timeout: ${MAILGUN_READ_TIMEOUT:PT10S}
     sending-timeout: ${MAIL_SENDING_TIMEOUT:PT15M}
-    recovery-interval-ms: ${MAIL_RECOVERY_INTERVAL_MS:300000}
-    dispatch-interval-ms: ${MAIL_DISPATCH_INTERVAL_MS:10000}
     dispatch-batch-size: ${MAIL_DISPATCH_BATCH_SIZE:20}
     max-attempts: ${MAIL_MAX_ATTEMPTS:3}
     retry-base-delay: ${MAIL_RETRY_BASE_DELAY:PT1M}
     retry-max-delay: ${MAIL_RETRY_MAX_DELAY:PT30M}
     reconcile-after: ${MAIL_RECONCILE_AFTER:PT10M}
     reconcile-cooldown: ${MAIL_RECONCILE_COOLDOWN:PT5M}
-    reconcile-interval-ms: ${MAIL_RECONCILE_INTERVAL_MS:300000}
-    metrics-interval-ms: ${MAIL_METRICS_INTERVAL_MS:60000}
   instance:
     tenant-id: ${TENANT_ID:local}
     plan: ${TENANT_PLAN:local}
