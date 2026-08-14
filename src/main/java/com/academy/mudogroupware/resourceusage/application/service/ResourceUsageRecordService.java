@@ -8,6 +8,8 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.academy.mudogroupware.resourceusage.application.command.RecordAiTokenUsageCommand;
+import com.academy.mudogroupware.resourceusage.application.command.RecordMailUsageCommand;
+import com.academy.mudogroupware.resourceusage.application.command.RecordS3StorageUsageCommand;
 import com.academy.mudogroupware.resourceusage.application.command.RecordSmsUsageCommand;
 import com.academy.mudogroupware.resourceusage.application.port.ResourceUsageRecorder;
 import com.academy.mudogroupware.resourceusage.domain.model.ResourceUsageEvent;
@@ -45,6 +47,24 @@ public class ResourceUsageRecordService implements ResourceUsageRecorder {
             return;
         }
         resourceUsageRepository.save(ResourceUsageEvent.smsMessages(command.feature(), command.sentCount(), now()));
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void recordS3Storage(RecordS3StorageUsageCommand command) {
+        if (command == null || command.bytes() <= 0) {
+            return;
+        }
+        resourceUsageRepository.save(ResourceUsageEvent.s3Storage(command.feature(), command.bytes(), now()));
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void recordMailUsage(RecordMailUsageCommand command) {
+        if (command == null || command.count() <= 0) {
+            return;
+        }
+        resourceUsageRepository.save(ResourceUsageEvent.mail(command.feature(), command.count(), now()));
     }
 
     private LocalDateTime now() {
