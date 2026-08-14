@@ -1,5 +1,7 @@
 package com.academy.mudogroupware.dataimport.infrastructure.external.gemini;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -16,6 +18,11 @@ import com.academy.mudogroupware.dataimport.application.port.ImportAnalysisPort;
 import com.academy.mudogroupware.dataimport.application.port.ParsedImportRow;
 import com.academy.mudogroupware.dataimport.application.port.ParsedImportSheet;
 import com.academy.mudogroupware.global.infrastructure.observability.ai.GeminiTokenUsageTracker;
+import com.academy.mudogroupware.planquota.application.service.CurrentPlanProvider;
+import com.academy.mudogroupware.planquota.domain.exception.PlanLimitErrorCode;
+import com.academy.mudogroupware.planquota.domain.exception.PlanLimitExceededException;
+import com.academy.mudogroupware.resourceusage.application.port.ResourceUsageQueryPort;
+import com.academy.mudogroupware.resourceusage.domain.model.ResourceUsageType;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -56,24 +63,33 @@ public class GeminiImportAnalysisAdapter implements ImportAnalysisPort {
     private final DataImportGeminiProperties geminiProperties;
     private final ObjectMapper objectMapper;
     private final GeminiTokenUsageTracker tokenUsageTracker;
+    private final ResourceUsageQueryPort resourceUsageQueryPort;
+    private final CurrentPlanProvider currentPlanProvider;
 
     @Autowired
     public GeminiImportAnalysisAdapter(DataImportGeminiProperties geminiProperties,
                                        ObjectMapper objectMapper,
-                                       GeminiTokenUsageTracker tokenUsageTracker) {
+                                       GeminiTokenUsageTracker tokenUsageTracker,
+                                       ResourceUsageQueryPort resourceUsageQueryPort,
+                                       CurrentPlanProvider currentPlanProvider) {
         this(RestClient.builder()
                 .baseUrl("https://generativelanguage.googleapis.com")
-                .build(), geminiProperties, objectMapper, tokenUsageTracker);
+                .build(), geminiProperties, objectMapper, tokenUsageTracker,
+                resourceUsageQueryPort, currentPlanProvider);
     }
 
     GeminiImportAnalysisAdapter(RestClient geminiRestClient,
                                 DataImportGeminiProperties geminiProperties,
                                 ObjectMapper objectMapper,
-                                GeminiTokenUsageTracker tokenUsageTracker) {
+                                GeminiTokenUsageTracker tokenUsageTracker,
+                                ResourceUsageQueryPort resourceUsageQueryPort,
+                                CurrentPlanProvider currentPlanProvider) {
         this.geminiRestClient = geminiRestClient;
         this.geminiProperties = geminiProperties;
         this.objectMapper = objectMapper;
         this.tokenUsageTracker = tokenUsageTracker;
+        this.resourceUsageQueryPort = resourceUsageQueryPort;
+        this.currentPlanProvider = currentPlanProvider;
     }
 
     @Override
@@ -82,6 +98,7 @@ public class GeminiImportAnalysisAdapter implements ImportAnalysisPort {
         if (safeSheets.isEmpty() || isBlank(geminiProperties.apiKey())) {
             return safeSheets;
         }
+        checkAiTokenLimit();
 
         try {
             GeminiImportAnalysisResponse response = geminiRestClient.post()
@@ -104,6 +121,18 @@ public class GeminiImportAnalysisAdapter implements ImportAnalysisPort {
         } catch (RuntimeException | JsonProcessingException e) {
             log.warn("event=data_import_ai_analysis_fallback reason={}", e.getMessage());
             return safeSheets;
+        }
+    }
+
+    private void checkAiTokenLimit() {
+        LocalDate today = LocalDate.now();
+        LocalDateTime from = today.withDayOfMonth(1).atStartOfDay();
+        LocalDateTime to = from.plusMonths(1);
+        long current = resourceUsageQueryPort.sumByTypeAndPeriod(ResourceUsageType.AI_TOKEN, from, to);
+        long limit = currentPlanProvider.currentLimits().aiTokenMonthlyLimit();
+        if (current >= limit) {
+            throw new PlanLimitExceededException(PlanLimitErrorCode.AI_TOKEN_LIMIT_EXCEEDED,
+                    currentPlanProvider.currentPlan(), limit, current);
         }
     }
 
