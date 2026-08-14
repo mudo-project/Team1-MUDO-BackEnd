@@ -34,6 +34,7 @@ import com.academy.mudogroupware.lecture.presentation.api.request.UpdateLectureR
 import com.academy.mudogroupware.lecture.presentation.api.response.LectureCreateResponse;
 import com.academy.mudogroupware.lecture.presentation.api.response.LectureDetailResponse;
 import com.academy.mudogroupware.lecture.presentation.api.response.LectureSummaryResponse;
+import com.academy.mudogroupware.lecture.presentation.api.response.LectureTermResponse;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -94,6 +95,41 @@ public class LectureController {
     public ResponseEntity<GlobalApiResponse<List<String>>> getTeacherNames() {
         return ResponseEntity.ok(GlobalApiResponse.ok(LectureResponseCode.LECTURE_TEACHER_NAMES_RETRIEVED,
                 lectureQueryUseCase.getTeacherNames()));
+    }
+
+    @Operation(summary = "강의 과목 목록 조회",
+            description = "삭제되지 않은 강의에 실제로 등록된 과목명을 중복 없이 조회한다. "
+                    + "강의 목록 검색 화면의 과목 셀렉트박스를 채우는 용도로, 여기서 반환된 이름으로 "
+                    + "강의 목록 조회(subjectName)를 검색하면 항상 결과가 존재함을 보장한다.")
+    @PreAuthorize("hasAnyAuthority('LECTURE:READ', 'LECTURE:MANAGE')")
+    @GetMapping("/subjects")
+    public ResponseEntity<GlobalApiResponse<List<String>>> getSubjectNames() {
+        return ResponseEntity.ok(GlobalApiResponse.ok(LectureResponseCode.LECTURE_SUBJECT_NAMES_RETRIEVED,
+                lectureQueryUseCase.getSubjectNames()));
+    }
+
+    @Operation(summary = "강의실 목록 조회",
+            description = "삭제되지 않은 강의에 실제로 등록된 교실 코드를 중복 없이 조회한다. "
+                    + "강의 목록 검색 화면의 교실 셀렉트박스를 채우는 용도로, 여기서 반환된 코드로 "
+                    + "강의 목록 조회(classroomCode)를 검색하면 항상 결과가 존재함을 보장한다.")
+    @PreAuthorize("hasAnyAuthority('LECTURE:READ', 'LECTURE:MANAGE')")
+    @GetMapping("/classrooms")
+    public ResponseEntity<GlobalApiResponse<List<String>>> getClassroomCodes() {
+        return ResponseEntity.ok(GlobalApiResponse.ok(LectureResponseCode.LECTURE_CLASSROOM_CODES_RETRIEVED,
+                lectureQueryUseCase.getClassroomCodes()));
+    }
+
+    @Operation(summary = "강의 시즌 목록 조회",
+            description = "삭제되지 않은 강의에 실제로 등록된 시즌(term)을 중복 없이, 이름순으로 조회한다. "
+                    + "강의 목록 검색 화면의 시즌 셀렉트박스를 채우는 용도로, 여기서 반환된 termId로 "
+                    + "강의 목록 조회(termId)를 검색하면 항상 결과가 존재함을 보장한다.")
+    @PreAuthorize("hasAnyAuthority('LECTURE:READ', 'LECTURE:MANAGE')")
+    @GetMapping("/terms")
+    public ResponseEntity<GlobalApiResponse<List<LectureTermResponse>>> getTerms() {
+        List<LectureTermResponse> data = lectureQueryUseCase.getTerms().stream()
+                .map(LectureTermResponse::from)
+                .toList();
+        return ResponseEntity.ok(GlobalApiResponse.ok(LectureResponseCode.LECTURE_TERMS_RETRIEVED, data));
     }
 
     @Operation(summary = "강의 상세 조회", description = "강의 기본 정보와 수강생 목록을 조회한다.")

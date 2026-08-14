@@ -211,6 +211,47 @@ class LectureRepositoryImplDataJpaTest {
         assertThat(teacherNames).containsExactly("김선생", "이선생");
     }
 
+    @Test
+    void findsDistinctSubjectNamesExcludingDeletedAndBlank() {
+        repository.save(lectureWithSubject("601", "수학"));
+        repository.save(lectureWithSubject("602", "수학"));
+        repository.save(lectureWithSubject("603", "영어"));
+        repository.save(lectureWithSubject("604", null));
+        Lecture deleted = repository.save(lectureWithSubject("605", "과학"));
+        repository.deleteById(deleted.getId(), LocalDateTime.of(2026, 8, 13, 10, 0));
+
+        List<String> subjectNames = repository.findDistinctSubjectNames();
+
+        assertThat(subjectNames).containsExactly("수학", "영어");
+    }
+
+    @Test
+    void findsDistinctClassroomCodesExcludingDeleted() {
+        repository.save(lectureWithClassroom("601"));
+        repository.save(lectureWithClassroom("601"));
+        repository.save(lectureWithClassroom("602"));
+        Lecture deleted = repository.save(lectureWithClassroom("603"));
+        repository.deleteById(deleted.getId(), LocalDateTime.of(2026, 8, 13, 10, 0));
+
+        List<String> classroomCodes = repository.findDistinctClassroomCodes();
+
+        assertThat(classroomCodes).containsExactly("601", "602");
+    }
+
+    @Test
+    void findsDistinctTermIdsExcludingDeleted() {
+        repository.save(lectureWithTerm("601", 10L));
+        repository.save(lectureWithTerm("602", 10L));
+        repository.save(lectureWithTerm("603", 20L));
+        repository.save(lectureWithTerm("604", null));
+        Lecture deleted = repository.save(lectureWithTerm("605", 30L));
+        repository.deleteById(deleted.getId(), LocalDateTime.of(2026, 8, 13, 10, 0));
+
+        List<Long> termIds = repository.findDistinctTermIds();
+
+        assertThat(termIds).containsExactlyInAnyOrder(10L, 20L);
+    }
+
     private Lecture lectureWithTeacher(String classroomCode, String teacherName) {
         return Lecture.create(
                 "Lecture " + classroomCode,
@@ -222,6 +263,60 @@ class LectureRepositoryImplDataJpaTest {
                 null,
                 null,
                 teacherName,
+                "Math",
+                null,
+                null,
+                List.of(LectureSchedule.create(DayOfWeek.MONDAY, LocalTime.of(19, 0), LocalTime.of(21, 0))),
+                LocalDateTime.of(2026, 8, 11, 9, 0));
+    }
+
+    private Lecture lectureWithSubject(String classroomCode, String subjectName) {
+        return Lecture.create(
+                "Lecture " + classroomCode,
+                ClassType.CLASS,
+                classroomCode,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "Teacher",
+                subjectName,
+                null,
+                null,
+                List.of(LectureSchedule.create(DayOfWeek.MONDAY, LocalTime.of(19, 0), LocalTime.of(21, 0))),
+                LocalDateTime.of(2026, 8, 11, 9, 0));
+    }
+
+    private Lecture lectureWithClassroom(String classroomCode) {
+        return Lecture.create(
+                "Lecture " + classroomCode,
+                ClassType.CLASS,
+                classroomCode,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "Teacher",
+                "Math",
+                null,
+                null,
+                List.of(LectureSchedule.create(DayOfWeek.MONDAY, LocalTime.of(19, 0), LocalTime.of(21, 0))),
+                LocalDateTime.of(2026, 8, 11, 9, 0));
+    }
+
+    private Lecture lectureWithTerm(String classroomCode, Long termId) {
+        return Lecture.create(
+                "Lecture " + classroomCode,
+                ClassType.CLASS,
+                classroomCode,
+                null,
+                termId,
+                null,
+                null,
+                null,
+                "Teacher",
                 "Math",
                 null,
                 null,
