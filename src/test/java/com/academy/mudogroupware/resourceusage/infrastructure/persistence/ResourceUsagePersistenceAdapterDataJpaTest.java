@@ -3,57 +3,53 @@ package com.academy.mudogroupware.resourceusage.infrastructure.persistence;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 
-import com.academy.mudogroupware.global.infrastructure.config.TimeConfig;
 import com.academy.mudogroupware.resourceusage.domain.model.ResourceUsageEvent;
-import com.academy.mudogroupware.resourceusage.domain.model.ResourceUsageFeatureSummary;
 import com.academy.mudogroupware.resourceusage.domain.model.ResourceUsageType;
 
 @DataJpaTest(properties = "spring.jpa.hibernate.ddl-auto=create-drop")
-@Import({ResourceUsagePersistenceAdapter.class, TimeConfig.class})
+@Import({ResourceUsagePersistenceAdapter.class, ResourceUsagePersistenceAdapterDataJpaTest.AuditingConfig.class})
 class ResourceUsagePersistenceAdapterDataJpaTest {
 
+    @TestConfiguration
+    @EnableJpaAuditing
+    static class AuditingConfig {
+    }
+
+    private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 15, 10, 0);
+
     @Autowired
-    private ResourceUsagePersistenceAdapter adapter;
+    private ResourceUsagePersistenceAdapter resourceUsageRepository;
 
     @Test
-    void savesEventsAndSummarizesOnlyRequestedMonth() {
-        adapter.save(ResourceUsageEvent.aiTokens("approval-attachment-summary", "GEMINI", "gemini-test",
-                100, 20, 120, LocalDateTime.of(2026, 8, 5, 10, 0)));
-        adapter.save(ResourceUsageEvent.aiTokens("approval-attachment-summary", "GEMINI", "gemini-test",
-                200, 30, 230, LocalDateTime.of(2026, 8, 6, 10, 0)));
-        adapter.save(ResourceUsageEvent.smsMessages("rollcall-attendance-sms", 3,
-                LocalDateTime.of(2026, 8, 7, 10, 0)));
-        adapter.save(ResourceUsageEvent.aiTokens("approval-attachment-summary", "GEMINI", "gemini-test",
-                999, 999, 1998, LocalDateTime.of(2026, 9, 1, 0, 0)));
+    void sumByTypeAddsAllEventsRegardlessOfTime() {
+        resourceUsageRepository.save(ResourceUsageEvent.s3Storage("a", 100L, NOW.minusMonths(3)));
+        resourceUsageRepository.save(ResourceUsageEvent.s3Storage("b", 200L, NOW));
+        resourceUsageRepository.save(ResourceUsageEvent.smsMessages("c", 5L, NOW));
 
-        List<ResourceUsageFeatureSummary> summaries = adapter.summarizeByFeature(
-                LocalDateTime.of(2026, 8, 1, 0, 0),
-                LocalDateTime.of(2026, 9, 1, 0, 0));
+        assertThat(resourceUsageRepository.sumByType(ResourceUsageType.S3_STORAGE)).isEqualTo(300L);
+    }
 
-        assertThat(summaries).hasSize(2);
-        assertThat(summaries).filteredOn(summary -> summary.resourceType() == ResourceUsageType.AI_TOKEN)
-                .singleElement()
-                .satisfies(summary -> {
-                    assertThat(summary.feature()).isEqualTo("approval-attachment-summary");
-                    assertThat(summary.eventCount()).isEqualTo(2);
-                    assertThat(summary.totalAmount()).isEqualTo(350);
-                    assertThat(summary.promptTokens()).isEqualTo(300);
-                    assertThat(summary.outputTokens()).isEqualTo(50);
-                    assertThat(summary.totalTokens()).isEqualTo(350);
-                });
-        assertThat(summaries).filteredOn(summary -> summary.resourceType() == ResourceUsageType.SMS)
-                .singleElement()
-                .satisfies(summary -> {
-                    assertThat(summary.feature()).isEqualTo("rollcall-attendance-sms");
-                    assertThat(summary.eventCount()).isEqualTo(1);
-                    assertThat(summary.totalAmount()).isEqualTo(3);
-                });
+    @Test
+    void sumByTypeAndPeriodOnlyCountsWithinRange() {
+        resourceUsageRepository.save(ResourceUsageEvent.smsMessages("a", 10L, NOW.minusMonths(1)));
+        resourceUsageRepository.save(ResourceUsageEvent.smsMessages("b", 20L, NOW));
+
+        long sum = resourceUsageRepository.sumByTypeAndPeriod(
+                ResourceUsageType.SMS, NOW.toLocalDate().atStartOfDay(), NOW.plusDays(1));
+
+        assertThat(sum).isEqualTo(20L);
+    }
+
+    @Test
+    void sumsAreZeroWhenNoEvents() {
+        assertThat(resourceUsageRepository.sumByType(ResourceUsageType.MAIL)).isZero();
     }
 }

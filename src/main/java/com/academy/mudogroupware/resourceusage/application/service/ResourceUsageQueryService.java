@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.academy.mudogroupware.resourceusage.application.port.ResourceUsageQueryPort;
 import com.academy.mudogroupware.resourceusage.application.query.MonthlyResourceUsageView;
 import com.academy.mudogroupware.resourceusage.application.query.ResourceUsageResourceSummaryView;
 import com.academy.mudogroupware.resourceusage.application.usecase.GetMonthlyResourceUsageUseCase;
@@ -21,7 +22,7 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-public class ResourceUsageQueryService implements GetMonthlyResourceUsageUseCase {
+public class ResourceUsageQueryService implements GetMonthlyResourceUsageUseCase, ResourceUsageQueryPort {
 
     private final ResourceUsageRepository resourceUsageRepository;
 
@@ -48,5 +49,15 @@ public class ResourceUsageQueryService implements GetMonthlyResourceUsageUseCase
                 .mapToLong(ResourceUsageFeatureSummary::totalAmount)
                 .sum();
         return new ResourceUsageResourceSummaryView(type, type.unit(), totalAmount, features);
+    }
+
+    @Override
+    public long sumByType(ResourceUsageType type) {
+        return resourceUsageRepository.sumByType(type);
+    }
+
+    @Override
+    public long sumByTypeAndPeriod(ResourceUsageType type, LocalDateTime fromInclusive, LocalDateTime toExclusive) {
+        return resourceUsageRepository.sumByTypeAndPeriod(type, fromInclusive, toExclusive);
     }
 }
