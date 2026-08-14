@@ -17,10 +17,18 @@ public class PayrollServiceLogAspect {
     String action = snake(joinPoint.getSignature().getDeclaringType().getSimpleName()) + "_"
         + snake(joinPoint.getSignature().getName());
     Object key = firstSafeKey(joinPoint.getArgs());
-    log.info("event=payroll_{}_시작 requestKey={}", action, key);
+    if (isPollingLog(action)) {
+      log.debug("event=payroll_{}_시작 requestKey={}", action, key);
+    } else {
+      log.info("event=payroll_{}_시작 requestKey={}", action, key);
+    }
     try {
       Object result = joinPoint.proceed();
-      log.info("event=payroll_{}_완료 requestKey={}, result=success", action, key);
+      if (isBatchSizeLookup(action) || isEmptyDispatch(action, result)) {
+        log.debug("event=payroll_{}_완료 requestKey={}, result=success", action, key);
+      } else {
+        log.info("event=payroll_{}_완료 requestKey={}, result=success", action, key);
+      }
       return result;
     } catch (Throwable e) {
       log.warn("event=payroll_{}_실패 requestKey={}, errorType={}",
@@ -34,6 +42,21 @@ public class PayrollServiceLogAspect {
     Object first = arguments[0];
     return first instanceof Number || first instanceof java.time.temporal.Temporal
         ? first : first.getClass().getSimpleName();
+  }
+
+  private boolean isPollingLog(String action) {
+    return action.equals("payroll_statement_email_dispatch_service_dispatch")
+        || action.equals("payroll_statement_email_policy_dispatch_batch_size");
+  }
+
+  private boolean isBatchSizeLookup(String action) {
+    return action.equals("payroll_statement_email_policy_dispatch_batch_size");
+  }
+
+  private boolean isEmptyDispatch(String action, Object result) {
+    return action.equals("payroll_statement_email_dispatch_service_dispatch")
+        && result instanceof Integer count
+        && count == 0;
   }
 
   private String snake(String value) {
