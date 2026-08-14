@@ -11,6 +11,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import com.academy.mudogroupware.resourceusage.application.command.RecordAiTokenUsageCommand;
+import com.academy.mudogroupware.resourceusage.application.command.RecordMailUsageCommand;
+import com.academy.mudogroupware.resourceusage.application.command.RecordS3StorageUsageCommand;
 import com.academy.mudogroupware.resourceusage.application.command.RecordSmsUsageCommand;
 import com.academy.mudogroupware.resourceusage.application.port.ResourceUsageRecorder;
 
@@ -114,6 +116,14 @@ public class GeminiTokenUsageTracker {
 
         @Override
         public void recordSmsMessages(RecordSmsUsageCommand command) {
+        }
+
+        @Override
+        public void recordS3Storage(RecordS3StorageUsageCommand command) {
+        }
+
+        @Override
+        public void recordMailUsage(RecordMailUsageCommand command) {
         }
     }
 }

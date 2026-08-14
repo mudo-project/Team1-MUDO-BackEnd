@@ -7,6 +7,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.academy.mudogroupware.global.domain.auth.AccountType;
+import com.academy.mudogroupware.planquota.application.service.CurrentPlanProvider;
+import com.academy.mudogroupware.planquota.domain.exception.PlanLimitErrorCode;
+import com.academy.mudogroupware.planquota.domain.exception.PlanLimitExceededException;
 import com.academy.mudogroupware.users.application.command.CreateAccountCommand;
 import com.academy.mudogroupware.users.application.result.CreateAccountResult;
 import com.academy.mudogroupware.users.application.service.support.AccountIssuer;
@@ -31,11 +34,18 @@ public class CreateAccountService implements CreateAccountUseCase {
     private final RoleRepository roleRepository;
     private final AccountIssuer accountIssuer;
     private final Clock clock;
+    private final CurrentPlanProvider currentPlanProvider;
 
     @Override
     public CreateAccountResult createAccount(CreateAccountCommand command) {
         log.info("event=account_create_시작 roleId={}", command.roleId());
         try {
+            long limit = currentPlanProvider.currentLimits().employeeLimit();
+            long current = userRepository.countActiveUsers();
+            if (current >= limit) {
+                throw new PlanLimitExceededException(PlanLimitErrorCode.EMPLOYEE_LIMIT_EXCEEDED,
+                        currentPlanProvider.currentPlan(), limit, current);
+            }
             if (userRepository.existsByUsername(command.username())) {
                 throw new UsernameDuplicateException();
             }

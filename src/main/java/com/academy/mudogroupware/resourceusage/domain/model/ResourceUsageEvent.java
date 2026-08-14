@@ -54,6 +54,16 @@ public class ResourceUsageEvent {
                 null, null, 0, 0, 0, occurredAt);
     }
 
+    public static ResourceUsageEvent s3Storage(String feature, long bytes, LocalDateTime occurredAt) {
+        return new ResourceUsageEvent(null, ResourceUsageType.S3_STORAGE, feature, bytes,
+                null, null, 0, 0, 0, occurredAt);
+    }
+
+    public static ResourceUsageEvent mail(String feature, long count, LocalDateTime occurredAt) {
+        return new ResourceUsageEvent(null, ResourceUsageType.MAIL, feature, count,
+                null, null, 0, 0, 0, occurredAt);
+    }
+
     public static ResourceUsageEvent restore(Long id, ResourceUsageType resourceType, String feature, long amount,
                                              String provider, String modelName, long promptTokens, long outputTokens,
                                              long totalTokens, LocalDateTime occurredAt) {
