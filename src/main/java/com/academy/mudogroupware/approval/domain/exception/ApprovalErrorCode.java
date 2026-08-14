@@ -39,7 +39,8 @@ public enum ApprovalErrorCode implements ErrorCode {
     HISTORY_HIDE_NOT_ALLOWED(HttpStatus.CONFLICT, "APPROVAL_409_9", "처리가 완료된 본인 결재 이력만 삭제할 수 있습니다."),
 
     SUMMARY_GENERATION_FAILED(HttpStatus.BAD_GATEWAY, "APPROVAL_502_1", "첨부파일 요약 생성에 실패했습니다."),
-    FIELD_EXTRACTION_FAILED(HttpStatus.BAD_GATEWAY, "APPROVAL_502_2", "첨부파일 필드 추출에 실패했습니다.");
+    FIELD_EXTRACTION_FAILED(HttpStatus.BAD_GATEWAY, "APPROVAL_502_2", "첨부파일 필드 추출에 실패했습니다."),
+    ATTACHMENT_DOWNLOAD_URL_FAILED(HttpStatus.BAD_GATEWAY, "APPROVAL_502_3", "첨부파일 다운로드 URL 생성에 실패했습니다.");
 
     private final HttpStatus httpStatus;
     private final String code;
