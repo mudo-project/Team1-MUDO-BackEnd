@@ -11,6 +11,9 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
+import com.academy.mudogroupware.planquota.application.service.CurrentPlanProvider;
+import com.academy.mudogroupware.planquota.domain.exception.PlanLimitErrorCode;
+import com.academy.mudogroupware.planquota.domain.exception.PlanLimitExceededException;
 import com.academy.mudogroupware.rollcall.application.command.SendAttendanceMessagesCommand;
 import com.academy.mudogroupware.rollcall.application.port.SmsSendResult;
 import com.academy.mudogroupware.rollcall.application.port.SmsSenderPort;
@@ -25,7 +28,9 @@ import com.academy.mudogroupware.rollcall.domain.model.MessageTemplate;
 import com.academy.mudogroupware.rollcall.domain.repository.AttendanceMessageSendRecordRepository;
 import com.academy.mudogroupware.rollcall.domain.repository.MessageTemplateRepository;
 import com.academy.mudogroupware.resourceusage.application.command.RecordSmsUsageCommand;
+import com.academy.mudogroupware.resourceusage.application.port.ResourceUsageQueryPort;
 import com.academy.mudogroupware.resourceusage.application.port.ResourceUsageRecorder;
+import com.academy.mudogroupware.resourceusage.domain.model.ResourceUsageType;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -43,6 +48,8 @@ public class SendAttendanceMessagesService implements SendAttendanceMessagesUseC
     private final ResourceUsageRecorder resourceUsageRecorder;
     private final AttendanceMessageSendRecordRepository attendanceMessageSendRecordRepository;
     private final Clock clock;
+    private final ResourceUsageQueryPort resourceUsageQueryPort;
+    private final CurrentPlanProvider currentPlanProvider;
 
     @Override
     public List<MessageSendResultView> send(SendAttendanceMessagesCommand command) {
@@ -51,6 +58,13 @@ public class SendAttendanceMessagesService implements SendAttendanceMessagesUseC
                 command.studentIds() == null ? 0 : command.studentIds().size());
         if (command.studentIds() == null || command.studentIds().isEmpty()) {
             throw new NoStudentsSelectedException();
+        }
+
+        long limit = currentPlanProvider.currentLimits().smsMonthlyLimit();
+        long current = monthlySmsUsage();
+        if (current >= limit) {
+            throw new PlanLimitExceededException(PlanLimitErrorCode.SMS_LIMIT_EXCEEDED,
+                    currentPlanProvider.currentPlan(), limit, current);
         }
 
         List<MessageSendCandidateView> candidates = getMessageSendCandidatesUseCase
@@ -85,6 +99,13 @@ public class SendAttendanceMessagesService implements SendAttendanceMessagesUseC
         log.info("event=attendance_message_send_완료 lectureId={}, sentCount={}, failedCount={}",
                 command.lectureId(), sentCount, failedCount);
         return results;
+    }
+
+    private long monthlySmsUsage() {
+        LocalDate today = LocalDate.now(clock);
+        LocalDateTime from = today.withDayOfMonth(1).atStartOfDay();
+        LocalDateTime to = from.plusMonths(1);
+        return resourceUsageQueryPort.sumByTypeAndPeriod(ResourceUsageType.SMS, from, to);
     }
 
     private SendOutcome sendToStudent(Long lectureId, Long studentId, MessageSendCandidateView candidate,

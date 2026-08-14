@@ -3,6 +3,7 @@ package com.academy.mudogroupware.rollcall.application.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -34,8 +35,14 @@ import com.academy.mudogroupware.rollcall.domain.model.AttendanceStatus;
 import com.academy.mudogroupware.rollcall.domain.model.MessageTemplate;
 import com.academy.mudogroupware.rollcall.domain.repository.AttendanceMessageSendRecordRepository;
 import com.academy.mudogroupware.rollcall.domain.repository.MessageTemplateRepository;
+import com.academy.mudogroupware.planquota.application.service.CurrentPlanProvider;
+import com.academy.mudogroupware.planquota.domain.exception.PlanLimitExceededException;
+import com.academy.mudogroupware.planquota.domain.model.Plan;
+import com.academy.mudogroupware.planquota.domain.model.PlanLimits;
 import com.academy.mudogroupware.resourceusage.application.command.RecordSmsUsageCommand;
+import com.academy.mudogroupware.resourceusage.application.port.ResourceUsageQueryPort;
 import com.academy.mudogroupware.resourceusage.application.port.ResourceUsageRecorder;
+import com.academy.mudogroupware.resourceusage.domain.model.ResourceUsageType;
 
 class SendAttendanceMessagesServiceTest {
 
@@ -50,6 +57,8 @@ class SendAttendanceMessagesServiceTest {
     private final ResourceUsageRecorder resourceUsageRecorder = mock(ResourceUsageRecorder.class);
     private final AttendanceMessageSendRecordRepository attendanceMessageSendRecordRepository =
             mock(AttendanceMessageSendRecordRepository.class);
+    private final ResourceUsageQueryPort resourceUsageQueryPort = mock(ResourceUsageQueryPort.class);
+    private final CurrentPlanProvider currentPlanProvider = mock(CurrentPlanProvider.class);
     private final Clock clock = Clock.fixed(NOW.toInstant(ZoneOffset.UTC), ZoneOffset.UTC);
 
     private SendAttendanceMessagesService service;
@@ -58,12 +67,29 @@ class SendAttendanceMessagesServiceTest {
     void setUp() {
         service = new SendAttendanceMessagesService(
                 getMessageSendCandidatesUseCase, messageTemplateRepository, smsSenderPort, resourceUsageRecorder,
-                attendanceMessageSendRecordRepository, clock);
+                attendanceMessageSendRecordRepository, clock, resourceUsageQueryPort, currentPlanProvider);
         when(attendanceMessageSendRecordRepository.createOrGetExisting(any(), any(), any(), any()))
                 .thenAnswer(invocation -> AttendanceMessageSendRecord.createPending(
                         invocation.getArgument(0), invocation.getArgument(1), invocation.getArgument(2),
                         invocation.getArgument(3), NOW));
         when(attendanceMessageSendRecordRepository.claimForSending(any())).thenReturn(true);
+        when(currentPlanProvider.currentLimits()).thenReturn(PlanLimits.of(Plan.PAID));
+        when(resourceUsageQueryPort.sumByTypeAndPeriod(eq(ResourceUsageType.SMS), any(), any())).thenReturn(0L);
+    }
+
+    @Test
+    void throwsWhenMonthlySmsLimitReached() {
+        when(resourceUsageQueryPort.sumByTypeAndPeriod(eq(ResourceUsageType.SMS), any(), any()))
+                .thenReturn(150L);
+        when(currentPlanProvider.currentPlan()).thenReturn(Plan.FREE);
+        when(currentPlanProvider.currentLimits()).thenReturn(PlanLimits.of(Plan.FREE));
+
+        assertThatThrownBy(() -> service.send(
+                new SendAttendanceMessagesCommand(LECTURE_ID, DATE, List.of(10L))))
+                .isInstanceOf(PlanLimitExceededException.class);
+
+        verifyNoInteractions(smsSenderPort);
+        verifyNoInteractions(getMessageSendCandidatesUseCase);
     }
 
     @Test
