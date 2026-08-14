@@ -7,7 +7,8 @@ cells:
     ecs_app_capacity_ratio: 0.80
 
     # AWS 리소스 생성 후 실제 값을 기록한다. null인 동안 운영 배포는 실패하도록 설계한다.
-    # ecs_registered_cpu/memory: t3.small 1대 기준(ECS Agent 로그의 Remaining memory 실측값).
-    ecs_registered_cpu: 2048
-    ecs_registered_memory_mib: 1913
+    # 2026-08-14 실측: 라이브 ASG(mudo-prod-asg) 인스턴스 2대 기준으로 갱신.
+    # 인스턴스 1대당 cpu 2048 / mem 1913 (t3.small) x 2대.
+    ecs_registered_cpu: 4096
+    ecs_registered_memory_mib: 3826
     rds_max_connections: 144
