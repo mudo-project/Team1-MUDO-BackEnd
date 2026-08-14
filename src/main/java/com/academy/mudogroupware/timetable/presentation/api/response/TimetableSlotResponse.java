@@ -18,12 +18,14 @@ public record TimetableSlotResponse(
         @Schema(description = "종료 시각") LocalTime endTime,
         @Schema(description = "학년(초1~고3 중 하나)") Grade grade,
         @Schema(description = "강사명") String teacherName,
-        @Schema(description = "과목") String subjectName
+        @Schema(description = "과목") String subjectName,
+        @Schema(description = "색상(6자리 16진수, RRGGBB)") String color
 ) {
 
     public static TimetableSlotResponse from(TimetableSlotView view) {
         return new TimetableSlotResponse(
                 view.timetableSlotId(), view.classType(), view.dayOfWeek(), view.classroomCode(),
-                view.startTime(), view.endTime(), view.grade(), view.teacherName(), view.subjectName());
+                view.startTime(), view.endTime(), view.grade(), view.teacherName(), view.subjectName(),
+                view.color());
     }
 }

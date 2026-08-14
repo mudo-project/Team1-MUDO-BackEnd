@@ -47,12 +47,13 @@ class GetTimetableSlotsServiceTest {
         when(timetableSetRepository.findById(1L)).thenReturn(Optional.of(set));
         TimetableSlot slot = TimetableSlot.restore(
                 100L, 1L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                Grade.HIGH_3, "정T", "미적분", set.getStartDate(), set.getEndDate(), null, null);
+                Grade.HIGH_3, "정T", "미적분", "FFCC00", set.getStartDate(), set.getEndDate(), null, null);
         when(timetableSlotRepository.findAllByTimetableSetId(1L)).thenReturn(List.of(slot));
 
         List<TimetableSlotView> views = service.getSlots(1L);
 
         assertThat(views).hasSize(1);
         assertThat(views.get(0).classroomCode()).isEqualTo("601");
+        assertThat(views.get(0).color()).isEqualTo("FFCC00");
     }
 }

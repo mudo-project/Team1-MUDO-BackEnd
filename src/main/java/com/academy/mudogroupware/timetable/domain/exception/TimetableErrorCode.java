@@ -18,7 +18,7 @@ public enum TimetableErrorCode implements ErrorCode {
     SLOT_NOT_FOUND(HttpStatus.NOT_FOUND, "TIMETABLE_404_2", "수업 슬롯을 찾을 수 없습니다."),
     CLASSROOM_TIME_CONFLICT(HttpStatus.CONFLICT, "TIMETABLE_409_1", "같은 강의실에 겹치는 시간대의 수업이 이미 있습니다."),
     UNSUPPORTED_SCOPE(HttpStatus.BAD_REQUEST, "TIMETABLE_400_4", "이 적용 범위는 아직 지원하지 않습니다. scope=ALL만 가능합니다."),
-    INVALID_EXPORT_COLOR(HttpStatus.BAD_REQUEST, "TIMETABLE_400_5", "내보내기 색상 값은 6자리 16진수(RRGGBB)여야 합니다."),
+    INVALID_COLOR(HttpStatus.BAD_REQUEST, "TIMETABLE_400_5", "색상 값은 6자리 16진수(RRGGBB)여야 합니다."),
     EXPORT_IMAGE_TOO_LARGE(HttpStatus.BAD_REQUEST, "TIMETABLE_400_6", "내보내기 이미지 크기가 너무 큽니다. 수업 슬롯 수를 줄여주세요."),
     INVALID_SET_CONFIGURATION(HttpStatus.BAD_REQUEST, "TIMETABLE_400_7", "시간표 세트 설정이 올바르지 않습니다."),
     INVALID_SLOT_CONFIGURATION(HttpStatus.BAD_REQUEST, "TIMETABLE_400_8", "수업 슬롯 설정이 올바르지 않습니다."),

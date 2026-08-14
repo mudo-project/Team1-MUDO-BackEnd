@@ -57,12 +57,12 @@ class CreateTimetableSlotServiceTest {
         when(timetableSlotRepository.findAllByTimetableSetIdAndClassroomCode(1L, "601")).thenReturn(List.of());
         TimetableSlot saved = TimetableSlot.restore(
                 100L, 1L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                Grade.HIGH_3, "정T", "미적분", SET_START, SET_END, null, null);
+                Grade.HIGH_3, "정T", "미적분", "FFCC00", SET_START, SET_END, null, null);
         when(timetableSlotRepository.save(any(TimetableSlot.class))).thenReturn(saved);
 
         CreateTimetableSlotCommand command = new CreateTimetableSlotCommand(
                 1L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                Grade.HIGH_3, "정T", "미적분");
+                Grade.HIGH_3, "정T", "미적분", "FFCC00");
 
         Long id = service.createSlot(command);
 
@@ -74,7 +74,7 @@ class CreateTimetableSlotServiceTest {
         when(timetableSetRepository.findById(999L)).thenReturn(Optional.empty());
         CreateTimetableSlotCommand command = new CreateTimetableSlotCommand(
                 999L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                Grade.HIGH_3, "정T", "미적분");
+                Grade.HIGH_3, "정T", "미적분", "FFCC00");
 
         assertThatThrownBy(() -> service.createSlot(command))
                 .isInstanceOf(TimetableSetNotFoundException.class);
@@ -85,13 +85,13 @@ class CreateTimetableSlotServiceTest {
         when(timetableSetRepository.findById(1L)).thenReturn(Optional.of(timetableSet()));
         TimetableSlot existing = TimetableSlot.restore(
                 50L, 1L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                Grade.HIGH_3, "정T", "미적분", SET_START, SET_END, null, null);
+                Grade.HIGH_3, "정T", "미적분", "FFCC00", SET_START, SET_END, null, null);
         when(timetableSlotRepository.findAllByTimetableSetIdAndClassroomCode(1L, "601"))
                 .thenReturn(List.of(existing));
 
         CreateTimetableSlotCommand command = new CreateTimetableSlotCommand(
                 1L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(10, 0), LocalTime.of(12, 0),
-                Grade.HIGH_3, "정T", "미적분");
+                Grade.HIGH_3, "정T", "미적분", "FFCC00");
 
         assertThatThrownBy(() -> service.createSlot(command))
                 .isInstanceOf(ClassroomTimeConflictException.class);
