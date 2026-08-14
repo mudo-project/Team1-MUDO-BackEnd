@@ -21,6 +21,7 @@
 |---|---|---|
 | `AttendanceEntry` | `academyId`, `lectureId`, `studentId`, `date`, `status`, `note` | 강의·학생·날짜 단위 출결 기록. |
 | `MessageTemplate` | `academyId`, `name`, `status`, `content`, `createdBy`, `createdAt`, `updatedAt` | 출결 상태별 템플릿. |
+| `AttendanceMessageSendRecord` | `lectureId`, `studentId`, `date`, `attendanceStatus`, `status`(`PENDING`/`SENDING`/`SENT`/`FAILED`/`INDETERMINATE`), `failureReason` | 강의·학생·출결날짜·출결상태 단위 SMS 발송 시도 기록. 재시도 시 중복 발송을 막는 데 쓰인다(`lectureId`+`studentId`+`date`+`attendanceStatus` 유니크) — 출결 상태가 정정되면(예: 결석→지각) 새 조합으로 취급해 재발송을 막지 않는다. `SENDING`은 "지금 이 요청이 발송 권한을 가져갔다"는 원자적 표시로, 동시 요청 중 하나만 실제 SOLAPI 호출까지 진행하게 한다. |
 
 ## 외부에 공개하는 Application API
 
@@ -44,7 +45,8 @@
 
 - 발신번호(`SOLAPI_SENDER_NUMBER`)는 솔라피 사이트에 사전 등록이 필요하다.
 - 개인 계정은 사업자 인증 없이 바로 API Key를 발급받을 수 있지만 일일 발송량이 50~500건으로 제한된다(사업자 계정은 1,000건 이상).
-- 발송 이력 저장, 실패 자동 재시도, 과금 정책은 아직 없다(향후 필요해지면 추가).
+- 학생별 발송 시도는 `AttendanceMessageSendRecordRepository`에 저장된다(2026-08-14) — 같은 (강의, 학생, 출결 날짜, 출결 상태)로 이미 발송 성공했으면 재요청이 와도 SOLAPI를 다시 호출하지 않는다. 동시 요청은 `SENDING` 상태로의 조건부 전환(`claimForSending`)을 통해 정확히 하나만 실제 호출까지 진행한다.
+- 응답을 못 받은 경우(타임아웃/연결 끊김)는 `INDETERMINATE`로 기록하고 **자동 재시도를 차단**한다 — 실제로 발송됐을 수도 있는 상태라 다시 호출하면 중복 발송 위험이 있기 때문이다. 관리자가 확인 후 강제로 재발송할 수 있는 절차/API는 아직 없다. 실패 자동 재시도 스케줄링, 과금 정책도 아직 없다.
 
 ## 발행·소비하는 Event
 

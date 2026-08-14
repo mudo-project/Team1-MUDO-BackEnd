@@ -32,11 +32,10 @@ import com.academy.mudogroupware.sharedfile.application.usecase.DownloadSharedFi
 import com.academy.mudogroupware.sharedfile.application.usecase.GetSharedFileItemUseCase;
 import com.academy.mudogroupware.sharedfile.application.usecase.GetSharedFileRootUseCase;
 import com.academy.mudogroupware.sharedfile.application.usecase.ListSharedFileItemsUseCase;
-import com.academy.mudogroupware.sharedfile.application.usecase.MoveSharedFileItemUseCase;
 import com.academy.mudogroupware.sharedfile.application.usecase.RecreateSharedFileRootUseCase;
-import com.academy.mudogroupware.sharedfile.application.usecase.RenameSharedFileItemUseCase;
 import com.academy.mudogroupware.sharedfile.application.usecase.SearchSharedFileItemsUseCase;
 import com.academy.mudogroupware.sharedfile.application.usecase.TrashSharedFileItemUseCase;
+import com.academy.mudogroupware.sharedfile.application.usecase.UpdateSharedFileItemUseCase;
 import com.academy.mudogroupware.sharedfile.application.usecase.UploadSharedFileUseCase;
 import com.academy.mudogroupware.sharedfile.presentation.api.common.SharedFileResponseCode;
 import com.academy.mudogroupware.sharedfile.presentation.api.request.CreateGoogleWorkspaceFileRequest;
@@ -74,8 +73,7 @@ public class SharedFileController {
     private final CreateSharedFolderUseCase createSharedFolderUseCase;
     private final UploadSharedFileUseCase uploadSharedFileUseCase;
     private final CreateGoogleWorkspaceFileUseCase createGoogleWorkspaceFileUseCase;
-    private final RenameSharedFileItemUseCase renameSharedFileItemUseCase;
-    private final MoveSharedFileItemUseCase moveSharedFileItemUseCase;
+    private final UpdateSharedFileItemUseCase updateSharedFileItemUseCase;
     private final TrashSharedFileItemUseCase trashSharedFileItemUseCase;
     private final DownloadSharedFileUseCase downloadSharedFileUseCase;
 
@@ -211,13 +209,7 @@ public class SharedFileController {
         if (!request.hasAnyChange()) {
             throw new IllegalArgumentException("name 또는 parentId 중 하나는 필수입니다.");
         }
-        SharedFileItemView view = null;
-        if (request.name() != null && !request.name().isBlank()) {
-            view = renameSharedFileItemUseCase.rename(itemId, request.name());
-        }
-        if (request.parentId() != null && !request.parentId().isBlank()) {
-            view = moveSharedFileItemUseCase.move(itemId, request.parentId());
-        }
+        SharedFileItemView view = updateSharedFileItemUseCase.update(itemId, request.name(), request.parentId());
         return ResponseEntity.ok(
                 GlobalApiResponse.ok(SharedFileResponseCode.ITEM_UPDATED, SharedFileItemResponse.from(view)));
     }
