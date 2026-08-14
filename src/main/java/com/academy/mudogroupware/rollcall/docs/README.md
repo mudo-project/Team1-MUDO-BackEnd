@@ -21,7 +21,7 @@
 |---|---|---|
 | `AttendanceEntry` | `academyId`, `lectureId`, `studentId`, `date`, `status`, `note` | 강의·학생·날짜 단위 출결 기록. |
 | `MessageTemplate` | `academyId`, `name`, `status`, `content`, `createdBy`, `createdAt`, `updatedAt` | 출결 상태별 템플릿. |
-| `AttendanceMessageSendRecord` | `lectureId`, `studentId`, `date`, `status`(`PENDING`/`SENT`/`FAILED`/`INDETERMINATE`) | 강의·학생·출결날짜 단위 SMS 발송 시도 기록. 재시도 시 중복 발송을 막는 데 쓰인다(`lectureId`+`studentId`+`date` 유니크). |
+| `AttendanceMessageSendRecord` | `lectureId`, `studentId`, `date`, `attendanceStatus`, `status`(`PENDING`/`SENDING`/`SENT`/`FAILED`/`INDETERMINATE`), `failureReason` | 강의·학생·출결날짜·출결상태 단위 SMS 발송 시도 기록. 재시도 시 중복 발송을 막는 데 쓰인다(`lectureId`+`studentId`+`date`+`attendanceStatus` 유니크) — 출결 상태가 정정되면(예: 결석→지각) 새 조합으로 취급해 재발송을 막지 않는다. `SENDING`은 "지금 이 요청이 발송 권한을 가져갔다"는 원자적 표시로, 동시 요청 중 하나만 실제 SOLAPI 호출까지 진행하게 한다. |
 
 ## 외부에 공개하는 Application API
 

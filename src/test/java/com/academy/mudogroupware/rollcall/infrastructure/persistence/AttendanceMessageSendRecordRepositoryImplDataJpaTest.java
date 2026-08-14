@@ -13,6 +13,7 @@ import org.springframework.context.annotation.Import;
 import com.academy.mudogroupware.global.infrastructure.config.TimeConfig;
 import com.academy.mudogroupware.rollcall.domain.model.AttendanceMessageSendRecord;
 import com.academy.mudogroupware.rollcall.domain.model.AttendanceMessageSendStatus;
+import com.academy.mudogroupware.rollcall.domain.model.AttendanceStatus;
 
 @DataJpaTest(properties = "spring.jpa.hibernate.ddl-auto=create-drop")
 @Import({AttendanceMessageSendRecordRepositoryImpl.class, TimeConfig.class})
@@ -20,6 +21,7 @@ class AttendanceMessageSendRecordRepositoryImplDataJpaTest {
 
     private static final LocalDate DATE = LocalDate.of(2026, 8, 5);
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 5, 9, 0);
+    private static final AttendanceStatus ATTENDANCE_STATUS = AttendanceStatus.ABSENT;
 
     @Autowired
     private AttendanceMessageSendRecordRepositoryImpl attendanceMessageSendRecordRepository;
@@ -27,7 +29,7 @@ class AttendanceMessageSendRecordRepositoryImplDataJpaTest {
     @Test
     void createsANewPendingRecordWhenNoneExistsYet() {
         AttendanceMessageSendRecord record = attendanceMessageSendRecordRepository
-                .createOrGetExisting(1L, 10L, DATE, NOW);
+                .createOrGetExisting(1L, 10L, DATE, ATTENDANCE_STATUS);
 
         assertThat(record.getId()).isNotNull();
         assertThat(record.getStatus()).isEqualTo(AttendanceMessageSendStatus.PENDING);
@@ -36,12 +38,12 @@ class AttendanceMessageSendRecordRepositoryImplDataJpaTest {
     @Test
     void returnsTheExistingRecordInsteadOfCreatingADuplicate() {
         AttendanceMessageSendRecord first = attendanceMessageSendRecordRepository
-                .createOrGetExisting(1L, 10L, DATE, NOW);
-        first.markResult(AttendanceMessageSendStatus.SENT, NOW);
+                .createOrGetExisting(1L, 10L, DATE, ATTENDANCE_STATUS);
+        first.markResult(AttendanceMessageSendStatus.SENT, null, NOW);
         attendanceMessageSendRecordRepository.save(first);
 
         AttendanceMessageSendRecord second = attendanceMessageSendRecordRepository
-                .createOrGetExisting(1L, 10L, DATE, NOW);
+                .createOrGetExisting(1L, 10L, DATE, ATTENDANCE_STATUS);
 
         assertThat(second.getId()).isEqualTo(first.getId());
         assertThat(second.getStatus()).isEqualTo(AttendanceMessageSendStatus.SENT);
@@ -50,13 +52,65 @@ class AttendanceMessageSendRecordRepositoryImplDataJpaTest {
     @Test
     void savePersistsTheUpdatedStatus() {
         AttendanceMessageSendRecord record = attendanceMessageSendRecordRepository
-                .createOrGetExisting(1L, 10L, DATE, NOW);
+                .createOrGetExisting(1L, 10L, DATE, ATTENDANCE_STATUS);
 
-        record.markResult(AttendanceMessageSendStatus.INDETERMINATE, NOW);
+        record.markResult(AttendanceMessageSendStatus.INDETERMINATE, "타임아웃", NOW);
         attendanceMessageSendRecordRepository.save(record);
 
         AttendanceMessageSendRecord reloaded = attendanceMessageSendRecordRepository
-                .createOrGetExisting(1L, 10L, DATE, NOW);
+                .createOrGetExisting(1L, 10L, DATE, ATTENDANCE_STATUS);
         assertThat(reloaded.getStatus()).isEqualTo(AttendanceMessageSendStatus.INDETERMINATE);
+        assertThat(reloaded.getFailureReason()).isEqualTo("타임아웃");
+    }
+
+    @Test
+    void treatsACorrectedAttendanceStatusAsANewSendTarget() {
+        AttendanceMessageSendRecord absentSend = attendanceMessageSendRecordRepository
+                .createOrGetExisting(1L, 10L, DATE, AttendanceStatus.ABSENT);
+        absentSend.markResult(AttendanceMessageSendStatus.SENT, null, NOW);
+        attendanceMessageSendRecordRepository.save(absentSend);
+
+        AttendanceMessageSendRecord lateSend = attendanceMessageSendRecordRepository
+                .createOrGetExisting(1L, 10L, DATE, AttendanceStatus.LATE);
+
+        assertThat(lateSend.getId()).isNotEqualTo(absentSend.getId());
+        assertThat(lateSend.getStatus()).isEqualTo(AttendanceMessageSendStatus.PENDING);
+    }
+
+    @Test
+    void claimForSendingSucceedsOnceForAPendingRecord() {
+        AttendanceMessageSendRecord record = attendanceMessageSendRecordRepository
+                .createOrGetExisting(1L, 10L, DATE, ATTENDANCE_STATUS);
+
+        boolean firstClaim = attendanceMessageSendRecordRepository.claimForSending(record.getId());
+        boolean secondClaim = attendanceMessageSendRecordRepository.claimForSending(record.getId());
+
+        assertThat(firstClaim).isTrue();
+        assertThat(secondClaim).isFalse();
+    }
+
+    @Test
+    void claimForSendingFailsWhenRecordIsIndeterminate() {
+        AttendanceMessageSendRecord record = attendanceMessageSendRecordRepository
+                .createOrGetExisting(1L, 10L, DATE, ATTENDANCE_STATUS);
+        record.markResult(AttendanceMessageSendStatus.INDETERMINATE, "타임아웃", NOW);
+        attendanceMessageSendRecordRepository.save(record);
+
+        boolean claimed = attendanceMessageSendRecordRepository.claimForSending(record.getId());
+
+        assertThat(claimed).isFalse();
+    }
+
+    @Test
+    void claimForSendingSucceedsAgainAfterAPreviousFailure() {
+        AttendanceMessageSendRecord record = attendanceMessageSendRecordRepository
+                .createOrGetExisting(1L, 10L, DATE, ATTENDANCE_STATUS);
+        attendanceMessageSendRecordRepository.claimForSending(record.getId());
+        record.markResult(AttendanceMessageSendStatus.FAILED, "인증 오류", NOW);
+        attendanceMessageSendRecordRepository.save(record);
+
+        boolean claimed = attendanceMessageSendRecordRepository.claimForSending(record.getId());
+
+        assertThat(claimed).isTrue();
     }
 }

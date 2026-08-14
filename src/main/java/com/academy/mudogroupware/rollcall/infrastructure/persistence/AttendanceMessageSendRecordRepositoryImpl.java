@@ -1,13 +1,14 @@
 package com.academy.mudogroupware.rollcall.infrastructure.persistence;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.util.List;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Repository;
 
 import com.academy.mudogroupware.rollcall.domain.model.AttendanceMessageSendRecord;
 import com.academy.mudogroupware.rollcall.domain.model.AttendanceMessageSendStatus;
+import com.academy.mudogroupware.rollcall.domain.model.AttendanceStatus;
 import com.academy.mudogroupware.rollcall.domain.repository.AttendanceMessageSendRecordRepository;
 
 import jakarta.persistence.EntityManager;
@@ -22,12 +23,13 @@ public class AttendanceMessageSendRecordRepositoryImpl implements AttendanceMess
 
     @Override
     public AttendanceMessageSendRecord createOrGetExisting(Long lectureId, Long studentId, LocalDate date,
-                                                            LocalDateTime now) {
-        // (lecture_id, student_id, entry_date) 유니크 제약을 이용한 insert-first 패턴.
+                                                            AttendanceStatus attendanceStatus) {
+        // (lecture_id, student_id, entry_date, attendance_status) 유니크 제약을 이용한 insert-first 패턴.
         AttendanceMessageSendRecordEntity entity = AttendanceMessageSendRecordEntity.builder()
                 .lectureId(lectureId)
                 .studentId(studentId)
                 .date(date)
+                .attendanceStatus(attendanceStatus)
                 .status(AttendanceMessageSendStatus.PENDING)
                 .build();
         try {
@@ -35,23 +37,37 @@ public class AttendanceMessageSendRecordRepositoryImpl implements AttendanceMess
         } catch (DataIntegrityViolationException e) {
             // save 실패로 식별자 없는 엔티티가 영속성 컨텍스트에 남아있으면, 그 상태로 이어서 조회할 때
             // Hibernate가 "세션이 오염됐다"는 AssertionFailure를 던진다 — 조회 전에 반드시 비워야 한다.
+            // 운영 기본 설정(open-in-view: false, 이 메서드와 호출부 모두 @Transactional 아님)에서는
+            // save와 이 조회가 이미 서로 다른 영속성 컨텍스트라 애초에 이 문제가 생기지 않는다 — clear()는
+            // @DataJpaTest처럼 하나의 트랜잭션/영속성 컨텍스트를 공유하는 호출 맥락을 위한 방어다. 이 메서드가
+            // 나중에 @Transactional로 감싸이면(예: 1번 항목처럼 claim과 묶는 방향으로 바뀌면) 운영에서도
+            // 다시 필요해질 수 있다.
             entityManager.clear();
-            return attendanceMessageSendRecordJpaRepository.findByLectureIdAndStudentIdAndDate(lectureId, studentId, date)
+            return attendanceMessageSendRecordJpaRepository
+                    .findByLectureIdAndStudentIdAndDateAndAttendanceStatus(lectureId, studentId, date, attendanceStatus)
                     .map(this::toDomain)
                     .orElseThrow(() -> e);
         }
     }
 
     @Override
+    public boolean claimForSending(Long id) {
+        int updated = attendanceMessageSendRecordJpaRepository.claimForSending(id, AttendanceMessageSendStatus.SENDING,
+                List.of(AttendanceMessageSendStatus.PENDING, AttendanceMessageSendStatus.FAILED));
+        return updated == 1;
+    }
+
+    @Override
     public AttendanceMessageSendRecord save(AttendanceMessageSendRecord record) {
         AttendanceMessageSendRecordEntity entity = attendanceMessageSendRecordJpaRepository
                 .getReferenceById(record.getId());
-        entity.changeStatus(record.getStatus());
+        entity.changeStatus(record.getStatus(), record.getFailureReason());
         return toDomain(attendanceMessageSendRecordJpaRepository.saveAndFlush(entity));
     }
 
     private AttendanceMessageSendRecord toDomain(AttendanceMessageSendRecordEntity entity) {
         return AttendanceMessageSendRecord.restore(entity.getId(), entity.getLectureId(), entity.getStudentId(),
-                entity.getDate(), entity.getStatus(), entity.getCreatedAt(), entity.getUpdatedAt());
+                entity.getDate(), entity.getAttendanceStatus(), entity.getStatus(), entity.getFailureReason(),
+                entity.getCreatedAt(), entity.getUpdatedAt());
     }
 }

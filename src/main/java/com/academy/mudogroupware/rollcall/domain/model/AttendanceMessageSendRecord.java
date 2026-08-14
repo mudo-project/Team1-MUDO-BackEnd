@@ -9,13 +9,15 @@ public final class AttendanceMessageSendRecord {
     private final Long lectureId;
     private final Long studentId;
     private final LocalDate date;
+    private final AttendanceStatus attendanceStatus;
     private AttendanceMessageSendStatus status;
+    private String failureReason;
     private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
     private AttendanceMessageSendRecord(Long id, Long lectureId, Long studentId, LocalDate date,
-                                         AttendanceMessageSendStatus status, LocalDateTime createdAt,
-                                         LocalDateTime updatedAt) {
+                                         AttendanceStatus attendanceStatus, AttendanceMessageSendStatus status,
+                                         String failureReason, LocalDateTime createdAt, LocalDateTime updatedAt) {
         if (lectureId == null) {
             throw new IllegalArgumentException("lectureId must not be null");
         }
@@ -24,6 +26,9 @@ public final class AttendanceMessageSendRecord {
         }
         if (date == null) {
             throw new IllegalArgumentException("date must not be null");
+        }
+        if (attendanceStatus == null) {
+            throw new IllegalArgumentException("attendanceStatus must not be null");
         }
         if (status == null) {
             throw new IllegalArgumentException("status must not be null");
@@ -38,36 +43,46 @@ public final class AttendanceMessageSendRecord {
         this.lectureId = lectureId;
         this.studentId = studentId;
         this.date = date;
+        this.attendanceStatus = attendanceStatus;
         this.status = status;
+        this.failureReason = failureReason;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
 
     public static AttendanceMessageSendRecord createPending(Long lectureId, Long studentId, LocalDate date,
-                                                              LocalDateTime now) {
-        return new AttendanceMessageSendRecord(null, lectureId, studentId, date,
-                AttendanceMessageSendStatus.PENDING, now, now);
+                                                              AttendanceStatus attendanceStatus, LocalDateTime now) {
+        return new AttendanceMessageSendRecord(null, lectureId, studentId, date, attendanceStatus,
+                AttendanceMessageSendStatus.PENDING, null, now, now);
     }
 
     public static AttendanceMessageSendRecord restore(Long id, Long lectureId, Long studentId, LocalDate date,
-                                                        AttendanceMessageSendStatus status, LocalDateTime createdAt,
-                                                        LocalDateTime updatedAt) {
-        return new AttendanceMessageSendRecord(id, lectureId, studentId, date, status, createdAt, updatedAt);
+                                                        AttendanceStatus attendanceStatus,
+                                                        AttendanceMessageSendStatus status, String failureReason,
+                                                        LocalDateTime createdAt, LocalDateTime updatedAt) {
+        return new AttendanceMessageSendRecord(id, lectureId, studentId, date, attendanceStatus, status,
+                failureReason, createdAt, updatedAt);
     }
 
-    public void markResult(AttendanceMessageSendStatus status, LocalDateTime now) {
-        if (status == null || status == AttendanceMessageSendStatus.PENDING) {
+    public void markResult(AttendanceMessageSendStatus status, String failureReason, LocalDateTime now) {
+        if (status == null || status == AttendanceMessageSendStatus.PENDING
+                || status == AttendanceMessageSendStatus.SENDING) {
             throw new IllegalArgumentException("status must be a final send outcome");
         }
         if (now == null) {
             throw new IllegalArgumentException("now must not be null");
         }
         this.status = status;
+        this.failureReason = status == AttendanceMessageSendStatus.SENT ? null : failureReason;
         this.updatedAt = now;
     }
 
     public boolean isAlreadySent() {
         return status == AttendanceMessageSendStatus.SENT;
+    }
+
+    public boolean isIndeterminate() {
+        return status == AttendanceMessageSendStatus.INDETERMINATE;
     }
 
     public Long getId() {
@@ -86,8 +101,16 @@ public final class AttendanceMessageSendRecord {
         return date;
     }
 
+    public AttendanceStatus getAttendanceStatus() {
+        return attendanceStatus;
+    }
+
     public AttendanceMessageSendStatus getStatus() {
         return status;
+    }
+
+    public String getFailureReason() {
+        return failureReason;
     }
 
     public LocalDateTime getCreatedAt() {

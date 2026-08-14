@@ -61,7 +61,9 @@ class SendAttendanceMessagesServiceTest {
                 attendanceMessageSendRecordRepository, clock);
         when(attendanceMessageSendRecordRepository.createOrGetExisting(any(), any(), any(), any()))
                 .thenAnswer(invocation -> AttendanceMessageSendRecord.createPending(
-                        invocation.getArgument(0), invocation.getArgument(1), invocation.getArgument(2), NOW));
+                        invocation.getArgument(0), invocation.getArgument(1), invocation.getArgument(2),
+                        invocation.getArgument(3), NOW));
+        when(attendanceMessageSendRecordRepository.claimForSending(any())).thenReturn(true);
     }
 
     @Test
@@ -282,9 +284,9 @@ class SendAttendanceMessagesServiceTest {
         when(getMessageSendCandidatesUseCase.getCandidates(LECTURE_ID, DATE))
                 .thenReturn(List.of(candidate));
         when(messageTemplateRepository.findById(7L)).thenReturn(Optional.of(template));
-        AttendanceMessageSendRecord alreadySent = AttendanceMessageSendRecord.createPending(LECTURE_ID, 10L, DATE, NOW);
-        alreadySent.markResult(AttendanceMessageSendStatus.SENT, NOW);
-        when(attendanceMessageSendRecordRepository.createOrGetExisting(LECTURE_ID, 10L, DATE, NOW))
+        AttendanceMessageSendRecord alreadySent = AttendanceMessageSendRecord.createPending(LECTURE_ID, 10L, DATE, AttendanceStatus.ABSENT, NOW);
+        alreadySent.markResult(AttendanceMessageSendStatus.SENT, null, NOW);
+        when(attendanceMessageSendRecordRepository.createOrGetExisting(LECTURE_ID, 10L, DATE, AttendanceStatus.ABSENT))
                 .thenReturn(alreadySent);
 
         List<MessageSendResultView> results = service.send(
@@ -293,6 +295,93 @@ class SendAttendanceMessagesServiceTest {
         assertThat(results.get(0).sent()).isTrue();
         verify(smsSenderPort, never()).send(any(), any());
         verify(attendanceMessageSendRecordRepository, never()).save(any());
+        verify(attendanceMessageSendRecordRepository, never()).claimForSending(any());
+        verify(resourceUsageRecorder, never()).recordSmsMessages(any());
+    }
+
+    @Test
+    void blocksAutomaticRetryWhenRecordIsIndeterminate() {
+        MessageTemplate template = MessageTemplate.restore(
+                7L, "결석 안내", AttendanceStatus.ABSENT, "결석했습니다", 1L, NOW, NOW);
+        MessageSendCandidateView candidate = new MessageSendCandidateView(
+                10L, "이준호", AttendanceStatus.ABSENT, "010-1111-1111", 7L, "결석 안내", true);
+        when(getMessageSendCandidatesUseCase.getCandidates(LECTURE_ID, DATE))
+                .thenReturn(List.of(candidate));
+        when(messageTemplateRepository.findById(7L)).thenReturn(Optional.of(template));
+        AttendanceMessageSendRecord indeterminate = AttendanceMessageSendRecord.createPending(LECTURE_ID, 10L, DATE, AttendanceStatus.ABSENT, NOW);
+        indeterminate.markResult(AttendanceMessageSendStatus.INDETERMINATE, "타임아웃", NOW);
+        when(attendanceMessageSendRecordRepository.createOrGetExisting(LECTURE_ID, 10L, DATE, AttendanceStatus.ABSENT))
+                .thenReturn(indeterminate);
+
+        List<MessageSendResultView> results = service.send(
+                new SendAttendanceMessagesCommand(LECTURE_ID, DATE, List.of(10L)));
+
+        assertThat(results.get(0).sent()).isFalse();
+        assertThat(results.get(0).failureReason()).contains("자동 재발송을 차단");
+        verify(smsSenderPort, never()).send(any(), any());
+        verify(attendanceMessageSendRecordRepository, never()).claimForSending(any());
+        verify(resourceUsageRecorder, never()).recordSmsMessages(any());
+    }
+
+    @Test
+    void doesNotCallSmsPortWhenAnotherRequestAlreadyClaimedSending() {
+        MessageTemplate template = MessageTemplate.restore(
+                7L, "결석 안내", AttendanceStatus.ABSENT, "결석했습니다", 1L, NOW, NOW);
+        MessageSendCandidateView candidate = new MessageSendCandidateView(
+                10L, "이준호", AttendanceStatus.ABSENT, "010-1111-1111", 7L, "결석 안내", true);
+        when(getMessageSendCandidatesUseCase.getCandidates(LECTURE_ID, DATE))
+                .thenReturn(List.of(candidate));
+        when(messageTemplateRepository.findById(7L)).thenReturn(Optional.of(template));
+        when(attendanceMessageSendRecordRepository.claimForSending(any())).thenReturn(false);
+
+        List<MessageSendResultView> results = service.send(
+                new SendAttendanceMessagesCommand(LECTURE_ID, DATE, List.of(10L)));
+
+        assertThat(results.get(0).sent()).isFalse();
+        verify(smsSenderPort, never()).send(any(), any());
+        verify(resourceUsageRecorder, never()).recordSmsMessages(any());
+    }
+
+    @Test
+    void doesNotCountAlreadySentSkipTowardUsage() {
+        MessageTemplate template = MessageTemplate.restore(
+                7L, "결석 안내", AttendanceStatus.ABSENT, "결석했습니다", 1L, NOW, NOW);
+        MessageSendCandidateView alreadySentCandidate = new MessageSendCandidateView(
+                10L, "이준호", AttendanceStatus.ABSENT, "010-1111-1111", 7L, "결석 안내", true);
+        MessageSendCandidateView newCandidate = new MessageSendCandidateView(
+                11L, "김서윤", AttendanceStatus.ABSENT, "010-2222-2222", 7L, "결석 안내", true);
+        when(getMessageSendCandidatesUseCase.getCandidates(LECTURE_ID, DATE))
+                .thenReturn(List.of(alreadySentCandidate, newCandidate));
+        when(messageTemplateRepository.findById(7L)).thenReturn(Optional.of(template));
+        AttendanceMessageSendRecord alreadySent = AttendanceMessageSendRecord.createPending(LECTURE_ID, 10L, DATE, AttendanceStatus.ABSENT, NOW);
+        alreadySent.markResult(AttendanceMessageSendStatus.SENT, null, NOW);
+        when(attendanceMessageSendRecordRepository.createOrGetExisting(LECTURE_ID, 10L, DATE, AttendanceStatus.ABSENT))
+                .thenReturn(alreadySent);
+        when(smsSenderPort.send("010-2222-2222", "결석했습니다")).thenReturn(SmsSendResult.succeeded());
+
+        service.send(new SendAttendanceMessagesCommand(LECTURE_ID, DATE, List.of(10L, 11L)));
+
+        verify(smsSenderPort, never()).send("010-1111-1111", "결석했습니다");
+        verify(resourceUsageRecorder).recordSmsMessages(new RecordSmsUsageCommand("rollcall-attendance-sms", 1));
+    }
+
+    @Test
+    void looksUpTheSendRecordUsingTheCandidatesCurrentAttendanceStatus() {
+        MessageTemplate template = MessageTemplate.restore(
+                7L, "지각 안내", AttendanceStatus.LATE, "지각했습니다", 1L, NOW, NOW);
+        MessageSendCandidateView correctedCandidate = new MessageSendCandidateView(
+                10L, "이준호", AttendanceStatus.LATE, "010-1111-1111", 7L, "지각 안내", true);
+        when(getMessageSendCandidatesUseCase.getCandidates(LECTURE_ID, DATE))
+                .thenReturn(List.of(correctedCandidate));
+        when(messageTemplateRepository.findById(7L)).thenReturn(Optional.of(template));
+        when(smsSenderPort.send("010-1111-1111", "지각했습니다")).thenReturn(SmsSendResult.succeeded());
+
+        service.send(new SendAttendanceMessagesCommand(LECTURE_ID, DATE, List.of(10L)));
+
+        // 출결이 결석에서 지각으로 정정된 뒤에도(같은 강의·학생·날짜) LATE 기준으로 조회해서 새 발송으로
+        // 취급해야 한다 — ABSENT로 조회했다면 이전에 결석 안내가 이미 SENT였을 때 잘못 스킵될 수 있다.
+        verify(attendanceMessageSendRecordRepository)
+                .createOrGetExisting(LECTURE_ID, 10L, DATE, AttendanceStatus.LATE);
     }
 
     @Test

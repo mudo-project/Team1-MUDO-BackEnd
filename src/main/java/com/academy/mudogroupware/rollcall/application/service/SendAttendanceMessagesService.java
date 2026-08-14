@@ -66,12 +66,13 @@ public class SendAttendanceMessagesService implements SendAttendanceMessagesUseC
                 .collect(Collectors.toMap(MessageTemplate::getId, Function.identity()));
 
         Set<Long> requestedStudentIds = Set.copyOf(command.studentIds());
-        List<MessageSendResultView> results = requestedStudentIds.stream()
+        List<SendOutcome> outcomes = requestedStudentIds.stream()
                 .map(studentId -> sendToStudent(command.lectureId(), studentId, candidatesByStudentId.get(studentId),
                         templatesById, command.date()))
                 .toList();
+        List<MessageSendResultView> results = outcomes.stream().map(SendOutcome::view).toList();
 
-        long sentCount = results.stream().filter(MessageSendResultView::sent).count();
+        long sentCount = outcomes.stream().filter(SendOutcome::newlySent).count();
         if (sentCount > 0) {
             try {
                 resourceUsageRecorder.recordSmsMessages(new RecordSmsUsageCommand(SMS_USAGE_FEATURE, sentCount));
@@ -85,22 +86,34 @@ public class SendAttendanceMessagesService implements SendAttendanceMessagesUseC
         return results;
     }
 
-    private MessageSendResultView sendToStudent(Long lectureId, Long studentId, MessageSendCandidateView candidate,
-                                                 Map<Long, MessageTemplate> templatesById, LocalDate date) {
+    private SendOutcome sendToStudent(Long lectureId, Long studentId, MessageSendCandidateView candidate,
+                                       Map<Long, MessageTemplate> templatesById, LocalDate date) {
         if (candidate == null || !candidate.eligible()) {
-            return new MessageSendResultView(studentId, candidate != null ? candidate.studentName() : null,
-                    false, "발송 대상이 아닙니다(출결 미입력 또는 매칭되는 템플릿 없음).");
+            return new SendOutcome(new MessageSendResultView(studentId,
+                    candidate != null ? candidate.studentName() : null, false,
+                    "발송 대상이 아닙니다(출결 미입력 또는 매칭되는 템플릿 없음)."), false);
         }
         MessageTemplate template = templatesById.get(candidate.matchedTemplateId());
         if (template == null) {
-            return new MessageSendResultView(studentId, candidate.studentName(), false,
-                    "문자 템플릿을 찾을 수 없습니다.");
+            return new SendOutcome(new MessageSendResultView(studentId, candidate.studentName(), false,
+                    "문자 템플릿을 찾을 수 없습니다."), false);
         }
 
         AttendanceMessageSendRecord record = attendanceMessageSendRecordRepository
-                .createOrGetExisting(lectureId, studentId, date, LocalDateTime.now(clock));
+                .createOrGetExisting(lectureId, studentId, date, candidate.status());
         if (record.isAlreadySent()) {
-            return new MessageSendResultView(studentId, candidate.studentName(), true, null);
+            return new SendOutcome(new MessageSendResultView(studentId, candidate.studentName(), true, null), false);
+        }
+        if (record.isIndeterminate()) {
+            // 이전 시도의 실제 발송 여부를 모르는 상태라 자동 재시도는 막는다 — 중복 발송 위험을
+            // 감수하고서라도 재발송하려면 별도의 관리자 확인 절차가 필요하다(이번 범위 밖).
+            return new SendOutcome(new MessageSendResultView(studentId, candidate.studentName(), false,
+                    "이전 발송 결과를 확인할 수 없어 자동 재발송을 차단했습니다. 관리자 확인이 필요합니다."), false);
+        }
+        if (!attendanceMessageSendRecordRepository.claimForSending(record.getId())) {
+            // 동시에 들어온 다른 요청이 먼저 발송 권한(SENDING)을 가져갔거나, 그 사이 이미 SENT로 바뀌었다.
+            return new SendOutcome(new MessageSendResultView(studentId, candidate.studentName(), false,
+                    "다른 요청이 처리 중이거나 이미 처리되었습니다."), false);
         }
 
         SmsSendResult result;
@@ -110,16 +123,18 @@ public class SendAttendanceMessagesService implements SendAttendanceMessagesUseC
         } catch (RuntimeException e) {
             log.warn("event=attendance_message_send_student_실패 studentId={}, reason={}",
                     studentId, e.getMessage(), e);
-            record.markResult(AttendanceMessageSendStatus.FAILED, LocalDateTime.now(clock));
+            record.markResult(AttendanceMessageSendStatus.FAILED, e.getMessage(), LocalDateTime.now(clock));
             attendanceMessageSendRecordRepository.save(record);
-            return new MessageSendResultView(studentId, candidate.studentName(), false,
-                    "SMS 발송 처리 중 오류가 발생했습니다.");
+            return new SendOutcome(new MessageSendResultView(studentId, candidate.studentName(), false,
+                    "SMS 발송 처리 중 오류가 발생했습니다."), false);
         }
 
-        record.markResult(classifyStatus(result), LocalDateTime.now(clock));
+        AttendanceMessageSendStatus status = classifyStatus(result);
+        record.markResult(status, result.failureReason(), LocalDateTime.now(clock));
         attendanceMessageSendRecordRepository.save(record);
-        return new MessageSendResultView(studentId, candidate.studentName(), result.success(),
+        MessageSendResultView view = new MessageSendResultView(studentId, candidate.studentName(), result.success(),
                 result.success() ? null : result.failureReason());
+        return new SendOutcome(view, status == AttendanceMessageSendStatus.SENT);
     }
 
     private AttendanceMessageSendStatus classifyStatus(SmsSendResult result) {
@@ -138,5 +153,12 @@ public class SendAttendanceMessagesService implements SendAttendanceMessagesUseC
 
     private String valueOrBlank(String value) {
         return value != null ? value : "";
+    }
+
+    /**
+     * view.sent()는 클라이언트에 보여줄 성공 여부(이미 보낸 건도 true)이고, newlySent는 이번 호출에서
+     * 실제로 SmsSenderPort를 호출해 새로 발송에 성공했는지를 나타낸다 — 사용량 집계는 후자를 기준으로 한다.
+     */
+    private record SendOutcome(MessageSendResultView view, boolean newlySent) {
     }
 }

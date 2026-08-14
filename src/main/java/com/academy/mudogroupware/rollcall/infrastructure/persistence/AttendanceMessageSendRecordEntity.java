@@ -4,6 +4,7 @@ import java.time.LocalDate;
 
 import com.academy.mudogroupware.global.infrastructure.persistence.BaseTimeEntity;
 import com.academy.mudogroupware.rollcall.domain.model.AttendanceMessageSendStatus;
+import com.academy.mudogroupware.rollcall.domain.model.AttendanceStatus;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -22,7 +23,7 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(name = "attendance_message_send_record", uniqueConstraints = @UniqueConstraint(
         name = "uk_attendance_message_send_record_lecture_student_date",
-        columnNames = {"lecture_id", "student_id", "entry_date"}))
+        columnNames = {"lecture_id", "student_id", "entry_date", "attendance_status"}))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class AttendanceMessageSendRecordEntity extends BaseTimeEntity {
@@ -42,19 +43,28 @@ public class AttendanceMessageSendRecordEntity extends BaseTimeEntity {
     private LocalDate date;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "attendance_status", nullable = false, length = 20)
+    private AttendanceStatus attendanceStatus;
+
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private AttendanceMessageSendStatus status;
 
+    @Column(name = "failure_reason", length = 255)
+    private String failureReason;
+
     @Builder
     private AttendanceMessageSendRecordEntity(Long lectureId, Long studentId, LocalDate date,
-                                               AttendanceMessageSendStatus status) {
+                                               AttendanceStatus attendanceStatus, AttendanceMessageSendStatus status) {
         this.lectureId = lectureId;
         this.studentId = studentId;
         this.date = date;
+        this.attendanceStatus = attendanceStatus;
         this.status = status;
     }
 
-    public void changeStatus(AttendanceMessageSendStatus status) {
+    public void changeStatus(AttendanceMessageSendStatus status, String failureReason) {
         this.status = status;
+        this.failureReason = failureReason;
     }
 }
