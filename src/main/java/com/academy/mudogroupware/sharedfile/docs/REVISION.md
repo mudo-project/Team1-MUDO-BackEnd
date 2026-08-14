@@ -1,5 +1,65 @@
 # 🔄 공유파일 도메인 변경 이력
 
+## ✅ 2026-08-14 · PR #492 CodeRabbit 리뷰 반영
+
+### 변경 목적
+
+PR #492(루트 id 노출 + parentId 생략 허용)에 대한 CodeRabbit 리뷰 3건을 반영한다.
+
+### 구현 변경
+
+- **parentId 빈 값 처리 불일치**: `parentId == null`일 때만 루트로 대체하고 `""`/공백은 걸러지지 않아, `SharedFileRootGuard`가 빈 id로 Drive 조회를 시도하며 엉뚱한 예외(`SharedFileItemNotFoundException` 등)로 새던 문제를 고쳤다. `CreateSharedFolderService`/`CreateGoogleWorkspaceFileService`/`UploadSharedFileService` 3곳에 `parentId != null && parentId.isBlank()`일 때만 `BadRequestException`을 던지는 체크를 다시 넣었다. `@NotBlank`로는 "null 허용, blank 거부"를 동시에 표현할 수 없어 DTO가 아니라 서비스 레이어에 뒀다. `ListSharedFileItemsService`에도 같은 gap이 있지만 이번 PR이 건드리지 않은 기존 코드라 범위에서 제외했다.
+- **빈 parentId 경계값 테스트 누락**: 위 3개 서비스 테스트에 parentId가 `" "`일 때 여전히 400인지 검증하는 케이스를 추가했다.
+- **`ready=false` 응답의 HTTP 레벨 테스트 누락**: `SharedFileControllerTest`에 `ready=false`일 때 `rootId`가 JSON에 `null`로 내려가는지 검증하는 테스트를 추가했다. `SharedFileRootResponse`에 `@JsonInclude(NON_NULL)`이 없어 필드가 생략되지 않고 `null`로 직렬화되는 걸 먼저 확인한 뒤, 프로젝트에 이미 있는 패턴(`GoogleAccountConnectionControllerTest`)대로 `jsonPath(...).value(nullValue())`를 썼다.
+
+### 검증
+
+- 전체 `./gradlew test --tests "com.academy.mudogroupware.sharedfile.*"` 통과(134개), 전체 프로젝트 `./gradlew test` 회귀 없이 통과.
+
+## ✅ 2026-08-14 · 루트 id 노출 + 생성·업로드 API의 parentId 생략(=루트) 허용
+
+### 변경 목적
+
+프론트에서 최상위(시스템 루트)에 폴더·파일을 만들 수 없다는 피드백을 받았다. 생성 3개 API(`POST /folders`, `POST /google-files`, `POST /items/upload`)는 `parentId`가 필수였는데, `GET /root`는 `ready` 상태만 내려주고 루트 자신의 id는 알려주지 않아서, 프론트가 "루트 밑에 만들어달라"는 요청 자체를 표현할 방법이 없었다. 목록 조회(`GET /items`)만 `parentId` 생략 시 루트를 기본값으로 쓰는 fallback이 있었다.
+
+추가로, 하위 폴더에 있던 항목을 다시 루트 바로 아래로 이동(`PATCH /items/{itemId}`)시키는 시나리오도 같은 이유(루트 id를 모름)로 막혀 있어서, 루트 id 노출 자체가 생성 3개의 fallback만으로는 완전히 대체되지 않는다고 판단했다. 두 가지를 함께 적용한다.
+
+### 구현 변경
+
+- `SharedFileRootView`/`SharedFileRootResponse`에 `rootId`를 추가했다. `ready=false`면 `null`이다(도메인 모델의 `markFailed()`/`failed()`가 `googleRootFolderId`를 항상 비워두므로 별도 분기 없이 자연스럽게 null이 된다).
+- `RecreateSharedFileRootService.recreate()`도 새로 만든 루트 폴더의 id를 `rootId`로 채워 반환한다.
+- `CreateSharedFolderRequest`/`CreateGoogleWorkspaceFileRequest`의 `parentId` `@NotBlank`를 제거했고, `uploadItem`의 `@RequestParam String parentId`도 `required = false`로 바꿨다.
+- `CreateSharedFolderService`/`CreateGoogleWorkspaceFileService`/`UploadSharedFileService` 3곳 모두, `parentId`가 null이면 즉시 `BadRequestException`을 던지던 부분을 `ListSharedFileItemsService`와 동일한 `parentId == null ? rootId : parentId` 패턴으로 바꿨다. 목적지가 루트 자신이면 Guard 검증을 생략하는 기존 규칙(`if (!targetParentId.equals(rootId))`)이 그대로 적용된다.
+- Move(이동) API는 이번 변경 대상에서 제외했다 — `UpdateSharedFileItemRequest.parentId` 생략은 이미 "이동 안 함"(이름 변경 전용 요청)이라는 의미로 쓰이고 있어서, 같은 필드에 "생략=루트"까지 얹으면 의미가 충돌한다. 루트로 되돌리는 이동은 이번에 노출한 `rootId`를 프론트가 명시적으로 `parentId`에 넣어 호출하는 방식으로 이미 해결된다(추가 API 변경 불필요, `MoveSharedFileItemService`는 원래도 목적지가 루트 자신이면 Guard를 생략하도록 설계돼 있었다).
+
+### 검증
+
+- `GetSharedFileRootServiceTest`/`RecreateSharedFileRootServiceTest`에 `rootId` 케이스 추가.
+- `CreateSharedFolderServiceTest`/`CreateGoogleWorkspaceFileServiceTest`/`UploadSharedFileServiceTest`의 "parentId null이면 400" 테스트를 "parentId 생략 시 루트 아래 생성 + Guard 미호출 검증"으로 교체.
+- `SharedFileControllerTest`에 3개 API 전부 parentId 생략 시 201을 검증하는 테스트 추가, `GET /root`·재생성 응답의 `rootId` JSON 필드 검증 추가.
+- 전체 `./gradlew test --tests "com.academy.mudogroupware.sharedfile.*"` 통과(129개), 전체 프로젝트 `./gradlew test` 회귀 없이 통과.
+
+## ✅ 2026-08-14 · 낙관적 락 실효성 버그 수정 + Initializer 버전 유실·보상 정책 통일
+
+### 변경 목적
+
+PR #369에서 동시 초기화 경합(더블클릭 등)을 막으려 도입한 `@Version`이 실제로는 충돌을 전혀 감지하지 못하던 버그를 고친다. `SharedFileRootPersistenceAdapter.save()`가 저장 직전에 행을 다시 조회해 그 자리에서 수정하는 방식이라, merge 시점에 비교할 버전이 항상 최신값이 되어버려 낙관적 락이 무력화돼 있었다.
+
+### 구현 변경
+
+- `SharedFileRoot`(도메인)에 `version`(nullable) 필드와 영속성 복원 전용 `restore(status, folderId, version)` 팩토리를 추가했다. `ready()`/`failed()`는 아직 저장되지 않은 인스턴스이므로 `version=null`을 유지한다.
+- `SharedFileRootEntity.update()` 인스턴스 메서드를 제거하고, 호출자가 조회 시점에 들고 있던 version으로 detached 엔티티를 만드는 `forUpdate(version, status, folderId)` 정적 팩토리로 교체했다.
+- `SharedFileRootPersistenceAdapter.save()`가 저장 직전 재조회를 하지 않고 `root.getVersion()`으로 insert(`create()`)/update(`forUpdate()`)를 분기한다. Spring Data JPA는 `@Version` 필드(`Long`)가 `null`이면 새 엔티티로 판단하므로 이 분기만으로 `em.persist()`/`em.merge()`가 올바르게 갈린다. `toDomain()`도 `ready()/failed()` 대신 `restore()`로 바꿔 조회 시 버전을 항상 보존한다.
+- `SharedFileRootInitializer.handle()`이 `find()`로 읽은 기존 루트를 버리고 매번 새 `SharedFileRoot.ready()/failed()`를 만들던 부분을 고쳤다 — 어댑터를 위처럼 고친 뒤에는 이 상태로 두면 이미 있는 행에도 매번 insert를 시도해 PK 충돌로 실패한다. `RecreateSharedFileRootService`와 동일하게 기존 객체를 `replaceWith()`/`markFailed()`로 바꿔 version을 유지한 채 저장한다.
+- `SharedFileRootInitializer`의 DB 저장 실패 처리를 `RecreateSharedFileRootService`와 통일했다 — 지금까지는 DB 저장이 실패해도 방금 만든 Drive 폴더를 그대로 두고 로그만 남겼는데(orphan), 이제 동일하게 trash로 보상을 시도한다. "실패로 덮어쓰기를 재시도하지 않는다"는 기존 정책 자체는 유지한다.
+
+### 검증
+
+- 신규 `SharedFileRootPersistenceAdapterDataJpaTest`(3): insert, 정상 버전으로 update, **오래된 버전으로 저장 시 낙관적 락 충돌**(수정 전 코드에서는 예외 없이 조용히 덮어써지던 것을 그대로 재현하는 회귀 테스트).
+- `SharedFileRootTest`에 version 관련 케이스 3건 추가.
+- `SharedFileRootInitializerTest`에 version 보존 2건 + Drive 폴더 보상(trash) 검증 1건 추가, 기존 8개 테스트 전부 통과.
+- 전체 `./gradlew clean compileJava compileTestJava test --tests "com.academy.mudogroupware.sharedfile.*"` 통과(126개), 전체 프로젝트 `./gradlew test`도 회귀 없이 통과.
+
 ## ✅ 2026-08-12 · HTTP API·권한·문서 구현 (Task6)
 
 ### 변경 목적

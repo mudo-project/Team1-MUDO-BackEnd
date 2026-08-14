@@ -229,6 +229,7 @@ $RECYCLE.BIN/
 !.env.example
 
 # Monitoring runtime data
+/monitoring/
 logs/
 loki-data/
 monitoring/loki/data/
@@ -266,3 +267,8 @@ infra/monitoring/runtime/
 
 # Local payroll email test data
 /docs/payroll-email-local-mock.sql
+
+# Local concurrency/correctness analysis for presentation (개인 발표 준비 자료)
+/CONCURRENCY_ANALYSIS.md
+/PRESENTATION_CANDIDATES.md
+/ACCESS_TOKEN_CACHING.md

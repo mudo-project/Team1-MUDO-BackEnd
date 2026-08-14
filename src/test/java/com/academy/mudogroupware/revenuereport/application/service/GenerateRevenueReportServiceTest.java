@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.Clock;
@@ -19,10 +20,13 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.context.ApplicationEventPublisher;
 
+import com.academy.mudogroupware.revenuereport.application.port.AcademyOwnerLookupPort;
 import com.academy.mudogroupware.revenuereport.application.port.ExpenseSummary;
 import com.academy.mudogroupware.revenuereport.application.port.LectureRevenueInfo;
 import com.academy.mudogroupware.revenuereport.application.port.RevenueReportAiPort;
+import com.academy.mudogroupware.revenuereport.domain.event.RevenueReportGeneratedEvent;
 import com.academy.mudogroupware.revenuereport.domain.exception.RevenueReportAiException;
 import com.academy.mudogroupware.revenuereport.domain.model.RevenueReport;
 import com.academy.mudogroupware.revenuereport.domain.repository.RevenueReportRepository;
@@ -37,13 +41,15 @@ class GenerateRevenueReportServiceTest {
     private final RevenueSnapshotCalculator calculator = new RevenueSnapshotCalculator();
     private final Clock clock = Clock.fixed(Instant.parse("2026-09-01T00:30:00Z"), ZoneId.of("Asia/Seoul"));
     private final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+    private final ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
+    private final AcademyOwnerLookupPort academyOwnerLookupPort = mock(AcademyOwnerLookupPort.class);
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper =
             new com.fasterxml.jackson.databind.ObjectMapper()
                     .registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule())
                     .disable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     private final GenerateRevenueReportService service = new GenerateRevenueReportService(
             aggregationReader, revenueReportAiPort, revenueReportRepository, calculator, clock, objectMapper,
-            meterRegistry);
+            meterRegistry, eventPublisher, academyOwnerLookupPort);
 
     private RevenueReportAggregation sampleAggregation() {
         return new RevenueReportAggregation(
@@ -74,6 +80,7 @@ class GenerateRevenueReportServiceTest {
         when(aggregationReader.read(any(), any())).thenReturn(sampleAggregation());
         when(revenueReportAiPort.generateReport(any())).thenReturn("8월 매출 리포트 텍스트");
         when(revenueReportRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(academyOwnerLookupPort.findAcademyOwnerUserId()).thenReturn(Optional.empty());
 
         service.generate(targetMonth);
 
@@ -86,6 +93,43 @@ class GenerateRevenueReportServiceTest {
         assertThat(meterRegistry.get("mudo.revenue.report.generate").tag("result", "success").counter().count())
                 .isEqualTo(1.0);
         assertThat(meterRegistry.get("mudo.revenue.report.generate.duration").timer().count()).isEqualTo(1L);
+    }
+
+    @Test
+    void publishesNotificationEventForAcademyOwnerAfterSave() {
+        LocalDate targetMonth = LocalDate.of(2026, 8, 1);
+        when(revenueReportRepository.findByTargetMonth(targetMonth)).thenReturn(Optional.empty());
+        when(revenueReportRepository.findByTargetMonth(LocalDate.of(2026, 7, 1))).thenReturn(Optional.empty());
+        when(aggregationReader.read(any(), any())).thenReturn(sampleAggregation());
+        when(revenueReportAiPort.generateReport(any())).thenReturn("8월 매출 리포트 텍스트");
+        RevenueReport saved = RevenueReport.restore(
+                99L, targetMonth, "8월 매출 리포트 텍스트", "{}", null, LocalDateTime.now(), LocalDateTime.now());
+        when(revenueReportRepository.save(any())).thenReturn(saved);
+        when(academyOwnerLookupPort.findAcademyOwnerUserId()).thenReturn(Optional.of(7L));
+
+        service.generate(targetMonth);
+
+        ArgumentCaptor<RevenueReportGeneratedEvent> eventCaptor =
+                ArgumentCaptor.forClass(RevenueReportGeneratedEvent.class);
+        verify(eventPublisher).publishEvent(eventCaptor.capture());
+        assertThat(eventCaptor.getValue().recipientUserId()).isEqualTo(7L);
+        assertThat(eventCaptor.getValue().reportId()).isEqualTo(99L);
+        assertThat(eventCaptor.getValue().targetMonth()).isEqualTo(targetMonth);
+    }
+
+    @Test
+    void skipsNotificationEventWhenNoAcademyOwnerExists() {
+        LocalDate targetMonth = LocalDate.of(2026, 8, 1);
+        when(revenueReportRepository.findByTargetMonth(targetMonth)).thenReturn(Optional.empty());
+        when(revenueReportRepository.findByTargetMonth(LocalDate.of(2026, 7, 1))).thenReturn(Optional.empty());
+        when(aggregationReader.read(any(), any())).thenReturn(sampleAggregation());
+        when(revenueReportAiPort.generateReport(any())).thenReturn("8월 매출 리포트 텍스트");
+        when(revenueReportRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(academyOwnerLookupPort.findAcademyOwnerUserId()).thenReturn(Optional.empty());
+
+        service.generate(targetMonth);
+
+        verifyNoInteractions(eventPublisher);
     }
 
     @Test
@@ -142,6 +186,7 @@ class GenerateRevenueReportServiceTest {
         when(aggregationReader.read(any(), any())).thenReturn(sampleAggregation());
         when(revenueReportAiPort.generateReport(any())).thenReturn("8월 매출 리포트 텍스트");
         when(revenueReportRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(academyOwnerLookupPort.findAcademyOwnerUserId()).thenReturn(Optional.empty());
 
         service.generate(targetMonth);
 
@@ -166,6 +211,7 @@ class GenerateRevenueReportServiceTest {
         when(aggregationReader.read(any(), any())).thenReturn(sampleAggregation());
         when(revenueReportAiPort.generateReport(any())).thenReturn("8월 매출 리포트 텍스트");
         when(revenueReportRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(academyOwnerLookupPort.findAcademyOwnerUserId()).thenReturn(Optional.empty());
 
         service.generate(targetMonth);
 
@@ -190,6 +236,7 @@ class GenerateRevenueReportServiceTest {
         when(aggregationReader.read(any(), any())).thenReturn(sampleAggregation());
         when(revenueReportAiPort.generateReport(any())).thenReturn("8월 매출 리포트 텍스트");
         when(revenueReportRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(academyOwnerLookupPort.findAcademyOwnerUserId()).thenReturn(Optional.empty());
 
         service.generate(targetMonth);
 

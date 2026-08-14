@@ -36,4 +36,31 @@ class GoogleTokenResponseTest {
 
         assertThat(response.refreshTokenExpiresInSeconds()).isNull();
     }
+
+    @Test
+    void readsAccessTokenExpirationFromGoogleResponse() throws Exception {
+        GoogleTokenResponse response = objectMapper.readValue("""
+                {
+                  "access_token": "access-token",
+                  "refresh_token": "refresh-token",
+                  "scope": "https://www.googleapis.com/auth/drive.file",
+                  "expires_in": 3600
+                }
+                """, GoogleTokenResponse.class);
+
+        assertThat(response.accessTokenExpiresInSeconds()).isEqualTo(3600L);
+    }
+
+    @Test
+    void keepsAccessTokenExpirationNullWhenGoogleDoesNotProvideIt() throws Exception {
+        GoogleTokenResponse response = objectMapper.readValue("""
+                {
+                  "access_token": "access-token",
+                  "refresh_token": "refresh-token",
+                  "scope": "https://www.googleapis.com/auth/drive.file"
+                }
+                """, GoogleTokenResponse.class);
+
+        assertThat(response.accessTokenExpiresInSeconds()).isNull();
+    }
 }

@@ -11,6 +11,7 @@ import java.time.LocalTime;
 import org.junit.jupiter.api.Test;
 
 import com.academy.mudogroupware.timetable.domain.exception.InvalidTimetableClassroomException;
+import com.academy.mudogroupware.timetable.domain.exception.InvalidTimetableColorException;
 import com.academy.mudogroupware.timetable.domain.exception.InvalidTimetableSlotException;
 
 class TimetableSlotTest {
@@ -20,7 +21,8 @@ class TimetableSlotTest {
 
     private TimetableSlot slot(String classroomCode, DayOfWeek day, LocalTime start, LocalTime end) {
         return TimetableSlot.create(
-                1L, ClassType.CLASS, day, classroomCode, start, end, Grade.HIGH_3, "정T", "미적분", FROM, UNTIL);
+                1L, ClassType.CLASS, day, classroomCode, start, end, Grade.HIGH_3, "정T", "미적분",
+                "FFCC00", FROM, UNTIL);
     }
 
     @Test
@@ -28,6 +30,7 @@ class TimetableSlotTest {
         TimetableSlot slot = slot("601", DayOfWeek.MONDAY, LocalTime.of(9, 0), LocalTime.of(11, 0));
 
         assertThat(slot.getClassroomCode()).isEqualTo("601");
+        assertThat(slot.getColor()).isEqualTo("FFCC00");
         assertThat(slot.getEffectiveFrom()).isEqualTo(FROM);
         assertThat(slot.getEffectiveUntil()).isEqualTo(UNTIL);
     }
@@ -68,10 +71,10 @@ class TimetableSlotTest {
     void overlapsReturnsFalseWhenEffectiveRangesDoNotOverlap() {
         TimetableSlot a = TimetableSlot.create(
                 1L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                Grade.HIGH_3, "정T", "미적분", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 7, 31));
+                Grade.HIGH_3, "정T", "미적분", "FFCC00", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 7, 31));
         TimetableSlot b = TimetableSlot.create(
                 1L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                Grade.HIGH_3, "정T", "미적분", LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 16));
+                Grade.HIGH_3, "정T", "미적분", "FFCC00", LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 16));
 
         assertThat(a.overlaps(b)).isFalse();
     }
@@ -91,10 +94,30 @@ class TimetableSlotTest {
 
         assertThatThrownBy(() -> slot.applyFullUpdate(
                 ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                null, "정T", "미적분"))
+                null, "정T", "미적분", "FFCC00"))
                 .isInstanceOf(InvalidTimetableSlotException.class)
                 .satisfies(e -> assertThat(((InvalidTimetableSlotException) e).getContext())
                         .containsEntry("field", "grade"));
+    }
+
+    @Test
+    void applyFullUpdateAppliesNewColor() {
+        TimetableSlot slot = slot("601", DayOfWeek.MONDAY, LocalTime.of(9, 0), LocalTime.of(11, 0));
+
+        slot.applyFullUpdate(ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
+                Grade.HIGH_3, "정T", "미적분", "00AACC");
+
+        assertThat(slot.getColor()).isEqualTo("00AACC");
+    }
+
+    @Test
+    void applyFullUpdateThrowsWhenColorIsNotValidHex() {
+        TimetableSlot slot = slot("601", DayOfWeek.MONDAY, LocalTime.of(9, 0), LocalTime.of(11, 0));
+
+        assertThatThrownBy(() -> slot.applyFullUpdate(
+                ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
+                Grade.HIGH_3, "정T", "미적분", "ZZZZZZ"))
+                .isInstanceOf(InvalidTimetableColorException.class);
     }
 
     @Test
@@ -102,9 +125,10 @@ class TimetableSlotTest {
         LocalDateTime now = LocalDateTime.of(2026, 7, 1, 0, 0);
         TimetableSlot slot = TimetableSlot.restore(
                 10L, 1L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                Grade.HIGH_3, "정T", "미적분", FROM, UNTIL, now, now);
+                Grade.HIGH_3, "정T", "미적분", "FFCC00", FROM, UNTIL, now, now);
 
         assertThat(slot.getId()).isEqualTo(10L);
+        assertThat(slot.getColor()).isEqualTo("FFCC00");
     }
 
     @Test
@@ -120,10 +144,26 @@ class TimetableSlotTest {
     void createThrowsDomainExceptionWhenGradeIsMissing() {
         assertThatThrownBy(() -> TimetableSlot.create(
                 1L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                null, "정T", "미적분", FROM, UNTIL))
+                null, "정T", "미적분", "FFCC00", FROM, UNTIL))
                 .isInstanceOf(InvalidTimetableSlotException.class)
                 .satisfies(e -> assertThat(((InvalidTimetableSlotException) e).getContext())
                         .containsEntry("field", "grade"));
+    }
+
+    @Test
+    void createThrowsWhenColorIsNull() {
+        assertThatThrownBy(() -> TimetableSlot.create(
+                1L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
+                Grade.HIGH_3, "정T", "미적분", null, FROM, UNTIL))
+                .isInstanceOf(InvalidTimetableColorException.class);
+    }
+
+    @Test
+    void createThrowsWhenColorIsNotSixHexDigits() {
+        assertThatThrownBy(() -> TimetableSlot.create(
+                1L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
+                Grade.HIGH_3, "정T", "미적분", "FFF", FROM, UNTIL))
+                .isInstanceOf(InvalidTimetableColorException.class);
     }
 
     @Test

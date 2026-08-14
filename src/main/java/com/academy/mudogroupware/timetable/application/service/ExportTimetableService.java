@@ -15,7 +15,6 @@ import com.academy.mudogroupware.timetable.application.usecase.ExportTimetableUs
 import com.academy.mudogroupware.timetable.application.usecase.GetTimetableSetUseCase;
 import com.academy.mudogroupware.timetable.application.usecase.GetTimetableSlotsUseCase;
 import com.academy.mudogroupware.timetable.domain.model.TimetableClassroom;
-import com.academy.mudogroupware.timetable.domain.model.TimetableExportColor;
 import com.academy.mudogroupware.timetable.domain.model.TimetableExportFormat;
 import com.academy.mudogroupware.timetable.domain.model.TimetableExportOptions;
 
@@ -34,8 +33,7 @@ public class ExportTimetableService implements ExportTimetableUseCase {
         TimetableSetDetailView set = getTimetableSetUseCase
                 .getTimetableSet(command.timetableSetId());
 
-        Map<String, TimetableExportColor> colors = parseColors(command.colorHexByGroupValue());
-        TimetableExportOptions options = new TimetableExportOptions(command.colorCriterion(), colors, command.density());
+        TimetableExportOptions options = new TimetableExportOptions(command.density());
 
         List<TimetableSlotView> allSortedSlots = getTimetableSlotsUseCase
                 .getSlots(command.timetableSetId()).stream()
@@ -67,10 +65,5 @@ public class ExportTimetableService implements ExportTimetableUseCase {
                 .filter(slot -> command.floor() == null
                         || command.floor().equals(floorByClassroomCode.get(slot.classroomCode())))
                 .toList();
-    }
-
-    private Map<String, TimetableExportColor> parseColors(Map<String, String> colorHexByGroupValue) {
-        return colorHexByGroupValue.entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, entry -> TimetableExportColor.fromHex(entry.getValue())));
     }
 }

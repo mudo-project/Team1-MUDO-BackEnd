@@ -8,5 +8,6 @@ record GoogleTokenResponse(
         @JsonProperty("access_token") String accessToken,
         @JsonProperty("refresh_token") String refreshToken,
         String scope,
-        @JsonProperty("refresh_token_expires_in") Long refreshTokenExpiresInSeconds) {
+        @JsonProperty("refresh_token_expires_in") Long refreshTokenExpiresInSeconds,
+        @JsonProperty("expires_in") Long accessTokenExpiresInSeconds) {
 }

@@ -1,5 +1,7 @@
 package com.academy.mudogroupware.notification.application.service;
 
+import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -15,6 +17,7 @@ import com.academy.mudogroupware.notification.application.port.NotificationUserI
 import com.academy.mudogroupware.notification.application.query.NotificationUserInfo;
 import com.academy.mudogroupware.notification.application.usecase.CreateNotificationUseCase;
 import com.academy.mudogroupware.notification.domain.model.NotificationType;
+import com.academy.mudogroupware.revenuereport.domain.event.RevenueReportGeneratedEvent;
 import com.academy.mudogroupware.workspace.domain.event.TaskCommentMentionedEvent;
 
 import lombok.RequiredArgsConstructor;
@@ -29,6 +32,8 @@ import lombok.extern.slf4j.Slf4j;
 public class NotificationCreationListener {
 
     private static final String UNKNOWN_NAME = "알 수 없음";
+    private static final DateTimeFormatter TARGET_MONTH_FORMATTER =
+            DateTimeFormatter.ofPattern("yyyy년 M월", Locale.KOREAN);
 
     private final CreateNotificationUseCase createNotificationUseCase;
     private final NotificationUserInfoPort notificationUserInfoPort;
@@ -61,6 +66,12 @@ public class NotificationCreationListener {
             case IN_PROGRESS -> throw new IllegalArgumentException("approval document is not decided");
         };
         create(event.requesterId(), NotificationType.APPROVAL_DOCUMENT_DECIDED.name(), event.documentId(), message);
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handle(RevenueReportGeneratedEvent event) {
+        create(event.recipientUserId(), NotificationType.REVENUE_REPORT_GENERATED.name(), event.reportId(),
+                event.targetMonth().format(TARGET_MONTH_FORMATTER) + " 매출 리포트가 생성되었습니다");
     }
 
     // 실시간 전송(WorkspaceWebSocketNotifier/ApprovalWebSocketNotifier)에 영향을 주지 않도록

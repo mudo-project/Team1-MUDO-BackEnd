@@ -62,14 +62,14 @@
 - 엑셀(.xlsx)/PDF(A3 가로)/PNG 3개 포맷을 지원한다. 구글 스프레드시트로 저장은 화면 설계상 별도 기능으로, 이번 범위가 아니며 후속 계획도 없다.
 - 세 포맷 모두 슬롯을 요일→시작시각 순으로 정렬한 표(리스트) 형태로 내보낸다. 화면에 보이는 요일×시간 시각적 그리드를 재현하지 않는다.
 - **필터**: `EXCEL`/`PNG`는 화면의 `dayOfWeek`/`floor`/`classType` 필터 상태를 그대로 반영해 내보낸다. `PDF`는 인쇄용 고정 산출물이라 필터와 무관하게 항상 세트 전체를 내보낸다.
-- **색상**: 배경색은 `colorCriterion`(`CLASSROOM`/`TEACHER`)으로 지정한 기준의 값을 키로, `colorMap`(JSON, 기준값→6자리 hex)에서 조회해 적용한다. `colorMap`에 없는 값이거나 슬롯의 해당 필드가 비어 있으면 흰색으로 표시한다. 형식이 6자리 16진수가 아니거나 `colorMap`이 올바른 JSON이 아니면 400(`TIMETABLE_400_5`)으로 거절한다. 백엔드는 팔레트를 계산하지 않고 프론트가 지정한 값을 그대로 쓴다. 학년은 색 기준에서 제외하기로 확정됐다.
+- **색상**: 수업 슬롯 생성/수정 시점에 `color`(6자리 hex, 필수)를 받아 저장한다. 형식이 6자리 16진수가 아니면 400(`TIMETABLE_400_5`, `InvalidTimetableColorException`)으로 거절한다. 내보내기(export)는 각 슬롯에 저장된 `color`를 그대로 사용하며, export 시점에 별도로 색상 정보를 받지 않는다. 백엔드는 팔레트를 계산하지 않고 프론트가 슬롯 생성/수정 시 지정한 값을 그대로 쓴다.
 - **밀도**: `density`(`COMPACT`/`NORMAL`/`SPACIOUS`)로 행 높이·글자 크기를 조절하며 세 포맷 모두에 적용된다. 생략 시 `NORMAL`.
 - PNG는 슬롯 수가 매우 많아 결과 이미지가 허용 픽셀 수(2000만)를 초과하면 400(`TIMETABLE_400_6`)으로 거절한다.
-- 조회 계열과 동일하게 권한 무관, 같은 학원 소속 인증 사용자면 누구나 호출 가능하다.
+- 권한 무관, 인증된 사용자라면 누구나 호출 가능하다.
 - **폰트**: 지정 폰트는 Inter(SIL OFL, 라틴 전용 — 한글 글리프 없음)다. PDF/PNG는 서버가 직접 텍스트를 그리는데, Inter만 쓰면 한글이 깨지므로(빈 칸 또는 누락) Inter가 그릴 수 없는 문자(한글 등)는 나눔고딕(`src/main/resources/fonts/NanumGothic-*.ttf`, SIL OFL 1.1)으로 자동 대체(폴백)해서 그린다. PNG는 문자 단위로 `Font.canDisplay()`를 검사해 두 폰트를 섞어 그리고, PDF는 OpenPDF `FontSelector`가 같은 방식으로 문자별 폰트를 고른다. 엑셀은 클라이언트(사용자 PC)가 자체 폰트로 렌더링하며, 지정한 "Inter"가 없는 문자는 엑셀이 자동으로 다른 설치된 폰트로 대체하므로 별도 폴백 구현이 필요 없다.
 
 ## 🚨 예외 정책
 
 - 도메인 규칙 위반은 `TimetableErrorCode` + 에러별 이름이 드러나는 개별 예외 클래스로 던진다.
-- 사용 중인 예외: `TimetableNameRequiredException`(400), `InvalidTimetablePeriodException`(400), `DuplicateClassroomCodeException`(400), `UnsupportedSlotScopeException`(400), `InvalidExportColorException`(400), `ExportImageTooLargeException`(400, `TIMETABLE_400_6`), `TimetableSetNotFoundException`(404), `TimetableSlotNotFoundException`(404), `ClassroomTimeConflictException`(409).
+- 사용 중인 예외: `TimetableNameRequiredException`(400), `InvalidTimetablePeriodException`(400), `DuplicateClassroomCodeException`(400), `UnsupportedSlotScopeException`(400), `InvalidTimetableColorException`(400), `ExportImageTooLargeException`(400, `TIMETABLE_400_6`), `TimetableSetNotFoundException`(404), `TimetableSlotNotFoundException`(404), `ClassroomTimeConflictException`(409).
 - `docs/ERROR_HANDLING.md`의 표준 패턴을 따르며, `calendar`/`google` 도메인과 동일한 방식이다.

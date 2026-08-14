@@ -24,15 +24,17 @@ class GetSharedFileRootServiceTest {
         SharedFileRootView view = service.getRoot();
 
         assertThat(view.ready()).isFalse();
+        assertThat(view.rootId()).isNull();
     }
 
     @Test
-    void returnsReadyWhenRootIsReady() {
+    void returnsReadyWithRootIdWhenRootIsReady() {
         when(repository.find()).thenReturn(Optional.of(SharedFileRoot.ready("folder-id")));
 
         SharedFileRootView view = service.getRoot();
 
         assertThat(view.ready()).isTrue();
+        assertThat(view.rootId()).isEqualTo("folder-id");
     }
 
     @Test
@@ -42,5 +44,6 @@ class GetSharedFileRootServiceTest {
         SharedFileRootView view = service.getRoot();
 
         assertThat(view.ready()).isFalse();
+        assertThat(view.rootId()).isNull();
     }
 }

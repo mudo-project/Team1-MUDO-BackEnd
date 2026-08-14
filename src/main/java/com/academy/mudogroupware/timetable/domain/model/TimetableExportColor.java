@@ -2,7 +2,7 @@ package com.academy.mudogroupware.timetable.domain.model;
 
 import java.util.regex.Pattern;
 
-import com.academy.mudogroupware.timetable.domain.exception.InvalidExportColorException;
+import com.academy.mudogroupware.timetable.domain.exception.InvalidTimetableColorException;
 
 public record TimetableExportColor(int red, int green, int blue) {
 
@@ -10,7 +10,7 @@ public record TimetableExportColor(int red, int green, int blue) {
 
     public static TimetableExportColor fromHex(String hex) {
         if (hex == null || !HEX_COLOR.matcher(hex).matches()) {
-            throw new InvalidExportColorException();
+            throw new InvalidTimetableColorException();
         }
         int rgb = Integer.parseInt(hex, 16);
         return new TimetableExportColor((rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF);

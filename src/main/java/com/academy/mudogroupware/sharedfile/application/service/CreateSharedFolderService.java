@@ -25,12 +25,14 @@ public class CreateSharedFolderService implements CreateSharedFolderUseCase {
     private final SharedFileDrivePort sharedFileDrivePort;
     private final GetGoogleAccessTokenUseCase getGoogleAccessTokenUseCase;
 
+    // parentId를 생략하면(null) 시스템 루트 바로 아래에 만든다 — ListSharedFileItemsService의 목록 조회와
+    // 동일한 규칙이다.
     @Override
     public SharedFileItemView create(String parentId, String name) {
         if (name == null || name.isBlank()) {
             throw new SharedFileInvalidNameException();
         }
-        if (parentId == null || parentId.isBlank()) {
+        if (parentId != null && parentId.isBlank()) {
             throw new BadRequestException();
         }
         SharedFileRoot root = sharedFileRootRepository.find()
@@ -39,11 +41,12 @@ public class CreateSharedFolderService implements CreateSharedFolderUseCase {
         String accessToken = getGoogleAccessTokenUseCase.getAccessToken();
 
         String rootId = root.getGoogleRootFolderId();
-        if (!parentId.equals(rootId)) {
-            sharedFileRootGuard.requireDescendant(accessToken, rootId, parentId);
+        String targetParentId = parentId == null ? rootId : parentId;
+        if (!targetParentId.equals(rootId)) {
+            sharedFileRootGuard.requireDescendant(accessToken, rootId, targetParentId);
         }
 
-        DriveItem created = sharedFileDrivePort.createFolder(accessToken, parentId, name);
+        DriveItem created = sharedFileDrivePort.createFolder(accessToken, targetParentId, name);
         return SharedFileItemViewMapper.toView(created);
     }
 }

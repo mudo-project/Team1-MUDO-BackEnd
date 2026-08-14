@@ -10,6 +10,7 @@ import com.academy.mudogroupware.timetable.domain.model.Grade;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 
 public record CreateTimetableSlotRequest(
         @Schema(description = "수업 종류") @NotNull ClassType classType,
@@ -19,11 +20,13 @@ public record CreateTimetableSlotRequest(
         @Schema(description = "종료 시각", example = "11:00") @NotNull LocalTime endTime,
         @Schema(description = "학년(초1~고3 중 하나)", example = "HIGH_3") @NotNull Grade grade,
         @Schema(description = "강사명", example = "정T") String teacherName,
-        @Schema(description = "과목", example = "미적분") String subjectName
+        @Schema(description = "과목", example = "미적분") String subjectName,
+        @Schema(description = "색상(6자리 16진수, RRGGBB)", example = "FFCC00")
+        @NotBlank @Pattern(regexp = "^[0-9A-Fa-f]{6}$") String color
 ) {
 
     public CreateTimetableSlotCommand toCommand(Long timetableSetId) {
         return new CreateTimetableSlotCommand(timetableSetId, classType, dayOfWeek, classroomCode,
-                startTime, endTime, grade, teacherName, subjectName);
+                startTime, endTime, grade, teacherName, subjectName, color);
     }
 }

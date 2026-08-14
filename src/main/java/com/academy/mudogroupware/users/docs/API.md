@@ -547,6 +547,36 @@ Query Parameter
 
 ---
 
+## 15-0. 내 권한 목록 조회
+
+`GET /api/users/me/permissions`
+권한: 없음 (로그인만 되면 호출 가능, 본인 권한만 조회)
+
+### Request
+
+없음
+
+### Response · `200 OK`
+
+```json
+{
+  "status": 200,
+  "code": "USER_200_7",
+  "message": "내 권한 목록 조회에 성공했습니다.",
+  "data": {
+    "permissions": ["ACCOUNT:MANAGE", "ROLE:MANAGE", "ACADEMY:OWNER"]
+  }
+}
+```
+
+### 검증 및 정책
+
+- 로그인 응답(`LoginResponse.permissions`)과 동일한 `EffectivePermissionResolver` 로직으로 계산합니다 — 서버가 `@PreAuthorize`로 실제 검사하는 값과 항상 같습니다.
+- 로그인 응답엔 이 목록이 포함되지만, 토큰 재발급(`POST /api/auth/refresh`) 응답엔 포함되지 않습니다. 관리자가 역할/권한을 바꿔도 재로그인 전까지 프론트가 최신 권한을 알 방법이 없던 문제를, 이 API를 필요할 때 다시 호출하는 방식으로 보완합니다.
+- 인증 실패만 401. 그 외 실패 케이스 없음.
+
+---
+
 ## 15-1. 내 정보 수정
 
 `PATCH /api/users/me`

@@ -106,8 +106,13 @@ public class TaskComment {
     return taskId.equals(targetTaskId);
   }
 
+  // 같은 사용자를 중복 멘션해도 멘션은 한 번만 남는다 — (comment_id, mentioned_user_id) 유니크
+  // 제약과 일치시키기 위해 도메인에서 먼저 막는다. 순서는 입력 순서를 유지한다.
   private static List<TaskCommentMention> toMentions(List<Long> mentionedUserIds, LocalDateTime now) {
-    return mentionedUserIds.stream().map(userId -> TaskCommentMention.create(userId, now)).toList();
+    return mentionedUserIds.stream()
+        .distinct()
+        .map(userId -> TaskCommentMention.create(userId, now))
+        .toList();
   }
 
   // 댓글 내용은 항상 공백만으로 채워질 수 없다 — Request 계층의 @NotBlank가 API 경로를 막지만,

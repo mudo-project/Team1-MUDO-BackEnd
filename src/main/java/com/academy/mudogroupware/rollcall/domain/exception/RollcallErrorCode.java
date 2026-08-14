@@ -12,6 +12,8 @@ public enum RollcallErrorCode implements ErrorCode {
 
     ETC_NOTE_REQUIRED(HttpStatus.BAD_REQUEST, "ROLLCALL_400_1", "기타 사유를 입력해야 합니다."),
     NO_STUDENTS_SELECTED(HttpStatus.BAD_REQUEST, "ROLLCALL_400_2", "발송할 학생을 최소 1명 이상 선택해야 합니다."),
+    STUDENT_NOT_ENROLLED(HttpStatus.BAD_REQUEST, "ROLLCALL_400_3", "수강 중인 학생만 출결을 등록할 수 있습니다."),
+    DUPLICATE_STUDENT_IN_REQUEST(HttpStatus.BAD_REQUEST, "ROLLCALL_400_4", "요청에 중복된 학생이 있습니다."),
 
     TEMPLATE_NOT_FOUND(HttpStatus.NOT_FOUND, "ROLLCALL_404_1", "문자 템플릿을 찾을 수 없습니다."),
     LECTURE_NOT_FOUND(HttpStatus.NOT_FOUND, "ROLLCALL_404_2", "강의를 찾을 수 없습니다."),

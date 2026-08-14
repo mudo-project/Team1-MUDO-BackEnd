@@ -43,7 +43,6 @@ import com.academy.mudogroupware.timetable.application.usecase.GetTimetableSetUs
 import com.academy.mudogroupware.timetable.application.usecase.GetTimetableSetsUseCase;
 import com.academy.mudogroupware.timetable.application.usecase.DeleteTimetableSetUseCase;
 import com.academy.mudogroupware.timetable.application.usecase.UpdateTimetableSetUseCase;
-import com.academy.mudogroupware.timetable.domain.exception.InvalidExportColorException;
 import com.academy.mudogroupware.timetable.domain.exception.TimetableSetNotFoundException;
 import com.academy.mudogroupware.timetable.domain.model.TimetableClassroom;
 import com.academy.mudogroupware.timetable.domain.model.TimetableSetStatus;
@@ -206,8 +205,6 @@ class TimetableControllerTest {
 
         mockMvc.perform(get("/api/timetables/1/export")
                         .param("format", "EXCEL")
-                        .param("colorCriterion", "CLASSROOM")
-                        .param("colorMap", "{\"601\":\"FFCC00\"}")
                         .with(authentication(authenticatedUser())))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(
@@ -222,8 +219,6 @@ class TimetableControllerTest {
 
         mockMvc.perform(get("/api/timetables/1/export")
                         .param("format", "PNG")
-                        .param("colorCriterion", "TEACHER")
-                        .param("colorMap", "{\"정T\":\"FFCC00\"}")
                         .param("density", "SPACIOUS")
                         .param("dayOfWeek", "MONDAY")
                         .param("floor", "6층")
@@ -239,66 +234,15 @@ class TimetableControllerTest {
 
         mockMvc.perform(get("/api/timetables/999/export")
                         .param("format", "PDF")
-                        .param("colorCriterion", "CLASSROOM")
-                        .param("colorMap", "{\"601\":\"FFCC00\"}")
                         .with(authentication(authenticatedUser())))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("TIMETABLE_404_1"));
     }
 
     @Test
-    void exportTimetableReturns400WhenColorInvalid() throws Exception {
-        when(exportTimetableUseCase.export(any(ExportTimetableCommand.class)))
-                .thenThrow(new InvalidExportColorException());
-
-        mockMvc.perform(get("/api/timetables/1/export")
-                        .param("format", "PNG")
-                        .param("colorCriterion", "CLASSROOM")
-                        .param("colorMap", "{\"601\":\"ZZZZZZ\"}")
-                        .with(authentication(authenticatedUser())))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("TIMETABLE_400_5"));
-    }
-
-    @Test
-    void exportTimetableReturns400WhenColorMapIsNotValidJson() throws Exception {
-        mockMvc.perform(get("/api/timetables/1/export")
-                        .param("format", "PNG")
-                        .param("colorCriterion", "CLASSROOM")
-                        .param("colorMap", "not-json")
-                        .with(authentication(authenticatedUser())))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("TIMETABLE_400_5"));
-    }
-
-    @Test
-    void exportTimetableReturns400WhenColorMapIsJsonNull() throws Exception {
-        mockMvc.perform(get("/api/timetables/1/export")
-                        .param("format", "PNG")
-                        .param("colorCriterion", "CLASSROOM")
-                        .param("colorMap", "null")
-                        .with(authentication(authenticatedUser())))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("TIMETABLE_400_5"));
-    }
-
-    @Test
-    void exportTimetableReturns400WhenColorMapHasNullValue() throws Exception {
-        mockMvc.perform(get("/api/timetables/1/export")
-                        .param("format", "PNG")
-                        .param("colorCriterion", "CLASSROOM")
-                        .param("colorMap", "{\"601\":null}")
-                        .with(authentication(authenticatedUser())))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("TIMETABLE_400_5"));
-    }
-
-    @Test
     void exportTimetableReturns400WhenFormatIsInvalidEnumValue() throws Exception {
         mockMvc.perform(get("/api/timetables/1/export")
                         .param("format", "INVALID")
-                        .param("colorCriterion", "CLASSROOM")
-                        .param("colorMap", "{\"601\":\"FFCC00\"}")
                         .with(authentication(authenticatedUser())))
                 .andExpect(status().isBadRequest());
     }
@@ -306,8 +250,6 @@ class TimetableControllerTest {
     @Test
     void exportTimetableReturns400WhenRequiredParameterIsMissing() throws Exception {
         mockMvc.perform(get("/api/timetables/1/export")
-                        .param("colorCriterion", "CLASSROOM")
-                        .param("colorMap", "{\"601\":\"FFCC00\"}")
                         .with(authentication(authenticatedUser())))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("COMMON_400_1"));
@@ -316,9 +258,7 @@ class TimetableControllerTest {
     @Test
     void exportTimetableReturns401WhenUnauthenticated() throws Exception {
         mockMvc.perform(get("/api/timetables/1/export")
-                        .param("format", "EXCEL")
-                        .param("colorCriterion", "CLASSROOM")
-                        .param("colorMap", "{\"601\":\"FFCC00\"}"))
+                        .param("format", "EXCEL"))
                 .andExpect(status().isUnauthorized());
     }
 

@@ -42,7 +42,7 @@ public class UpdateTimetableSlotService implements UpdateTimetableSlotUseCase {
         TimetableSlot candidate = TimetableSlot.create(
                 slot.getTimetableSetId(), command.classType(), command.dayOfWeek(), command.classroomCode(),
                 command.startTime(), command.endTime(), command.grade(), command.teacherName(),
-                command.subjectName(), slot.getEffectiveFrom(), slot.getEffectiveUntil());
+                command.subjectName(), command.color(), slot.getEffectiveFrom(), slot.getEffectiveUntil());
 
         List<TimetableSlot> othersInClassroom = timetableSlotRepository
                 .findAllByTimetableSetIdAndClassroomCode(slot.getTimetableSetId(), command.classroomCode()).stream()
@@ -55,7 +55,7 @@ public class UpdateTimetableSlotService implements UpdateTimetableSlotUseCase {
 
         slot.applyFullUpdate(command.classType(), command.dayOfWeek(), command.classroomCode(),
                 command.startTime(), command.endTime(), command.grade(), command.teacherName(),
-                command.subjectName());
+                command.subjectName(), command.color());
 
         timetableSlotRepository.save(slot);
     }

@@ -75,6 +75,10 @@ class DeploymentManifestTest(unittest.TestCase):
         self.assertIn("GOOGLE_CLIENT_SECRET", secret_names)
         self.assertIn("GOOGLE_REDIRECT_URI", secret_names)
         self.assertIn("GOOGLE_OAUTH_FRONTEND_REDIRECT_URI", secret_names)
+        self.assertIn("MAILGUN_SMTP_USERNAME", secret_names)
+        self.assertIn("MAILGUN_SMTP_PASSWORD", secret_names)
+        self.assertIn("MAIL_FROM", secret_names)
+        self.assertIn("MAILGUN_WEBHOOK_SIGNING_KEY", secret_names)
         self.assertIn("GEMINI_API_KEY", secret_names)
         self.assertEqual(
             "arn:aws:ssm:ap-northeast-2:123456789012:parameter/mudo/prod/shared/SENTRY_DSN",

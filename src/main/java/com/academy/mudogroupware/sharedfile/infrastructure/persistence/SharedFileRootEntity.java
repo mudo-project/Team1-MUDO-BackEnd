@@ -52,9 +52,14 @@ public class SharedFileRootEntity extends BaseTimeEntity {
         return new SharedFileRootEntity(status, googleRootFolderId);
     }
 
-    // 이미 있는 행의 상태·폴더 ID를 갱신한다(재연결·계정교체·재생성).
-    public void update(SharedFileRootStatus status, String googleRootFolderId) {
-        this.status = status;
-        this.googleRootFolderId = googleRootFolderId;
+    // 이미 있는 행을 갱신할 때 쓴다. 호출자가 조회 시점에 들고 있던 version을 그대로 실어 detached
+    // 엔티티를 만들면, save()가 이를 merge할 때 Hibernate가 DB의 현재 version과 비교해 다르면
+    // 낙관적 락 충돌(OptimisticLockException)을 던진다. save() 안에서 다시 조회해 그 자리에서
+    // 수정하면(예전 방식) 비교 대상이 항상 최신 버전이 되어 버려 충돌 감지가 무력화되므로 이 방식을 쓴다.
+    public static SharedFileRootEntity forUpdate(Long version, SharedFileRootStatus status,
+            String googleRootFolderId) {
+        SharedFileRootEntity entity = new SharedFileRootEntity(status, googleRootFolderId);
+        entity.version = version;
+        return entity;
     }
 }

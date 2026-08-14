@@ -60,4 +60,27 @@ class SharedFileRootTest {
         assertThatThrownBy(() -> root.replaceWith(""))
                 .isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    void readyBuildsRootWithNullVersionBecauseItIsNotYetPersisted() {
+        SharedFileRoot root = SharedFileRoot.ready("drive-folder-1");
+
+        assertThat(root.getVersion()).isNull();
+    }
+
+    @Test
+    void failedBuildsRootWithNullVersionBecauseItIsNotYetPersisted() {
+        SharedFileRoot root = SharedFileRoot.failed();
+
+        assertThat(root.getVersion()).isNull();
+    }
+
+    @Test
+    void restorePreservesTheVersionReadFromPersistence() {
+        SharedFileRoot root = SharedFileRoot.restore(SharedFileRootStatus.READY, "drive-folder-1", 3L);
+
+        assertThat(root.isReady()).isTrue();
+        assertThat(root.getGoogleRootFolderId()).isEqualTo("drive-folder-1");
+        assertThat(root.getVersion()).isEqualTo(3L);
+    }
 }
