@@ -237,6 +237,35 @@
 - 삭제된 강의는 목록/상세 조회, id 목록 조회, 시간 충돌 검사, 매출 리포트용 강의 조회에서 제외됩니다.
 - 삭제 대상 강의가 없거나 이미 삭제된 상태면 `LECTURE_404_1`을 반환합니다.
 
+## 6. 강의 담당 선생님 목록 조회
+
+`GET /api/lectures/teachers`
+
+권한: `LECTURE:READ` 또는 `LECTURE:MANAGE`
+
+### Request Header
+
+| name | description |
+|---|---|
+| `Authorization` | `Bearer {AccessToken}` 형식의 사용자 인증 토큰입니다. |
+
+### Response
+
+```json
+{
+  "status": 200,
+  "code": "LECTURE_200_4",
+  "message": "강의 담당 선생님 목록 조회에 성공했습니다.",
+  "data": ["김선생", "이선생"]
+}
+```
+
+### 주요 정책
+
+- 삭제되지 않은 강의에 실제로 등록된 `teacherName`만 중복 없이, 이름순으로 반환합니다.
+- 강의가 하나도 없는 담당자나 빈 값은 목록에 포함되지 않습니다.
+- 강의 목록 조회(`GET /api/lectures`)의 `teacherName` 검색 셀렉트박스를 채우는 용도이며, 여기서 받은 이름으로 검색하면 항상 결과가 존재함을 보장합니다.
+
 ## 오류 코드
 
 | code | HTTP | 메시지 |

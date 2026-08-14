@@ -196,4 +196,36 @@ class LectureRepositoryImplDataJpaTest {
         assertThat(repository.existsOverlapExcludingLecture(saved.getId(), "601", DayOfWeek.MONDAY,
                 LocalTime.of(20, 0), LocalTime.of(22, 0))).isFalse();
     }
+
+    @Test
+    void findsDistinctTeacherNamesExcludingDeletedAndBlank() {
+        repository.save(lectureWithTeacher("601", "김선생"));
+        repository.save(lectureWithTeacher("602", "김선생"));
+        repository.save(lectureWithTeacher("603", "이선생"));
+        repository.save(lectureWithTeacher("604", null));
+        Lecture deleted = repository.save(lectureWithTeacher("605", "박선생"));
+        repository.deleteById(deleted.getId(), LocalDateTime.of(2026, 8, 13, 10, 0));
+
+        List<String> teacherNames = repository.findDistinctTeacherNames();
+
+        assertThat(teacherNames).containsExactly("김선생", "이선생");
+    }
+
+    private Lecture lectureWithTeacher(String classroomCode, String teacherName) {
+        return Lecture.create(
+                "Lecture " + classroomCode,
+                ClassType.CLASS,
+                classroomCode,
+                null,
+                null,
+                null,
+                null,
+                null,
+                teacherName,
+                "Math",
+                null,
+                null,
+                List.of(LectureSchedule.create(DayOfWeek.MONDAY, LocalTime.of(19, 0), LocalTime.of(21, 0))),
+                LocalDateTime.of(2026, 8, 11, 9, 0));
+    }
 }

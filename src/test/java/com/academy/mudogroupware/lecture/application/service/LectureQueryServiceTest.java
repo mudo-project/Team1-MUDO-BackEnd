@@ -154,4 +154,13 @@ class LectureQueryServiceTest {
         verify(enrolledStudentsPort).countByLectureIds(List.of(1L, 2L));
         verify(enrolledStudentsPort, never()).findByLectureId(1L);
     }
+
+    @Test
+    void returnsDistinctTeacherNamesFromRepository() {
+        when(lectureRepository.findDistinctTeacherNames()).thenReturn(List.of("김선생", "이선생"));
+
+        List<String> result = service.getTeacherNames();
+
+        assertThat(result).containsExactly("김선생", "이선생");
+    }
 }
