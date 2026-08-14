@@ -4,6 +4,8 @@
 
 - 강의 담당 선생님 목록 조회 API(`GET /api/lectures/teachers`)를 추가했다.
 - 삭제되지 않은 강의에 실제로 쓰인 `teacherName`을 중복 없이 이름순으로 반환하며, 강의 목록 조회의 `teacherName` 검색 셀렉트박스를 채우는 용도다.
+- 같은 방식으로 강의 과목 목록 조회 API(`GET /api/lectures/subjects`), 강의실 목록 조회 API(`GET /api/lectures/classrooms`)를 추가했다.
+- 강의 시즌 목록 조회 API(`GET /api/lectures/terms`)도 추가했다. `termId` 필터는 문자열이 아니라 id 기반이라 다른 셀렉트 API와 달리 `termId`/`termName` 쌍으로 반환한다.
 
 ## 2026-08-13
 

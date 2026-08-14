@@ -50,6 +50,37 @@
 
 권한: `LECTURE:READ` 또는 `LECTURE:MANAGE`
 
+### Request Query Parameter
+
+| name | type | required | description |
+|---|---|---:|---|
+| `termId` | `Long` | false | 학기/기간 id입니다. 값이 없으면 전체 학기/기간을 조회합니다. |
+| `grade` | `Grade` | false | 학년 필터입니다. 아래 `Grade enum` 값 중 하나를 전달합니다. |
+| `subjectName` | `String` | false | 과목명 필터입니다. 포함 검색으로 동작합니다. 예: `수학` |
+| `teacherName` | `String` | false | 담당 선생님 이름 필터입니다. 포함 검색으로 동작합니다. 예: `김선생` |
+| `classroomCode` | `String` | false | 강의실 코드/이름 필터입니다. 정확히 일치하는 값으로 조회합니다. 예: `A101` |
+| `dayOfWeek` | `DayOfWeek` | false | 요일 필터입니다. 예: `MONDAY`, `TUESDAY` |
+| `page` | `int` | false | 페이지 번호입니다. 0부터 시작하며 기본값은 `0`입니다. |
+| `size` | `int` | false | 페이지 크기입니다. 기본값은 `20`입니다. |
+
+### Grade enum
+
+| value | description |
+|---|---|
+| `ELEMENTARY_1` | 초등학교 1학년 |
+| `ELEMENTARY_2` | 초등학교 2학년 |
+| `ELEMENTARY_3` | 초등학교 3학년 |
+| `ELEMENTARY_4` | 초등학교 4학년 |
+| `ELEMENTARY_5` | 초등학교 5학년 |
+| `ELEMENTARY_6` | 초등학교 6학년 |
+| `MIDDLE_1` | 중학교 1학년 |
+| `MIDDLE_2` | 중학교 2학년 |
+| `MIDDLE_3` | 중학교 3학년 |
+| `HIGH_1` | 고등학교 1학년 |
+| `HIGH_2` | 고등학교 2학년 |
+| `HIGH_3` | 고등학교 3학년 |
+| `RETAKE` | N수/재수 |
+
 강의 목록 조회 필터는 강의 등록/시간표 화면에서 사용하는 값과 동일하게 `subjectName`, `teacherName`, `classroomCode`를 사용한다.
 `subjectName`, `teacherName`은 포함 검색이며, `classroomCode`는 정확히 일치하는 강의실 코드/이름으로 조회한다.
 빈 문자열로 전달한 쿼리값은 필터에서 제외된다.
@@ -265,6 +296,95 @@
 - 삭제되지 않은 강의에 실제로 등록된 `teacherName`만 중복 없이, 이름순으로 반환합니다.
 - 강의가 하나도 없는 담당자나 빈 값은 목록에 포함되지 않습니다.
 - 강의 목록 조회(`GET /api/lectures`)의 `teacherName` 검색 셀렉트박스를 채우는 용도이며, 여기서 받은 이름으로 검색하면 항상 결과가 존재함을 보장합니다.
+
+## 7. 강의 과목 목록 조회
+
+`GET /api/lectures/subjects`
+
+권한: `LECTURE:READ` 또는 `LECTURE:MANAGE`
+
+### Request Header
+
+| name | description |
+|---|---|
+| `Authorization` | `Bearer {AccessToken}` 형식의 사용자 인증 토큰입니다. |
+
+### Response
+
+```json
+{
+  "status": 200,
+  "code": "LECTURE_200_5",
+  "message": "강의 과목 목록 조회에 성공했습니다.",
+  "data": ["수학", "영어"]
+}
+```
+
+### 주요 정책
+
+- 삭제되지 않은 강의에 실제로 등록된 `subjectName`만 중복 없이, 이름순으로 반환합니다.
+- 강의가 하나도 없는 과목이나 빈 값은 목록에 포함되지 않습니다.
+- 강의 목록 조회(`GET /api/lectures`)의 `subjectName` 검색 셀렉트박스를 채우는 용도이며, 여기서 받은 이름으로 검색하면 항상 결과가 존재함을 보장합니다.
+
+## 8. 강의실 목록 조회
+
+`GET /api/lectures/classrooms`
+
+권한: `LECTURE:READ` 또는 `LECTURE:MANAGE`
+
+### Request Header
+
+| name | description |
+|---|---|
+| `Authorization` | `Bearer {AccessToken}` 형식의 사용자 인증 토큰입니다. |
+
+### Response
+
+```json
+{
+  "status": 200,
+  "code": "LECTURE_200_6",
+  "message": "강의실 목록 조회에 성공했습니다.",
+  "data": ["A101", "B201"]
+}
+```
+
+### 주요 정책
+
+- 삭제되지 않은 강의에 실제로 등록된 `classroomCode`만 중복 없이, 코드순으로 반환합니다.
+- 강의 목록 조회(`GET /api/lectures`)의 `classroomCode` 검색 셀렉트박스를 채우는 용도이며, 여기서 받은 코드로 검색하면 항상 결과가 존재함을 보장합니다.
+
+## 9. 강의 시즌 목록 조회
+
+`GET /api/lectures/terms`
+
+권한: `LECTURE:READ` 또는 `LECTURE:MANAGE`
+
+### Request Header
+
+| name | description |
+|---|---|
+| `Authorization` | `Bearer {AccessToken}` 형식의 사용자 인증 토큰입니다. |
+
+### Response
+
+```json
+{
+  "status": 200,
+  "code": "LECTURE_200_7",
+  "message": "강의 시즌 목록 조회에 성공했습니다.",
+  "data": [
+    { "termId": 20, "termName": "2026 1학기" },
+    { "termId": 10, "termName": "2026 여름학기" }
+  ]
+}
+```
+
+### 주요 정책
+
+- 다른 셀렉트박스용 API(선생님/과목/교실)와 달리 강의 목록 조회 필터의 `termId`가 문자열이 아니라 id 기반이라, `termId`와 `termName`을 함께 반환합니다.
+- 삭제되지 않은 강의에 실제로 연결된 시즌만 중복 없이, 이름순으로 반환합니다.
+- 강의 목록 조회(`GET /api/lectures`)의 `termId` 검색 셀렉트박스를 채우는 용도이며, 여기서 받은 `termId`로 검색하면 항상 결과가 존재함을 보장합니다.
 
 ## 오류 코드
 

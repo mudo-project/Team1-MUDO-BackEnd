@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.lecture.application.service;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -18,6 +19,7 @@ import com.academy.mudogroupware.lecture.application.query.LectureDetailView;
 import com.academy.mudogroupware.lecture.application.query.LectureSummaryView;
 import com.academy.mudogroupware.lecture.application.query.ScheduleView;
 import com.academy.mudogroupware.lecture.application.query.StudentSummaryView;
+import com.academy.mudogroupware.lecture.application.query.TermOptionView;
 import com.academy.mudogroupware.lecture.application.usecase.LectureQueryUseCase;
 import com.academy.mudogroupware.lecture.domain.exception.LectureNotFoundException;
 import com.academy.mudogroupware.lecture.domain.model.Classroom;
@@ -107,6 +109,25 @@ public class LectureQueryService implements LectureQueryUseCase {
     @Override
     public List<String> getTeacherNames() {
         return lectureRepository.findDistinctTeacherNames();
+    }
+
+    @Override
+    public List<String> getSubjectNames() {
+        return lectureRepository.findDistinctSubjectNames();
+    }
+
+    @Override
+    public List<String> getClassroomCodes() {
+        return lectureRepository.findDistinctClassroomCodes();
+    }
+
+    @Override
+    public List<TermOptionView> getTerms() {
+        List<Long> termIds = lectureRepository.findDistinctTermIds();
+        return findAllTerms(termIds).stream()
+                .map(term -> new TermOptionView(term.getId(), term.getName()))
+                .sorted(Comparator.comparing(TermOptionView::termName))
+                .toList();
     }
 
     private List<ScheduleView> toScheduleViews(Lecture lecture) {
