@@ -1,7 +1,4 @@
 spring:
-  mail:
-    username: ${MAILGUN_SMTP_USERNAME}
-    password: ${MAILGUN_SMTP_PASSWORD}
   datasource:
     url: ${DB_URL}
     username: ${DB_USERNAME}
@@ -36,6 +33,9 @@ app:
   mail:
     from: ${MAIL_FROM}
     webhook-signing-key: ${MAILGUN_WEBHOOK_SIGNING_KEY}
+    api-base-url: ${MAILGUN_API_BASE_URL:https://api.mailgun.net}
+    domain: ${MAILGUN_DOMAIN:mg.market-app.org}
+    api-key: ${MAILGUN_API_KEY}
   instance:
     # 운영 Task에는 반드시 학원 식별자를 주입한다. 누락 시 애플리케이션 시작이 실패한다.
     tenant-id: ${TENANT_ID}

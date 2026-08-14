@@ -32,7 +32,7 @@ public class UpdateTimetableSlotService implements UpdateTimetableSlotUseCase {
             throw new UnsupportedSlotScopeException();
         }
 
-        timetableSetRepository.findById(command.timetableSetId())
+        timetableSetRepository.findByIdForUpdate(command.timetableSetId())
                 .orElseThrow(TimetableSetNotFoundException::new);
 
         TimetableSlot slot = timetableSlotRepository.findById(command.timetableSlotId())

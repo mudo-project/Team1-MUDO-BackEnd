@@ -64,12 +64,12 @@ public class WeeklyEmployeeAttendanceQueryService implements GetWeeklyEmployeeAt
 
         int scheduledWorkDays = 0;
         Map<LocalDate, MyAttendanceScheduleResolver.WorkSchedule> schedules = new LinkedHashMap<>();
-        Map<LocalDate, Set<Long>> approvedLeaves = new LinkedHashMap<>();
+        Map<LocalDate, Set<Long>> approvedLeaves =
+                leaveRequestRepository.findApprovedUserIdsBetween(startDate, endDate);
         for (LocalDate current = startDate; !current.isAfter(endDate); current = current.plusDays(1)) {
             MyAttendanceScheduleResolver.WorkSchedule schedule = scheduleResolver.resolve(policy, current);
             boolean workday = schedule.workday();
             schedules.put(current, schedule);
-            approvedLeaves.put(current, leaveRequestRepository.findApprovedUserIds(current));
             if (workday) {
                 scheduledWorkDays++;
             }

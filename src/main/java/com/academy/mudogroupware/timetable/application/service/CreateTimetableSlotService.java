@@ -24,7 +24,7 @@ public class CreateTimetableSlotService implements CreateTimetableSlotUseCase {
 
     @Override
     public Long createSlot(CreateTimetableSlotCommand command) {
-        TimetableSet set = timetableSetRepository.findById(command.timetableSetId())
+        TimetableSet set = timetableSetRepository.findByIdForUpdate(command.timetableSetId())
                 .orElseThrow(TimetableSetNotFoundException::new);
 
         TimetableSlot candidate = TimetableSlot.create(

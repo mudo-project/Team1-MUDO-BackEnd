@@ -79,7 +79,7 @@ public class ManageAttendanceCorrectionService implements ManageAttendanceCorrec
         try {
         AttendanceCorrectionRequest request = findRequestForUpdate(requestId);
         LocalDateTime now = LocalDateTime.now(clock);
-        AttendanceRecord current = attendanceRepository.findByUserIdAndWorkDate(
+        AttendanceRecord current = attendanceRepository.findByUserIdAndWorkDateForUpdate(
                 request.getUserId(), request.getWorkDate()).orElse(null);
         AttendanceRecord corrected = applyCorrection(request, current, now);
         AttendanceRecord saved = attendanceRepository.save(corrected);

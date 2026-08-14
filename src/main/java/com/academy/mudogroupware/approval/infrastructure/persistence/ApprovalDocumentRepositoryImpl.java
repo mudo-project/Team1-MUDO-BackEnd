@@ -115,6 +115,10 @@ public class ApprovalDocumentRepositoryImpl implements ApprovalDocumentRepositor
                 .status(domain.getStatus())
                 .createdAt(domain.getCreatedAt())
                 .resubmittedAt(domain.getResubmittedAt())
+                .retentionPolicy(domain.getRetentionPolicy())
+                .retentionUntil(domain.getRetentionUntil())
+                .legalHold(domain.isLegalHold())
+                .archivedAt(domain.getArchivedAt())
                 .build();
 
         domain.getLines().forEach(line -> entity.addLine(toLineEntity(line)));
@@ -155,7 +159,8 @@ public class ApprovalDocumentRepositoryImpl implements ApprovalDocumentRepositor
         return ApprovalDocument.restore(
                 entity.getId(), entity.getTemplateId(), entity.getSourceType(), entity.getTitle(), content,
                 entity.getCreatorId(), lines, attachments, entity.getStatus(), entity.getCreatedAt(),
-                entity.getResubmittedAt());
+                entity.getResubmittedAt(), entity.getRetentionPolicy(), entity.getRetentionUntil(),
+                entity.isLegalHold(), entity.getArchivedAt());
     }
 
     private ApprovalDocumentLine toLineDomain(ApprovalDocumentLineEntity entity) {

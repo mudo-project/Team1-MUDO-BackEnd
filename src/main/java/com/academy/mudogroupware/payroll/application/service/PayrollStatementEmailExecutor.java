@@ -20,8 +20,18 @@ class PayrollStatementEmailExecutor {
   }
 
   @Transactional(propagation = Propagation.REQUIRES_NEW)
-  void sent(Long deliveryId) {
-    deliveries.markSent(deliveryId, LocalDateTime.now());
+  void sent(Long deliveryId, String providerMessageId) {
+    deliveries.markSent(deliveryId, providerMessageId, LocalDateTime.now());
+  }
+
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  void retry(Long deliveryId, String code, String reason, LocalDateTime nextAttemptAt) {
+    deliveries.markRetry(deliveryId, code, reason, nextAttemptAt);
+  }
+
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  void unknown(Long deliveryId, String code, String reason) {
+    deliveries.markUnknown(deliveryId, code, reason, LocalDateTime.now());
   }
 
   @Transactional(propagation = Propagation.REQUIRES_NEW)

@@ -20,7 +20,7 @@ public class UpdateTimetableSetService implements UpdateTimetableSetUseCase {
 
     @Override
     public void updateTimetableSet(UpdateTimetableSetCommand command) {
-        TimetableSet set = timetableSetRepository.findById(command.timetableSetId())
+        TimetableSet set = timetableSetRepository.findByIdForUpdate(command.timetableSetId())
                 .orElseThrow(TimetableSetNotFoundException::new);
 
         set.update(command.name(), command.startDate(), command.endDate(), command.operatingStartTime(),

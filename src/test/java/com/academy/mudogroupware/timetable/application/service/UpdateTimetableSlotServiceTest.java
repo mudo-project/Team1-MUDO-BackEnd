@@ -62,7 +62,7 @@ class UpdateTimetableSlotServiceTest {
 
     @Test
     void updateSlotAppliesNewValuesWhenScopeIsAll() {
-        when(timetableSetRepository.findById(1L)).thenReturn(Optional.of(timetableSet()));
+        when(timetableSetRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(timetableSet()));
         TimetableSlot slot = existingSlot();
         when(timetableSlotRepository.findById(100L)).thenReturn(Optional.of(slot));
         when(timetableSlotRepository.findAllByTimetableSetIdAndClassroomCode(1L, "602")).thenReturn(List.of());
@@ -89,7 +89,7 @@ class UpdateTimetableSlotServiceTest {
 
     @Test
     void updateSlotThrowsWhenTimetableSetNotFound() {
-        when(timetableSetRepository.findById(999L)).thenReturn(Optional.empty());
+        when(timetableSetRepository.findByIdForUpdate(999L)).thenReturn(Optional.empty());
         UpdateTimetableSlotCommand command = new UpdateTimetableSlotCommand(
                 999L, 100L, UpdateScope.ALL, ClassType.CLASS, DayOfWeek.MONDAY, "601",
                 LocalTime.of(9, 0), LocalTime.of(11, 0), Grade.HIGH_3, "정T", "미적분", "FFCC00");
@@ -100,7 +100,7 @@ class UpdateTimetableSlotServiceTest {
 
     @Test
     void updateSlotThrowsWhenSlotIsMissing() {
-        when(timetableSetRepository.findById(1L)).thenReturn(Optional.of(timetableSet()));
+        when(timetableSetRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(timetableSet()));
         UpdateTimetableSlotCommand command = new UpdateTimetableSlotCommand(
                 1L, 100L, UpdateScope.ALL, ClassType.CLASS, DayOfWeek.MONDAY, "601",
                 LocalTime.of(9, 0), LocalTime.of(11, 0), Grade.HIGH_3, "정T", "미적분", "FFCC00");
@@ -111,7 +111,7 @@ class UpdateTimetableSlotServiceTest {
 
     @Test
     void updateSlotThrowsWhenNotFound() {
-        when(timetableSetRepository.findById(1L)).thenReturn(Optional.of(timetableSet()));
+        when(timetableSetRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(timetableSet()));
         when(timetableSlotRepository.findById(999L)).thenReturn(Optional.empty());
         UpdateTimetableSlotCommand command = new UpdateTimetableSlotCommand(
                 1L, 999L, UpdateScope.ALL, ClassType.CLASS, DayOfWeek.MONDAY, "601",
@@ -123,7 +123,7 @@ class UpdateTimetableSlotServiceTest {
 
     @Test
     void updateSlotThrowsWhenNewTimeConflictsWithAnotherSlot() {
-        when(timetableSetRepository.findById(1L)).thenReturn(Optional.of(timetableSet()));
+        when(timetableSetRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(timetableSet()));
         TimetableSlot slot = existingSlot();
         when(timetableSlotRepository.findById(100L)).thenReturn(Optional.of(slot));
         TimetableSlot other = TimetableSlot.restore(

@@ -185,6 +185,7 @@ HTTP `204 No Content` (응답 본문 없음)
 | `401 Unauthorized` | `COMMON_401_1` | Access Token이 없거나 유효하지 않은 경우 |
 | `403 Forbidden` | `COMMON_403_1` | `TIMETABLE:MANAGE` 권한이 없는 경우 |
 | `404 Not Found` | `TIMETABLE_404_1` | 세트가 존재하지 않거나 다른 학원 소속인 경우 |
+| `409 Conflict` | `TIMETABLE_409_2` | 다른 요청이 먼저 같은 시간표 세트를 수정한 경우 |
 | `500 Internal Server Error` | `COMMON_500_1` | 처리되지 않은 서버 오류 |
 
 ## 시간표 세트 삭제

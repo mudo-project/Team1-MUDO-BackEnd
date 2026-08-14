@@ -6,12 +6,15 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 public interface PayrollReferenceDataPort {
   Optional<PayrollPolicyData> findPolicy();
   PayrollPolicyData savePolicy(PayrollPolicyData policy);
   List<CompensationData> findCompensations(Long userId, YearMonth month);
+  Map<Long, List<CompensationData>> findCompensations(Set<Long> userIds, YearMonth month);
   List<CompensationData> findAllCompensations(Long userId);
   CompensationData replaceCompensation(Long userId, CompensationData compensation);
   List<AllowanceData> findAllowances(Long userId, YearMonth month);

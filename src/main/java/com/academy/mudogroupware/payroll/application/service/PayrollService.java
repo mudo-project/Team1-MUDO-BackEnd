@@ -142,8 +142,16 @@ public class PayrollService {
   @Transactional(readOnly = true)
   public List<PayrollDetailResult> revisions(Long payrollId) {
     Payroll current = payroll(payrollId);
-    return payrollRepository.findRevisions(current.getUserId(), current.getYearMonth()).stream()
-        .map(p -> detail(p, snapshots(p))).toList();
+    List<Payroll> revisions = payrollRepository.findRevisions(
+        current.getUserId(), current.getYearMonth());
+    Set<Long> payrollIds = revisions.stream().map(Payroll::getId).collect(Collectors.toSet());
+    Map<Long, PayrollRepository.SnapshotBundle> snapshots =
+        payrollRepository.findSnapshots(payrollIds);
+    Map<Long, PayrollStatementPort.StatementData> statements =
+        statementPort.findByPayrollIds(payrollIds);
+    EmployeeView employee = employee(current.getUserId());
+    return revisions.stream().map(revision -> PayrollDetailResult.of(revision, employee,
+        snapshots.get(revision.getId()), statements.get(revision.getId()))).toList();
   }
 
   @Transactional(readOnly = true)
@@ -157,9 +165,12 @@ public class PayrollService {
     List<EmployeeView> employees = employeePort.findAllActive(name);
     Map<Long, Payroll> payrolls = payrollRepository.findLatestByMonth(month).stream()
         .collect(Collectors.toMap(Payroll::getUserId, Function.identity()));
+    Set<Long> employeeIds = employees.stream().map(EmployeeView::id).collect(Collectors.toSet());
+    Map<Long, List<CompensationData>> compensations =
+        referenceData.findCompensations(employeeIds, month);
     List<PayrollListResult.Row> filteredRows = employees.stream().map(employee -> {
       Payroll p = payrolls.get(employee.id());
-      EmploymentType type = referenceData.findCompensations(employee.id(), month).stream()
+      EmploymentType type = compensations.getOrDefault(employee.id(), List.of()).stream()
           .reduce((first, second) -> second).map(CompensationData::employmentType).orElse(null);
       return new PayrollListResult.Row(employee.id(), employee.name(), type,
           p == null ? null : p.getId(), p == null ? "NOT_CREATED" : p.getStatus().name(),
