@@ -1,6 +1,7 @@
 package com.academy.mudogroupware.lecture.presentation.api;
 
 import java.time.DayOfWeek;
+import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -82,6 +83,17 @@ public class LectureController {
                 lectureQueryUseCase.getLectures(filter, page, size),
                 LectureSummaryResponse::from);
         return ResponseEntity.ok(GlobalApiResponse.ok(LectureResponseCode.LECTURE_LIST_RETRIEVED, data));
+    }
+
+    @Operation(summary = "강의 담당 선생님 목록 조회",
+            description = "삭제되지 않은 강의에 실제로 등록된 담당 선생님 이름을 중복 없이 조회한다. "
+                    + "강의 목록 검색 화면의 선생님 셀렉트박스를 채우는 용도로, 여기서 반환된 이름으로 "
+                    + "강의 목록 조회(teacherName)를 검색하면 항상 결과가 존재함을 보장한다.")
+    @PreAuthorize("hasAnyAuthority('LECTURE:READ', 'LECTURE:MANAGE')")
+    @GetMapping("/teachers")
+    public ResponseEntity<GlobalApiResponse<List<String>>> getTeacherNames() {
+        return ResponseEntity.ok(GlobalApiResponse.ok(LectureResponseCode.LECTURE_TEACHER_NAMES_RETRIEVED,
+                lectureQueryUseCase.getTeacherNames()));
     }
 
     @Operation(summary = "강의 상세 조회", description = "강의 기본 정보와 수강생 목록을 조회한다.")

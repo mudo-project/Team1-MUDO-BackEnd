@@ -146,7 +146,8 @@ public class SharedFileController {
         return ResponseEntity.ok(GlobalApiResponse.ok(SharedFileResponseCode.ITEMS_SEARCHED, response));
     }
 
-    @Operation(summary = "하위 폴더 생성", description = "parentId 하위에 새 폴더를 만듭니다.")
+    @Operation(summary = "하위 폴더 생성",
+            description = "parentId 하위에 새 폴더를 만듭니다. parentId를 생략하면 시스템 루트 바로 아래에 만듭니다.")
     @ApiResponses({
         @ApiResponse(responseCode = "201", description = "생성 성공"),
         @ApiResponse(responseCode = "400", description = "이름이 올바르지 않음")
@@ -160,7 +161,8 @@ public class SharedFileController {
                 GlobalApiResponse.created(SharedFileResponseCode.FOLDER_CREATED, SharedFileItemResponse.from(view)));
     }
 
-    @Operation(summary = "로컬 파일 업로드", description = "최대 100MB의 파일 한 개를 parentId 하위에 업로드합니다.")
+    @Operation(summary = "로컬 파일 업로드",
+            description = "최대 100MB의 파일 한 개를 parentId 하위에 업로드합니다. parentId를 생략하면 시스템 루트 바로 아래에 업로드합니다.")
     @ApiResponses({
         @ApiResponse(responseCode = "201", description = "업로드 성공"),
         @ApiResponse(responseCode = "400", description = "이름이 올바르지 않거나 100MB를 초과함")
@@ -168,7 +170,7 @@ public class SharedFileController {
     @PreAuthorize(MANAGE_PERMISSION)
     @PostMapping(value = "/items/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<GlobalApiResponse<SharedFileItemResponse>> uploadItem(
-            @RequestParam String parentId,
+            @RequestParam(required = false) String parentId,
             @RequestPart MultipartFile file) throws IOException {
         if (file.isEmpty()) {
             throw new IllegalArgumentException("업로드할 파일이 비어 있습니다.");
@@ -179,7 +181,8 @@ public class SharedFileController {
                 GlobalApiResponse.created(SharedFileResponseCode.FILE_UPLOADED, SharedFileItemResponse.from(view)));
     }
 
-    @Operation(summary = "Google 파일 생성", description = "Docs·Sheets·Slides 중 하나의 빈 파일을 생성합니다.")
+    @Operation(summary = "Google 파일 생성",
+            description = "Docs·Sheets·Slides 중 하나의 빈 파일을 생성합니다. parentId를 생략하면 시스템 루트 바로 아래에 만듭니다.")
     @ApiResponses({
         @ApiResponse(responseCode = "201", description = "생성 성공"),
         @ApiResponse(responseCode = "400", description = "이름이 올바르지 않음")

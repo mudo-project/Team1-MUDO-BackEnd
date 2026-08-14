@@ -1,5 +1,7 @@
 package com.academy.mudogroupware.sharedfile.application.service;
 
+import java.util.Optional;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,9 +21,9 @@ public class GetSharedFileRootService implements GetSharedFileRootUseCase {
 
     @Override
     public SharedFileRootView getRoot() {
-        boolean ready = sharedFileRootRepository.find()
-                .map(SharedFileRoot::isReady)
-                .orElse(false);
-        return new SharedFileRootView(ready);
+        Optional<SharedFileRoot> root = sharedFileRootRepository.find();
+        boolean ready = root.map(SharedFileRoot::isReady).orElse(false);
+        String rootId = root.map(SharedFileRoot::getGoogleRootFolderId).orElse(null);
+        return new SharedFileRootView(ready, rootId);
     }
 }

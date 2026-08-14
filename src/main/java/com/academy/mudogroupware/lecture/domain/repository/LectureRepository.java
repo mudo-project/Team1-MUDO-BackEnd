@@ -25,4 +25,6 @@ public interface LectureRepository {
                                           LocalTime startTime, LocalTime endTime);
 
     void deleteById(Long id, LocalDateTime deletedAt);
+
+    List<String> findDistinctTeacherNames();
 }

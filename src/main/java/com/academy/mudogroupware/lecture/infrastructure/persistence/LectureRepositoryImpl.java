@@ -69,6 +69,11 @@ public class LectureRepositoryImpl implements LectureRepository {
         entity.markDeleted(deletedAt);
     }
 
+    @Override
+    public List<String> findDistinctTeacherNames() {
+        return lectureJpaRepository.findDistinctTeacherNames();
+    }
+
     private LectureEntity toNewEntity(Lecture lecture) {
         LectureEntity entity = LectureEntity.builder()
                 .name(lecture.getName())

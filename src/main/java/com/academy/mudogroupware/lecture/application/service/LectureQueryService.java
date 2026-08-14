@@ -104,6 +104,11 @@ public class LectureQueryService implements LectureQueryUseCase {
                 toScheduleViews(lecture), studentViews, lecture.getCreatedAt());
     }
 
+    @Override
+    public List<String> getTeacherNames() {
+        return lectureRepository.findDistinctTeacherNames();
+    }
+
     private List<ScheduleView> toScheduleViews(Lecture lecture) {
         return lecture.getSchedules().stream()
                 .map(s -> new ScheduleView(s.getDayOfWeek(), s.getStartTime(), s.getEndTime()))
