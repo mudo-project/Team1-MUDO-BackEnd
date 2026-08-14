@@ -2834,8 +2834,10 @@ Delivery PENDING 생성
 ```
 
 발송 요청 Event는 중복 수신될 수 있으므로 `PENDING → SENDING` 조건부 갱신으로 멱등 처리한다.
-Event는 빠른 실행 경로일 뿐이며, 영속 디스패처가 DB의 `PENDING`과 재시도 시각이 지난
-`RETRY_WAIT`을 주기적으로 조회한다. 따라서 커밋 직후 프로세스가 종료돼도 재기동 후 처리한다.
+Event는 빠른 실행 경로이며, Delivery Worker도 발송 요청 커밋과 서버 시작 시 실행되어
+DB의 `PENDING`과 재시도 시각이 지난 `RETRY_WAIT`을 처리한다. 처리 후에는 가장 가까운
+재시도·복구·대사 시각만 단발 예약하므로 고정 주기로 DB를 조회하지 않는다.
+따라서 커밋 직후 프로세스가 종료돼도 재기동 후 처리한다.
 비동기 실행은 기존 `applicationTaskExecutor`를 사용하되,
 일괄 발송이 다른 비동기 작업을 고갈시키지 않도록 발송 동시성 상한을 환경설정으로 제한한다.
 
@@ -3103,12 +3105,10 @@ MAILGUN_DOMAIN
 MAIL_FROM
 MAILGUN_WEBHOOK_SIGNING_KEY
 MAIL_SENDING_TIMEOUT
-APP_MAIL_RECOVERY_INTERVAL_MS
 ```
 
 ```text
 MAIL_SENDING_TIMEOUT 기본값: PT15M
-APP_MAIL_RECOVERY_INTERVAL_MS 기본값: 300000
 ```
 
 `MAIL_SENDING_TIMEOUT`을 초과해 `SENDING`에 머문 Delivery는 복구 대상이 된다.
@@ -3137,7 +3137,12 @@ PENDING 또는 실행 시각이 지난 RETRY_WAIT 조회
 HTTP `429`처럼 Mailgun이 요청을 받지 않았음이 명확한 경우와 Mailgun 호출 전 준비 실패만 재시도한다.
 timeout, 연결 단절, HTTP `5xx`는 결과를 단정하지 않고 `UNKNOWN`으로 전환한다.
 
-대사 스케줄러는 오래된 `SENT`와 `UNKNOWN`을 조회한다.
+이메일 Delivery Worker는 발송 요청 커밋과 서버 시작 시 실행한다.
+즉시 처리할 작업을 마치면 DB에서 가장 가까운 `next_attempt_at`, `SENDING` 복구 시각,
+`SENT`·`UNKNOWN` 대사 시각을 계산해 해당 시각에만 단발 실행을 예약한다.
+처리할 작업과 미래 예약이 없으면 종료하며 고정 주기로 DB를 조회하지 않는다.
+
+Worker는 오래된 `SENT`와 `UNKNOWN`의 대사 시각에 다시 실행된다.
 Mailgun Logs API에서 개인정보가 없는 `delivery_token` 태그를 정확히 일치시켜 조회하고,
 응답의 Mailgun 메시지 ID도 Delivery에 보완한다. `DELIVERED`와 영구 실패만 최종 상태로 보정한다.
 Mailgun에서 검색되지 않았다는 이유만으로 `UNKNOWN`을 자동 재발송하지 않는다.
@@ -3173,10 +3178,16 @@ payroll_statement_email_batch_실패
 payroll_statement_email_webhook_시작
 payroll_statement_email_webhook_완료
 payroll_statement_email_webhook_실패
+
+payroll_statement_email_dispatch_시작
+payroll_statement_email_dispatch_완료
+payroll_statement_email_dispatch_실패
 ```
 
 로그에는 `deliveryId`, `batchId`, `payrollId`, 상태와 처리 건수만 남긴다.
 직원 이메일 원문, PDF 내용, S3 Key, Mailgun API 자격증명은 남기지 않는다.
+빈 dispatch의 시작·완료와 dispatch 배치 크기 조회는 `DEBUG`, 발송 대상이 있는 dispatch 완료는
+`INFO`, 예외는 `WARN`으로 기록한다.
 
 ---
 

@@ -31,6 +31,7 @@
 - `WorkspaceUserInfoAdapter`: workspace의 `WorkspaceUserInfoPort`를 구현한다.
 - `LectureTeacherDirectoryAdapter`: lecture의 `TeacherDirectoryPort`를 구현한다. 강의 목록/상세와 student 수강 강의 목록에서 `teacherName`을 표시할 때 사용한다.
 - `ApprovalApproverDirectoryAdapter`: approval의 `ApproverDirectoryPort`를 구현한다. 결재자/작성자 이름을 조회할 때 사용한다.
+- `CorporateCardApproverDirectoryAdapter`: corporatecard의 `CorporateCardApproverDirectoryPort`를 구현한다. 법인카드 상세 결재선의 사용자 이름과 조회 시점의 현재 역할명을 조회할 때 사용한다.
 
 ## 상태 정책
 

@@ -14,17 +14,17 @@ public class PayrollServiceLogAspect {
 
   @Around("execution(public * com.academy.mudogroupware.payroll.application.service..*(..))")
   public Object logServiceEvent(ProceedingJoinPoint joinPoint) throws Throwable {
+    if (isEmailDispatch(joinPoint)) return joinPoint.proceed();
+
     String action = snake(joinPoint.getSignature().getDeclaringType().getSimpleName()) + "_"
         + snake(joinPoint.getSignature().getName());
     Object key = firstSafeKey(joinPoint.getArgs());
-    if (isPollingLog(action)) {
-      log.debug("event=payroll_{}_시작 requestKey={}", action, key);
-    } else {
-      log.info("event=payroll_{}_시작 requestKey={}", action, key);
-    }
+    boolean debugOnly = isDispatchBatchSizeLookup(joinPoint);
+    if (debugOnly) log.debug("event=payroll_{}_시작 requestKey={}", action, key);
+    else log.info("event=payroll_{}_시작 requestKey={}", action, key);
     try {
       Object result = joinPoint.proceed();
-      if (isBatchSizeLookup(action) || isEmptyDispatch(action, result)) {
+      if (debugOnly) {
         log.debug("event=payroll_{}_완료 requestKey={}, result=success", action, key);
       } else {
         log.info("event=payroll_{}_완료 requestKey={}, result=success", action, key);
@@ -37,26 +37,23 @@ public class PayrollServiceLogAspect {
     }
   }
 
+  private boolean isEmailDispatch(ProceedingJoinPoint joinPoint) {
+    return "PayrollStatementEmailDispatchService".equals(
+        joinPoint.getSignature().getDeclaringType().getSimpleName())
+        && "dispatch".equals(joinPoint.getSignature().getName());
+  }
+
+  private boolean isDispatchBatchSizeLookup(ProceedingJoinPoint joinPoint) {
+    return "PayrollStatementEmailPolicy".equals(
+        joinPoint.getSignature().getDeclaringType().getSimpleName())
+        && "dispatchBatchSize".equals(joinPoint.getSignature().getName());
+  }
+
   private Object firstSafeKey(Object[] arguments) {
     if (arguments.length == 0) return "none";
     Object first = arguments[0];
     return first instanceof Number || first instanceof java.time.temporal.Temporal
         ? first : first.getClass().getSimpleName();
-  }
-
-  private boolean isPollingLog(String action) {
-    return action.equals("payroll_statement_email_dispatch_service_dispatch")
-        || action.equals("payroll_statement_email_policy_dispatch_batch_size");
-  }
-
-  private boolean isBatchSizeLookup(String action) {
-    return action.equals("payroll_statement_email_policy_dispatch_batch_size");
-  }
-
-  private boolean isEmptyDispatch(String action, Object result) {
-    return action.equals("payroll_statement_email_dispatch_service_dispatch")
-        && result instanceof Integer count
-        && count == 0;
   }
 
   private String snake(String value) {
