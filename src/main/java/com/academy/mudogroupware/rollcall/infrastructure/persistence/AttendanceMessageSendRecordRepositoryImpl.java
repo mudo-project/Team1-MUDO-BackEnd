@@ -1,6 +1,9 @@
 package com.academy.mudogroupware.rollcall.infrastructure.persistence;
 
+import java.time.Clock;
+import java.time.Duration;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.dao.DataIntegrityViolationException;
@@ -18,8 +21,12 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class AttendanceMessageSendRecordRepositoryImpl implements AttendanceMessageSendRecordRepository {
 
+    // SENDING을 선점한 요청이 완료 전에 죽으면(서버 크래시 등) 이 시간이 지난 뒤에만 다시 claim할 수 있다.
+    private static final Duration CLAIM_STALE_AFTER = Duration.ofMinutes(5);
+
     private final AttendanceMessageSendRecordJpaRepository attendanceMessageSendRecordJpaRepository;
     private final EntityManager entityManager;
+    private final Clock clock;
 
     @Override
     public AttendanceMessageSendRecord createOrGetExisting(Long lectureId, Long studentId, LocalDate date,
@@ -52,8 +59,10 @@ public class AttendanceMessageSendRecordRepositoryImpl implements AttendanceMess
 
     @Override
     public boolean claimForSending(Long id) {
+        LocalDateTime now = LocalDateTime.now(clock);
         int updated = attendanceMessageSendRecordJpaRepository.claimForSending(id, AttendanceMessageSendStatus.SENDING,
-                List.of(AttendanceMessageSendStatus.PENDING, AttendanceMessageSendStatus.FAILED));
+                List.of(AttendanceMessageSendStatus.PENDING, AttendanceMessageSendStatus.FAILED),
+                AttendanceMessageSendStatus.SENDING, now.minus(CLAIM_STALE_AFTER), now);
         return updated == 1;
     }
 

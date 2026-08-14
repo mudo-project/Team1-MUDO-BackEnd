@@ -1,6 +1,7 @@
 package com.academy.mudogroupware.rollcall.infrastructure.persistence;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import com.academy.mudogroupware.global.infrastructure.persistence.BaseTimeEntity;
 import com.academy.mudogroupware.rollcall.domain.model.AttendanceMessageSendStatus;
@@ -52,6 +53,9 @@ public class AttendanceMessageSendRecordEntity extends BaseTimeEntity {
 
     @Column(name = "failure_reason", length = 255)
     private String failureReason;
+
+    @Column(name = "claimed_at")
+    private LocalDateTime claimedAt;
 
     @Builder
     private AttendanceMessageSendRecordEntity(Long lectureId, Long studentId, LocalDate date,

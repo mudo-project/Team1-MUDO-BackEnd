@@ -81,8 +81,9 @@ public class SendAttendanceMessagesService implements SendAttendanceMessagesUseC
                         command.lectureId(), sentCount, e.getMessage(), e);
             }
         }
+        long failedCount = results.stream().filter(result -> !result.sent()).count();
         log.info("event=attendance_message_send_완료 lectureId={}, sentCount={}, failedCount={}",
-                command.lectureId(), sentCount, results.size() - sentCount);
+                command.lectureId(), sentCount, failedCount);
         return results;
     }
 

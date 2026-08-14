@@ -9,11 +9,15 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.academy.mudogroupware.global.infrastructure.config.TimeConfig;
 import com.academy.mudogroupware.rollcall.domain.model.AttendanceMessageSendRecord;
 import com.academy.mudogroupware.rollcall.domain.model.AttendanceMessageSendStatus;
 import com.academy.mudogroupware.rollcall.domain.model.AttendanceStatus;
+
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 
 @DataJpaTest(properties = "spring.jpa.hibernate.ddl-auto=create-drop")
 @Import({AttendanceMessageSendRecordRepositoryImpl.class, TimeConfig.class})
@@ -25,6 +29,9 @@ class AttendanceMessageSendRecordRepositoryImplDataJpaTest {
 
     @Autowired
     private AttendanceMessageSendRecordRepositoryImpl attendanceMessageSendRecordRepository;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Test
     void createsANewPendingRecordWhenNoneExistsYet() {
@@ -112,5 +119,34 @@ class AttendanceMessageSendRecordRepositoryImplDataJpaTest {
         boolean claimed = attendanceMessageSendRecordRepository.claimForSending(record.getId());
 
         assertThat(claimed).isTrue();
+    }
+
+    @Test
+    void claimForSendingFailsForARecentlyClaimedSendingRecord() {
+        AttendanceMessageSendRecord record = attendanceMessageSendRecordRepository
+                .createOrGetExisting(1L, 10L, DATE, ATTENDANCE_STATUS);
+        attendanceMessageSendRecordRepository.claimForSending(record.getId());
+
+        boolean reclaimed = attendanceMessageSendRecordRepository.claimForSending(record.getId());
+
+        assertThat(reclaimed).isFalse();
+    }
+
+    @Test
+    @Transactional
+    void claimForSendingSucceedsForAStaleSendingRecord() {
+        AttendanceMessageSendRecord record = attendanceMessageSendRecordRepository
+                .createOrGetExisting(1L, 10L, DATE, ATTENDANCE_STATUS);
+        attendanceMessageSendRecordRepository.claimForSending(record.getId());
+        // 발송 도중 프로세스가 죽은 상황을 흉내낸다: claimed_at을 충분히 오래된 시각으로 되돌린다.
+        entityManager.createQuery("update AttendanceMessageSendRecordEntity e set e.claimedAt = :old where e.id = :id")
+                .setParameter("old", LocalDateTime.now().minusMinutes(10))
+                .setParameter("id", record.getId())
+                .executeUpdate();
+        entityManager.clear();
+
+        boolean reclaimed = attendanceMessageSendRecordRepository.claimForSending(record.getId());
+
+        assertThat(reclaimed).isTrue();
     }
 }

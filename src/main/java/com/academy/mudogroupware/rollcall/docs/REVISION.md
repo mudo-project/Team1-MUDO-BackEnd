@@ -8,8 +8,8 @@
 
 ### 변경 내용
 
-- 신규 테이블 `attendance_message_send_record`(`lecture_id`, `student_id`, `entry_date`에 유니크 제약) 추가. 마이그레이션 `be6/V6.1.7`.
-- `AttendanceMessageSendRecord`(도메인 모델) / `AttendanceMessageSendStatus`(`PENDING`/`SENT`/`FAILED`/`INDETERMINATE`) 추가.
+- 신규 테이블 `attendance_message_send_record`(최종 유니크 제약은 `lecture_id`+`student_id`+`entry_date`+`attendance_status` — 뒤의 "출결 정정 시 재발송 허용" 절 참고) 추가. 마이그레이션 `be6/V6.1.7`.
+- `AttendanceMessageSendRecord`(도메인 모델) / `AttendanceMessageSendStatus`(최종: `PENDING`/`SENDING`/`SENT`/`FAILED`/`INDETERMINATE` — `SENDING`은 뒤의 "리뷰 반영" 절에서 추가) 추가.
 - `SendAttendanceMessagesService`가 SOLAPI 호출 전에 이 레코드를 먼저 만들어보고(유니크 제약을 이용한 insert-first 패턴, 동시 요청이 와도 하나만 생성됨), 이미 `SENT` 상태면 SOLAPI를 다시 부르지 않고 그 결과를 그대로 반환한다.
 - `SolapiSmsAdapter`가 `ResourceAccessException`(응답 받기 전 타임아웃/연결 끊김)과 그 외 `RestClientException`(SOLAPI가 명확히 준 실패 응답)을 구분해서, 전자는 `INDETERMINATE`로 기록한다 — 재시도는 막지 않되(모르는 상태를 실패로 단정하지 않음) 상태는 남긴다.
 - `AttendanceMessageSendRecordRepositoryImpl` 구현 중 발견한 이슈: 제약 위반으로 insert가 실패한 뒤 같은 영속성 컨텍스트에서 바로 조회하면 Hibernate가 "세션이 오염됐다"는 `AssertionFailure`를 던진다 — 조회 전 `EntityManager.clear()`로 해결. 상태 갱신(`save()`)도 `saveAndFlush`로 즉시 flush하도록 해서, 나중 insert 실패 시점까지 flush가 미뤄지며 이전 갱신이 함께 유실되는 문제를 막았다.
@@ -34,6 +34,12 @@
 - 유니크 키를 `(lecture_id, student_id, entry_date)` → `(lecture_id, student_id, entry_date, attendance_status)`로 변경(마이그레이션은 아직 미머지라 기존 `V6.1.7`에 컬럼 추가 + 유니크 키 변경으로 반영).
 - `AttendanceMessageSendRecord`/엔티티/리포지토리 조회 메서드에 `attendanceStatus` 추가, `SendAttendanceMessagesService`가 `candidate.status()`(발송 후보 조회 시점의 출결 상태)를 넘겨준다.
 - 결과: 학생이 "결석"으로 SENT된 뒤 "지각"으로 정정되면 (강의,학생,날짜,지각)은 새 조합이라 다시 발송된다. 같은 상태로 또 요청이 오면 여전히 스킵된다.
+
+### 코드래빗 2차 리뷰 반영 — claim 트랜잭션 누락, SENDING 고착, 완료 로그 오류
+
+- **`claimForSending`에 `@Transactional` 누락**: 호출부(`SendAttendanceMessagesService`)가 트랜잭션이 아니라서, Spring Data 리포지토리 프록시 기본값(읽기전용)으로 실행되면 이 `@Modifying` UPDATE가 운영 DB(MySQL)에서 실패할 수 있었다 — `@DataJpaTest`는 테스트 자체가 쓰기 트랜잭션으로 감싸져 있어서 이 문제를 못 잡았다. 리포지토리 메서드에 `@Transactional`을 직접 지정해 해결.
+- **`SENDING` 고착 문제**: 발송 권한을 가져간(SENDING) 직후 서버가 죽으면(크래시) 그 레코드가 영구히 `SENDING`에 갇혀 재시도가 막히는 문제가 있었다. `claimed_at` 컬럼을 추가해, `SENDING` 상태여도 `claimed_at`이 5분(`CLAIM_STALE_AFTER`)보다 오래됐으면 다시 claim할 수 있도록 조건을 넓혔다.
+- **완료 로그의 실패 건수 계산 오류**: `results.size() - sentCount`가 "이미 SENT라 스킵한 건"까지 실패로 잘못 셌다 — `results.stream().filter(!sent).count()`로 직접 계산하도록 수정.
 
 ### 남은 범위 밖 항목
 

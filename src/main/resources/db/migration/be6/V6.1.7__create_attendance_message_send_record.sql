@@ -6,6 +6,7 @@ CREATE TABLE `attendance_message_send_record` (
   `attendance_status` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
   `status` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
   `failure_reason` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `claimed_at` datetime(6) DEFAULT NULL,
   `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
   PRIMARY KEY (`record_id`),
