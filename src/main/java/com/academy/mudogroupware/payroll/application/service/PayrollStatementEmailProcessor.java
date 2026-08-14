@@ -7,6 +7,13 @@ import com.academy.mudogroupware.payroll.application.port.out.PayrollStatementEm
 import com.academy.mudogroupware.payroll.application.port.out.PayrollStatementEmailSender.SendException;
 import com.academy.mudogroupware.payroll.application.port.out.PayrollStatementPort;
 import com.academy.mudogroupware.payroll.application.port.out.PayrollStatementStoragePort;
+import com.academy.mudogroupware.planquota.application.service.CurrentPlanProvider;
+import com.academy.mudogroupware.resourceusage.application.command.RecordMailUsageCommand;
+import com.academy.mudogroupware.resourceusage.application.port.ResourceUsageQueryPort;
+import com.academy.mudogroupware.resourceusage.application.port.ResourceUsageRecorder;
+import com.academy.mudogroupware.resourceusage.domain.model.ResourceUsageType;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -24,6 +31,9 @@ public class PayrollStatementEmailProcessor {
   private final PayrollStatementStoragePort storage;
   private final PayrollStatementEmailSender sender;
   private final PayrollStatementEmailPolicy policy;
+  private final ResourceUsageQueryPort resourceUsageQueryPort;
+  private final ResourceUsageRecorder resourceUsageRecorder;
+  private final CurrentPlanProvider currentPlanProvider;
 
   @Async
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -42,6 +52,13 @@ public class PayrollStatementEmailProcessor {
     var data = delivery.orElseThrow();
     log.info("event=payroll_statement_email_send_시작 deliveryId={}, attempt={}",
         deliveryId, data.attemptCount());
+
+    if (mailLimitReached()) {
+      executor.skipped(data.id(), "PLAN_MAIL_LIMIT_EXCEEDED");
+      log.warn("event=payroll_statement_email_send_건너뜀_한도초과 deliveryId={}", deliveryId);
+      return;
+    }
+
     PreparedEmail email;
     try {
       email = prepare(data);
@@ -70,14 +87,27 @@ public class PayrollStatementEmailProcessor {
     }
 
     try {
-      if (result.sent()) executor.sent(data.id(), result.providerMessageId());
-      else executor.skipped(data.id(), result.skipCode());
+      if (result.sent()) {
+        executor.sent(data.id(), result.providerMessageId());
+        resourceUsageRecorder.recordMailUsage(new RecordMailUsageCommand("payroll-statement", 1L));
+      } else {
+        executor.skipped(data.id(), result.skipCode());
+      }
       log.info("event=payroll_statement_email_send_완료 deliveryId={}", deliveryId);
     } catch (RuntimeException e) {
       // 외부 접수 이후 상태 기록 실패는 재발송하지 않는다. SENDING 만료 복구가 UNKNOWN으로 전환한다.
       log.warn("event=payroll_statement_email_state_record_실패 deliveryId={}, errorType={}",
           deliveryId, e.getClass().getSimpleName());
     }
+  }
+
+  private boolean mailLimitReached() {
+    LocalDate today = LocalDate.now();
+    LocalDateTime from = today.withDayOfMonth(1).atStartOfDay();
+    LocalDateTime to = from.plusMonths(1);
+    long current = resourceUsageQueryPort.sumByTypeAndPeriod(ResourceUsageType.MAIL, from, to);
+    long limit = currentPlanProvider.currentLimits().mailMonthlyLimit();
+    return current >= limit;
   }
 
   private PreparedEmail prepare(DeliveryData data) {

@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.academy.mudogroupware.payroll.application.port.out.PayrollRepository;
@@ -19,6 +20,13 @@ import com.academy.mudogroupware.payroll.application.port.out.PayrollStatementPo
 import com.academy.mudogroupware.payroll.application.port.out.PayrollStatementPort.StatementData;
 import com.academy.mudogroupware.payroll.application.port.out.PayrollStatementStoragePort;
 import com.academy.mudogroupware.payroll.domain.model.Payroll;
+import com.academy.mudogroupware.planquota.application.service.CurrentPlanProvider;
+import com.academy.mudogroupware.planquota.domain.model.Plan;
+import com.academy.mudogroupware.planquota.domain.model.PlanLimits;
+import com.academy.mudogroupware.resourceusage.application.command.RecordMailUsageCommand;
+import com.academy.mudogroupware.resourceusage.application.port.ResourceUsageQueryPort;
+import com.academy.mudogroupware.resourceusage.application.port.ResourceUsageRecorder;
+import com.academy.mudogroupware.resourceusage.domain.model.ResourceUsageType;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
@@ -37,13 +45,17 @@ class PayrollStatementEmailProcessorTest {
   @Mock PayrollStatementStoragePort storage;
   @Mock PayrollStatementEmailSender sender;
   @Mock Payroll payroll;
+  @Mock ResourceUsageQueryPort resourceUsageQueryPort;
+  @Mock ResourceUsageRecorder resourceUsageRecorder;
+  @Mock CurrentPlanProvider currentPlanProvider;
   private PayrollStatementEmailProcessor processor;
 
   @BeforeEach
   void setUp() {
     processor = new PayrollStatementEmailProcessor(executor, payrolls, statements, storage, sender,
         new PayrollStatementEmailPolicy(20, 3, Duration.ofMinutes(1), Duration.ofMinutes(30),
-            Duration.ofMinutes(10), Duration.ofMinutes(5)));
+            Duration.ofMinutes(10), Duration.ofMinutes(5)),
+        resourceUsageQueryPort, resourceUsageRecorder, currentPlanProvider);
   }
 
   @Test
@@ -55,6 +67,7 @@ class PayrollStatementEmailProcessorTest {
     processor.processPending(30L);
 
     verify(executor).sent(30L, "<message@mailgun>");
+    verify(resourceUsageRecorder).recordMailUsage(new RecordMailUsageCommand("payroll-statement", 1L));
   }
 
   @Test
@@ -109,8 +122,24 @@ class PayrollStatementEmailProcessorTest {
     verify(executor, never()).unknown(any(), anyString(), anyString());
   }
 
+  @Test
+  void 메일_한도를_초과하면_발송하지_않고_건너뛴다() {
+    when(executor.claim(30L)).thenReturn(Optional.of(delivery(1)));
+    when(currentPlanProvider.currentLimits()).thenReturn(PlanLimits.of(Plan.FREE));
+    when(resourceUsageQueryPort.sumByTypeAndPeriod(eq(ResourceUsageType.MAIL), any(), any()))
+        .thenReturn(100L);
+
+    processor.processPending(30L);
+
+    verify(executor).skipped(30L, "PLAN_MAIL_LIMIT_EXCEEDED");
+    verifyNoInteractions(sender);
+  }
+
   private void allowProcessing(DeliveryData delivery) {
     when(executor.claim(30L)).thenReturn(Optional.of(delivery));
+    when(currentPlanProvider.currentLimits()).thenReturn(PlanLimits.of(Plan.PAID));
+    when(resourceUsageQueryPort.sumByTypeAndPeriod(eq(ResourceUsageType.MAIL), any(), any()))
+        .thenReturn(0L);
     when(statements.findById(20L)).thenReturn(Optional.of(new StatementData(
         20L, 1L, READY, "statement.pdf", "application/pdf", 10L, "checksum",
         LocalDateTime.now(), null)));
