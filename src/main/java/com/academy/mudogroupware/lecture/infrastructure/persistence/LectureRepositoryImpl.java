@@ -74,6 +74,21 @@ public class LectureRepositoryImpl implements LectureRepository {
         return lectureJpaRepository.findDistinctTeacherNames();
     }
 
+    @Override
+    public List<String> findDistinctSubjectNames() {
+        return lectureJpaRepository.findDistinctSubjectNames();
+    }
+
+    @Override
+    public List<Long> findDistinctTermIds() {
+        return lectureJpaRepository.findDistinctTermIds();
+    }
+
+    @Override
+    public List<String> findDistinctClassroomCodes() {
+        return lectureJpaRepository.findDistinctClassroomCodes();
+    }
+
     private LectureEntity toNewEntity(Lecture lecture) {
         LectureEntity entity = LectureEntity.builder()
                 .name(lecture.getName())
