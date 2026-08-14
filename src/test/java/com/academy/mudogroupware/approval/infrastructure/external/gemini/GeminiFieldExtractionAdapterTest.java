@@ -2,6 +2,10 @@ package com.academy.mudogroupware.approval.infrastructure.external.gemini;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
@@ -19,6 +23,12 @@ import com.academy.mudogroupware.approval.application.port.AttachmentContent;
 import com.academy.mudogroupware.approval.application.port.AttachmentFieldExtractionException;
 import com.academy.mudogroupware.approval.application.port.ExtractedReceiptFields;
 import com.academy.mudogroupware.global.infrastructure.observability.ai.GeminiTokenUsageTracker;
+import com.academy.mudogroupware.planquota.application.service.CurrentPlanProvider;
+import com.academy.mudogroupware.planquota.domain.exception.PlanLimitExceededException;
+import com.academy.mudogroupware.planquota.domain.model.Plan;
+import com.academy.mudogroupware.planquota.domain.model.PlanLimits;
+import com.academy.mudogroupware.resourceusage.application.port.ResourceUsageQueryPort;
+import com.academy.mudogroupware.resourceusage.domain.model.ResourceUsageType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 class GeminiFieldExtractionAdapterTest {
@@ -27,6 +37,8 @@ class GeminiFieldExtractionAdapterTest {
             "https://generativelanguage.googleapis.com/v1beta/models/gemini-test:generateContent";
 
     private final GeminiTokenUsageTracker tokenUsageTracker = new GeminiTokenUsageTracker();
+    private final ResourceUsageQueryPort resourceUsageQueryPort = unlimitedUsage();
+    private final CurrentPlanProvider currentPlanProvider = unlimitedPlan();
 
     private RestClient.Builder builder() {
         return RestClient.builder().baseUrl("https://generativelanguage.googleapis.com");
@@ -34,7 +46,37 @@ class GeminiFieldExtractionAdapterTest {
 
     private GeminiFieldExtractionAdapter adapter(RestClient.Builder builder) {
         return new GeminiFieldExtractionAdapter(builder.build(), new GeminiProperties("test-key", "gemini-test"),
-                new ObjectMapper(), tokenUsageTracker);
+                new ObjectMapper(), tokenUsageTracker, resourceUsageQueryPort, currentPlanProvider);
+    }
+
+    private static ResourceUsageQueryPort unlimitedUsage() {
+        ResourceUsageQueryPort stub = mock(ResourceUsageQueryPort.class);
+        when(stub.sumByTypeAndPeriod(eq(ResourceUsageType.AI_TOKEN), any(), any())).thenReturn(0L);
+        return stub;
+    }
+
+    private static CurrentPlanProvider unlimitedPlan() {
+        CurrentPlanProvider stub = mock(CurrentPlanProvider.class);
+        when(stub.currentLimits()).thenReturn(PlanLimits.of(Plan.PAID));
+        return stub;
+    }
+
+    @Test
+    void throwsWhenMonthlyAiTokenLimitReachedWithoutCallingGemini() {
+        ResourceUsageQueryPort exhaustedUsage = mock(ResourceUsageQueryPort.class);
+        when(exhaustedUsage.sumByTypeAndPeriod(eq(ResourceUsageType.AI_TOKEN), any(), any())).thenReturn(100_000L);
+        CurrentPlanProvider freePlan = mock(CurrentPlanProvider.class);
+        when(freePlan.currentPlan()).thenReturn(Plan.FREE);
+        when(freePlan.currentLimits()).thenReturn(PlanLimits.of(Plan.FREE));
+        RestClient.Builder builder = builder();
+        MockRestServiceServer.bindTo(builder).build(); // 요청이 하나도 등록되지 않았으므로, 실제로
+        // Gemini를 호출하려 하면 즉시 실패한다 — 한도 체크가 호출 전에 막는지 검증하는 안전장치.
+        GeminiFieldExtractionAdapter adapter = new GeminiFieldExtractionAdapter(builder.build(),
+                new GeminiProperties("test-key", "gemini-test"), new ObjectMapper(), tokenUsageTracker,
+                exhaustedUsage, freePlan);
+
+        assertThatThrownBy(() -> adapter.extract(AttachmentContent.text("영수증 내용")))
+                .isInstanceOf(PlanLimitExceededException.class);
     }
 
     @Test

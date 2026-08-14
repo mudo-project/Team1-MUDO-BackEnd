@@ -1,5 +1,9 @@
 # file 모듈 Changelog
 
+## 2026-08-15 - 파일 등록 시 S3 플랜 한도 체크 추가
+
+- `FileStoragePort`에 `headObjectSize(objectKey)`(S3 HeadObject로 서버 검증된 실제 파일 크기 조회)를 추가했다. `RegisterFileService`가 등록 직전에 `resourceusage`의 `S3_STORAGE` 이벤트 합계 + 신규 파일 크기가 플랜별 한도(무료 500MB/유료 5GB)를 넘으면 429로 차단하고, 통과하면 이벤트를 기록한다. 새 `planquota.TenantS3UsageAdapter` + `S3QuotaReconciliationScheduler`가 매일 1회 실측 스캔으로 드리프트를 보정한다(안전장치, 판단 기준 아님).
+
 ## 2026-08-11 (2) - objectKey를 운영 IAM Prefix(tenants/{tenantId}/*)에 맞춤
 
 - **[긴급 수정]** academyId 제거 직후의 objectKey(`uploads/{UUID}-{파일명}`)가 운영 ECS Task Role의

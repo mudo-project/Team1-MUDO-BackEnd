@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.Clock;
@@ -18,6 +19,10 @@ import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 import com.academy.mudogroupware.global.domain.auth.AccountType;
+import com.academy.mudogroupware.planquota.application.service.CurrentPlanProvider;
+import com.academy.mudogroupware.planquota.domain.exception.PlanLimitExceededException;
+import com.academy.mudogroupware.planquota.domain.model.Plan;
+import com.academy.mudogroupware.planquota.domain.model.PlanLimits;
 import com.academy.mudogroupware.users.application.command.CreateAccountCommand;
 import com.academy.mudogroupware.users.application.result.CreateAccountResult;
 import com.academy.mudogroupware.users.application.service.support.AccountIssuer;
@@ -35,12 +40,34 @@ class CreateAccountServiceTest {
     private final Clock clock = Clock.fixed(Instant.parse("2026-08-09T00:00:00Z"), ZoneOffset.UTC);
 
     @Test
+    void throwsWhenEmployeeLimitReached() {
+        UserRepository userRepository = mock(UserRepository.class);
+        RoleRepository roleRepository = mock(RoleRepository.class);
+        AccountIssuer accountIssuer = mock(AccountIssuer.class);
+        CurrentPlanProvider currentPlanProvider = mock(CurrentPlanProvider.class);
+        when(userRepository.countActiveUsers()).thenReturn(20L);
+        when(currentPlanProvider.currentPlan()).thenReturn(Plan.FREE);
+        when(currentPlanProvider.currentLimits()).thenReturn(PlanLimits.of(Plan.FREE));
+        CreateAccountService service = new CreateAccountService(
+                userRepository, roleRepository, accountIssuer, clock, currentPlanProvider);
+
+        assertThatThrownBy(() -> service.createAccount(
+                new CreateAccountCommand("new.user", "신규직원", 1L)))
+                .isInstanceOf(PlanLimitExceededException.class);
+
+        verifyNoInteractions(accountIssuer);
+    }
+
+    @Test
     void throwsWhenUsernameAlreadyExists() {
         UserRepository userRepository = mock(UserRepository.class);
         RoleRepository roleRepository = mock(RoleRepository.class);
         AccountIssuer accountIssuer = mock(AccountIssuer.class);
+        CurrentPlanProvider currentPlanProvider = mock(CurrentPlanProvider.class);
+        when(currentPlanProvider.currentLimits()).thenReturn(PlanLimits.of(Plan.PAID));
         when(userRepository.existsByUsername("teacher01")).thenReturn(true);
-        CreateAccountService service = new CreateAccountService(userRepository, roleRepository, accountIssuer, clock);
+        CreateAccountService service = new CreateAccountService(
+                userRepository, roleRepository, accountIssuer, clock, currentPlanProvider);
 
         assertThatThrownBy(() -> service.createAccount(
                 new CreateAccountCommand("teacher01", "김강사", 5L)))
@@ -54,9 +81,12 @@ class CreateAccountServiceTest {
         UserRepository userRepository = mock(UserRepository.class);
         RoleRepository roleRepository = mock(RoleRepository.class);
         AccountIssuer accountIssuer = mock(AccountIssuer.class);
+        CurrentPlanProvider currentPlanProvider = mock(CurrentPlanProvider.class);
+        when(currentPlanProvider.currentLimits()).thenReturn(PlanLimits.of(Plan.PAID));
         when(userRepository.existsByUsername("teacher01")).thenReturn(false);
         when(roleRepository.findById(5L)).thenReturn(Optional.empty());
-        CreateAccountService service = new CreateAccountService(userRepository, roleRepository, accountIssuer, clock);
+        CreateAccountService service = new CreateAccountService(
+                userRepository, roleRepository, accountIssuer, clock, currentPlanProvider);
 
         assertThatThrownBy(() -> service.createAccount(
                 new CreateAccountCommand("teacher01", "김강사", 5L)))
@@ -68,6 +98,8 @@ class CreateAccountServiceTest {
         UserRepository userRepository = mock(UserRepository.class);
         RoleRepository roleRepository = mock(RoleRepository.class);
         AccountIssuer accountIssuer = mock(AccountIssuer.class);
+        CurrentPlanProvider currentPlanProvider = mock(CurrentPlanProvider.class);
+        when(currentPlanProvider.currentLimits()).thenReturn(PlanLimits.of(Plan.PAID));
         when(userRepository.existsByUsername("teacher01")).thenReturn(false);
         Role role = Role.restore(5L, "강사", "설명", "#FFFFFF", LocalDateTime.now(), Set.of());
         when(roleRepository.findById(5L)).thenReturn(Optional.of(role));
@@ -77,7 +109,8 @@ class CreateAccountServiceTest {
         when(accountIssuer.issue("teacher01", "김강사", 5L,
                 AccountType.MEMBER, null, LocalDateTime.now(clock)))
                 .thenReturn(new IssuedAccount(savedUser, "tempPass123!"));
-        CreateAccountService service = new CreateAccountService(userRepository, roleRepository, accountIssuer, clock);
+        CreateAccountService service = new CreateAccountService(
+                userRepository, roleRepository, accountIssuer, clock, currentPlanProvider);
 
         CreateAccountResult result = service.createAccount(
                 new CreateAccountCommand("teacher01", "김강사", 5L));

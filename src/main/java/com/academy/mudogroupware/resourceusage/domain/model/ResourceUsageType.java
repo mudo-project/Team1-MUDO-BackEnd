@@ -2,7 +2,9 @@ package com.academy.mudogroupware.resourceusage.domain.model;
 
 public enum ResourceUsageType {
     AI_TOKEN("tokens"),
-    SMS("messages");
+    SMS("messages"),
+    S3_STORAGE("bytes"),
+    MAIL("count");
 
     private final String unit;
 

@@ -2,6 +2,10 @@ package com.academy.mudogroupware.approval.infrastructure.external.gemini;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.content;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
@@ -21,6 +25,12 @@ import org.springframework.web.client.RestClient;
 import com.academy.mudogroupware.approval.application.port.AttachmentContent;
 import com.academy.mudogroupware.approval.application.port.AttachmentSummarizationException;
 import com.academy.mudogroupware.global.infrastructure.observability.ai.GeminiTokenUsageTracker;
+import com.academy.mudogroupware.planquota.application.service.CurrentPlanProvider;
+import com.academy.mudogroupware.planquota.domain.exception.PlanLimitExceededException;
+import com.academy.mudogroupware.planquota.domain.model.Plan;
+import com.academy.mudogroupware.planquota.domain.model.PlanLimits;
+import com.academy.mudogroupware.resourceusage.application.port.ResourceUsageQueryPort;
+import com.academy.mudogroupware.resourceusage.domain.model.ResourceUsageType;
 
 class GeminiSummarizerAdapterTest {
 
@@ -28,6 +38,8 @@ class GeminiSummarizerAdapterTest {
             "https://generativelanguage.googleapis.com/v1beta/models/gemini-test:generateContent";
 
     private final GeminiTokenUsageTracker tokenUsageTracker = new GeminiTokenUsageTracker();
+    private final ResourceUsageQueryPort resourceUsageQueryPort = unlimitedUsage();
+    private final CurrentPlanProvider currentPlanProvider = unlimitedPlan();
 
     private RestClient.Builder builder() {
         return RestClient.builder().baseUrl("https://generativelanguage.googleapis.com");
@@ -35,7 +47,35 @@ class GeminiSummarizerAdapterTest {
 
     private GeminiSummarizerAdapter adapter(RestClient.Builder builder) {
         return new GeminiSummarizerAdapter(builder.build(), new GeminiProperties("test-key", "gemini-test"),
-                tokenUsageTracker);
+                tokenUsageTracker, resourceUsageQueryPort, currentPlanProvider);
+    }
+
+    private static ResourceUsageQueryPort unlimitedUsage() {
+        ResourceUsageQueryPort stub = mock(ResourceUsageQueryPort.class);
+        when(stub.sumByTypeAndPeriod(eq(ResourceUsageType.AI_TOKEN), any(), any())).thenReturn(0L);
+        return stub;
+    }
+
+    private static CurrentPlanProvider unlimitedPlan() {
+        CurrentPlanProvider stub = mock(CurrentPlanProvider.class);
+        when(stub.currentLimits()).thenReturn(PlanLimits.of(Plan.PAID));
+        return stub;
+    }
+
+    @Test
+    void throwsWhenMonthlyAiTokenLimitReachedWithoutCallingGemini() {
+        ResourceUsageQueryPort exhaustedUsage = mock(ResourceUsageQueryPort.class);
+        when(exhaustedUsage.sumByTypeAndPeriod(eq(ResourceUsageType.AI_TOKEN), any(), any())).thenReturn(100_000L);
+        CurrentPlanProvider freePlan = mock(CurrentPlanProvider.class);
+        when(freePlan.currentPlan()).thenReturn(Plan.FREE);
+        when(freePlan.currentLimits()).thenReturn(PlanLimits.of(Plan.FREE));
+        RestClient.Builder builder = builder();
+        MockRestServiceServer.bindTo(builder).build();
+        GeminiSummarizerAdapter adapter = new GeminiSummarizerAdapter(builder.build(),
+                new GeminiProperties("test-key", "gemini-test"), tokenUsageTracker, exhaustedUsage, freePlan);
+
+        assertThatThrownBy(() -> adapter.summarize(AttachmentContent.text("문서 내용")))
+                .isInstanceOf(PlanLimitExceededException.class);
     }
 
     @Test
