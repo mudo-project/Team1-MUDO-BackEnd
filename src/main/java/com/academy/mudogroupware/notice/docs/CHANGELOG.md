@@ -60,3 +60,9 @@
 - (참고) 공지 카테고리(인사/시설/업무) 분류 기능은 이번에는 포함되지 않았습니다.
 
 자세한 설계 배경은 [REVISION.md](REVISION.md)를 참고해주세요. 📚
+# 2026-08-14 notice deletion lifecycle
+
+- Notice delete now stores `deleted_at` and `retention_until` instead of immediately hard-deleting the row.
+- General list/detail queries return only notices whose `deleted_at` is null.
+- The shared retention scheduler runs `notice_retention` to clean expired notice read rows, attachment links, and notice rows.
+- After the notice cleanup transaction commits, attached `fileId`s are sent to the file module; S3 objects and `file_metadata` rows are deleted only when no remaining domain references the file.

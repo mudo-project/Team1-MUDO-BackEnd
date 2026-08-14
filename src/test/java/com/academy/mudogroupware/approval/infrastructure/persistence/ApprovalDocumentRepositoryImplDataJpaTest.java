@@ -14,6 +14,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import com.academy.mudogroupware.approval.domain.model.ApprovalContent;
 import com.academy.mudogroupware.approval.domain.model.ApprovalContentType;
 import com.academy.mudogroupware.approval.domain.model.ApprovalDocument;
+import com.academy.mudogroupware.approval.domain.model.ApprovalDocumentSourceType;
+import com.academy.mudogroupware.approval.domain.model.ApprovalRetentionPolicy;
 
 import jakarta.persistence.EntityManager;
 
@@ -54,5 +56,22 @@ class ApprovalDocumentRepositoryImplDataJpaTest {
         ApprovalDocument reloaded = approvalDocumentRepository.findById(created.getId()).orElseThrow();
         assertThat(reloaded.getLines()).extracting(line -> line.getApproverId())
                 .containsExactly(30L, 40L);
+    }
+
+    @Test
+    void saveAndFindPreservesRetentionPolicy() {
+        ApprovalDocument created = approvalDocumentRepository.save(
+                ApprovalDocument.create(1L, ApprovalDocumentSourceType.CORPORATE_CARD_EXPENSE,
+                        "card expense", ApprovalContent.create(ApprovalContentType.TEXT, "content"),
+                        100L, List.of(10L), List.of(), NOW));
+        entityManager.flush();
+        entityManager.clear();
+
+        ApprovalDocument reloaded = approvalDocumentRepository.findById(created.getId()).orElseThrow();
+
+        assertThat(reloaded.getRetentionPolicy()).isEqualTo(ApprovalRetentionPolicy.TAX_EVIDENCE);
+        assertThat(reloaded.getRetentionUntil()).isEqualTo(NOW.plusYears(5));
+        assertThat(reloaded.isLegalHold()).isFalse();
+        assertThat(reloaded.getArchivedAt()).isNull();
     }
 }

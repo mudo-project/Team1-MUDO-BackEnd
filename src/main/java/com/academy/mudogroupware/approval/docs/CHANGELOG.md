@@ -1,5 +1,13 @@
 # approval Changelog
 
+## 2026-08-14
+
+- 전자결재 문서 보존 정책을 코드와 DB에 반영했다.
+- `approval_document`에 `retention_policy`, `retention_until`, `legal_hold`, `archived_at` 컬럼을 추가했다.
+- 일반 결재는 `GENERAL_BUSINESS`로 생성일 기준 3년, 법인카드/비용정산 결재는 `TAX_EVIDENCE`로 생성일 기준 5년 보존기한을 자동 계산한다.
+- 계약/중요 지출/핵심 의사결정용 `IMPORTANT_BUSINESS` 정책은 10년 보존 기준으로 enum에 준비했으며, 현재 자동 분류 대상은 아니다.
+- 이번 단계에서는 실제 하드 삭제나 아카이브 배치를 추가하지 않고, 향후 운영 정책 판단에 필요한 기준 컬럼만 준비했다.
+
 ## 2026-08-11 (2)
 
 - file 모듈의 `file_metadata` academyId 제거에 맞춰, `GetApprovalAttachmentDownloadUrlCommand`/`GetApprovalAttachmentDownloadUrlService`/`ApprovalController`에서 academyId 전달을 뺐다. 방어 로직 자체(신청자/결재선 참여자 검증 + fileId 문서 소속 검증)는 academyId와 무관하게 그대로 유지된다.

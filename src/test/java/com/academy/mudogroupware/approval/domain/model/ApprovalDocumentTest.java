@@ -16,6 +16,30 @@ class ApprovalDocumentTest {
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 4, 9, 0);
 
     @Test
+    void generalDocumentKeepsRetentionForThreeYears() {
+        ApprovalDocument document = ApprovalDocument.create(
+                1L, ApprovalDocumentSourceType.GENERAL, "Vacation",
+                ApprovalContent.create(ApprovalContentType.TEXT, "content"),
+                7L, List.of(12L), List.of(), NOW);
+
+        assertThat(document.getRetentionPolicy()).isEqualTo(ApprovalRetentionPolicy.GENERAL_BUSINESS);
+        assertThat(document.getRetentionUntil()).isEqualTo(NOW.plusYears(3));
+        assertThat(document.isLegalHold()).isFalse();
+        assertThat(document.getArchivedAt()).isNull();
+    }
+
+    @Test
+    void corporateCardExpenseKeepsRetentionForFiveYears() {
+        ApprovalDocument document = ApprovalDocument.create(
+                1L, ApprovalDocumentSourceType.CORPORATE_CARD_EXPENSE, "Card expense",
+                ApprovalContent.create(ApprovalContentType.TEXT, "content"),
+                7L, List.of(12L), List.of(), NOW);
+
+        assertThat(document.getRetentionPolicy()).isEqualTo(ApprovalRetentionPolicy.TAX_EVIDENCE);
+        assertThat(document.getRetentionUntil()).isEqualTo(NOW.plusYears(5));
+    }
+
+    @Test
     void findAttachmentByFileIdReturnsMatchingAttachment() {
         ApprovalDocument document = ApprovalDocument.create(
                 1L, "제목", ApprovalContent.create(ApprovalContentType.TEXT, "내용"),

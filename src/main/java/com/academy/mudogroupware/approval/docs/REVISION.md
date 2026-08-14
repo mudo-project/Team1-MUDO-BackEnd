@@ -1,5 +1,30 @@
 # approval Revision
 
+## 2026-08-14 · 전자결재 문서 보존 정책
+
+### 배경
+
+전자결재는 단순 게시글이 아니라 학원 내부 승인 증빙이다. 결재 문서, 결재선, 승인/반려 이력, 첨부파일 요약 결과는 나중에 분쟁 대응, 회계 확인, 근태 확인에 쓰일 수 있어 즉시 삭제 중심으로 관리하면 위험하다.
+
+### 결정
+
+- 일반 업무 결재와 휴가/근태 결재는 3년 보존 정책(`GENERAL_BUSINESS`)을 기본으로 둔다.
+- 법인카드/비용정산 결재는 세무 증빙 성격이 강하므로 5년 보존 정책(`TAX_EVIDENCE`)을 적용한다.
+- 계약, 큰 지출, 운영 핵심 의사결정은 추후 유형이 생기면 10년 보존 정책(`IMPORTANT_BUSINESS`)으로 연결한다.
+- 보존기한이 지났다고 바로 삭제하지 않고, `legal_hold`와 `archived_at`을 통해 자동 정리 예외와 장기 보관 전환을 구분한다.
+
+### 변경
+
+- `ApprovalRetentionPolicy`를 추가했다.
+- `ApprovalDocument`가 생성 시 `sourceType`에 따라 `retentionPolicy`와 `retentionUntil`을 계산한다.
+- `approval_document`에 `retention_policy`, `retention_until`, `legal_hold`, `archived_at` 컬럼을 추가했다.
+- 기존 운영 DB에 `source_type`이 있는 경우 법인카드 정산 문서는 마이그레이션에서 5년 보존으로 보정한다.
+
+### 검증
+
+- `ApprovalDocumentTest`
+- `ApprovalDocumentRepositoryImplDataJpaTest`
+
 ## 2026-08-07 · 전체 조회, 내 결재 이력, 신청 취소, 이력 숨김
 
 ### 배경

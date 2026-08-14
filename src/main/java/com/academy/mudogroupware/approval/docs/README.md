@@ -57,3 +57,15 @@
 - [API_FLOW.md](API_FLOW.md)
 - [REVISION.md](REVISION.md)
 - [CHANGELOG.md](CHANGELOG.md)
+
+## 2026-08-14 전자결재 보존 정책
+
+전자결재 문서는 삭제 중심이 아니라 증빙 보존 중심으로 관리한다. 이번 구현부터 `approval_document`에 `retention_policy`, `retention_until`, `legal_hold`, `archived_at` 컬럼을 두고 문서 생성 시 기본 보존 정책을 자동 기록한다.
+
+| 문서 유형 | 정책 | 보존기한 |
+| --- | --- | --- |
+| 일반 업무 결재, 휴가/근태 결재 | `GENERAL_BUSINESS` | 생성일로부터 3년 |
+| 법인카드/비용정산 결재 | `TAX_EVIDENCE` | 생성일로부터 5년 |
+| 계약/중요 지출/핵심 의사결정 | `IMPORTANT_BUSINESS` | 생성일로부터 10년. 현재 자동 분류 대상은 아니며 추후 문서 유형 확장 시 사용한다. |
+
+`legal_hold=true`인 문서는 보존기한이 지나도 자동 정리 대상에서 제외한다. `archived_at`은 추후 장기 보관 화면/배치에서 일반 조회와 분리할 때 사용한다. 첨부파일 AI 요약 결과는 결재 문서의 일부로 보고 원문 문서와 같은 보존 정책을 따른다.
