@@ -6,7 +6,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -17,13 +19,17 @@ import org.springframework.web.bind.annotation.RestController;
 import com.academy.mudogroupware.global.presentation.api.common.GlobalApiResponse;
 import com.academy.mudogroupware.global.presentation.api.common.SliceResponse;
 import com.academy.mudogroupware.global.presentation.security.AuthUser;
+import com.academy.mudogroupware.lecture.application.command.DeleteLectureCommand;
 import com.academy.mudogroupware.lecture.application.query.LectureDetailView;
 import com.academy.mudogroupware.lecture.application.usecase.CreateLectureUseCase;
+import com.academy.mudogroupware.lecture.application.usecase.DeleteLectureUseCase;
 import com.academy.mudogroupware.lecture.application.usecase.LectureQueryUseCase;
+import com.academy.mudogroupware.lecture.application.usecase.UpdateLectureUseCase;
 import com.academy.mudogroupware.lecture.domain.model.Grade;
 import com.academy.mudogroupware.lecture.domain.repository.LectureFilter;
 import com.academy.mudogroupware.lecture.presentation.api.common.LectureResponseCode;
 import com.academy.mudogroupware.lecture.presentation.api.request.CreateLectureRequest;
+import com.academy.mudogroupware.lecture.presentation.api.request.UpdateLectureRequest;
 import com.academy.mudogroupware.lecture.presentation.api.response.LectureCreateResponse;
 import com.academy.mudogroupware.lecture.presentation.api.response.LectureDetailResponse;
 import com.academy.mudogroupware.lecture.presentation.api.response.LectureSummaryResponse;
@@ -33,13 +39,15 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
-@Tag(name = "강의 관리", description = "강의 등록/조회 API. 수강 등록은 student 모듈(/api/students/{studentId}/enrollments)이 담당한다.")
+@Tag(name = "강의 관리", description = "강의 등록/조회/수정/삭제 API. 수강 등록은 student 모듈(/api/students/{studentId}/enrollments)이 담당한다.")
 @RestController
 @RequestMapping("/api/lectures")
 @RequiredArgsConstructor
 public class LectureController {
 
     private final CreateLectureUseCase createLectureUseCase;
+    private final UpdateLectureUseCase updateLectureUseCase;
+    private final DeleteLectureUseCase deleteLectureUseCase;
     private final LectureQueryUseCase lectureQueryUseCase;
 
     @Operation(summary = "강의 등록",
@@ -63,13 +71,13 @@ public class LectureController {
     public ResponseEntity<GlobalApiResponse<SliceResponse<LectureSummaryResponse>>> getLectures(
             @RequestParam(required = false) Long termId,
             @RequestParam(required = false) Grade grade,
-            @RequestParam(required = false) Long subjectId,
-            @RequestParam(required = false) Long teacherId,
-            @RequestParam(required = false) Long classroomId,
+            @RequestParam(required = false) String subjectName,
+            @RequestParam(required = false) String teacherName,
+            @RequestParam(required = false) String classroomCode,
             @RequestParam(required = false) DayOfWeek dayOfWeek,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        LectureFilter filter = new LectureFilter(termId, grade, subjectId, teacherId, classroomId, dayOfWeek);
+        LectureFilter filter = new LectureFilter(termId, grade, subjectName, teacherName, classroomCode, dayOfWeek);
         SliceResponse<LectureSummaryResponse> data = SliceResponse.from(
                 lectureQueryUseCase.getLectures(filter, page, size),
                 LectureSummaryResponse::from);
@@ -84,5 +92,28 @@ public class LectureController {
         LectureDetailView view = lectureQueryUseCase.getLectureDetail(lectureId);
         return ResponseEntity.ok(GlobalApiResponse.ok(LectureResponseCode.LECTURE_DETAIL_RETRIEVED,
                 LectureDetailResponse.from(view)));
+    }
+
+    @Operation(summary = "강의 수정",
+            description = "강의명/유형/학년/시즌/과목/교실/담당 선생님/요일·시간대/수강료를 수정한다. "
+                    + "같은 교실·요일·시간대에 자기 자신을 제외한 다른 강의가 있으면 409.")
+    @PreAuthorize("hasAuthority('LECTURE:MANAGE')")
+    @PatchMapping("/{lectureId}")
+    public ResponseEntity<GlobalApiResponse<Void>> updateLecture(
+            @AuthenticationPrincipal AuthUser authUser,
+            @PathVariable Long lectureId,
+            @Valid @RequestBody UpdateLectureRequest request) {
+        updateLectureUseCase.updateLecture(request.toCommand(lectureId, authUser.userId()));
+        return ResponseEntity.ok(GlobalApiResponse.ok(LectureResponseCode.LECTURE_UPDATED));
+    }
+
+    @Operation(summary = "강의 삭제", description = "강의를 삭제한다. 삭제된 강의는 목록/상세 조회와 시간 충돌 검사 대상에서 제외된다.")
+    @PreAuthorize("hasAuthority('LECTURE:MANAGE')")
+    @DeleteMapping("/{lectureId}")
+    public ResponseEntity<Void> deleteLecture(
+            @AuthenticationPrincipal AuthUser authUser,
+            @PathVariable Long lectureId) {
+        deleteLectureUseCase.deleteLecture(new DeleteLectureCommand(lectureId, authUser.userId()));
+        return ResponseEntity.noContent().build();
     }
 }

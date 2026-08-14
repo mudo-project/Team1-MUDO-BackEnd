@@ -64,7 +64,8 @@ public class GoogleOAuthAdapter implements GoogleOAuthPort {
 
         GoogleTokenResponse response = requestToken(body);
         return new GoogleTokenExchangeResult(
-                response.accessToken(), response.refreshToken(), response.scope(), response.refreshTokenExpiresInSeconds());
+                response.accessToken(), response.refreshToken(), response.scope(),
+                response.refreshTokenExpiresInSeconds(), response.accessTokenExpiresInSeconds());
     }
 
     @Override
@@ -78,7 +79,8 @@ public class GoogleOAuthAdapter implements GoogleOAuthPort {
 
         GoogleTokenResponse response = requestToken(body);
         return new GoogleTokenExchangeResult(
-                response.accessToken(), response.refreshToken(), response.scope(), response.refreshTokenExpiresInSeconds());
+                response.accessToken(), response.refreshToken(), response.scope(),
+                response.refreshTokenExpiresInSeconds(), response.accessTokenExpiresInSeconds());
     }
 
     @Override

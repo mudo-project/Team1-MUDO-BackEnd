@@ -1,5 +1,26 @@
 # 🔄 공유파일 도메인 변경 이력
 
+## ✅ 2026-08-14 · 낙관적 락 실효성 버그 수정 + Initializer 버전 유실·보상 정책 통일
+
+### 변경 목적
+
+PR #369에서 동시 초기화 경합(더블클릭 등)을 막으려 도입한 `@Version`이 실제로는 충돌을 전혀 감지하지 못하던 버그를 고친다. `SharedFileRootPersistenceAdapter.save()`가 저장 직전에 행을 다시 조회해 그 자리에서 수정하는 방식이라, merge 시점에 비교할 버전이 항상 최신값이 되어버려 낙관적 락이 무력화돼 있었다.
+
+### 구현 변경
+
+- `SharedFileRoot`(도메인)에 `version`(nullable) 필드와 영속성 복원 전용 `restore(status, folderId, version)` 팩토리를 추가했다. `ready()`/`failed()`는 아직 저장되지 않은 인스턴스이므로 `version=null`을 유지한다.
+- `SharedFileRootEntity.update()` 인스턴스 메서드를 제거하고, 호출자가 조회 시점에 들고 있던 version으로 detached 엔티티를 만드는 `forUpdate(version, status, folderId)` 정적 팩토리로 교체했다.
+- `SharedFileRootPersistenceAdapter.save()`가 저장 직전 재조회를 하지 않고 `root.getVersion()`으로 insert(`create()`)/update(`forUpdate()`)를 분기한다. Spring Data JPA는 `@Version` 필드(`Long`)가 `null`이면 새 엔티티로 판단하므로 이 분기만으로 `em.persist()`/`em.merge()`가 올바르게 갈린다. `toDomain()`도 `ready()/failed()` 대신 `restore()`로 바꿔 조회 시 버전을 항상 보존한다.
+- `SharedFileRootInitializer.handle()`이 `find()`로 읽은 기존 루트를 버리고 매번 새 `SharedFileRoot.ready()/failed()`를 만들던 부분을 고쳤다 — 어댑터를 위처럼 고친 뒤에는 이 상태로 두면 이미 있는 행에도 매번 insert를 시도해 PK 충돌로 실패한다. `RecreateSharedFileRootService`와 동일하게 기존 객체를 `replaceWith()`/`markFailed()`로 바꿔 version을 유지한 채 저장한다.
+- `SharedFileRootInitializer`의 DB 저장 실패 처리를 `RecreateSharedFileRootService`와 통일했다 — 지금까지는 DB 저장이 실패해도 방금 만든 Drive 폴더를 그대로 두고 로그만 남겼는데(orphan), 이제 동일하게 trash로 보상을 시도한다. "실패로 덮어쓰기를 재시도하지 않는다"는 기존 정책 자체는 유지한다.
+
+### 검증
+
+- 신규 `SharedFileRootPersistenceAdapterDataJpaTest`(3): insert, 정상 버전으로 update, **오래된 버전으로 저장 시 낙관적 락 충돌**(수정 전 코드에서는 예외 없이 조용히 덮어써지던 것을 그대로 재현하는 회귀 테스트).
+- `SharedFileRootTest`에 version 관련 케이스 3건 추가.
+- `SharedFileRootInitializerTest`에 version 보존 2건 + Drive 폴더 보상(trash) 검증 1건 추가, 기존 8개 테스트 전부 통과.
+- 전체 `./gradlew clean compileJava compileTestJava test --tests "com.academy.mudogroupware.sharedfile.*"` 통과(126개), 전체 프로젝트 `./gradlew test`도 회귀 없이 통과.
+
 ## ✅ 2026-08-12 · HTTP API·권한·문서 구현 (Task6)
 
 ### 변경 목적

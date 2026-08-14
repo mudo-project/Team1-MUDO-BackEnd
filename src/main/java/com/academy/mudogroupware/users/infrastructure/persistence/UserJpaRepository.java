@@ -9,11 +9,16 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import com.academy.mudogroupware.global.domain.auth.AccountType;
+import com.academy.mudogroupware.global.domain.auth.AdminScope;
 import com.academy.mudogroupware.users.domain.model.UserStatus;
 
 public interface UserJpaRepository extends JpaRepository<UserEntity, Long> {
 
     Optional<UserEntity> findByUsername(String username);
+
+    Optional<UserEntity> findFirstByAccountTypeAndAdminScopeAndStatus(
+            AccountType accountType, AdminScope adminScope, UserStatus status);
 
     boolean existsByUsername(String username);
 

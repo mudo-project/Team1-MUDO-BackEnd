@@ -23,6 +23,7 @@ import com.academy.mudogroupware.users.application.usecase.ChangeMyPasswordUseCa
 import com.academy.mudogroupware.users.application.usecase.ChangeUserStatusUseCase;
 import com.academy.mudogroupware.users.application.usecase.CreateAccountUseCase;
 import com.academy.mudogroupware.users.application.usecase.GetMemberDetailUseCase;
+import com.academy.mudogroupware.users.application.usecase.GetMyPermissionsUseCase;
 import com.academy.mudogroupware.users.application.usecase.GetMyProfileUseCase;
 import com.academy.mudogroupware.users.application.usecase.ListMembersUseCase;
 import com.academy.mudogroupware.users.application.usecase.PasswordSetupUseCase;
@@ -40,6 +41,7 @@ import com.academy.mudogroupware.users.presentation.api.request.UpdateMyProfileR
 import com.academy.mudogroupware.users.presentation.api.response.AccountCreateResponse;
 import com.academy.mudogroupware.users.presentation.api.response.MemberListResponse;
 import com.academy.mudogroupware.users.presentation.api.response.MemberPageResponse;
+import com.academy.mudogroupware.users.presentation.api.response.MyPermissionsResponse;
 import com.academy.mudogroupware.users.presentation.api.response.UserDetailResponse;
 import com.academy.mudogroupware.users.presentation.api.response.UserSearchResponse;
 
@@ -68,6 +70,7 @@ public class UserController {
     private final GetMemberDetailUseCase getMemberDetailUseCase;
     private final UpdateMemberProfileUseCase updateMemberProfileUseCase;
     private final ChangeUserStatusUseCase changeUserStatusUseCase;
+    private final GetMyPermissionsUseCase getMyPermissionsUseCase;
 
     @PreAuthorize("hasAuthority('ACCOUNT:MANAGE')")
     @PostMapping
@@ -123,6 +126,18 @@ public class UserController {
             @AuthenticationPrincipal AuthUser authUser) {
         UserDetailResponse data = UserDetailResponse.from(getMyProfileUseCase.getMyProfile(authUser.userId()));
         return ResponseEntity.ok(GlobalApiResponse.ok(UserResponseCode.MY_PROFILE_RETRIEVED, data));
+    }
+
+    @Operation(
+            summary = "내 권한 목록 조회",
+            description = "로그인한 사용자 본인이 최종적으로 갖는 권한 코드 전체 목록(합성 권한 포함)을 조회합니다. "
+                    + "로그인 응답과 동일한 로직으로 계산하며, 관리자가 역할/권한을 바꾼 뒤 재로그인 없이 최신 권한을 다시 받아올 때 사용합니다.")
+    @GetMapping("/me/permissions")
+    public ResponseEntity<GlobalApiResponse<MyPermissionsResponse>> getMyPermissions(
+            @AuthenticationPrincipal AuthUser authUser) {
+        MyPermissionsResponse data = MyPermissionsResponse.from(getMyPermissionsUseCase.getMyPermissions(
+                authUser.roleId(), authUser.accountType(), authUser.adminScope()));
+        return ResponseEntity.ok(GlobalApiResponse.ok(UserResponseCode.MY_PERMISSIONS_RETRIEVED, data));
     }
 
     @Operation(

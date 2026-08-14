@@ -29,7 +29,7 @@ class TimetableSlotPersistenceAdapterDataJpaTest {
     void savesAndFindsSlot() {
         TimetableSlot slot = TimetableSlot.create(
                 1L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                Grade.HIGH_3, "정T", "미적분", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16));
+                Grade.HIGH_3, "정T", "미적분", "FFCC00", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16));
 
         TimetableSlot saved = adapter.save(slot);
         Optional<TimetableSlot> found = adapter.findById(saved.getId());
@@ -37,16 +37,17 @@ class TimetableSlotPersistenceAdapterDataJpaTest {
         assertThat(found).isPresent();
         assertThat(found.get().getClassroomCode()).isEqualTo("601");
         assertThat(found.get().getGrade()).isEqualTo(Grade.HIGH_3);
+        assertThat(found.get().getColor()).isEqualTo("FFCC00");
     }
 
     @Test
     void findsAllByTimetableSetIdAndClassroomCode() {
         TimetableSlot slot601 = TimetableSlot.create(
                 1L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                Grade.HIGH_3, "정T", "미적분", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16));
+                Grade.HIGH_3, "정T", "미적분", "FFCC00", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16));
         TimetableSlot slot602 = TimetableSlot.create(
                 1L, ClassType.CLASS, DayOfWeek.MONDAY, "602", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                Grade.HIGH_3, "정T", "미적분", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16));
+                Grade.HIGH_3, "정T", "미적분", "FFCC00", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16));
         adapter.save(slot601);
         adapter.save(slot602);
 
@@ -60,7 +61,7 @@ class TimetableSlotPersistenceAdapterDataJpaTest {
     void deletesSlotById() {
         TimetableSlot slot = TimetableSlot.create(
                 1L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                Grade.HIGH_3, "정T", "미적분", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16));
+                Grade.HIGH_3, "정T", "미적분", "FFCC00", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16));
         TimetableSlot saved = adapter.save(slot);
 
         adapter.deleteById(saved.getId());

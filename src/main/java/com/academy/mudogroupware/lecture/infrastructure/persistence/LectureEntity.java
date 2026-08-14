@@ -5,7 +5,7 @@ import java.util.List;
 
 import org.hibernate.annotations.BatchSize;
 
-import com.academy.mudogroupware.global.infrastructure.persistence.CreatedAtEntity;
+import com.academy.mudogroupware.global.infrastructure.persistence.SoftDeleteTimeEntity;
 import com.academy.mudogroupware.lecture.domain.model.ClassType;
 import com.academy.mudogroupware.lecture.domain.model.FeeType;
 import com.academy.mudogroupware.lecture.domain.model.Grade;
@@ -29,7 +29,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "lecture")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class LectureEntity extends CreatedAtEntity {
+public class LectureEntity extends SoftDeleteTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -100,5 +100,27 @@ public class LectureEntity extends CreatedAtEntity {
     public void addSchedule(LectureScheduleEntity schedule) {
         schedules.add(schedule);
         schedule.assignLecture(this);
+    }
+
+    public void update(String name, ClassType classType, String classroomCode, Grade grade, Long termId,
+                       Long subjectId, String subjectName, Long teacherId, String teacherName,
+                       Long classroomId, FeeType feeType, Integer feeAmount) {
+        this.name = name;
+        this.classType = classType;
+        this.classroomCode = classroomCode;
+        this.grade = grade;
+        this.termId = termId;
+        this.subjectId = subjectId;
+        this.subjectName = subjectName;
+        this.teacherId = teacherId;
+        this.teacherName = teacherName;
+        this.classroomId = classroomId;
+        this.feeType = feeType;
+        this.feeAmount = feeAmount;
+    }
+
+    public void replaceSchedules(List<LectureScheduleEntity> newSchedules) {
+        schedules.clear();
+        newSchedules.forEach(this::addSchedule);
     }
 }

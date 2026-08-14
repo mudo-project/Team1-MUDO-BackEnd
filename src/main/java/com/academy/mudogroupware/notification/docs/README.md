@@ -29,12 +29,12 @@ WebSocket 연결이 끊긴 사용자에게 유실되던 알림을 저장하고, 
 - 소비하는 이벤트 (모두 다른 모듈의 공개 Event, `NotificationCreationListener`가 구독)
   - `workspace.domain.event.TaskCommentMentionedEvent`
   - `approval.domain.event.ApprovalLineActivatedEvent`
-  - `approval.domain.event.ApprovalDocumentDecidedEvent` (`boolean approved` 그대로 소비 — 아래 참고)
+  - `approval.domain.event.ApprovalDocumentDecidedEvent` (`ApprovalStatus status`로 승인·반려·취소 문구 분기)
 
 ## 변경 시 주의 사항
 
 - 실시간 전송(`WorkspaceWebSocketNotifier`, `ApprovalWebSocketNotifier`)과 이 모듈의 저장 리스너는 같은 원본 이벤트를 독립적으로 구독하는 팬아웃 구조다. 한쪽을 고칠 때 다른 쪽 리스너 존재를 놓치지 않는다.
-- `ApprovalDocumentDecidedEvent.approved()`가 `false`인 경우 반려(REJECTED)와 취소(CANCELLED)를 구분할 수 없어 "결재 문서 처리가 철회되었습니다."로 중립적으로 표시한다. approval 담당 팀원에게 상태 enum 필드 추가를 요청해뒀고, 반영되면 이 문구 분기를 정교화할 수 있다.
+- `ApprovalDocumentDecidedEvent.status()`를 기준으로 승인(`APPROVED`), 반려(`REJECTED`), 취소(`CANCELLED`) 문구를 구분한다. `approved()`는 attendance 연동 호환을 위해 남아 있는 보조 메서드다.
 - 새 도메인의 이벤트를 알림 대상에 추가하려면 [NOTIFICATION_TYPES.md](NOTIFICATION_TYPES.md)에 타입을 등록하고 `NotificationCreationListener`에 구독 메서드를 추가한다. 기존 코드는 수정하지 않는다.
 - `type`은 의도적으로 `NotificationType` enum이 아니라 문자열로 저장한다. 도메인마다 자기 코드를 문자열로 넘기게 해서, 새 타입이 추가될 때마다 이 모듈의 enum을 고쳐야 하는 결합을 피하기 위함이다(코드 리뷰에서 반복 제기될 수 있는 지점).
 - `markAsRead(null)`은 예외를 던진다(조용히 무시하지 않음). 이미 읽은 알림에 다시 호출하는 것(멱등)과 `null`을 넘기는 것(잘못된 호출)은 구분한다.

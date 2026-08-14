@@ -1,5 +1,7 @@
 package com.academy.mudogroupware.notification.application.service;
 
+import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -15,6 +17,7 @@ import com.academy.mudogroupware.notification.application.port.NotificationUserI
 import com.academy.mudogroupware.notification.application.query.NotificationUserInfo;
 import com.academy.mudogroupware.notification.application.usecase.CreateNotificationUseCase;
 import com.academy.mudogroupware.notification.domain.model.NotificationType;
+import com.academy.mudogroupware.revenuereport.domain.event.RevenueReportGeneratedEvent;
 import com.academy.mudogroupware.workspace.domain.event.TaskCommentMentionedEvent;
 
 import lombok.RequiredArgsConstructor;
@@ -22,14 +25,15 @@ import lombok.extern.slf4j.Slf4j;
 
 // workspace/approval이 발행하는 원본 이벤트를 WorkspaceWebSocketNotifier/ApprovalWebSocketNotifier와
 // 독립적으로 구독해 알림을 저장만 한다(팬아웃). 실시간 전송 실패와 저장 실패가 서로 영향을 주지 않는다.
-// approval 패키지는 본인 담당이 아니라 ApprovalDocumentDecidedEvent를 기존 boolean 필드 그대로 소비한다.
+// ApprovalDocumentDecidedEvent의 status로 최종 승인/반려/취소 문구를 구분한다.
 @Component
 @RequiredArgsConstructor
 @Slf4j
 public class NotificationCreationListener {
 
     private static final String UNKNOWN_NAME = "알 수 없음";
-    private static final String APPROVAL_DECIDED_WITHDRAWN_MESSAGE = "결재 문서 처리가 철회되었습니다.";
+    private static final DateTimeFormatter TARGET_MONTH_FORMATTER =
+            DateTimeFormatter.ofPattern("yyyy년 M월", Locale.KOREAN);
 
     private final CreateNotificationUseCase createNotificationUseCase;
     private final NotificationUserInfoPort notificationUserInfoPort;
@@ -55,10 +59,19 @@ public class NotificationCreationListener {
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handle(ApprovalDocumentDecidedEvent event) {
-        // approved=false는 반려/취소를 이벤트만으로 구분할 수 없어 중립적인 문구로 뭉뚱그린다.
-        // 상태 enum 추가는 approval 담당 팀원에게 별도 요청함(docs/superpowers/specs/2026-08-13-notification-persistence-design.md 참고).
-        String message = event.approved() ? "결재 문서가 승인되었습니다" : APPROVAL_DECIDED_WITHDRAWN_MESSAGE;
+        String message = switch (event.status()) {
+            case APPROVED -> "결재 문서가 승인되었습니다";
+            case REJECTED -> "결재 문서가 반려되었습니다";
+            case CANCELLED -> "결재 문서가 취소되었습니다";
+            case IN_PROGRESS -> throw new IllegalArgumentException("approval document is not decided");
+        };
         create(event.requesterId(), NotificationType.APPROVAL_DOCUMENT_DECIDED.name(), event.documentId(), message);
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handle(RevenueReportGeneratedEvent event) {
+        create(event.recipientUserId(), NotificationType.REVENUE_REPORT_GENERATED.name(), event.reportId(),
+                event.targetMonth().format(TARGET_MONTH_FORMATTER) + " 매출 리포트가 생성되었습니다");
     }
 
     // 실시간 전송(WorkspaceWebSocketNotifier/ApprovalWebSocketNotifier)에 영향을 주지 않도록

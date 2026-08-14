@@ -59,7 +59,7 @@ class DeleteTimetableSlotServiceTest {
         when(timetableSetRepository.findById(1L)).thenReturn(Optional.of(timetableSet()));
         TimetableSlot slot = TimetableSlot.restore(
                 100L, 1L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                Grade.HIGH_3, "정T", "미적분", FROM, UNTIL, null, null);
+                Grade.HIGH_3, "정T", "미적분", "FFCC00", FROM, UNTIL, null, null);
         when(timetableSlotRepository.findById(100L)).thenReturn(Optional.of(slot));
 
         service.deleteSlot(new DeleteTimetableSlotCommand(1L, 100L, UpdateScope.ALL));
@@ -105,7 +105,7 @@ class DeleteTimetableSlotServiceTest {
         when(timetableSetRepository.findById(1L)).thenReturn(Optional.of(timetableSet()));
         TimetableSlot slot = TimetableSlot.restore(
                 100L, 2L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                Grade.HIGH_3, "정T", "미적분", FROM, UNTIL, null, null);
+                Grade.HIGH_3, "정T", "미적분", "FFCC00", FROM, UNTIL, null, null);
         when(timetableSlotRepository.findById(100L)).thenReturn(Optional.of(slot));
 
         assertThatThrownBy(() -> service.deleteSlot(new DeleteTimetableSlotCommand(1L, 100L, UpdateScope.ALL)))

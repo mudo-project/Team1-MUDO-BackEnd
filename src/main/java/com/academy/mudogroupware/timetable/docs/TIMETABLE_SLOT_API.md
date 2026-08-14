@@ -22,7 +22,8 @@
   "endTime": "11:00",
   "grade": "HIGH_3",
   "teacherName": "정T",
-  "subjectName": "미적분"
+  "subjectName": "미적분",
+  "color": "FFCC00"
 }
 ```
 
@@ -36,6 +37,7 @@
 | `grade` | Enum | true | 학년. `ELEMENTARY_1`~`ELEMENTARY_6`/`MIDDLE_1`~`MIDDLE_3`/`HIGH_1`~`HIGH_3` 중 하나(초1~고3 고정 12단계) |
 | `teacherName` | String | false | 강사명 |
 | `subjectName` | String | false | 과목 |
+| `color` | String | true | 색상(6자리 16진수, RRGGBB) |
 
 `effectiveFrom`/`effectiveUntil`은 요청으로 받지 않으며, 소속 시간표 세트의 `startDate`/`endDate`로 서버가 자동 설정한다.
 
@@ -94,7 +96,8 @@ HTTP `200 OK`
       "endTime": "11:00:00",
       "grade": "HIGH_3",
       "teacherName": "정T",
-      "subjectName": "미적분"
+      "subjectName": "미적분",
+      "color": "FFCC00"
     }
   ]
 }
@@ -138,7 +141,8 @@ HTTP `200 OK`
     "endTime": "11:00:00",
     "grade": "HIGH_3",
     "teacherName": "정T",
-    "subjectName": "미적분"
+    "subjectName": "미적분",
+    "color": "FFCC00"
   }
 }
 ```
@@ -175,14 +179,15 @@ HTTP `200 OK`
   "endTime": "15:00",
   "grade": "HIGH_2",
   "teacherName": "오T",
-  "subjectName": "물리"
+  "subjectName": "물리",
+  "color": "00AACC"
 }
 ```
 
 | name | type | required | description |
 | --- | --- | --- | --- |
 | `scope` | Enum | true | `THIS_OCCURRENCE`/`FROM_NOW`/`ALL` 중 하나. **현재는 `ALL`만 실제로 처리된다.** |
-| `classType`/`dayOfWeek`/`classroomCode`/`startTime`/`endTime`/`grade`/`teacherName`/`subjectName` | - | - | 등록 API와 동일 |
+| `classType`/`dayOfWeek`/`classroomCode`/`startTime`/`endTime`/`grade`/`teacherName`/`subjectName`/`color` | - | - | 등록 API와 동일 |
 
 ### Success Response
 

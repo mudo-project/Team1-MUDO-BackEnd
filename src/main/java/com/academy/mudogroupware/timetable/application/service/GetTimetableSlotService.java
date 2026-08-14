@@ -33,6 +33,6 @@ public class GetTimetableSlotService implements GetTimetableSlotUseCase {
         return new TimetableSlotView(
                 slot.getId(), slot.getClassType(), slot.getDayOfWeek(), slot.getClassroomCode(),
                 slot.getStartTime(), slot.getEndTime(), slot.getGrade(), slot.getTeacherName(),
-                slot.getSubjectName());
+                slot.getSubjectName(), slot.getColor());
     }
 }

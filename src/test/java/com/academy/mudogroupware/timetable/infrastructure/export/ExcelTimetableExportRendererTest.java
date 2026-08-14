@@ -6,7 +6,6 @@ import java.io.ByteArrayInputStream;
 import java.time.DayOfWeek;
 import java.time.LocalTime;
 import java.util.List;
-import java.util.Map;
 
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
@@ -18,8 +17,6 @@ import org.junit.jupiter.api.Test;
 import com.academy.mudogroupware.timetable.application.query.TimetableSlotView;
 import com.academy.mudogroupware.timetable.domain.model.ClassType;
 import com.academy.mudogroupware.timetable.domain.model.Grade;
-import com.academy.mudogroupware.timetable.domain.model.TimetableExportColor;
-import com.academy.mudogroupware.timetable.domain.model.TimetableExportColorCriterion;
 import com.academy.mudogroupware.timetable.domain.model.TimetableExportDensity;
 import com.academy.mudogroupware.timetable.domain.model.TimetableExportFormat;
 import com.academy.mudogroupware.timetable.domain.model.TimetableExportOptions;
@@ -38,11 +35,8 @@ class ExcelTimetableExportRendererTest {
     void renderProducesReadableWorkbookWithHeaderAndRows() throws Exception {
         List<TimetableSlotView> slots = List.of(new TimetableSlotView(
                 100L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                Grade.HIGH_3, "정T", "미적분"));
-        TimetableExportOptions options = new TimetableExportOptions(
-                TimetableExportColorCriterion.CLASSROOM,
-                Map.of("601", TimetableExportColor.fromHex("FFCC00")),
-                TimetableExportDensity.NORMAL);
+                Grade.HIGH_3, "정T", "미적분", "FFCC00"));
+        TimetableExportOptions options = new TimetableExportOptions(TimetableExportDensity.NORMAL);
 
         byte[] bytes = renderer.render("2026 여름특강", slots, options);
 
@@ -60,14 +54,11 @@ class ExcelTimetableExportRendererTest {
     }
 
     @Test
-    void renderPaintsTeacherCriterionColorOnDataRow() throws Exception {
+    void renderPaintsSlotOwnColorOnDataRow() throws Exception {
         List<TimetableSlotView> slots = List.of(new TimetableSlotView(
                 100L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                Grade.HIGH_3, "정T", "미적분"));
-        TimetableExportOptions options = new TimetableExportOptions(
-                TimetableExportColorCriterion.TEACHER,
-                Map.of("정T", TimetableExportColor.fromHex("00AACC")),
-                TimetableExportDensity.NORMAL);
+                Grade.HIGH_3, "정T", "미적분", "00AACC"));
+        TimetableExportOptions options = new TimetableExportOptions(TimetableExportDensity.NORMAL);
 
         byte[] bytes = renderer.render("2026 여름특강", slots, options);
 

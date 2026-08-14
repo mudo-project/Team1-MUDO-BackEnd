@@ -87,6 +87,49 @@ class TaskCommentPersistenceAdapterDataJpaTest {
   }
 
   @Test
+  void updatingWithPartiallyOverlappingMentionsKeepsOverlappingRowIdentity() {
+    Long taskId = givenTaskId();
+    TaskComment created = adapter().save(
+        TaskComment.create(taskId, 10L, "원본", List.of(20L, 21L), LocalDateTime.of(2026, 8, 7, 9, 0)));
+    Long keptMentionId = taskCommentMentionJpaRepository.findAllByCommentId(created.getId()).stream()
+        .filter(m -> m.getMentionedUserId().equals(20L))
+        .findFirst()
+        .orElseThrow()
+        .getId();
+
+    // 20L은 유지, 21L은 제거, 22L은 추가
+    TaskComment updated = created.updateContent("수정본", List.of(20L, 22L), LocalDateTime.of(2026, 8, 7, 10, 0));
+    TaskComment saved = adapter().save(updated);
+    entityManager.flush();
+    entityManager.clear();
+
+    assertThat(saved.getMentions()).extracting(m -> m.getMentionedUserId())
+        .containsExactlyInAnyOrder(20L, 22L);
+    Long survivingMentionId = taskCommentMentionJpaRepository.findAllByCommentId(saved.getId()).stream()
+        .filter(m -> m.getMentionedUserId().equals(20L))
+        .findFirst()
+        .orElseThrow()
+        .getId();
+    // 겹치는 멘션(20L)은 delete/insert 되지 않아야 하므로 PK가 그대로여야 한다.
+    assertThat(survivingMentionId).isEqualTo(keptMentionId);
+  }
+
+  @Test
+  void updatingWithIdenticalMentionsDoesNotThrowDuplicateKeyException() {
+    Long taskId = givenTaskId();
+    TaskComment created = adapter().save(
+        TaskComment.create(taskId, 10L, "원본", List.of(20L, 21L), LocalDateTime.of(2026, 8, 7, 9, 0)));
+
+    // 프론트가 멘션을 안 바꾸고 동일한 mentionedUserIds로 내용 수정만 요청하는 경우를 재현한다.
+    TaskComment updated = created.updateContent("수정본", List.of(20L, 21L), LocalDateTime.of(2026, 8, 7, 10, 0));
+    TaskComment saved = adapter().save(updated);
+
+    assertThat(saved.getContent()).isEqualTo("수정본");
+    assertThat(saved.getMentions()).extracting(m -> m.getMentionedUserId())
+        .containsExactlyInAnyOrder(20L, 21L);
+  }
+
+  @Test
   void deletingCommentCascadesMentions() {
     Long taskId = givenTaskId();
     TaskComment created = adapter().save(
