@@ -1,5 +1,42 @@
 # planquota Revision
 
+## ✅ 2026-08-14 · CodeRabbit 리뷰 반영(2차) — 계층 위반 수정, 오탐 스킵, 후순위 항목 정리
+
+### 배경
+
+같은 PR의 CodeRabbit 리뷰 22건 중 앞선 두 라운드에서 다루지 않은 나머지 항목을 정리했다.
+
+### 확정된 정책
+
+- **`CurrentPlanProvider` 계층 위반 수정**: `application.service.CurrentPlanProvider`가 `global.infrastructure.observability.InstanceMetadataProperties`(설정 바인딩 클래스)를 직접 의존하던 것을, `application.port.InstancePlanConfigPort`(신규, `rawPlan()` 메서드 하나)를 정의하고 `infrastructure.config.InstancePlanConfigAdapter`가 이를 구현해 `InstanceMetadataProperties`를 감싸는 구조로 변경했다. `CurrentPlanProvider`는 이제 이 Port만 주입받는다.
+- **S3QuotaReconciliationScheduler 관련 지적(다중 인스턴스 중복 보정, 사용량 감소분 미반영)은 스킵한다.** CodeRabbit이 "ECS 태스크 수가 동적으로 증가·감소할 수 있다"는 learnings를 근거로 들었으나, 이 프로젝트의 실제 배포 증거(`.github/workflows/deploy-production.yml`의 "Run migrations and deploy tenants sequentially", Grafana 대시보드 `mudo-tenant-instance-count.json`이 `count(up{service="backend"}==1)`을 "총 살아있는 학원 수"로 해석)는 전부 **테넌트(학원)당 백엔드 인스턴스 1개**를 전제로 설계돼 있다. `desiredCount`/오토스케일링 설정 자체는 이 레포 밖(AWS 콘솔 등)에 있어 100% 확답은 못 하지만, 레포 안의 모든 증거가 단일 인스턴스 쪽을 가리켜 오탐으로 판단했다. **향후 학원당 다중 인스턴스로 스케일아웃하게 되면 이 판단과 `PayrollStatementEmailProcessor`의 `ReentrantLock` 기반 해결(위 항목 참고)을 함께 재검토해야 한다.**
+- **`ResourceUsageEvent`의 재시도 멱등성 부재(#11)는 후순위로 미룬다.** 이건 앞서 미룬 AI토큰/S3 동시성 레이스(정확히 같은 순간에 여러 요청이 겹쳐야 발생하는 드문 경합)와는 성격이 다르다 — 클라이언트의 평범한 네트워크 재시도만으로도 같은 작업이 중복 기록될 수 있어 실제 발생 빈도가 더 높을 수 있다. 다만 멱등키 컬럼 추가+마이그레이션+호출부마다 작업 ID 전달+DB 유니크 제약/upsert까지 필요한 큰 작업이라, 이번 PR 범위에서는 반영하지 않고 별도 이슈로 분리하기로 했다.
+
+### 완료 기준
+
+- [x] `InstancePlanConfigPort`/`InstancePlanConfigAdapter` 추가, `CurrentPlanProvider` 리팩터링 + 테스트 갱신
+- [x] `ResourceUsageQueryService.sumByType`/`sumByTypeAndPeriod`에 `@Transactional(readOnly = true)` 추가
+- [x] `StudentRepository.countAll()`에 활성 학생만 집계한다는 Javadoc 추가
+- [x] `CreateStudentServiceTest`에 한도초과 후 `countAll()`이 그대로인지(저장 안 됐는지) 검증 추가
+- [x] `StudentRepositoryImplDataJpaTest`의 미사용 변수 제거
+- [x] `ResourceUsageRecordServiceTest`에 null/0/음수 입력 시 `save()` 미호출 검증 4케이스 추가
+- [x] `ResourceUsagePersistenceAdapterDataJpaTest`에 기간 경계값(`fromInclusive` 포함/`toExclusive` 제외) 테스트 추가
+- [x] S3 정합성 스케줄러 지적 스킵 사유, AI토큰/재시도 멱등성 후순위 사유 문서화
+- [x] 전체 테스트 스위트 통과 확인
+
+### 🧩 영향 범위
+
+| 계층 | 변경 내용 |
+| --- | --- |
+| Application(planquota) | `CurrentPlanProvider`가 새 Port(`InstancePlanConfigPort`)만 의존하도록 변경 |
+| Infrastructure(planquota) | `InstancePlanConfigAdapter` 신규 추가 |
+| Application(resourceusage) | `ResourceUsageQueryService`에 `@Transactional(readOnly=true)` 추가 |
+| Domain(student) | `StudentRepository.countAll()` Javadoc 추가 |
+| 테스트 | `CurrentPlanProviderTest`/`CreateStudentServiceTest`/`StudentRepositoryImplDataJpaTest`/`ResourceUsageRecordServiceTest`/`ResourceUsagePersistenceAdapterDataJpaTest` 갱신 |
+| Migration | 없음 |
+
+---
+
 ## ✅ 2026-08-14 · DatabaseQuotaAspect가 다른 도메인의 비관적 락을 무력화하던 버그
 
 ### 배경

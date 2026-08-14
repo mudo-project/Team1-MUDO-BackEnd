@@ -2,6 +2,7 @@ package com.academy.mudogroupware.resourceusage.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.Clock;
@@ -56,5 +57,43 @@ class ResourceUsageRecordServiceTest {
         ArgumentCaptor<ResourceUsageEvent> captor = ArgumentCaptor.forClass(ResourceUsageEvent.class);
         verify(resourceUsageRepository).save(captor.capture());
         assertThat(captor.getValue().getResourceType()).isEqualTo(ResourceUsageType.MAIL);
+    }
+
+    @Test
+    void ignoresNullS3StorageCommand() {
+        ResourceUsageRecordService service = new ResourceUsageRecordService(resourceUsageRepository, clock);
+
+        service.recordS3Storage(null);
+
+        verifyNoInteractions(resourceUsageRepository);
+    }
+
+    @Test
+    void ignoresZeroOrNegativeS3StorageBytes() {
+        ResourceUsageRecordService service = new ResourceUsageRecordService(resourceUsageRepository, clock);
+
+        service.recordS3Storage(new RecordS3StorageUsageCommand("file-register", 0L));
+        service.recordS3Storage(new RecordS3StorageUsageCommand("file-register", -1L));
+
+        verifyNoInteractions(resourceUsageRepository);
+    }
+
+    @Test
+    void ignoresNullMailUsageCommand() {
+        ResourceUsageRecordService service = new ResourceUsageRecordService(resourceUsageRepository, clock);
+
+        service.recordMailUsage(null);
+
+        verifyNoInteractions(resourceUsageRepository);
+    }
+
+    @Test
+    void ignoresZeroOrNegativeMailCount() {
+        ResourceUsageRecordService service = new ResourceUsageRecordService(resourceUsageRepository, clock);
+
+        service.recordMailUsage(new RecordMailUsageCommand("payroll-statement", 0L));
+        service.recordMailUsage(new RecordMailUsageCommand("payroll-statement", -1L));
+
+        verifyNoInteractions(resourceUsageRepository);
     }
 }

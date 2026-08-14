@@ -52,11 +52,13 @@ public class ResourceUsageQueryService implements GetMonthlyResourceUsageUseCase
     }
 
     @Override
+    @Transactional(readOnly = true)
     public long sumByType(ResourceUsageType type) {
         return resourceUsageRepository.sumByType(type);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public long sumByTypeAndPeriod(ResourceUsageType type, LocalDateTime fromInclusive, LocalDateTime toExclusive) {
         return resourceUsageRepository.sumByTypeAndPeriod(type, fromInclusive, toExclusive);
     }

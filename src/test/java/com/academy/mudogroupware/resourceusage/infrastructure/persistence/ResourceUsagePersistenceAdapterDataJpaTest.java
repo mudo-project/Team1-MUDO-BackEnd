@@ -49,6 +49,18 @@ class ResourceUsagePersistenceAdapterDataJpaTest {
     }
 
     @Test
+    void sumByTypeAndPeriodIncludesFromInclusiveAndExcludesToExclusiveBoundary() {
+        LocalDateTime from = NOW.toLocalDate().atStartOfDay();
+        LocalDateTime to = from.plusDays(1);
+        resourceUsageRepository.save(ResourceUsageEvent.smsMessages("at-from", 10L, from));
+        resourceUsageRepository.save(ResourceUsageEvent.smsMessages("at-to", 20L, to));
+
+        long sum = resourceUsageRepository.sumByTypeAndPeriod(ResourceUsageType.SMS, from, to);
+
+        assertThat(sum).isEqualTo(10L);
+    }
+
+    @Test
     void sumsAreZeroWhenNoEvents() {
         assertThat(resourceUsageRepository.sumByType(ResourceUsageType.MAIL)).isZero();
     }

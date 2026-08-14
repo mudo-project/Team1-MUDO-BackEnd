@@ -30,7 +30,7 @@ class StudentRepositoryImplDataJpaTest {
 
     @Test
     void countAllOnlyCountsNonDeletedStudents() {
-        Student active = studentRepository.save(Student.create(
+        studentRepository.save(Student.create(
                 "김민수", StudentGrade.HIGH_1, "무도고", "010-1111-2222", "010-3333-4444", null, NOW));
         Student toDelete = studentRepository.save(Student.create(
                 "이영희", StudentGrade.HIGH_2, "무도고", "010-5555-6666", "010-7777-8888", null, NOW));

@@ -73,6 +73,7 @@ class CreateStudentServiceTest {
         assertThatThrownBy(() -> limitedService.createStudent(new CreateStudentCommand(
                 "51번째학생", StudentGrade.HIGH_1, "무도고", "010-1111-2222", "010-3333-4444", null)))
                 .isInstanceOf(PlanLimitExceededException.class);
+        assertThat(studentRepository.countAll()).isEqualTo(50L);
     }
 
     private static final class FakeStudentRepository implements StudentRepository {
