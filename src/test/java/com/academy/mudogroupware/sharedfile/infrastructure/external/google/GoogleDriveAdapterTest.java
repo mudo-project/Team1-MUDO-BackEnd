@@ -286,6 +286,39 @@ class GoogleDriveAdapterTest {
         assertThat(updated.parentIds()).containsExactly("to-parent");
     }
 
+    // itemId·parentId를 문자열 연결로 URI에 이어붙이면, 그 값에 '&'가 섞였을 때 실제로 요청하지 않은
+    // 쿼리파라미터가 주입될 수 있다(URI 인젝션). UriComponentsBuilder로 각 값을 인코딩해 막는다.
+    @Test
+    void updateItemEncodesParentIdSoAmpersandCannotInjectExtraQueryParameter() {
+        server.expect(requestTo(org.hamcrest.Matchers.not(containsString("&evil=1"))))
+                .andExpect(method(HttpMethod.PATCH))
+                .andRespond(withSuccess("""
+                        {"id": "item-id", "name": "파일.pdf", "mimeType": "application/pdf",
+                         "parents": ["to-parent"], "trashed": false}
+                        """, MediaType.APPLICATION_JSON));
+
+        adapter.updateItem("access-token", "item-id", null, "from-parent", "to-parent&evil=1");
+    }
+
+    // Drive의 addParents/removeParents는 쉼표로 여러 부모 ID를 구분한다. parentId 값 자체에 쉼표가
+    // 섞이면 인코딩 없이는 Drive가 그 값을 두 개의 ID로 잘못 해석할 수 있다 — 인코딩 후에도 하나의
+    // 값으로 그대로 남아있는지 쿼리파라미터를 직접 파싱해 검증한다.
+    @Test
+    void updateItemKeepsParentIdWithCommaAsASingleQueryParameterValue() {
+        server.expect(request -> {
+            org.springframework.web.util.UriComponents parsed =
+                    org.springframework.web.util.UriComponentsBuilder.fromUri(request.getURI()).build();
+            assertThat(parsed.getQueryParams().get("addParents")).containsExactly("to,parent");
+        })
+                .andExpect(method(HttpMethod.PATCH))
+                .andRespond(withSuccess("""
+                        {"id": "item-id", "name": "파일.pdf", "mimeType": "application/pdf",
+                         "parents": ["to,parent"], "trashed": false}
+                        """, MediaType.APPLICATION_JSON));
+
+        adapter.updateItem("access-token", "item-id", null, "from-parent", "to,parent");
+    }
+
     @Test
     void trashSendsPatchWithTrashedTrue() {
         server.expect(requestTo(containsString("/files/item-id")))

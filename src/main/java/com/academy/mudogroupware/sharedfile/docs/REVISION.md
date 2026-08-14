@@ -9,7 +9,7 @@ PR #404 CodeRabbit 리뷰(Major)에서 지적되어 이슈 #406으로 분리해�
 ### 구현 변경
 
 - `SharedFileDrivePort.rename()`/`move()`를 제거하고 `updateItem(accessToken, itemId, name, fromParentId, toParentId)` 하나로 합쳤다. `GoogleDriveAdapter`를 보면 두 메서드가 애초에 같은 Drive 엔드포인트(`PATCH /files/{itemId}`, `files.update`)를 치고 있었다 — rename은 body에 `name`을, move는 body 없이 쿼리파라미터 `addParents`/`removeParents`만 썼을 뿐이다. `updateItem()`은 이 둘을 **한 번의 PATCH 요청**에 함께 실어, name이 null이면 body를 생략하고 toParentId가 null이면 쿼리파라미터를 안 붙인다.
-- `RenameSharedFileItemUseCase`/`RenameSharedFileItemService`, `MoveSharedFileItemUseCase`/`MoveSharedFileItemService`를 삭제하고, 이름 변경·이동 검증 로직(확장자 동일성 검사, 목적지 폴더·순환·루트자신 검사)을 전부 흡수한 `UpdateSharedFileItemUseCase`/`UpdateSharedFileItemService`를 신설했다. 목적지 검증(Drive 조회 불필요한 순수 비교)을 대상 itemId 조회보다 먼저 하도록 순서를 유지해, "새 부모가 자기 자신" 같은 요청은 Drive를 한 번도 안 부르고 즉시 거부한다(기존 동작 그대로).
+- `RenameSharedFileItemUseCase`/`RenameSharedFileItemService`, `MoveSharedFileItemUseCase`/`MoveSharedFileItemService`를 삭제하고, 이름 변경·이동 검증 로직(확장자 동일성 검사, 목적지 폴더·순환·루트자신 검사)을 전부 흡수한 `UpdateSharedFileItemUseCase`/`UpdateSharedFileItemService`를 신설했다. 목적지 검증(순환·유형 확인)을 대상 itemId 자신의 메타데이터 조회보다 먼저 하도록 순서를 유지해, "새 부모가 자기 자신" 같은 요청은 그 메타데이터 조회를 생략하고 즉시 거부한다 — 다만 대상 itemId가 루트 하위인지 확인하는 `SharedFileRootGuard.requireDescendant()` 자체는 어차피 선행 검증이라 이 경우에도 Drive 조회가 발생한다(기존 동작 그대로, Drive를 아예 안 부르는 게 아니라 "대상 메타데이터 재조회"만 생략됨).
 - `SharedFileController.updateItem()`이 `updateSharedFileItemUseCase.update(itemId, name, parentId)` 한 번만 호출한다. HTTP 요청/응답 계약(`SHAREDFILE_API.md` 9번)은 그대로다 — 내부 구현만 바뀌었다.
 - 이 두 UseCase를 부르는 곳이 Controller뿐이었어서(다른 도메인·API에서 재사용 없음) 안전하게 통째로 교체했다.
 
