@@ -1,6 +1,9 @@
 package com.academy.mudogroupware.student.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -12,6 +15,10 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 import com.academy.mudogroupware.global.domain.common.page.PageResult;
+import com.academy.mudogroupware.planquota.application.service.CurrentPlanProvider;
+import com.academy.mudogroupware.planquota.domain.exception.PlanLimitExceededException;
+import com.academy.mudogroupware.planquota.domain.model.Plan;
+import com.academy.mudogroupware.planquota.domain.model.PlanLimits;
 import com.academy.mudogroupware.student.application.command.CreateStudentCommand;
 import com.academy.mudogroupware.student.domain.model.Student;
 import com.academy.mudogroupware.student.domain.model.StudentGrade;
@@ -24,7 +31,15 @@ class CreateStudentServiceTest {
     private final FakeStudentRepository studentRepository = new FakeStudentRepository();
     private final Clock clock = Clock.fixed(NOW.atZone(ZoneId.of("Asia/Seoul")).toInstant(),
             ZoneId.of("Asia/Seoul"));
-    private final CreateStudentService service = new CreateStudentService(studentRepository, clock);
+    private final CurrentPlanProvider currentPlanProvider = unlimitedPlanProvider();
+    private final CreateStudentService service = new CreateStudentService(
+            studentRepository, clock, currentPlanProvider);
+
+    private static CurrentPlanProvider unlimitedPlanProvider() {
+        CurrentPlanProvider stub = mock(CurrentPlanProvider.class);
+        when(stub.currentLimits()).thenReturn(PlanLimits.of(Plan.PAID));
+        return stub;
+    }
 
     @Test
     void createsStudentWithClockBasedTimestamp() {
@@ -42,6 +57,22 @@ class CreateStudentServiceTest {
         assertThat(saved.getGrade()).isEqualTo(StudentGrade.HIGH_1);
         assertThat(saved.getCreatedAt()).isEqualTo(NOW);
         assertThat(saved.getUpdatedAt()).isEqualTo(NOW);
+    }
+
+    @Test
+    void throwsWhenStudentLimitReached() {
+        for (int i = 0; i < 50; i++) {
+            studentRepository.save(Student.create("학생" + i, StudentGrade.HIGH_1, "무도고",
+                    "010-0000-0000", "010-0000-0001", null, NOW));
+        }
+        CurrentPlanProvider planProvider = mock(CurrentPlanProvider.class);
+        when(planProvider.currentPlan()).thenReturn(Plan.FREE);
+        when(planProvider.currentLimits()).thenReturn(PlanLimits.of(Plan.FREE));
+        CreateStudentService limitedService = new CreateStudentService(studentRepository, clock, planProvider);
+
+        assertThatThrownBy(() -> limitedService.createStudent(new CreateStudentCommand(
+                "51번째학생", StudentGrade.HIGH_1, "무도고", "010-1111-2222", "010-3333-4444", null)))
+                .isInstanceOf(PlanLimitExceededException.class);
     }
 
     private static final class FakeStudentRepository implements StudentRepository {
