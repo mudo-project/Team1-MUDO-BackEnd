@@ -12,12 +12,30 @@ import java.time.LocalTime;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.OptimisticLockingFailureException;
 
+import com.academy.mudogroupware.timetable.domain.exception.TimetableSlotNotFoundException;
 import com.academy.mudogroupware.timetable.domain.exception.TimetableSlotUpdateConflictException;
 import com.academy.mudogroupware.timetable.domain.model.ClassType;
 import com.academy.mudogroupware.timetable.domain.model.Grade;
 import com.academy.mudogroupware.timetable.domain.model.TimetableSlot;
 
+import jakarta.persistence.EntityNotFoundException;
+
 class TimetableSlotPersistenceAdapterTest {
+
+    @Test
+    void convertsEntityNotFoundOnUpdateToTimetableSlotNotFoundException() {
+        TimetableSlotJpaRepository jpaRepository = mock(TimetableSlotJpaRepository.class);
+        TimetableSlotPersistenceAdapter adapter = new TimetableSlotPersistenceAdapter(jpaRepository);
+        when(jpaRepository.getReferenceById(1L))
+                .thenThrow(new EntityNotFoundException("deleted concurrently"));
+
+        TimetableSlot domain = TimetableSlot.restore(
+                1L, 1L, ClassType.SPECIAL, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
+                Grade.HIGH_3, "정T", "수정됨", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16), null, null);
+
+        assertThatThrownBy(() -> adapter.save(domain))
+                .isInstanceOf(TimetableSlotNotFoundException.class);
+    }
 
     @Test
     void convertsOptimisticLockConflictOnUpdateToTimetableSlotUpdateConflictException() {

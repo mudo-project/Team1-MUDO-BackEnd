@@ -6,10 +6,12 @@ import java.util.Optional;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Repository;
 
+import com.academy.mudogroupware.timetable.domain.exception.TimetableSlotNotFoundException;
 import com.academy.mudogroupware.timetable.domain.exception.TimetableSlotUpdateConflictException;
 import com.academy.mudogroupware.timetable.domain.model.TimetableSlot;
 import com.academy.mudogroupware.timetable.domain.repository.TimetableSlotRepository;
 
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 
 @Repository
@@ -21,16 +23,18 @@ public class TimetableSlotPersistenceAdapter implements TimetableSlotRepository 
     @Override
     public TimetableSlot save(TimetableSlot slot) {
         if (slot.getId() != null) {
-            TimetableSlotEntity entity = updateExisting(slot);
             try {
                 // 슬롯 동시 쓰기는 이미 TimetableSet 비관적 락(CreateTimetableSlotService/UpdateTimetableSlotService의
                 // findByIdForUpdate)이 직렬화한다. 이 버전 검사는 그 락을 거치지 않는 향후 호출 경로에 대한
                 // 방어 계층이다.
+                TimetableSlotEntity entity = updateExisting(slot);
                 timetableSlotJpaRepository.flush();
+                return toDomain(entity);
+            } catch (EntityNotFoundException exception) {
+                throw new TimetableSlotNotFoundException();
             } catch (OptimisticLockingFailureException exception) {
                 throw new TimetableSlotUpdateConflictException(exception);
             }
-            return toDomain(entity);
         }
         return toDomain(timetableSlotJpaRepository.save(toEntity(slot)));
     }

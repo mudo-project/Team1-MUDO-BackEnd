@@ -10,11 +10,13 @@ import java.util.stream.Collectors;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Repository;
 
+import com.academy.mudogroupware.timetable.domain.exception.TimetableSetNotFoundException;
 import com.academy.mudogroupware.timetable.domain.exception.TimetableSetUpdateConflictException;
 import com.academy.mudogroupware.timetable.domain.model.TimetableClassroom;
 import com.academy.mudogroupware.timetable.domain.model.TimetableSet;
 import com.academy.mudogroupware.timetable.domain.repository.TimetableSetRepository;
 
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 
 @Repository
@@ -26,13 +28,15 @@ public class TimetableSetPersistenceAdapter implements TimetableSetRepository {
     @Override
     public TimetableSet save(TimetableSet timetableSet) {
         if (timetableSet.getId() != null) {
-            TimetableSetEntity entity = updateExisting(timetableSet);
             try {
+                TimetableSetEntity entity = updateExisting(timetableSet);
                 timetableSetJpaRepository.flush();
+                return toDomain(entity);
+            } catch (EntityNotFoundException exception) {
+                throw new TimetableSetNotFoundException();
             } catch (OptimisticLockingFailureException exception) {
                 throw new TimetableSetUpdateConflictException(exception);
             }
-            return toDomain(entity);
         }
         return toDomain(timetableSetJpaRepository.save(toEntity(timetableSet)));
     }
