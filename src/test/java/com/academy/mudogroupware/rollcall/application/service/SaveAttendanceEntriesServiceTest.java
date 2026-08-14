@@ -24,7 +24,9 @@ import com.academy.mudogroupware.rollcall.application.command.SaveAttendanceEntr
 import com.academy.mudogroupware.rollcall.application.port.EnrolledStudentRef;
 import com.academy.mudogroupware.rollcall.application.port.LectureEnrollmentPort;
 import com.academy.mudogroupware.rollcall.application.port.LectureRef;
+import com.academy.mudogroupware.global.domain.common.exception.BadRequestException;
 import com.academy.mudogroupware.rollcall.domain.exception.DuplicateStudentInRequestException;
+import com.academy.mudogroupware.rollcall.domain.exception.RollcallErrorCode;
 import com.academy.mudogroupware.rollcall.domain.exception.RollcallLectureNotFoundException;
 import com.academy.mudogroupware.rollcall.domain.exception.StudentNotEnrolledException;
 import com.academy.mudogroupware.rollcall.domain.model.AttendanceEntry;
@@ -104,7 +106,9 @@ class SaveAttendanceEntriesServiceTest {
         assertThatThrownBy(() -> service.saveEntries(command(List.of(
                 new AttendanceEntryInput(5L, AttendanceStatus.PRESENT, null),
                 new AttendanceEntryInput(5L, AttendanceStatus.LATE, null)))))
-                .isInstanceOf(DuplicateStudentInRequestException.class);
+                .isInstanceOf(DuplicateStudentInRequestException.class)
+                .extracting(exception -> ((BadRequestException) exception).getErrorCode())
+                .isEqualTo(RollcallErrorCode.DUPLICATE_STUDENT_IN_REQUEST);
 
         verify(lectureEnrollmentPort, never()).getEnrolledStudents(any());
         verify(attendanceEntryRepository, never()).findByLectureIdAndDate(any(), any());
@@ -120,7 +124,9 @@ class SaveAttendanceEntriesServiceTest {
 
         assertThatThrownBy(() -> service.saveEntries(
                 command(List.of(new AttendanceEntryInput(999L, AttendanceStatus.PRESENT, null)))))
-                .isInstanceOf(StudentNotEnrolledException.class);
+                .isInstanceOf(StudentNotEnrolledException.class)
+                .extracting(exception -> ((BadRequestException) exception).getErrorCode())
+                .isEqualTo(RollcallErrorCode.STUDENT_NOT_ENROLLED);
 
         verify(attendanceEntryRepository, never()).findByLectureIdAndDate(any(), any());
         verify(attendanceEntryRepository, never()).save(any());
