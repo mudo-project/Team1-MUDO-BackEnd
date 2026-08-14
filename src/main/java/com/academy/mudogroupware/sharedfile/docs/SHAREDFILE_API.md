@@ -41,20 +41,24 @@ Response Body
     "code": "SHAREDFILE_200_1",
     "message": "시스템 루트 상태 조회에 성공했습니다.",
     "data": {
-        "ready": true
+        "ready": true,
+        "rootId": "1AbCdEfGhIjKlMnOpQrStUvWxYz"
     }
 }
 ```
 
+`ready`가 `false`면 `rootId`는 `null`로 내려간다(필드 자체는 생략되지 않음).
+
 | name | 설명 |
 | --- | --- |
 | `data.ready` | 시스템 루트를 지금 사용할 수 있는지 여부. 행이 없거나 `FAILED`면 `false` |
+| `data.rootId` | **(2026-08-14 추가)** 시스템 루트의 Drive 폴더 ID. `ready`가 `false`면 `null`. 생성·업로드 API(6~8번)의 `parentId`로 그대로 사용할 수 있다. |
 
 ### 실패 코드
 
 | HTTP 상태 | code | message | 설명 |
 | --- | --- | --- | --- |
-| 401 | `COMMON_401` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않은 경우 |
+| 401 | `COMMON_401_1` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않은 경우 |
 | 403 | `COMMON_403_1` | 접근 권한이 없습니다. | `SHAREDFILE:MANAGE` 없음 |
 
 ---
@@ -307,6 +311,8 @@ Request Header
 
 Request Body
 
+1. `parentId` 지정(특정 폴더 하위에 생성)
+
 ```json
 {
     "parentId": "1AbCdEfGhIjKlMnOpQrStUvWxYz",
@@ -314,9 +320,17 @@ Request Body
 }
 ```
 
+2. `parentId` 생략(시스템 루트 바로 아래에 생성) — **(2026-08-14 추가)**
+
+```json
+{
+    "name": "수업 운영"
+}
+```
+
 | name | 설명 |
 | --- | --- |
-| `parentId` | 상위 폴더 ID. 시스템 루트 바로 아래에 만들려면 루트 ID를 전달. 필수 |
+| `parentId` | **(2026-08-14: 필수 → 선택)** 상위 폴더 ID. 생략(또는 `null`)하면 시스템 루트 바로 아래에 생성한다. 빈 문자열이나 공백은 400으로 거부된다. |
 | `name` | 생성할 폴더 이름. 필수, 공백 불가 |
 
 # **[response]**
@@ -349,9 +363,10 @@ Response Body
 
 | HTTP 상태 | code | message | 설명 |
 | --- | --- | --- | --- |
-| 400 | `COMMON_400_2` | 잘못된 요청입니다. | `parentId`·`name` 누락 |
+| 400 | `COMMON_400_1` | 입력값이 올바르지 않습니다. | `name` 누락·공백(Bean Validation) |
+| 400 | `COMMON_400_1` | 입력값이 올바르지 않습니다. | **(2026-08-14 추가)** `parentId`가 빈 문자열이나 공백인 경우 |
 | 400 | `SHAREDFILE_400_1` | 이름이 올바르지 않습니다. | 폴더 이름 검증 실패 |
-| 401 | `COMMON_401` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않은 경우 |
+| 401 | `COMMON_401_1` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않은 경우 |
 | 403 | `COMMON_403_1` | 접근 권한이 없습니다. | `SHAREDFILE:MANAGE` 없음 |
 | 403 | `SHAREDFILE_403_1` | 시스템 루트 하위 항목만 조회·변경할 수 있습니다. | `parentId`가 시스템 루트 밖인 경우 |
 | 409 | `SHAREDFILE_409_1` | 공유파일 시스템 루트가 아직 생성되지 않았거나 사용할 수 없습니다. | 시스템 루트가 `FAILED`이거나 없는 경우 |
@@ -373,7 +388,7 @@ Request Parameter
 
 | name | description |
 | --- | --- |
-| `parentId` | 업로드할 상위 폴더 ID. 필수 |
+| `parentId` | **(2026-08-14: 필수 → 선택)** 업로드할 상위 폴더 ID. 생략(또는 `null`)하면 시스템 루트 바로 아래에 업로드한다. 빈 문자열이나 공백은 400으로 거부된다. |
 
 Request Body (multipart part)
 
@@ -411,10 +426,10 @@ Response Body
 
 | HTTP 상태 | code | message | 설명 |
 | --- | --- | --- | --- |
-| 400 | `COMMON_400_2` | 잘못된 요청입니다. | `parentId`·`file` 누락 |
-| 400 | `SHAREDFILE_400_1` | 이름이 올바르지 않습니다. | 파일 이름 검증 실패 |
+| 400 | `SHAREDFILE_400_1` | 이름이 올바르지 않습니다. | 업로드 파일의 원본 파일명이 비어있는 경우 |
 | 400 | `SHAREDFILE_400_2` | 파일은 최대 100MB까지 업로드할 수 있습니다. | 100MB 초과 |
-| 401 | `COMMON_401` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않은 경우 |
+| 400 | `COMMON_400_1` | 입력값이 올바르지 않습니다. | **(2026-08-14 추가)** `parentId`가 빈 문자열이나 공백인 경우 |
+| 401 | `COMMON_401_1` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않은 경우 |
 | 403 | `COMMON_403_1` | 접근 권한이 없습니다. | `SHAREDFILE:MANAGE` 없음 |
 | 403 | `SHAREDFILE_403_1` | 시스템 루트 하위 항목만 조회·변경할 수 있습니다. | `parentId`가 시스템 루트 밖인 경우 |
 | 409 | `SHAREDFILE_409_1` | 공유파일 시스템 루트가 아직 생성되지 않았거나 사용할 수 없습니다. | 시스템 루트가 `FAILED`이거나 없는 경우 |
@@ -434,6 +449,8 @@ Request Header
 
 Request Body
 
+1. `parentId` 지정
+
 ```json
 {
     "parentId": "1AbCdEfGhIjKlMnOpQrStUvWxYz",
@@ -442,9 +459,18 @@ Request Body
 }
 ```
 
+2. `parentId` 생략(시스템 루트 바로 아래에 생성) — **(2026-08-14 추가)**
+
+```json
+{
+    "name": "9월 수업계획",
+    "type": "DOCS"
+}
+```
+
 | name | 설명 |
 | --- | --- |
-| `parentId` | 상위 폴더 ID. 필수 |
+| `parentId` | **(2026-08-14: 필수 → 선택)** 상위 폴더 ID. 생략(또는 `null`)하면 시스템 루트 바로 아래에 생성한다. 빈 문자열이나 공백은 400으로 거부된다. |
 | `name` | 생성할 파일 이름. 필수, 공백 불가 |
 | `type` | 생성할 Google Workspace 파일 유형. `DOCS`, `SHEETS`, `SLIDES` 중 하나. 필수 |
 
@@ -478,9 +504,10 @@ Response Body
 
 | HTTP 상태 | code | message | 설명 |
 | --- | --- | --- | --- |
-| 400 | `COMMON_400_2` | 잘못된 요청입니다. | `parentId`·`name`·`type` 누락 또는 `type` 값이 `DOCS`/`SHEETS`/`SLIDES`가 아닌 경우 |
+| 400 | `COMMON_400_1` | 입력값이 올바르지 않습니다. | `name`·`type` 누락 또는 `type` 값이 `DOCS`/`SHEETS`/`SLIDES`가 아닌 경우(Bean Validation) |
+| 400 | `COMMON_400_1` | 입력값이 올바르지 않습니다. | **(2026-08-14 추가)** `parentId`가 빈 문자열이나 공백인 경우 |
 | 400 | `SHAREDFILE_400_1` | 이름이 올바르지 않습니다. | 파일 이름 검증 실패 |
-| 401 | `COMMON_401` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않은 경우 |
+| 401 | `COMMON_401_1` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않은 경우 |
 | 403 | `COMMON_403_1` | 접근 권한이 없습니다. | `SHAREDFILE:MANAGE` 없음 |
 | 403 | `SHAREDFILE_403_1` | 시스템 루트 하위 항목만 조회·변경할 수 있습니다. | `parentId`가 시스템 루트 밖인 경우 |
 | 409 | `SHAREDFILE_409_1` | 공유파일 시스템 루트가 아직 생성되지 않았거나 사용할 수 없습니다. | 시스템 루트가 `FAILED`이거나 없는 경우 |
