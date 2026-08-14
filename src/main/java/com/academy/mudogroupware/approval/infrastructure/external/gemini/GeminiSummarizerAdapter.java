@@ -9,6 +9,14 @@ import com.academy.mudogroupware.approval.application.port.AttachmentContent;
 import com.academy.mudogroupware.approval.application.port.AttachmentSummarizationException;
 import com.academy.mudogroupware.approval.application.port.AttachmentSummarizerPort;
 import com.academy.mudogroupware.global.infrastructure.observability.ai.GeminiTokenUsageTracker;
+import com.academy.mudogroupware.planquota.application.service.CurrentPlanProvider;
+import com.academy.mudogroupware.planquota.domain.exception.PlanLimitErrorCode;
+import com.academy.mudogroupware.planquota.domain.exception.PlanLimitExceededException;
+import com.academy.mudogroupware.resourceusage.application.port.ResourceUsageQueryPort;
+import com.academy.mudogroupware.resourceusage.domain.model.ResourceUsageType;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import lombok.RequiredArgsConstructor;
 
@@ -27,9 +35,13 @@ public class GeminiSummarizerAdapter implements AttachmentSummarizerPort {
     private final RestClient geminiRestClient;
     private final GeminiProperties geminiProperties;
     private final GeminiTokenUsageTracker tokenUsageTracker;
+    private final ResourceUsageQueryPort resourceUsageQueryPort;
+    private final CurrentPlanProvider currentPlanProvider;
 
     @Override
     public String summarize(AttachmentContent content) {
+        checkAiTokenLimit();
+
         GeminiGenerateContentRequest request = switch (content.kind()) {
             case TEXT -> GeminiGenerateContentRequest.ofText(SUMMARY_INSTRUCTION + "\n\n" + content.text());
             case BINARY -> GeminiGenerateContentRequest.ofInlineBinary(
@@ -60,5 +72,17 @@ public class GeminiSummarizerAdapter implements AttachmentSummarizerPort {
             throw new AttachmentSummarizationException("Gemini 응답에 요약 텍스트가 없습니다.");
         }
         return text;
+    }
+
+    private void checkAiTokenLimit() {
+        LocalDate today = LocalDate.now();
+        LocalDateTime from = today.withDayOfMonth(1).atStartOfDay();
+        LocalDateTime to = from.plusMonths(1);
+        long current = resourceUsageQueryPort.sumByTypeAndPeriod(ResourceUsageType.AI_TOKEN, from, to);
+        long limit = currentPlanProvider.currentLimits().aiTokenMonthlyLimit();
+        if (current >= limit) {
+            throw new PlanLimitExceededException(PlanLimitErrorCode.AI_TOKEN_LIMIT_EXCEEDED,
+                    currentPlanProvider.currentPlan(), limit, current);
+        }
     }
 }

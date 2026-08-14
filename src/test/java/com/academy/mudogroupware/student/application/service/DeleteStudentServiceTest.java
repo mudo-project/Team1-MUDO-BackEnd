@@ -79,5 +79,10 @@ class DeleteStudentServiceTest {
             deletedIds.add(id);
             students.removeIf(student -> student.getId().equals(id));
         }
+
+        @Override
+        public long countAll() {
+            return students.size();
+        }
     }
 }

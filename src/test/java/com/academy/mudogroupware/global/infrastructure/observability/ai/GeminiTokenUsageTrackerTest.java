@@ -12,6 +12,8 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 
 import com.academy.mudogroupware.resourceusage.application.command.RecordAiTokenUsageCommand;
+import com.academy.mudogroupware.resourceusage.application.command.RecordMailUsageCommand;
+import com.academy.mudogroupware.resourceusage.application.command.RecordS3StorageUsageCommand;
 import com.academy.mudogroupware.resourceusage.application.command.RecordSmsUsageCommand;
 import com.academy.mudogroupware.resourceusage.application.port.ResourceUsageRecorder;
 
@@ -136,6 +138,14 @@ class GeminiTokenUsageTrackerTest {
         @Override
         public void recordSmsMessages(RecordSmsUsageCommand command) {
         }
+
+        @Override
+        public void recordS3Storage(RecordS3StorageUsageCommand command) {
+        }
+
+        @Override
+        public void recordMailUsage(RecordMailUsageCommand command) {
+        }
     }
 
     private static final class ThrowingResourceUsageRecorder implements ResourceUsageRecorder {
@@ -147,6 +157,16 @@ class GeminiTokenUsageTrackerTest {
 
         @Override
         public void recordSmsMessages(RecordSmsUsageCommand command) {
+            throw new IllegalStateException("usage store unavailable");
+        }
+
+        @Override
+        public void recordS3Storage(RecordS3StorageUsageCommand command) {
+            throw new IllegalStateException("usage store unavailable");
+        }
+
+        @Override
+        public void recordMailUsage(RecordMailUsageCommand command) {
             throw new IllegalStateException("usage store unavailable");
         }
     }

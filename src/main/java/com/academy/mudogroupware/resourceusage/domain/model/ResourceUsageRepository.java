@@ -8,4 +8,8 @@ public interface ResourceUsageRepository {
     ResourceUsageEvent save(ResourceUsageEvent event);
 
     List<ResourceUsageFeatureSummary> summarizeByFeature(LocalDateTime fromInclusive, LocalDateTime toExclusive);
+
+    long sumByType(ResourceUsageType type);
+
+    long sumByTypeAndPeriod(ResourceUsageType type, LocalDateTime fromInclusive, LocalDateTime toExclusive);
 }
