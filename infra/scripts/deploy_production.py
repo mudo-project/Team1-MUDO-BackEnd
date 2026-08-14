@@ -336,6 +336,11 @@ def render_app_task(
         # GeminiFieldExtractionAdapter)이 쓰는 Gemini API 키. 없으면 코드 기본값(빈 문자열)으로
         # 떨어져 Gemini 호출이 계속 실패한다.
         "GEMINI_API_KEY",
+        # rollcall SMS 발송(SolapiSmsAdapter)이 쓰는 솔라피 인증 정보. 없으면 코드 기본값(빈
+        # 문자열)으로 떨어져 "Solapi 설정이 누락되었습니다" 오류로 발송이 계속 실패한다.
+        "SOLAPI_API_KEY",
+        "SOLAPI_API_SECRET",
+        "SOLAPI_SENDER_NUMBER",
     )
     container["secrets"] = [
         {"name": name, "valueFrom": parameter_arn(region, account_id, code, name)}
