@@ -29,7 +29,7 @@
 
 ## 발행·소비하는 Event
 
-- 현재 없음.
+- `NoticeAttachmentFilesCleanupRequestedEvent`: 공지 retention 배치가 만료된 공지의 읽음 기록·첨부 연결·본문을 정리한 뒤, 정리 대상 첨부 `fileId` 목록을 파일 모듈에 전달하기 위해 발행한다. 파일 모듈은 이 이벤트를 커밋 후 소비해 다른 도메인 참조 여부를 확인하고, 더 이상 참조되지 않는 S3 객체와 `file_metadata`를 정리한다.
 
 ## 변경 시 주의 사항
 

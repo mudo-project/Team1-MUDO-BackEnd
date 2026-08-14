@@ -1,5 +1,10 @@
 package com.academy.mudogroupware.file.infrastructure.persistence;
 
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
 import org.springframework.stereotype.Component;
 
 import com.academy.mudogroupware.file.application.port.FileReferenceChecker;
@@ -14,18 +19,31 @@ public class JpaFileReferenceChecker implements FileReferenceChecker {
     private final EntityManager entityManager;
 
     @Override
-    public boolean isReferenced(Long fileId) {
-        return exists("notice_attachment", "file_id", fileId)
-                || exists("approval_attachment", "file_id", fileId)
-                || exists("template", "file_id", fileId)
-                || exists("chat_message", "file_id", fileId);
+    public Set<Long> findReferencedFileIds(Collection<Long> fileIds) {
+        if (fileIds == null || fileIds.isEmpty()) {
+            return Set.of();
+        }
+
+        Set<Long> referencedFileIds = new HashSet<>();
+        referencedFileIds.addAll(findReferencedIds("notice_attachment", "file_id", fileIds));
+        referencedFileIds.addAll(findReferencedIds("approval_attachment", "file_id", fileIds));
+        referencedFileIds.addAll(findReferencedIds("template", "file_id", fileIds));
+        referencedFileIds.addAll(findReferencedIds("chat_message", "file_id", fileIds));
+        return referencedFileIds;
     }
 
-    private boolean exists(String tableName, String columnName, Long fileId) {
-        Number count = (Number) entityManager
-                .createNativeQuery("select count(*) from " + tableName + " where " + columnName + " = :fileId")
-                .setParameter("fileId", fileId)
-                .getSingleResult();
-        return count.longValue() > 0;
+    private Set<Long> findReferencedIds(String tableName, String columnName, Collection<Long> fileIds) {
+        @SuppressWarnings("unchecked")
+        List<Number> referencedIds = entityManager
+                .createNativeQuery("select distinct " + columnName + " from " + tableName
+                        + " where " + columnName + " in (:fileIds)")
+                .setParameter("fileIds", fileIds)
+                .getResultList();
+
+        Set<Long> result = new HashSet<>();
+        for (Number referencedId : referencedIds) {
+            result.add(referencedId.longValue());
+        }
+        return result;
     }
 }

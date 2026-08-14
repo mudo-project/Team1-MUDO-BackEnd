@@ -1,6 +1,7 @@
 package com.academy.mudogroupware.notice.application.retention;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -58,6 +59,41 @@ class NoticeRetentionServiceTest {
     }
 
     @Test
+    void doesNotHardDeleteNoticeOrRequestFileCleanupWhenAttachmentDeletionFails() {
+        port.targets = List.of(new NoticeRetentionTarget(10L, List.of(1L, 2L)));
+        port.attachmentDeleteException = new RuntimeException("attachment delete failed");
+        NoticeRetentionService service = new NoticeRetentionService(
+                new NoticeRetentionProperties(30, 500), port, eventPublisher);
+
+        assertThatThrownBy(() -> service.hardDeleteExpiredNotices(NOW))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage("attachment delete failed");
+
+        assertThat(port.invocations).containsExactly(
+                "deleteReads:[10]",
+                "deleteAttachments:[10]");
+        verifyNoInteractions(eventPublisher);
+    }
+
+    @Test
+    void doesNotRequestFileCleanupWhenNoticeHardDeleteFails() {
+        port.targets = List.of(new NoticeRetentionTarget(10L, List.of(1L, 2L)));
+        port.noticeDeleteException = new RuntimeException("notice hard delete failed");
+        NoticeRetentionService service = new NoticeRetentionService(
+                new NoticeRetentionProperties(30, 500), port, eventPublisher);
+
+        assertThatThrownBy(() -> service.hardDeleteExpiredNotices(NOW))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage("notice hard delete failed");
+
+        assertThat(port.invocations).containsExactly(
+                "deleteReads:[10]",
+                "deleteAttachments:[10]",
+                "hardDeleteNotices:[10]");
+        verifyNoInteractions(eventPublisher);
+    }
+
+    @Test
     void passesNowAndBatchSizeToCandidateLookup() {
         NoticeRetentionService service = new NoticeRetentionService(
                 new NoticeRetentionProperties(7, 200), port, eventPublisher);
@@ -75,6 +111,8 @@ class NoticeRetentionServiceTest {
         private int readDeleteCount;
         private int attachmentDeleteCount;
         private int noticeDeleteCount;
+        private RuntimeException attachmentDeleteException;
+        private RuntimeException noticeDeleteException;
         private final List<String> invocations = new ArrayList<>();
 
         @Override
@@ -93,12 +131,18 @@ class NoticeRetentionServiceTest {
         @Override
         public int deleteAttachmentsByNoticeIds(List<Long> noticeIds) {
             invocations.add("deleteAttachments:" + noticeIds);
+            if (attachmentDeleteException != null) {
+                throw attachmentDeleteException;
+            }
             return attachmentDeleteCount;
         }
 
         @Override
         public int hardDeleteNoticesByIds(List<Long> noticeIds, LocalDateTime now) {
             invocations.add("hardDeleteNotices:" + noticeIds);
+            if (noticeDeleteException != null) {
+                throw noticeDeleteException;
+            }
             return noticeDeleteCount;
         }
     }

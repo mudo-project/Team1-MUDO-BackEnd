@@ -1,6 +1,7 @@
 package com.academy.mudogroupware.notice.infrastructure.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
@@ -47,5 +48,15 @@ class NoticeRetentionAdapterTest {
         List<NoticeRetentionTarget> targets = adapter.findExpiredNoticeTargets(NOW, 500);
 
         assertThat(targets).containsExactly(new NoticeRetentionTarget(10L, List.of()));
+    }
+
+    @Test
+    void findExpiredNoticeTargetsReturnsEmptyWithoutLoadingAttachments() {
+        when(noticeJpaRepository.findHardDeleteCandidateIds(NOW, 500)).thenReturn(List.of());
+
+        List<NoticeRetentionTarget> targets = adapter.findExpiredNoticeTargets(NOW, 500);
+
+        assertThat(targets).isEmpty();
+        verifyNoInteractions(noticeAttachmentJpaRepository);
     }
 }

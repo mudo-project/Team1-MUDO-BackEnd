@@ -60,6 +60,7 @@
 - (참고) 공지 카테고리(인사/시설/업무) 분류 기능은 이번에는 포함되지 않았습니다.
 
 자세한 설계 배경은 [REVISION.md](REVISION.md)를 참고해주세요. 📚
+
 # 2026-08-14 notice deletion lifecycle
 
 - Notice delete now stores `deleted_at` and `retention_until` instead of immediately hard-deleting the row.
