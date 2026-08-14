@@ -809,6 +809,7 @@ Response Body
 | `404 Not Found` | `APPROVAL_404_2` | 결재 문서를 찾을 수 없습니다. | `documentId`에 해당하는 결재 문서가 없는 경우 |
 | `404 Not Found` | `APPROVAL_404_4` | 첨부파일을 찾을 수 없습니다. | `fileId`가 해당 문서의 첨부파일이 아닌 경우 |
 | `404 Not Found` | `FILE_404_1` | 파일을 찾을 수 없습니다. | 문서 소속 확인은 통과했지만 file 모듈에 해당 fileId 메타데이터가 없는 경우(정상 상황에서는 발생하지 않음) |
+| `502 Bad Gateway` | `APPROVAL_502_3` | 첨부파일 다운로드 URL 생성에 실패했습니다. | 결재 문서/첨부 검증은 통과했지만 S3 presigned 다운로드 URL 생성 등 파일 저장소 연동이 실패한 경우 |
 
 ### **알려진 제약**
 

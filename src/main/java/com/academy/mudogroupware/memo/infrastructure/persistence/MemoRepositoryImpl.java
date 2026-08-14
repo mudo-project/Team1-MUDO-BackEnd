@@ -30,6 +30,11 @@ public class MemoRepositoryImpl implements MemoRepository {
     }
 
     @Override
+    public Optional<Memo> findMostRecentByUserId(Long userId) {
+        return memoJpaRepository.findFirstByUserIdOrderByCreatedAtDescIdDesc(userId).map(this::toDomain);
+    }
+
+    @Override
     public List<Memo> findAllByUserIdOrderByCreatedAtDescIdDesc(Long userId) {
         return memoJpaRepository.findAllByUserIdOrderByCreatedAtDescIdDesc(userId).stream()
                 .map(this::toDomain)
