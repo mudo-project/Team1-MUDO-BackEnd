@@ -9,7 +9,10 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -86,6 +89,19 @@ public class PayrollStatementDeliveryPersistenceAdapter implements PayrollStatem
     } catch (EmptyResultDataAccessException e) {
       return Optional.empty();
     }
+  }
+
+  @Override
+  public Map<Long, DeliveryData> findBlockingByStatementIds(Set<Long> statementIds) {
+    if (statementIds.isEmpty()) return Map.of();
+    List<DeliveryData> rows = namedJdbc.query(DELIVERY_SELECT
+            + "where d.statement_id in (:statementIds) "
+            + "and d.status in ('PENDING','SENDING','RETRY_WAIT','UNKNOWN','SENT','DELIVERED') "
+            + "order by d.statement_id, d.delivery_id desc",
+        new MapSqlParameterSource("statementIds", statementIds), this::mapDelivery);
+    Map<Long, DeliveryData> result = new LinkedHashMap<>();
+    for (DeliveryData row : rows) result.putIfAbsent(row.statementId(), row);
+    return result;
   }
 
   @Override

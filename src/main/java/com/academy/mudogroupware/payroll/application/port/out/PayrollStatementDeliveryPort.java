@@ -4,7 +4,9 @@ import com.academy.mudogroupware.payroll.domain.model.PayrollTypes.DeliveryStatu
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 public interface PayrollStatementDeliveryPort {
   BatchData createBatch(YearMonth yearMonth, Long requestedBy, LocalDateTime requestedAt);
@@ -14,6 +16,7 @@ public interface PayrollStatementDeliveryPort {
       LocalDateTime requestedAt, DeliveryStatus status,
       String failureCode, String failureReason);
   Optional<DeliveryData> findBlocking(Long statementId);
+  Map<Long, DeliveryData> findBlockingByStatementIds(Set<Long> statementIds);
   List<Long> findDispatchableIds(LocalDateTime now, int limit);
   Optional<DeliveryData> claim(Long deliveryId, LocalDateTime startedAt);
   void markSent(Long deliveryId, String messageId, LocalDateTime sentAt);

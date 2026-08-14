@@ -64,12 +64,12 @@ public class WeeklyEmployeeDetailQueryService implements GetWeeklyEmployeeDetail
                 .collect(Collectors.toMap(WeeklyEmployeeDetail::workDate,
                         Function.identity(), (first, ignored) -> first, LinkedHashMap::new));
         Map<LocalDate, MyAttendanceScheduleResolver.WorkSchedule> schedules = new LinkedHashMap<>();
-        Map<LocalDate, Set<Long>> approvedLeaves = new LinkedHashMap<>();
+        Map<LocalDate, Set<Long>> approvedLeaves =
+                leaveRequestRepository.findApprovedUserIdsBetween(startDate, endDate);
         int scheduledWorkDays = 0;
         for (LocalDate current = startDate; !current.isAfter(endDate); current = current.plusDays(1)) {
             MyAttendanceScheduleResolver.WorkSchedule schedule = scheduleResolver.resolve(policy, current);
             schedules.put(current, schedule);
-            approvedLeaves.put(current, leaveRequestRepository.findApprovedUserIds(current));
             if (schedule.workday()) {
                 scheduledWorkDays++;
             }

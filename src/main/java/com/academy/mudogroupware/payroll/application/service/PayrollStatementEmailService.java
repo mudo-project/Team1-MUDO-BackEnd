@@ -19,7 +19,9 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -59,8 +61,20 @@ public class PayrollStatementEmailService {
     LocalDateTime now = LocalDateTime.now();
     BatchData batch = deliveries.createBatch(month, requestedBy, now);
     List<Payroll> targets = payrolls.findLatestByMonth(month);
+    Set<Long> payrollIds = targets.stream().map(Payroll::getId).collect(Collectors.toSet());
+    Map<Long, StatementData> statementsByPayroll =
+        statements.findByPayrollIdsForUpdate(payrollIds);
+    Set<Long> statementIds = statementsByPayroll.values().stream()
+        .map(StatementData::id).collect(Collectors.toSet());
+    Map<Long, DeliveryData> blockingByStatement =
+        deliveries.findBlockingByStatementIds(statementIds);
+    Set<Long> userIds = targets.stream().map(Payroll::getUserId).collect(Collectors.toSet());
+    Map<Long, PayrollEmployeePort.EmployeeView> employeesById = employees.findByIds(userIds);
     for (Payroll payroll : targets) {
-      createBatchDelivery(batch.id(), payroll, requestedBy);
+      StatementData statement = statementsByPayroll.get(payroll.getId());
+      createBatchDelivery(batch.id(), payroll, statement,
+          statement == null ? null : blockingByStatement.get(statement.id()),
+          employeesById.get(payroll.getUserId()), requestedBy);
     }
     long total = deliveries.countByBatch(batch.id());
     return new BatchCreatedResult(batch.id(), month.atDay(1), total, batchStatus(batch.id()));
@@ -72,8 +86,11 @@ public class PayrollStatementEmailService {
         .orElseThrow(() -> new PayrollException(PayrollErrorCode.PAYROLL_EMAIL_BATCH_NOT_FOUND));
     long total = deliveries.countByBatch(batchId);
     int offset = Math.multiplyExact(page, size);
-    List<DeliveryView> content = deliveries.findByBatch(batchId, size + 1, offset).stream()
-        .map(this::view).toList();
+    List<DeliveryData> pageRows = deliveries.findByBatch(batchId, size + 1, offset);
+    Set<Long> userIds = pageRows.stream().map(DeliveryData::userId).collect(Collectors.toSet());
+    Map<Long, PayrollEmployeePort.EmployeeView> employeesById = employees.findByIds(userIds);
+    List<DeliveryView> content = pageRows.stream()
+        .map(data -> view(data, employeesById)).toList();
     boolean hasNext = content.size() > size;
     if (hasNext) content = content.subList(0, size);
     Map<DeliveryStatus, Long> counts = counts(batchId);
@@ -81,15 +98,14 @@ public class PayrollStatementEmailService {
         Summary.from(counts, total), PagedResult.of(content, page, size, total));
   }
 
-  private void createBatchDelivery(Long batchId, Payroll payroll, Long requestedBy) {
-    var employee = employees.findById(payroll.getUserId()).orElse(null);
+  private void createBatchDelivery(Long batchId, Payroll payroll, StatementData statement,
+      DeliveryData blocking, PayrollEmployeePort.EmployeeView employee, Long requestedBy) {
     String email = employee == null ? null : employee.email();
     if (payroll.getStatus() != PayrollStatus.CONFIRMED) {
-      create(batchId, payroll, statements.findByPayrollId(payroll.getId()).orElse(null), email,
+      create(batchId, payroll, statement, email,
           requestedBy, DeliveryStatus.SKIPPED, "PAYROLL_NOT_CONFIRMED", "급여가 확정되지 않았습니다.");
       return;
     }
-    StatementData statement = statements.findByPayrollIdForUpdate(payroll.getId()).orElse(null);
     if (statement == null || statement.status() != StatementStatus.READY
         || statement.objectKey() == null) {
       create(batchId, payroll, statement, email, requestedBy, DeliveryStatus.SKIPPED,
@@ -101,7 +117,7 @@ public class PayrollStatementEmailService {
           "NO_EMAIL", "직원 이메일이 등록되어 있지 않습니다.");
       return;
     }
-    if (deliveries.findBlocking(statement.id()).isPresent()) {
+    if (blocking != null) {
       create(batchId, payroll, statement, email, requestedBy, DeliveryStatus.SKIPPED,
           "ALREADY_DELIVERED_OR_IN_PROGRESS", "이미 전달됐거나 발송 처리 중입니다.");
       return;
@@ -143,9 +159,10 @@ public class PayrollStatementEmailService {
     return statement;
   }
 
-  private DeliveryView view(DeliveryData data) {
-    String name = employees.findById(data.userId()).map(PayrollEmployeePort.EmployeeView::name)
-        .orElse("알 수 없음");
+  private DeliveryView view(DeliveryData data,
+      Map<Long, PayrollEmployeePort.EmployeeView> employeesById) {
+    PayrollEmployeePort.EmployeeView employee = employeesById.get(data.userId());
+    String name = employee == null ? "알 수 없음" : employee.name();
     return new DeliveryView(data.id(), data.payrollId(), data.userId(), name,
         mask(data.recipientEmail()), data.status(), data.failureCode(), data.failureReason(),
         data.requestedAt(), data.sentAt(), data.deliveredAt(), data.failedAt());
