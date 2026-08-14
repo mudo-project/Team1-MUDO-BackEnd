@@ -1401,8 +1401,27 @@ Actuator는 기존 앱 포트 8080을 사용한다. Alloy는 같은 호스트에
 6. Health check protocol → HTTP
 7. Health check path → `/actuator/health`
 8. Success codes → `200`
-9. Create
-10. 인스턴스를 수동 등록하지 않는다. ECS Service가 동적 포트로 등록한다.
+9. **Advanced health check settings**(AWS 기본값을 그대로 두지 말 것 — 2026-08-15 실측 기준, 기본값(interval 30초·healthy threshold 5회·deregistration delay 300초)으로는 테넌트 1개 롤링 배포에 약 8분이 걸린다. 아래 값으로 조정하면 약 2분대로 줄어든다):
+   - Health check interval → `10`초 (기본 30초)
+   - Healthy threshold → `3`회 (기본 5회)
+   - Unhealthy threshold → `2`회(기본값 유지)
+   - Target group attributes → `deregistration_delay.timeout_seconds` → `90`초 (기본 300초)
+     - WebSocket(채팅/알림)을 쓰는 앱이라 0에 가깝게 낮추지는 않는다 — 배포 중 열려있던 연결이 정상 종료할 시간은 남겨둔다.
+10. Create
+11. 인스턴스를 수동 등록하지 않는다. ECS Service가 동적 포트로 등록한다.
+
+CLI로 기존 Target Group에 적용할 때:
+
+```bash
+$AWSCLI elbv2 modify-target-group \
+  --target-group-arn <TARGET_GROUP_ARN> \
+  --health-check-interval-seconds 10 \
+  --healthy-threshold-count 3
+
+$AWSCLI elbv2 modify-target-group-attributes \
+  --target-group-arn <TARGET_GROUP_ARN> \
+  --attributes Key=deregistration_delay.timeout_seconds,Value=90
+```
 
 ### 15-2. ALB 생성
 
