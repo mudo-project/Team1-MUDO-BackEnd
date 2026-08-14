@@ -1,6 +1,8 @@
 package com.academy.mudogroupware.rollcall.application.service;
 
+import java.time.Clock;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -17,7 +19,10 @@ import com.academy.mudogroupware.rollcall.application.query.MessageSendResultVie
 import com.academy.mudogroupware.rollcall.application.usecase.GetMessageSendCandidatesUseCase;
 import com.academy.mudogroupware.rollcall.application.usecase.SendAttendanceMessagesUseCase;
 import com.academy.mudogroupware.rollcall.domain.exception.NoStudentsSelectedException;
+import com.academy.mudogroupware.rollcall.domain.model.AttendanceMessageSendRecord;
+import com.academy.mudogroupware.rollcall.domain.model.AttendanceMessageSendStatus;
 import com.academy.mudogroupware.rollcall.domain.model.MessageTemplate;
+import com.academy.mudogroupware.rollcall.domain.repository.AttendanceMessageSendRecordRepository;
 import com.academy.mudogroupware.rollcall.domain.repository.MessageTemplateRepository;
 import com.academy.mudogroupware.resourceusage.application.command.RecordSmsUsageCommand;
 import com.academy.mudogroupware.resourceusage.application.port.ResourceUsageRecorder;
@@ -36,6 +41,8 @@ public class SendAttendanceMessagesService implements SendAttendanceMessagesUseC
     private final MessageTemplateRepository messageTemplateRepository;
     private final SmsSenderPort smsSenderPort;
     private final ResourceUsageRecorder resourceUsageRecorder;
+    private final AttendanceMessageSendRecordRepository attendanceMessageSendRecordRepository;
+    private final Clock clock;
 
     @Override
     public List<MessageSendResultView> send(SendAttendanceMessagesCommand command) {
@@ -60,8 +67,8 @@ public class SendAttendanceMessagesService implements SendAttendanceMessagesUseC
 
         Set<Long> requestedStudentIds = Set.copyOf(command.studentIds());
         List<MessageSendResultView> results = requestedStudentIds.stream()
-                .map(studentId -> sendToStudent(studentId, candidatesByStudentId.get(studentId), templatesById,
-                        command.date()))
+                .map(studentId -> sendToStudent(command.lectureId(), studentId, candidatesByStudentId.get(studentId),
+                        templatesById, command.date()))
                 .toList();
 
         long sentCount = results.stream().filter(MessageSendResultView::sent).count();
@@ -78,7 +85,7 @@ public class SendAttendanceMessagesService implements SendAttendanceMessagesUseC
         return results;
     }
 
-    private MessageSendResultView sendToStudent(Long studentId, MessageSendCandidateView candidate,
+    private MessageSendResultView sendToStudent(Long lectureId, Long studentId, MessageSendCandidateView candidate,
                                                  Map<Long, MessageTemplate> templatesById, LocalDate date) {
         if (candidate == null || !candidate.eligible()) {
             return new MessageSendResultView(studentId, candidate != null ? candidate.studentName() : null,
@@ -90,6 +97,12 @@ public class SendAttendanceMessagesService implements SendAttendanceMessagesUseC
                     "문자 템플릿을 찾을 수 없습니다.");
         }
 
+        AttendanceMessageSendRecord record = attendanceMessageSendRecordRepository
+                .createOrGetExisting(lectureId, studentId, date, LocalDateTime.now(clock));
+        if (record.isAlreadySent()) {
+            return new MessageSendResultView(studentId, candidate.studentName(), true, null);
+        }
+
         SmsSendResult result;
         String message = renderMessage(template.getContent(), candidate, date);
         try {
@@ -97,11 +110,23 @@ public class SendAttendanceMessagesService implements SendAttendanceMessagesUseC
         } catch (RuntimeException e) {
             log.warn("event=attendance_message_send_student_실패 studentId={}, reason={}",
                     studentId, e.getMessage(), e);
+            record.markResult(AttendanceMessageSendStatus.FAILED, LocalDateTime.now(clock));
+            attendanceMessageSendRecordRepository.save(record);
             return new MessageSendResultView(studentId, candidate.studentName(), false,
                     "SMS 발송 처리 중 오류가 발생했습니다.");
         }
+
+        record.markResult(classifyStatus(result), LocalDateTime.now(clock));
+        attendanceMessageSendRecordRepository.save(record);
         return new MessageSendResultView(studentId, candidate.studentName(), result.success(),
                 result.success() ? null : result.failureReason());
+    }
+
+    private AttendanceMessageSendStatus classifyStatus(SmsSendResult result) {
+        if (result.success()) {
+            return AttendanceMessageSendStatus.SENT;
+        }
+        return result.indeterminate() ? AttendanceMessageSendStatus.INDETERMINATE : AttendanceMessageSendStatus.FAILED;
     }
 
     private String renderMessage(String content, MessageSendCandidateView candidate, LocalDate date) {

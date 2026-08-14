@@ -1,5 +1,27 @@
 # 출결 Revision
 
+## 2026-08-14 · 출결 SMS 발송 재시도 중복 방지
+
+### 배경
+
+이슈 #354. 코드 리뷰 중 발견: SOLAPI 호출 도중 타임아웃/연결 끊김이 나면 실제로는 SOLAPI에 접수돼 발송이 진행됐을 수 있는데도 서버는 이를 "실패"로만 응답했다. 발송 시도 자체를 어디에도 저장하지 않아서, 사용자가 실패 응답을 보고 재시도하면 같은 학생에게 SMS가 중복 발송될 수 있었다.
+
+### 변경 내용
+
+- 신규 테이블 `attendance_message_send_record`(`lecture_id`, `student_id`, `entry_date`에 유니크 제약) 추가. 마이그레이션 `be6/V6.1.7`.
+- `AttendanceMessageSendRecord`(도메인 모델) / `AttendanceMessageSendStatus`(`PENDING`/`SENT`/`FAILED`/`INDETERMINATE`) 추가.
+- `SendAttendanceMessagesService`가 SOLAPI 호출 전에 이 레코드를 먼저 만들어보고(유니크 제약을 이용한 insert-first 패턴, 동시 요청이 와도 하나만 생성됨), 이미 `SENT` 상태면 SOLAPI를 다시 부르지 않고 그 결과를 그대로 반환한다.
+- `SolapiSmsAdapter`가 `ResourceAccessException`(응답 받기 전 타임아웃/연결 끊김)과 그 외 `RestClientException`(SOLAPI가 명확히 준 실패 응답)을 구분해서, 전자는 `INDETERMINATE`로 기록한다 — 재시도는 막지 않되(모르는 상태를 실패로 단정하지 않음) 상태는 남긴다.
+- `AttendanceMessageSendRecordRepositoryImpl` 구현 중 발견한 이슈: 제약 위반으로 insert가 실패한 뒤 같은 영속성 컨텍스트에서 바로 조회하면 Hibernate가 "세션이 오염됐다"는 `AssertionFailure`를 던진다 — 조회 전 `EntityManager.clear()`로 해결. 상태 갱신(`save()`)도 `saveAndFlush`로 즉시 flush하도록 해서, 나중 insert 실패 시점까지 flush가 미뤄지며 이전 갱신이 함께 유실되는 문제를 막았다.
+
+### 남은 범위 밖 항목
+
+- SOLAPI가 idempotency key를 지원하는지, 지원한다면 발송 식별자를 그 키로 전달하는 것은 이번 범위에 포함하지 않았다.
+- `INDETERMINATE` 상태에 대한 자동 재시도 스케줄링은 없다 — 사용자가 다시 발송 버튼을 눌러야 재시도된다.
+
+> 작성일: 2026-08-14
+> 상태: 백엔드 구현 완료, 테스트 통과(서비스 목 테스트/어댑터 테스트/DataJpaTest).
+
 ## 2026-08-10 · 출결 안내 문자 실제 발송 구현
 
 ### 배경

@@ -21,6 +21,7 @@
 |---|---|---|
 | `AttendanceEntry` | `academyId`, `lectureId`, `studentId`, `date`, `status`, `note` | 강의·학생·날짜 단위 출결 기록. |
 | `MessageTemplate` | `academyId`, `name`, `status`, `content`, `createdBy`, `createdAt`, `updatedAt` | 출결 상태별 템플릿. |
+| `AttendanceMessageSendRecord` | `lectureId`, `studentId`, `date`, `status`(`PENDING`/`SENT`/`FAILED`/`INDETERMINATE`) | 강의·학생·출결날짜 단위 SMS 발송 시도 기록. 재시도 시 중복 발송을 막는 데 쓰인다(`lectureId`+`studentId`+`date` 유니크). |
 
 ## 외부에 공개하는 Application API
 
@@ -44,7 +45,7 @@
 
 - 발신번호(`SOLAPI_SENDER_NUMBER`)는 솔라피 사이트에 사전 등록이 필요하다.
 - 개인 계정은 사업자 인증 없이 바로 API Key를 발급받을 수 있지만 일일 발송량이 50~500건으로 제한된다(사업자 계정은 1,000건 이상).
-- 발송 이력 저장, 실패 자동 재시도, 과금 정책은 아직 없다(향후 필요해지면 추가).
+- 학생별 발송 시도는 `AttendanceMessageSendRecordRepository`에 저장된다(2026-08-14) — 같은 (강의, 학생, 출결 날짜)로 이미 발송 성공했으면 재요청이 와도 SOLAPI를 다시 호출하지 않는다. 응답을 못 받은 경우(타임아웃/연결 끊김)는 `INDETERMINATE`로 남기고 재시도는 막지 않는다. 실패 자동 재시도 스케줄링, 과금 정책은 아직 없다.
 
 ## 발행·소비하는 Event
 
