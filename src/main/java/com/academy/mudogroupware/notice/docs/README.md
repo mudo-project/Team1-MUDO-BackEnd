@@ -41,6 +41,13 @@
 - 작성/수정은 `NOTICE:WRITE`, 고정/고정 해제는 `NOTICE:PIN` 권한으로 제한한다. 삭제는 별도 관리자 권한 없이 작성자 본인만 가능하다.
 - `Notice.create()`/`update()`, `NoticeReadRepositoryImpl.markRead()`는 `LocalDateTime.now()`를 직접 호출하지 않고 `Clock`(`Asia/Seoul` 고정) 기반 시각을 파라미터로 받는다 — approval 모듈에서 먼저 고친 서버 시간대(UTC) 버그를 notice에도 동일하게 반영했다 ([REVISION.md](REVISION.md) 참고).
 
+## 데이터 생명주기 정책
+
+- 공지사항은 삭제 복구 가능 기간을 플랜 혜택으로 설명할 수 있는 도메인이다.
+- 현재 구현은 즉시 삭제(`deleteById`)이며, 후속 구현을 한다면 `deleted_at`, `retention_until`을 추가해 복구 가능 기간 후 본문·읽음 기록·첨부파일을 정리한다.
+- 공지 첨부파일은 S3 객체로 보고, 최종 삭제 시 함께 삭제한다.
+- 담당 도메인 기준은 [DATA_LIFECYCLE_POLICY.md](../../../../../../../../docs/DATA_LIFECYCLE_POLICY.md)를 따른다.
+
 ## 세부 문서
 
 - [API.md](API.md) — 엔드포인트별 요청/응답 예시, 검증 규칙, 오류 코드
