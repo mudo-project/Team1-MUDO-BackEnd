@@ -14,5 +14,6 @@ public enum StudentGrade {
     HIGH_1,
     HIGH_2,
     HIGH_3,
+    RETAKE,
     N
 }

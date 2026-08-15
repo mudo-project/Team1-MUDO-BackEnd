@@ -44,6 +44,21 @@ class CreateStudentServiceTest {
         assertThat(saved.getUpdatedAt()).isEqualTo(NOW);
     }
 
+    @Test
+    void createsRetakeStudent() {
+        Long studentId = service.createStudent(new CreateStudentCommand(
+                "박민서",
+                StudentGrade.RETAKE,
+                "서울여자대학교",
+                "010-5803-5011",
+                "010-7777-7777",
+                "컴퓨터 공학과"
+        ));
+
+        Student saved = studentRepository.findById(studentId).orElseThrow();
+        assertThat(saved.getGrade()).isEqualTo(StudentGrade.RETAKE);
+    }
+
     private static final class FakeStudentRepository implements StudentRepository {
         private final List<Student> students = new ArrayList<>();
         private long sequence = 1L;

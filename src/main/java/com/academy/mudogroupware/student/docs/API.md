@@ -40,6 +40,7 @@
 - 학생은 로그인 계정이 아니며 `users` 테이블에 생성하지 않는다.
 - `academyId`는 요청자의 인증 정보에서 가져온다.
 - 이름과 학년은 필수다.
+- `grade` 허용값: `ELEMENTARY_1`~`ELEMENTARY_6`, `MIDDLE_1`~`MIDDLE_3`, `HIGH_1`~`HIGH_3`, `RETAKE`, `N`
 - 전화번호, 학부모 전화번호, 학교, 특이사항은 선택 입력이다.
 
 ---
