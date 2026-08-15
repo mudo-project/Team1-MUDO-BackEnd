@@ -211,7 +211,7 @@ Request Body
 {
   "messageType": "TEXT",
   "content": "안녕하세요",
-  "fileUrl": null,
+  "fileId": null,
   "fileName": null
 }
 ```
@@ -219,8 +219,56 @@ Request Body
 | --- | --- | --- | --- |
 | `messageType` | `String` | `true` | `TEXT`, `IMAGE`, `FILE` 중 하나. |
 | `content` | `String` | `messageType=TEXT`일 때 `true` | 메시지 내용. |
-| `fileUrl` | `String` | `messageType=IMAGE/FILE`일 때 `true` | 파일 모듈에서 발급받은 presigned URL. |
+| `fileId` | `Long` | `messageType=IMAGE/FILE`일 때 `true` | 아래 "파일 첨부 사전 절차"로 미리 발급받은 파일 ID. |
 | `fileName` | `String` | `false` | 원본 파일명. |
+
+> **⚠️ 2026-08-10 변경**: 이전엔 프론트가 파일 URL(`fileUrl`)을 직접 채워서 보내는 방식이었으나, 그 URL을 발급하는 API 자체가 없어 실제로는 채울 수 없는 값이었다. 그래서 approval/notice와 동일하게 공용 `file` 모듈에서 발급받는 `fileId` 참조 방식으로 변경했다. 이 문서는 그동안 갱신이 안 된 채 옛 `fileUrl` 방식으로 남아있었다 — IMAGE/FILE 메시지를 보내려면 반드시 아래 절차를 먼저 거쳐야 한다.
+
+### 파일 첨부 사전 절차 (messageType=IMAGE/FILE일 때 필수)
+
+메신저 도메인이 아니라 **공용 `file` 모듈**(`/api/files`, 결재/공지 등 다른 도메인도 공유)에서 처리한다. 순서:
+
+**1) 업로드용 presigned URL 발급**
+
+`POST /api/files/presigned-url`
+
+Request Body
+```json
+{ "fileName": "사진.jpg", "contentType": "image/jpeg" }
+```
+
+Response Body (`200 OK`)
+```json
+{
+  "status": 200,
+  "code": "FILE_200_1",
+  "message": "presigned URL 발급에 성공했습니다.",
+  "data": { "objectKey": "tenants/academy-a/files/3f2c-사진.jpg", "uploadUrl": "https://..." }
+}
+```
+
+**2) 클라이언트가 `uploadUrl`로 S3에 파일을 직접 `PUT` 업로드** (백엔드를 거치지 않음, `Content-Type` 헤더를 1)에서 보낸 `contentType`과 동일하게 지정)
+
+**3) 업로드 완료 후 파일 메타데이터 등록**
+
+`POST /api/files`
+
+Request Body
+```json
+{ "objectKey": "tenants/academy-a/files/3f2c-사진.jpg", "contentType": "image/jpeg" }
+```
+
+Response Body (`201 Created`)
+```json
+{
+  "status": 201,
+  "code": "FILE_201_1",
+  "message": "파일 등록에 성공했습니다.",
+  "data": { "fileId": 42 }
+}
+```
+
+**4) 발급받은 `fileId`로 메시지 전송** (위 4번 API에 `messageType: "IMAGE"` 또는 `"FILE"`, `fileId: 42`로 요청)
 
 # **[response]**
 
@@ -253,7 +301,7 @@ Response Body
 | --- | --- | --- | --- |
 | `400 Bad Request` | `COMMON_400_1` | 입력값이 올바르지 않습니다. | `messageType` 누락/유효하지 않은 값 (Bean Validation) |
 | `400 Bad Request` | `MESSENGER_400_5` | 메시지 내용은 비어 있을 수 없습니다. | `messageType=TEXT`인데 `content`가 비어있음 |
-| `400 Bad Request` | `MESSENGER_400_6` | 파일 URL은 비어 있을 수 없습니다. | `messageType=IMAGE/FILE`인데 `fileUrl`이 비어있음 |
+| `400 Bad Request` | `MESSENGER_400_6` | 첨부파일(fileId)이 지정되지 않았습니다. | `messageType=IMAGE/FILE`인데 `fileId`가 비어있음 |
 | `401 Unauthorized` | `COMMON_401_1` | 인증이 필요합니다. | 토큰 누락/만료 |
 | `403 Forbidden` | `MESSENGER_403_1` | 채팅방 참여자가 아닙니다. | 요청자가 해당 방 멤버가 아님 |
 | `404 Not Found` | `MESSENGER_404_1` | 채팅방을 찾을 수 없습니다. | `roomId`에 해당하는 방이 없음 |
@@ -308,7 +356,8 @@ Response Body
         "senderName": "이지훈",
         "messageType": "TEXT",
         "content": "안녕하세요",
-        "fileUrl": null,
+        "fileId": null,
+        "fileDownloadUrl": null,
         "fileName": null,
         "createdAt": "2026-08-06T09:00:00",
         "editedAt": null,
@@ -330,7 +379,7 @@ Response Body
 | `data.content[].id` | 메시지 ID입니다. |
 | `data.content[].senderId` / `senderName` | 발신자 정보입니다. |
 | `data.content[].messageType` | `TEXT`/`IMAGE`/`FILE`입니다. |
-| `data.content[].content` / `fileUrl` / `fileName` | 삭제된 메시지면 전부 `null`로 내려갑니다. |
+| `data.content[].content` / `fileId` / `fileDownloadUrl` / `fileName` | 삭제된 메시지면 전부 `null`로 내려갑니다. `fileDownloadUrl`은 1시간짜리 presigned URL이라 만료 후엔 `GET /api/files/{fileId}/download-url`로 재조회해야 합니다. |
 | `data.content[].createdAt` / `editedAt` / `deletedAt` | 생성/수정/삭제 시각입니다. |
 | `data.content[].deleted` | 삭제 여부입니다. |
 | `data.content[].unreadCount` | 해당 메시지를 아직 안 읽은 방 멤버 수입니다(카톡 스타일 숫자). |
@@ -781,7 +830,8 @@ REST와 달리 클라이언트가 요청을 보내는 게 아니라 서버가 �
   "senderUserId": 2,
   "messageType": "TEXT",
   "content": "안녕하세요",
-  "fileUrl": null,
+  "fileId": null,
+  "fileDownloadUrl": null,
   "fileName": null,
   "createdAt": "2026-08-06T09:00:00",
   "unreadCount": 1

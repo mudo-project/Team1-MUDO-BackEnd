@@ -60,6 +60,7 @@ public class ImportValueNormalizer {
                 case "고1", "고등1", "고등학교1" -> StudentGrade.HIGH_1;
                 case "고2", "고등2", "고등학교2" -> StudentGrade.HIGH_2;
                 case "고3", "고등3", "고등학교3" -> StudentGrade.HIGH_3;
+                case "재수", "retake" -> StudentGrade.RETAKE;
                 case "n", "없음", "기타" -> StudentGrade.N;
                 default -> null;
             };

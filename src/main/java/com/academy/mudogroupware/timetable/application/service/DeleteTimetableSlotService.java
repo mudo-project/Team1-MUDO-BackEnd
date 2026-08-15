@@ -14,7 +14,9 @@ import com.academy.mudogroupware.timetable.domain.repository.TimetableSetReposit
 import com.academy.mudogroupware.timetable.domain.repository.TimetableSlotRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -25,6 +27,9 @@ public class DeleteTimetableSlotService implements DeleteTimetableSlotUseCase {
 
     @Override
     public void deleteSlot(DeleteTimetableSlotCommand command) {
+        log.info("event=timetable_slot_delete_시작 timetableSetId={}, slotId={}",
+                command.timetableSetId(), command.timetableSlotId());
+
         if (command.scope() != UpdateScope.ALL) {
             throw new UnsupportedSlotScopeException();
         }
@@ -37,5 +42,7 @@ public class DeleteTimetableSlotService implements DeleteTimetableSlotUseCase {
                 .orElseThrow(TimetableSlotNotFoundException::new);
 
         timetableSlotRepository.deleteById(slot.getId());
+        log.info("event=timetable_slot_delete_완료 timetableSetId={}, slotId={}",
+                command.timetableSetId(), command.timetableSlotId());
     }
 }

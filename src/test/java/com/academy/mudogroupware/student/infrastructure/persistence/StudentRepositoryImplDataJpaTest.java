@@ -13,6 +13,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 
 import com.academy.mudogroupware.student.domain.model.Student;
 import com.academy.mudogroupware.student.domain.model.StudentGrade;
+import com.academy.mudogroupware.student.domain.model.StudentSortDirection;
 
 @DataJpaTest(properties = "spring.jpa.hibernate.ddl-auto=create-drop")
 @Import({StudentRepositoryImpl.class, StudentRepositoryImplDataJpaTest.AuditingConfig.class})
@@ -37,5 +38,19 @@ class StudentRepositoryImplDataJpaTest {
         studentRepository.markDeleted(toDelete.getId(), NOW);
 
         assertThat(studentRepository.countAll()).isEqualTo(1L);
+    }
+
+    @Test
+    void findsStudentsByNameDescending() {
+        studentRepository.save(Student.create(
+                "Anna", StudentGrade.HIGH_1, "School", "010-1111-1111", "010-2222-2222", null, NOW));
+        studentRepository.save(Student.create(
+                "Cindy", StudentGrade.HIGH_1, "School", "010-3333-3333", "010-4444-4444", null, NOW));
+        studentRepository.save(Student.create(
+                "Brian", StudentGrade.HIGH_1, "School", "010-5555-5555", "010-6666-6666", null, NOW));
+
+        assertThat(studentRepository.findAll(null, 0, 20, StudentSortDirection.DESC).content())
+                .extracting(Student::getName)
+                .containsExactly("Cindy", "Brian", "Anna");
     }
 }

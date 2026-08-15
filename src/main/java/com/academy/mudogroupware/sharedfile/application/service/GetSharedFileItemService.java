@@ -14,10 +14,12 @@ import com.academy.mudogroupware.sharedfile.domain.model.SharedFileRoot;
 import com.academy.mudogroupware.sharedfile.domain.repository.SharedFileRootRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
+@Slf4j
 public class GetSharedFileItemService implements GetSharedFileItemUseCase {
 
     private final SharedFileRootRepository sharedFileRootRepository;
@@ -27,6 +29,7 @@ public class GetSharedFileItemService implements GetSharedFileItemUseCase {
 
     @Override
     public SharedFileItemView get(String itemId) {
+        log.info("event=shared_file_item_get_시작 itemId={}", itemId);
         SharedFileRoot root = sharedFileRootRepository.find()
                 .filter(SharedFileRoot::isReady)
                 .orElseThrow(SharedFileRootUnavailableException::new);
@@ -34,8 +37,10 @@ public class GetSharedFileItemService implements GetSharedFileItemUseCase {
 
         sharedFileRootGuard.requireDescendant(accessToken, root.getGoogleRootFolderId(), itemId);
 
-        return sharedFileDrivePort.getItem(accessToken, itemId)
+        SharedFileItemView result = sharedFileDrivePort.getItem(accessToken, itemId)
                 .map(SharedFileItemViewMapper::toView)
                 .orElseThrow(() -> new SharedFileItemNotFoundException(itemId));
+        log.info("event=shared_file_item_get_완료 itemId={}", result.id());
+        return result;
     }
 }

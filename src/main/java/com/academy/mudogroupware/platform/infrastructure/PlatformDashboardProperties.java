@@ -14,4 +14,8 @@ public class PlatformDashboardProperties {
   @NotBlank private String prometheusUrl = "http://monitoring.mudo.internal:9090";
 
   @NotBlank private String tenantRegistryJson = "[]";
+
+  private int prometheusConnectTimeoutMs = 2000;
+
+  private int prometheusReadTimeoutMs = 5000;
 }

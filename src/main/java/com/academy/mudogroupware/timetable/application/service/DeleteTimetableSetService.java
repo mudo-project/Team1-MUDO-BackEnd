@@ -9,7 +9,9 @@ import com.academy.mudogroupware.timetable.domain.exception.TimetableSetNotFound
 import com.academy.mudogroupware.timetable.domain.repository.TimetableSetRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -19,9 +21,12 @@ public class DeleteTimetableSetService implements DeleteTimetableSetUseCase {
 
     @Override
     public void deleteTimetableSet(DeleteTimetableSetCommand command) {
+        log.info("event=timetable_set_delete_시작 timetableSetId={}", command.timetableSetId());
+
         timetableSetRepository.findById(command.timetableSetId())
                 .orElseThrow(TimetableSetNotFoundException::new);
 
         timetableSetRepository.deleteById(command.timetableSetId());
+        log.info("event=timetable_set_delete_완료 timetableSetId={}", command.timetableSetId());
     }
 }

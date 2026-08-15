@@ -10,7 +10,9 @@ import com.academy.mudogroupware.calendar.domain.model.CalendarEvent;
 import com.academy.mudogroupware.calendar.domain.repository.CalendarEventRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -20,6 +22,8 @@ public class UpdateCalendarEventService implements UpdateCalendarEventUseCase {
 
     @Override
     public void updateEvent(UpdateCalendarEventCommand command) {
+        log.info("event=calendar_event_update_시작 eventId={}", command.eventId());
+
         CalendarEvent event = calendarEventRepository.findById(command.eventId())
                 .orElseThrow(() -> new CalendarEventNotFoundException(command.eventId()));
 
@@ -27,5 +31,6 @@ public class UpdateCalendarEventService implements UpdateCalendarEventUseCase {
                 command.eventEndAt(), command.allDay(), command.color());
 
         calendarEventRepository.save(event);
+        log.info("event=calendar_event_update_완료 eventId={}", command.eventId());
     }
 }

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.DayOfWeek;
 import java.time.LocalTime;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
@@ -18,14 +19,15 @@ class CreateLectureRequestTest {
     private final Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
 
     @Test
-    void acceptsTimetableSlotShapeWithOnlyRequiredFields() {
+    void acceptsLegacyTimetableSlotShapeWithOnlyRequiredFields() {
         CreateLectureRequest request = new CreateLectureRequest(
-                "고1 수학 정규반",
+                "Math regular",
                 ClassType.CLASS,
                 DayOfWeek.MONDAY,
                 "601",
                 LocalTime.of(19, 0),
                 LocalTime.of(21, 0),
+                null,
                 null,
                 null,
                 null,
@@ -43,12 +45,41 @@ class CreateLectureRequestTest {
     }
 
     @Test
-    void rejectsMissingRequiredTimetableSlotFields() {
+    void acceptsMultipleSchedulesWithoutLegacySingleScheduleFields() {
         CreateLectureRequest request = new CreateLectureRequest(
-                "고1 수학 정규반",
+                "Math regular",
+                ClassType.CLASS,
+                null,
+                "601",
                 null,
                 null,
-                " ",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                List.of(
+                        new ScheduleRequest(DayOfWeek.MONDAY, LocalTime.of(19, 0), LocalTime.of(21, 0)),
+                        new ScheduleRequest(DayOfWeek.WEDNESDAY, LocalTime.of(19, 0), LocalTime.of(21, 0)),
+                        new ScheduleRequest(DayOfWeek.FRIDAY, LocalTime.of(19, 0), LocalTime.of(21, 0))));
+
+        assertThat(validator.validate(request)).isEmpty();
+        assertThat(request.toCommand(99L).schedules())
+                .containsExactly(
+                        new ScheduleInput(DayOfWeek.MONDAY, LocalTime.of(19, 0), LocalTime.of(21, 0)),
+                        new ScheduleInput(DayOfWeek.WEDNESDAY, LocalTime.of(19, 0), LocalTime.of(21, 0)),
+                        new ScheduleInput(DayOfWeek.FRIDAY, LocalTime.of(19, 0), LocalTime.of(21, 0)));
+    }
+
+    @Test
+    void rejectsMissingScheduleInput() {
+        CreateLectureRequest request = new CreateLectureRequest(
+                "Math regular",
+                ClassType.CLASS,
+                null,
+                "601",
+                null,
                 null,
                 null,
                 null,
@@ -58,6 +89,6 @@ class CreateLectureRequestTest {
                 null,
                 null);
 
-        assertThat(validator.validate(request)).hasSizeGreaterThanOrEqualTo(5);
+        assertThat(validator.validate(request)).isNotEmpty();
     }
 }
