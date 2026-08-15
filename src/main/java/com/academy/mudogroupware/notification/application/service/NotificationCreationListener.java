@@ -68,7 +68,7 @@ public class NotificationCreationListener {
         create(event.requesterId(), NotificationType.APPROVAL_DOCUMENT_DECIDED.name(), event.documentId(), message);
     }
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void handle(RevenueReportGeneratedEvent event) {
         create(event.recipientUserId(), NotificationType.REVENUE_REPORT_GENERATED.name(), event.reportId(),
                 event.targetMonth().format(TARGET_MONTH_FORMATTER) + " 매출 리포트가 생성되었습니다");
