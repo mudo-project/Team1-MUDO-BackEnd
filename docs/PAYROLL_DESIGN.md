@@ -261,7 +261,7 @@ payroll 없음
 즉 월 급여 목록 조회에서는:
 
 ```text
-직원 목록
+활성 직원 목록(SUPER_ADMIN 제외)
 LEFT JOIN payroll
 ```
 
@@ -2069,6 +2069,8 @@ Employee C → payroll 없음
 targetEmployeeCount
 
 notCreatedCount
+
+draftCount
 
 calculatedCount
 

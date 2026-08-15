@@ -1,5 +1,7 @@
 package com.academy.mudogroupware.users.infrastructure.payroll;
 
+import com.academy.mudogroupware.global.domain.auth.AccountType;
+import com.academy.mudogroupware.global.domain.auth.AdminScope;
 import com.academy.mudogroupware.payroll.application.port.out.PayrollEmployeePort;
 import com.academy.mudogroupware.users.domain.model.UserStatus;
 import com.academy.mudogroupware.users.infrastructure.persistence.UserEntity;
@@ -49,7 +51,11 @@ public class PayrollEmployeeAdapter implements PayrollEmployeePort {
     List<UserEntity> employees = keyword == null || keyword.isBlank()
         ? repository.findAllByStatus(UserStatus.ACTIVE)
         : repository.findAllByStatusAndNameContainingIgnoreCase(UserStatus.ACTIVE, keyword.trim());
-    return employees.stream().map(this::toView).toList();
+    return employees.stream()
+        .filter(user -> user.getAccountType() != AccountType.ADMIN
+            || user.getAdminScope() != AdminScope.PLATFORM)
+        .map(this::toView)
+        .toList();
   }
 
   private EmployeeView toView(UserEntity user) {

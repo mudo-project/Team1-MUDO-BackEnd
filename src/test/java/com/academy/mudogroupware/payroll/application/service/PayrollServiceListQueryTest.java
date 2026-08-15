@@ -1,8 +1,10 @@
 package com.academy.mudogroupware.payroll.application.service;
 
 import static com.academy.mudogroupware.payroll.domain.model.PayrollTypes.EmploymentType.REGULAR;
-import static com.academy.mudogroupware.payroll.domain.model.PayrollTypes.SalaryType.MONTHLY;
+import static com.academy.mudogroupware.payroll.domain.model.PayrollTypes.PayrollStatus.CALCULATED;
 import static com.academy.mudogroupware.payroll.domain.model.PayrollTypes.PayrollStatus.CONFIRMED;
+import static com.academy.mudogroupware.payroll.domain.model.PayrollTypes.PayrollStatus.DRAFT;
+import static com.academy.mudogroupware.payroll.domain.model.PayrollTypes.SalaryType.MONTHLY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -19,6 +21,7 @@ import com.academy.mudogroupware.payroll.application.port.out.PayrollRepository;
 import com.academy.mudogroupware.payroll.application.port.out.PayrollStatementPort;
 import com.academy.mudogroupware.payroll.domain.service.PayrollCalculator;
 import com.academy.mudogroupware.payroll.domain.model.Payroll;
+import com.academy.mudogroupware.payroll.domain.model.PayrollTypes.PayrollStatus;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -72,6 +75,27 @@ class PayrollServiceListQueryTest {
   }
 
   @Test
+  void 급여_목록_요약에_작성중_건수를_반환한다() {
+    YearMonth month = YearMonth.of(2026, 8);
+    when(employees.findAllActive(null)).thenReturn(List.of(
+        employee(1L), employee(2L), employee(3L), employee(4L)));
+    when(payrolls.findLatestByMonth(month)).thenReturn(List.of(
+        monthlyPayroll(20L, 2L, DRAFT),
+        monthlyPayroll(30L, 3L, CALCULATED),
+        monthlyPayroll(40L, 4L, CONFIRMED)));
+    when(referenceData.findCompensations(Set.of(1L, 2L, 3L, 4L), month))
+        .thenReturn(Map.of());
+
+    var result = service.list(month, null, null, null, 0, 20);
+
+    assertThat(result.summary().targetEmployeeCount()).isEqualTo(4);
+    assertThat(result.summary().notCreatedCount()).isEqualTo(1);
+    assertThat(result.summary().draftCount()).isEqualTo(1);
+    assertThat(result.summary().calculatedCount()).isEqualTo(1);
+    assertThat(result.summary().confirmedCount()).isEqualTo(1);
+  }
+
+  @Test
   void Revision_목록의_Snapshot과_명세서를_Revision별이_아닌_일괄_조회한다() {
     YearMonth month = YearMonth.of(2026, 8);
     Payroll first = payroll(1L, 1);
@@ -106,6 +130,16 @@ class PayrollServiceListQueryTest {
     return Payroll.restore(id, 10L, YearMonth.of(2026, 8), LocalDate.of(2026, 9, 5),
         CONFIRMED, new BigDecimal("3000000"), BigDecimal.ZERO,
         new BigDecimal("3000000"), revisionNo, revisionNo == 1 ? null : 1L, null,
+        LocalDateTime.now(), LocalDateTime.now(), 1L, List.of());
+  }
+
+  private EmployeeView employee(Long id) {
+    return new EmployeeView(id, "직원" + id, id + "@example.com", LocalDate.of(2026, 1, 1));
+  }
+
+  private Payroll monthlyPayroll(Long id, Long userId, PayrollStatus status) {
+    return Payroll.restore(id, userId, YearMonth.of(2026, 8), LocalDate.of(2026, 9, 5),
+        status, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, 1, null, null,
         LocalDateTime.now(), LocalDateTime.now(), 1L, List.of());
   }
 }
