@@ -15,9 +15,11 @@ import com.academy.mudogroupware.sharedfile.domain.model.SharedFileRoot;
 import com.academy.mudogroupware.sharedfile.domain.repository.SharedFileRootRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class CreateSharedFolderService implements CreateSharedFolderUseCase {
 
     private final SharedFileRootRepository sharedFileRootRepository;
@@ -29,6 +31,7 @@ public class CreateSharedFolderService implements CreateSharedFolderUseCase {
     // 동일한 규칙이다.
     @Override
     public SharedFileItemView create(String parentId, String name) {
+        log.info("event=shared_file_folder_create_시작 parentId={}", parentId);
         if (name == null || name.isBlank()) {
             throw new SharedFileInvalidNameException();
         }
@@ -47,6 +50,8 @@ public class CreateSharedFolderService implements CreateSharedFolderUseCase {
         }
 
         DriveItem created = sharedFileDrivePort.createFolder(accessToken, targetParentId, name);
-        return SharedFileItemViewMapper.toView(created);
+        SharedFileItemView result = SharedFileItemViewMapper.toView(created);
+        log.info("event=shared_file_folder_create_완료 itemId={} parentId={}", result.id(), targetParentId);
+        return result;
     }
 }
