@@ -41,6 +41,19 @@ class TimetableSlotPersistenceAdapterDataJpaTest {
     }
 
     @Test
+    void savesAndFindsSlotWithCommonGrade() {
+        TimetableSlot slot = TimetableSlot.create(
+                1L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
+                Grade.COMMON, "정T", "특강", "FFCC00", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16));
+
+        TimetableSlot saved = adapter.save(slot);
+        Optional<TimetableSlot> found = adapter.findById(saved.getId());
+
+        assertThat(found).isPresent();
+        assertThat(found.get().getGrade()).isEqualTo(Grade.COMMON);
+    }
+
+    @Test
     void findsAllByTimetableSetIdAndClassroomCode() {
         TimetableSlot slot601 = TimetableSlot.create(
                 1L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
