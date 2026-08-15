@@ -23,6 +23,7 @@ import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -34,11 +35,22 @@ public class PrometheusOperationalMetricsAdapter implements OperationalMetricsPo
 
   private final PlatformDashboardProperties properties;
   private final Executor executor;
+  private final RestClient restClient;
 
   public PrometheusOperationalMetricsAdapter(
       PlatformDashboardProperties properties, @Qualifier("applicationTaskExecutor") Executor executor) {
     this.properties = properties;
     this.executor = executor;
+    this.restClient = RestClient.builder().requestFactory(requestFactory(properties)).build();
+  }
+
+  // Prometheus가 응답 없이 멈추면 이 스레드가 applicationTaskExecutor를 무기한 붙잡아 풀을 고갈시키고,
+  // 이후 무관한 요청까지 TaskRejectedException(503)으로 튕겨나간다 — 타임아웃으로 상한을 둔다.
+  private static SimpleClientHttpRequestFactory requestFactory(PlatformDashboardProperties properties) {
+    SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+    requestFactory.setConnectTimeout(Duration.ofMillis(properties.getPrometheusConnectTimeoutMs()));
+    requestFactory.setReadTimeout(Duration.ofMillis(properties.getPrometheusReadTimeoutMs()));
+    return requestFactory;
   }
 
   @Override
@@ -107,7 +119,7 @@ public class PrometheusOperationalMetricsAdapter implements OperationalMetricsPo
     // percent-encode해서 템플릿 해석 자체를 우회한다.
     String encodedQuery = java.net.URLEncoder.encode(query, StandardCharsets.UTF_8);
     URI uri = URI.create(properties.getPrometheusUrl() + "/api/v1/query?query=" + encodedQuery);
-    return RestClient.create().get().uri(uri).retrieve().body(JsonNode.class);
+    return restClient.get().uri(uri).retrieve().body(JsonNode.class);
   }
 
   private double scalar(String query) {
