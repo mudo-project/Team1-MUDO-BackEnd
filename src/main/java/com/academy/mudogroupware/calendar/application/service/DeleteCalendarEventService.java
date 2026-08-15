@@ -9,7 +9,9 @@ import com.academy.mudogroupware.calendar.domain.exception.CalendarEventNotFound
 import com.academy.mudogroupware.calendar.domain.repository.CalendarEventRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -19,9 +21,12 @@ public class DeleteCalendarEventService implements DeleteCalendarEventUseCase {
 
     @Override
     public void deleteEvent(DeleteCalendarEventCommand command) {
+        log.info("event=calendar_event_delete_시작 eventId={}", command.eventId());
+
         calendarEventRepository.findById(command.eventId())
                 .orElseThrow(() -> new CalendarEventNotFoundException(command.eventId()));
 
         calendarEventRepository.deleteById(command.eventId());
+        log.info("event=calendar_event_delete_완료 eventId={}", command.eventId());
     }
 }

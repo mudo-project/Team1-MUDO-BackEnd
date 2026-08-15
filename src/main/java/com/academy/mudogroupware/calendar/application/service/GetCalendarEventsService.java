@@ -12,7 +12,9 @@ import com.academy.mudogroupware.calendar.domain.model.CalendarEvent;
 import com.academy.mudogroupware.calendar.domain.repository.CalendarEventRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -22,9 +24,14 @@ public class GetCalendarEventsService implements GetCalendarEventsUseCase {
 
     @Override
     public List<CalendarEvent> getEvents(LocalDateTime from, LocalDateTime to) {
+        log.info("event=calendar_event_list_시작 from={}, to={}", from, to);
+
         if (to.isBefore(from)) {
             throw new InvalidCalendarPeriodException();
         }
-        return calendarEventRepository.findAllByPeriod(from, to);
+        List<CalendarEvent> events = calendarEventRepository.findAllByPeriod(from, to);
+
+        log.info("event=calendar_event_list_완료 from={}, to={}, count={}", from, to, events.size());
+        return events;
     }
 }
