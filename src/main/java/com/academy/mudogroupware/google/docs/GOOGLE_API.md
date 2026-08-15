@@ -100,6 +100,7 @@ HTTP `200 OK`
   "data": {
     "googleEmail": "academy@mudo.co.kr",
     "connectedByUserId": 7,
+    "connectedByUserName": "홍길동",
     "scope": "openid https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/drive.file",
     "connectedAt": "2026-07-01T14:22:00",
     "refreshTokenExpiresAt": null,
@@ -109,15 +110,44 @@ HTTP `200 OK`
 }
 ```
 
-연동된 계정이 없으면 `data`가 `null`이다(별도 404를 두지 않는다 — "연동 안 됨"은 정상적으로 있을 수 있는 상태다). 이 경우는 `NOT_CONNECTED` 상태에 해당하며, 응답 본문에는 별도 `status` 값을 넣지 않는다.
+연동된 계정이 없으면 `data` 필드는 직렬화에서 생략된다(별도 404를 두지 않는다 — "연동 안 됨"은 정상적으로 있을 수 있는 상태다). 이 경우는 `NOT_CONNECTED` 상태에 해당하며, 응답 본문에는 별도 `status` 값을 넣지 않는다. 요약 상태가 필요하면 `GET /api/google/connections/status`를 사용한다.
 
 | 응답 필드 | 규칙 |
 | --- | --- |
 | `refreshTokenExpiresAt` | Google 토큰 응답에 `refresh_token_expires_in`이 실제로 있을 때만 만료 시각을 반환한다. 없으면 `null`이며, 이는 만료가 아니라 만료 시각을 알 수 없음을 뜻한다. |
 | `scope` | 동의받은 scope의 공백 구분 문자열이다. 공유파일에 필요한 `drive.file`이 없을 수 있으므로, 프론트는 이 값을 자체 권한 상태로 해석하지 않는다. |
+| `connectedByUserName` | 연결한 관리자의 현재 이름이다. 해당 사용자가 없으면 `null`이다. |
 | `status` | 연결·토큰 건강 상태다. scope 부족만으로 `FAILED`가 되지 않는다. |
 
-`status`는 `NOT_CONNECTED` / `CONNECTED` / `EXPIRING` / `EXPIRED` / `FAILED` 중 하나다. 실제 리프레시 토큰 만료 시각이 구글 응답에 있을 때만 만료 여부를 계산하며, 만료 7일 전부터 `EXPIRING`으로 표시한다. `FAILED`는 구글이 리프레시 토큰이 폐기·만료됐다고 명시적으로 응답한 경우(`invalid_grant`)에만 반환한다 — 네트워크 오류·429·5xx 같은 일시적 장애는 `FAILED`로 확정하지 않고 다음 시도에서 다시 정상 판정될 수 있다. `drive.file` scope가 없는 기존 연결은 상태 조회에서는 `CONNECTED`를 유지할 수 있으며, 공유파일이 실제 접근 토큰을 요청할 때 `GOOGLE_409_1`로 재연결을 안내한다.
+`status`는 `NOT_CONNECTED` / `CONNECTED` / `EXPIRING` / `EXPIRED` / `FAILED` 중 하나다. 실제 리프레시 토큰 만료 시각이 구글 응답에 있을 때만 만료 여부를 계산하며, 만료 3일 전부터 `EXPIRING`으로 표시한다. `FAILED`는 구글이 리프레시 토큰이 폐기·만료됐다고 명시적으로 응답한 경우(`invalid_grant`)에만 반환한다 — 네트워크 오류·429·5xx 같은 일시적 장애는 `FAILED`로 확정하지 않고 다음 시도에서 다시 정상 판정될 수 있다. `drive.file` scope가 없는 기존 연결은 상태 조회에서는 `CONNECTED`를 유지할 수 있으며, 공유파일이 실제 접근 토큰을 요청할 때 `GOOGLE_409_1`로 재연결을 안내한다.
+
+## 구글 연동 상태 요약 조회
+
+### Endpoint
+
+`GET /api/google/connections/status`
+
+### 인증 및 권한
+
+- `Authorization: Bearer {accessToken}` 헤더가 필요하다.
+- 원장(academy 관리자) 계정만 호출할 수 있다. `@PreAuthorize("hasAuthority('ACADEMY:OWNER')")`로 검증한다.
+
+### Success Response
+
+HTTP `200 OK`
+
+```json
+{
+  "status": 200,
+  "code": "GOOGLE_200_3",
+  "message": "구글 연동 상태 요약 조회에 성공했습니다.",
+  "data": {
+    "status": "CONNECTED"
+  }
+}
+```
+
+연동된 계정이 없으면 `data.status`는 `NOT_CONNECTED`다. 이 API는 저장된 상태만 계산하며, Google API를 호출해 토큰을 확인하지 않는다.
 
 ### 응답 호환성 변경
 
