@@ -65,7 +65,19 @@ Response Body
     "scope": "ALL",
     "academyCode": null,
     "period": "LAST_HOUR",
-    "apiCallMetrics": [{ "category": "ACCOUNT_ISSUANCE", "count": 3 }],
+    "apiCallMetrics": [
+      { "category": "INITIAL_DATA_READ", "count": 128 },
+      { "category": "ACCOUNT_ISSUANCE", "count": 3 },
+      { "category": "CHECK_IN", "count": 45 },
+      { "category": "ATTENDANCE_EXPORT", "count": 2 },
+      { "category": "NOTICE_CREATE", "count": 4 },
+      { "category": "WORKSPACE_TASK_CREATE", "count": 17 },
+      { "category": "WORKSPACE_TASK_STATUS_CHANGE", "count": 22 },
+      { "category": "APPROVAL_SUBMISSION", "count": 6 },
+      { "category": "SETTLEMENT_SUBMISSION", "count": 1 },
+      { "category": "CALENDAR_CREATE", "count": 5 },
+      { "category": "MEMO_CREATE", "count": 9 }
+    ],
     "p95ResponseMilliseconds": 120.5,
     "errorRatePercent": 1.2,
     "rdsConnectionBudget": { "current": 10, "safeBudget": 100, "usedPercent": 10.0 },
@@ -84,7 +96,7 @@ Response Body
 }
 ```
 
-`apiCallMetrics`는 실제로는 11개 카테고리(`INITIAL_DATA_READ`, `ACCOUNT_ISSUANCE`, `CHECK_IN`, `ATTENDANCE_EXPORT`, `NOTICE_CREATE`, `WORKSPACE_TASK_CREATE`, `WORKSPACE_TASK_STATUS_CHANGE`, `APPROVAL_SUBMISSION`, `SETTLEMENT_SUBMISSION`, `CALENDAR_CREATE`, `MEMO_CREATE`)를 항상 전부 반환한다. 위 예시는 지면상 1개만 표기했다.
+`apiCallMetrics`는 위 예시처럼 11개 카테고리(`INITIAL_DATA_READ`, `ACCOUNT_ISSUANCE`, `CHECK_IN`, `ATTENDANCE_EXPORT`, `NOTICE_CREATE`, `WORKSPACE_TASK_CREATE`, `WORKSPACE_TASK_STATUS_CHANGE`, `APPROVAL_SUBMISSION`, `SETTLEMENT_SUBMISSION`, `CALENDAR_CREATE`, `MEMO_CREATE`)를 항상 전부 반환한다(활동이 없으면 `count: 0`). 각 카테고리는 `메서드 + 경로 패턴`에 매칭되는 실제 업무 액션 발생 횟수다 — 예를 들어 `CHECK_IN`은 `POST /api/attendance/check-ins`(출근 체크인), `APPROVAL_SUBMISSION`은 `POST /api/approvals`(결재 상신) 호출 수를 센다. 서버 부하 지표가 아니라 업무 활동 지표이며, `scope`와 무관하게 항상 전체 서비스 합산이다(위 "비즈니스 규칙" 참고).
 
 ### 실패 코드
 
@@ -127,11 +139,35 @@ Response Body
   "data": [
     {
       "academyCode": "academy-a",
-      "apiCallMetrics": [{ "category": "ACCOUNT_ISSUANCE", "count": 3 }]
+      "apiCallMetrics": [
+        { "category": "INITIAL_DATA_READ", "count": 84 },
+        { "category": "ACCOUNT_ISSUANCE", "count": 3 },
+        { "category": "CHECK_IN", "count": 30 },
+        { "category": "ATTENDANCE_EXPORT", "count": 0 },
+        { "category": "NOTICE_CREATE", "count": 0 },
+        { "category": "WORKSPACE_TASK_CREATE", "count": 0 },
+        { "category": "WORKSPACE_TASK_STATUS_CHANGE", "count": 12 },
+        { "category": "APPROVAL_SUBMISSION", "count": 4 },
+        { "category": "SETTLEMENT_SUBMISSION", "count": 0 },
+        { "category": "CALENDAR_CREATE", "count": 0 },
+        { "category": "MEMO_CREATE", "count": 0 }
+      ]
     },
     {
       "academyCode": "academy-b",
-      "apiCallMetrics": []
+      "apiCallMetrics": [
+        { "category": "INITIAL_DATA_READ", "count": 0 },
+        { "category": "ACCOUNT_ISSUANCE", "count": 0 },
+        { "category": "CHECK_IN", "count": 0 },
+        { "category": "ATTENDANCE_EXPORT", "count": 0 },
+        { "category": "NOTICE_CREATE", "count": 0 },
+        { "category": "WORKSPACE_TASK_CREATE", "count": 0 },
+        { "category": "WORKSPACE_TASK_STATUS_CHANGE", "count": 0 },
+        { "category": "APPROVAL_SUBMISSION", "count": 0 },
+        { "category": "SETTLEMENT_SUBMISSION", "count": 0 },
+        { "category": "CALENDAR_CREATE", "count": 0 },
+        { "category": "MEMO_CREATE", "count": 0 }
+      ]
     }
   ]
 }
@@ -145,7 +181,10 @@ Response Body
 | `404 Not Found` | `PLATFORM_404_1` | 조회할 학원을 찾을 수 없습니다. | `academyCode`가 테넌트 레지스트리에 없음 |
 | `503 Service Unavailable` | `PLATFORM_503_1` | 운영 지표를 현재 조회할 수 없습니다. | Prometheus 조회 실패 |
 
-비즈니스 규칙: `scope=ALL`이면 조회 대상 학원 전체가 항상 포함된다 — 집계 기간 동안 호출이 전혀 없었던 학원도 `apiCallMetrics: []`로 목록에 나온다(누락되지 않는다). PromQL `sum by (tenant)`로 카테고리당 1번의 쿼리로 전체 학원의 값을 한 번에 받아오므로, 학원 수가 늘어도 쿼리 횟수는 카테고리 수(11개)로 고정된다.
+비즈니스 규칙:
+- `scope=ALL`이면 조회 대상 학원 전체가 항상 포함된다 — 집계 기간 동안 호출이 전혀 없었던 학원도 목록에서 누락되지 않는다.
+- 각 학원의 `apiCallMetrics`는 **항상 11개 카테고리 전부**를 포함한다(활동이 없는 카테고리는 `count: 0`). `operational-metrics.apiCallMetrics`와 동일한 규칙이라, 클라이언트가 "배열에 없으면 0"을 직접 처리할 필요가 없다.
+- PromQL `sum by (tenant)`로 카테고리당 1번의 쿼리로 전체 학원의 값을 한 번에 받아오므로, 학원 수가 늘어도 쿼리 횟수는 카테고리 수(11개)로 고정된다.
 
 ## GET /api/platform/academies/{academyCode}/member-count
 
