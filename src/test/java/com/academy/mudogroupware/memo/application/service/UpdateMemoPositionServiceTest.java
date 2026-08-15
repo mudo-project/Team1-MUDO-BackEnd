@@ -19,7 +19,6 @@ import com.academy.mudogroupware.memo.application.command.UpdateMemoPositionComm
 import com.academy.mudogroupware.memo.domain.exception.MemoErrorCode;
 import com.academy.mudogroupware.memo.domain.exception.MemoException;
 import com.academy.mudogroupware.memo.domain.model.Memo;
-import com.academy.mudogroupware.memo.domain.model.MemoColor;
 import com.academy.mudogroupware.memo.domain.repository.MemoRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -33,7 +32,7 @@ class UpdateMemoPositionServiceTest {
     @Test
     void updatesPositionAndSizeWhenOwner() {
         UpdateMemoPositionService service = new UpdateMemoPositionService(memoRepository, clock);
-        Memo memo = Memo.create(10L, "제목", "내용", MemoColor.MUSTARD, LocalDateTime.now());
+        Memo memo = Memo.create(10L, "제목", "내용", "D3A340", LocalDateTime.now());
         when(memoRepository.findById(1L)).thenReturn(Optional.of(memo));
 
         service.updatePosition(new UpdateMemoPositionCommand(1L, 10L, 10, 20, 200, 150));
@@ -47,7 +46,7 @@ class UpdateMemoPositionServiceTest {
     @Test
     void rejectsUpdateWhenNotOwner() {
         UpdateMemoPositionService service = new UpdateMemoPositionService(memoRepository, clock);
-        Memo memo = Memo.create(10L, "제목", "내용", MemoColor.MUSTARD, LocalDateTime.now());
+        Memo memo = Memo.create(10L, "제목", "내용", "D3A340", LocalDateTime.now());
         when(memoRepository.findById(1L)).thenReturn(Optional.of(memo));
 
         MemoException exception = assertThrows(MemoException.class,

@@ -21,7 +21,6 @@ import com.academy.mudogroupware.memo.application.command.CreateMemoCommand;
 import com.academy.mudogroupware.memo.domain.exception.MemoErrorCode;
 import com.academy.mudogroupware.memo.domain.exception.MemoException;
 import com.academy.mudogroupware.memo.domain.model.Memo;
-import com.academy.mudogroupware.memo.domain.model.MemoColor;
 import com.academy.mudogroupware.memo.domain.repository.MemoRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -43,7 +42,7 @@ class CreateMemoServiceTest {
                     memo.getCreatedAt(), memo.getUpdatedAt());
         });
 
-        Long memoId = service.createMemo(new CreateMemoCommand(10L, "제목", "내용", MemoColor.MUSTARD));
+        Long memoId = service.createMemo(new CreateMemoCommand(10L, "제목", "내용", "D3A340"));
 
         assertEquals(1L, memoId);
     }
@@ -59,7 +58,7 @@ class CreateMemoServiceTest {
                     memo.getCreatedAt(), memo.getUpdatedAt());
         });
 
-        Long memoId = service.createMemo(new CreateMemoCommand(10L, "제목", "내용", MemoColor.MUSTARD));
+        Long memoId = service.createMemo(new CreateMemoCommand(10L, "제목", "내용", "D3A340"));
 
         assertEquals(200L, memoId);
     }
@@ -70,7 +69,7 @@ class CreateMemoServiceTest {
         when(memoRepository.countByUserId(10L)).thenReturn(200L);
 
         MemoException exception = assertThrows(MemoException.class,
-                () -> service.createMemo(new CreateMemoCommand(10L, "제목", "내용", MemoColor.MUSTARD)));
+                () -> service.createMemo(new CreateMemoCommand(10L, "제목", "내용", "D3A340")));
 
         assertEquals(MemoErrorCode.MEMO_LIMIT_EXCEEDED, exception.getErrorCode());
         verify(memoRepository, never()).save(any(Memo.class));
@@ -79,12 +78,12 @@ class CreateMemoServiceTest {
     @Test
     void returnsExistingMemoIdWhenSameContentSubmittedWithinWindow() {
         CreateMemoService service = new CreateMemoService(memoRepository, clock);
-        Memo recent = Memo.restore(1L, 10L, "제목", "내용", MemoColor.MUSTARD, null, null, null, null,
+        Memo recent = Memo.restore(1L, 10L, "제목", "내용", "D3A340", null, null, null, null,
                 clock.instant().minusSeconds(1).atZone(ZoneOffset.UTC).toLocalDateTime(),
                 clock.instant().minusSeconds(1).atZone(ZoneOffset.UTC).toLocalDateTime());
         when(memoRepository.findMostRecentByUserId(10L)).thenReturn(Optional.of(recent));
 
-        Long memoId = service.createMemo(new CreateMemoCommand(10L, "제목", "내용", MemoColor.MUSTARD));
+        Long memoId = service.createMemo(new CreateMemoCommand(10L, "제목", "내용", "D3A340"));
 
         assertEquals(1L, memoId);
         verify(memoRepository, never()).countByUserId(10L);
@@ -94,7 +93,7 @@ class CreateMemoServiceTest {
     @Test
     void createsNewMemoWhenRecentMemoHasDifferentContent() {
         CreateMemoService service = new CreateMemoService(memoRepository, clock);
-        Memo recent = Memo.restore(1L, 10L, "다른 제목", "내용", MemoColor.MUSTARD, null, null, null, null,
+        Memo recent = Memo.restore(1L, 10L, "다른 제목", "내용", "D3A340", null, null, null, null,
                 clock.instant().minusSeconds(1).atZone(ZoneOffset.UTC).toLocalDateTime(),
                 clock.instant().minusSeconds(1).atZone(ZoneOffset.UTC).toLocalDateTime());
         when(memoRepository.findMostRecentByUserId(10L)).thenReturn(Optional.of(recent));
@@ -106,7 +105,7 @@ class CreateMemoServiceTest {
                     memo.getCreatedAt(), memo.getUpdatedAt());
         });
 
-        Long memoId = service.createMemo(new CreateMemoCommand(10L, "제목", "내용", MemoColor.MUSTARD));
+        Long memoId = service.createMemo(new CreateMemoCommand(10L, "제목", "내용", "D3A340"));
 
         assertEquals(2L, memoId);
     }
@@ -114,7 +113,7 @@ class CreateMemoServiceTest {
     @Test
     void createsNewMemoWhenSameContentIsOutsideDuplicateWindow() {
         CreateMemoService service = new CreateMemoService(memoRepository, clock);
-        Memo recent = Memo.restore(1L, 10L, "제목", "내용", MemoColor.MUSTARD, null, null, null, null,
+        Memo recent = Memo.restore(1L, 10L, "제목", "내용", "D3A340", null, null, null, null,
                 clock.instant().minusSeconds(10).atZone(ZoneOffset.UTC).toLocalDateTime(),
                 clock.instant().minusSeconds(10).atZone(ZoneOffset.UTC).toLocalDateTime());
         when(memoRepository.findMostRecentByUserId(10L)).thenReturn(Optional.of(recent));
@@ -126,7 +125,7 @@ class CreateMemoServiceTest {
                     memo.getCreatedAt(), memo.getUpdatedAt());
         });
 
-        Long memoId = service.createMemo(new CreateMemoCommand(10L, "제목", "내용", MemoColor.MUSTARD));
+        Long memoId = service.createMemo(new CreateMemoCommand(10L, "제목", "내용", "D3A340"));
 
         assertEquals(2L, memoId);
     }
