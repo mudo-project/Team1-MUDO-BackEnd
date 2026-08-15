@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.academy.mudogroupware.notification.application.command.CreateNotificationCommand;
@@ -26,9 +27,14 @@ public class NotificationCommandService implements CreateNotificationUseCase, Ma
     private final Clock clock;
 
     @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public Long create(CreateNotificationCommand command) {
         Notification notification = Notification.create(
-                command.recipientUserId(), command.type(), command.targetId(), command.message());
+                command.recipientUserId(),
+                command.type(),
+                command.targetId(),
+                command.message()
+        );
         return notificationRepository.save(notification).getId();
     }
 
