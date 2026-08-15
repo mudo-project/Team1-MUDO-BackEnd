@@ -22,8 +22,8 @@ import com.academy.mudogroupware.google.application.usecase.CheckGoogleAccountCo
 import com.academy.mudogroupware.google.application.usecase.CompleteGoogleAccountConnectionUseCase;
 import com.academy.mudogroupware.google.application.usecase.DisconnectGoogleAccountUseCase;
 import com.academy.mudogroupware.google.application.usecase.GetGoogleAccountConnectionUseCase;
+import com.academy.mudogroupware.google.application.usecase.GetGoogleAccountConnectionStatusUseCase;
 import com.academy.mudogroupware.google.application.usecase.StartGoogleAccountConnectionUseCase;
-import com.academy.mudogroupware.google.domain.model.GoogleConnectionStatus;
 import com.academy.mudogroupware.google.presentation.api.common.GoogleResponseCode;
 import com.academy.mudogroupware.google.presentation.api.response.GoogleAccountConnectionResponse;
 import com.academy.mudogroupware.google.presentation.api.response.GoogleAccountConnectionStatusResponse;
@@ -46,6 +46,7 @@ public class GoogleAccountConnectionController {
     private final StartGoogleAccountConnectionUseCase startGoogleAccountConnectionUseCase;
     private final CompleteGoogleAccountConnectionUseCase completeGoogleAccountConnectionUseCase;
     private final GetGoogleAccountConnectionUseCase getGoogleAccountConnectionUseCase;
+    private final GetGoogleAccountConnectionStatusUseCase getGoogleAccountConnectionStatusUseCase;
     private final CheckGoogleAccountConnectionUseCase checkGoogleAccountConnectionUseCase;
     private final DisconnectGoogleAccountUseCase disconnectGoogleAccountUseCase;
 
@@ -128,12 +129,9 @@ public class GoogleAccountConnectionController {
     @PreAuthorize("hasAuthority('ACADEMY:OWNER')")
     @GetMapping("/status")
     public ResponseEntity<GlobalApiResponse<GoogleAccountConnectionStatusResponse>> getConnectionStatus() {
-        GoogleConnectionStatus status = getGoogleAccountConnectionUseCase.getConnection()
-                .map(view -> view.status())
-                .orElse(GoogleConnectionStatus.NOT_CONNECTED);
         return ResponseEntity.ok(GlobalApiResponse.ok(
                 GoogleResponseCode.CONNECTION_STATUS_RETRIEVED,
-                new GoogleAccountConnectionStatusResponse(status)));
+                new GoogleAccountConnectionStatusResponse(getGoogleAccountConnectionStatusUseCase.getStatus())));
     }
 
     @Operation(summary = "구글 연동 상태 확인", description = "저장된 리프레시 토큰으로 구글에 실제 유효성을 확인합니다.")

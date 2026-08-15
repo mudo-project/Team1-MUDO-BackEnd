@@ -66,6 +66,20 @@ class GetGoogleAccountConnectionServiceTest {
     }
 
     @Test
+    void getConnectionReturnsNullConnectorNameWhenHistoricalUserDoesNotExist() {
+        GoogleAccountConnection connection = GoogleAccountConnection.restore(
+                10L, "academy@mudo.co.kr", 7L, "scope", "refresh-token", CONNECTED_AT,
+                null, CONNECTED_AT, false);
+        when(googleAccountConnectionRepository.find()).thenReturn(Optional.of(connection));
+        when(googleConnectionUserDirectoryPort.findByUserId(7L)).thenReturn(Optional.empty());
+
+        Optional<GoogleAccountConnectionView> view = service.getConnection();
+
+        assertThat(view).isPresent();
+        assertThat(view.get().connectedByUserName()).isNull();
+    }
+
+    @Test
     void getConnectionKeepsConnectedWhenStoredScopeMissesNewlyRequiredScope() {
         GoogleAccountConnection connection = GoogleAccountConnection.restore(
                 10L, "academy@mudo.co.kr", 7L, "openid email", "refresh-token", CONNECTED_AT,
