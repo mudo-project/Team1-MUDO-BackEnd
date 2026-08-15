@@ -18,7 +18,7 @@ public record PayrollListResult(
   public record Row(Long employeeId, String employeeName, EmploymentType employmentType,
       Long payrollId, String preparationStatus, BigDecimal totalEarnings,
       BigDecimal totalDeductions, BigDecimal netPay, int revisionNo) {}
-  public record Summary(long targetEmployeeCount, long notCreatedCount, long calculatedCount,
-      long confirmedCount, BigDecimal totalEarnings, BigDecimal totalDeductions,
-      BigDecimal totalNetPay) {}
+  public record Summary(long targetEmployeeCount, long notCreatedCount, long draftCount,
+      long calculatedCount, long confirmedCount, BigDecimal totalEarnings,
+      BigDecimal totalDeductions, BigDecimal totalNetPay) {}
 }

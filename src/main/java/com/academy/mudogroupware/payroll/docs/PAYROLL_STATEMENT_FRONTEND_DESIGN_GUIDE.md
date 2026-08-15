@@ -135,6 +135,7 @@
     "summary": {
       "targetEmployeeCount": 1,
       "notCreatedCount": 0,
+      "draftCount": 0,
       "calculatedCount": 0,
       "confirmedCount": 1,
       "totalEarnings": 3380000,
@@ -166,6 +167,7 @@
 | `hasNext`, `hasPrevious` | `Boolean` | 아니요 | 다음·이전 페이지 존재 여부 |
 | `summary.targetEmployeeCount` | `Long` | 아니요 | 필터 적용 후 대상 직원 수 |
 | `summary.notCreatedCount` | `Long` | 아니요 | 미작성 수 |
+| `summary.draftCount` | `Long` | 아니요 | 작성 중 수 |
 | `summary.calculatedCount` | `Long` | 아니요 | 계산 완료 수 |
 | `summary.confirmedCount` | `Long` | 아니요 | 확정 수 |
 | `summary.totalEarnings` | `Number` | 아니요 | 필터 대상 전체 지급 합계 |
@@ -173,6 +175,8 @@
 | `summary.totalNetPay` | `Number` | 아니요 | 필터 대상 전체 차인지급 합계 |
 
 ### 행 상태와 이동 규칙
+
+플랫폼 SUPER_ADMIN(`accountType=ADMIN`, `adminScope=PLATFORM`)은 목록 대상에서 제외된다.
 
 | `preparationStatus` | 표시명 제안 | 가능한 다음 화면·작업 |
 | --- | --- | --- |
@@ -703,4 +707,3 @@
 - `presentation/api/common/PayrollResponseCode.java`
 - `docs/PAYROLL_API_SPEC.md`
 - 프로젝트 루트 `docs/API_CONTRACT.md`
-

@@ -99,6 +99,7 @@ Response Body
     "summary": {
       "targetEmployeeCount": 2,
       "notCreatedCount": 1,
+      "draftCount": 0,
       "calculatedCount": 0,
       "confirmedCount": 1,
       "totalEarnings": 3380000,
@@ -120,6 +121,7 @@ Response Body
 
 ## 비즈니스 규칙
 - 급여가 없는 활성 직원도 NOT_CREATED로 포함합니다.
+- 플랫폼 SUPER_ADMIN(`accountType=ADMIN`, `adminScope=PLATFORM`)은 급여 대상에서 제외합니다.
 - 필터 적용 후 페이지와 요약을 계산합니다.
 
 ---
