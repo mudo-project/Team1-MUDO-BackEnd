@@ -10,6 +10,7 @@ import org.springframework.stereotype.Repository;
 
 import com.academy.mudogroupware.global.domain.common.page.PageResult;
 import com.academy.mudogroupware.student.domain.model.Student;
+import com.academy.mudogroupware.student.domain.model.StudentSortDirection;
 import com.academy.mudogroupware.student.domain.repository.StudentRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -38,8 +39,14 @@ public class StudentRepositoryImpl implements StudentRepository {
 
     @Override
     public PageResult<Student> findAll(String keyword, int page, int size) {
-        Slice<StudentEntity> slice = studentJpaRepository.findAllByKeyword(
-                keyword, PageRequest.of(page, size));
+        return findAll(keyword, page, size, StudentSortDirection.ASC);
+    }
+
+    @Override
+    public PageResult<Student> findAll(String keyword, int page, int size, StudentSortDirection direction) {
+        Slice<StudentEntity> slice = direction.isDescending()
+                ? studentJpaRepository.findAllByKeywordOrderByNameDesc(keyword, PageRequest.of(page, size))
+                : studentJpaRepository.findAllByKeyword(keyword, PageRequest.of(page, size));
         List<Student> content = slice.getContent().stream().map(this::toDomain).toList();
         return PageResult.of(content, slice.getNumber(), slice.getSize(), slice.hasNext());
     }
