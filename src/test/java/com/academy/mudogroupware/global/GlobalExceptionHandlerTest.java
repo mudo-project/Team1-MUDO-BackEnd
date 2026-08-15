@@ -5,6 +5,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.academy.mudogroupware.global.domain.common.exception.CommonErrorCode;
 import com.academy.mudogroupware.global.presentation.api.common.GlobalApiErrorResponse;
 import com.academy.mudogroupware.global.presentation.api.common.GlobalExceptionHandler;
+import com.academy.mudogroupware.platform.domain.exception.PlatformErrorCode;
+import com.academy.mudogroupware.platform.domain.exception.PlatformException;
+import java.util.concurrent.CompletionException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
@@ -78,5 +81,32 @@ class GlobalExceptionHandlerTest {
     assertThat(response.getBody().code()).isEqualTo(CommonErrorCode.CONFLICT.getCode());
     assertThat(response.getBody().message()).isEqualTo("아직 정산 상신되지 않은 사용내역입니다.");
     assertThat(response.getBody().traceId()).isEqualTo("trace999");
+  }
+
+  @Test
+  void completionExceptionWrappingApplicationExceptionUnwrapsToOriginalStatusAndCode() {
+    MDC.put("traceId", "trace-completion-1");
+    PlatformException cause = new PlatformException(PlatformErrorCode.METRICS_UNAVAILABLE);
+    CompletionException exception = new CompletionException(cause);
+
+    ResponseEntity<GlobalApiErrorResponse> response = handler.completion(exception);
+
+    assertThat(response.getStatusCode().value()).isEqualTo(503);
+    assertThat(response.getBody()).isNotNull();
+    assertThat(response.getBody().code()).isEqualTo(PlatformErrorCode.METRICS_UNAVAILABLE.getCode());
+    assertThat(response.getBody().traceId()).isEqualTo("trace-completion-1");
+  }
+
+  @Test
+  void completionExceptionWrappingUnknownCauseFallsBackToInternalServerError() {
+    MDC.put("traceId", "trace-completion-2");
+    CompletionException exception = new CompletionException(new RuntimeException("boom"));
+
+    ResponseEntity<GlobalApiErrorResponse> response = handler.completion(exception);
+
+    assertThat(response.getStatusCode().value()).isEqualTo(500);
+    assertThat(response.getBody()).isNotNull();
+    assertThat(response.getBody().code()).isEqualTo(CommonErrorCode.INTERNAL_SERVER_ERROR.getCode());
+    assertThat(response.getBody().traceId()).isEqualTo("trace-completion-2");
   }
 }
