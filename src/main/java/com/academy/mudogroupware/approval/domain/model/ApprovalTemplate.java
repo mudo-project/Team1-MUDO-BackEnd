@@ -3,7 +3,9 @@ package com.academy.mudogroupware.approval.domain.model;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import com.academy.mudogroupware.approval.domain.exception.ApprovalErrorCode;
 import com.academy.mudogroupware.approval.domain.exception.ApprovalException;
@@ -41,6 +43,7 @@ public final class ApprovalTemplate {
 
     public static ApprovalTemplate create(String name, Long creatorId, List<Long> approverIds,
                                            LocalDateTime now) {
+        validateNoDuplicateApprovers(approverIds);
         List<ApprovalTemplateLine> lines = buildLines(approverIds);
         if (lines.isEmpty()) {
             throw new ApprovalException(ApprovalErrorCode.LINES_REQUIRED);
@@ -61,6 +64,7 @@ public final class ApprovalTemplate {
         if (name == null || name.isBlank()) {
             throw new ApprovalException(ApprovalErrorCode.TEMPLATE_NAME_REQUIRED);
         }
+        validateNoDuplicateApprovers(approverIds);
         List<ApprovalTemplateLine> newLines = buildLines(approverIds);
         if (newLines.isEmpty()) {
             throw new ApprovalException(ApprovalErrorCode.LINES_REQUIRED);
@@ -69,6 +73,18 @@ public final class ApprovalTemplate {
         this.lines.clear();
         this.lines.addAll(newLines);
         this.updatedAt = now;
+    }
+
+    private static void validateNoDuplicateApprovers(List<Long> approverIds) {
+        if (approverIds == null) {
+            return;
+        }
+        Set<Long> uniqueApproverIds = new HashSet<>();
+        for (Long approverId : approverIds) {
+            if (!uniqueApproverIds.add(approverId)) {
+                throw new ApprovalException(ApprovalErrorCode.DUPLICATE_APPROVER);
+            }
+        }
     }
 
     private static List<ApprovalTemplateLine> buildLines(List<Long> approverIds) {

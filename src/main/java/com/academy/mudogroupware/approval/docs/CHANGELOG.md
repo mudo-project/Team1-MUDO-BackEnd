@@ -1,5 +1,11 @@
 # approval Changelog
 
+## 2026-08-16
+
+- 결재 문서 생성/결재선 수정 시 신청자 본인이 결재선에 포함되면 `APPROVAL_400_6`으로 차단한다.
+- 결재 문서와 결재 템플릿 모두 같은 결재자가 결재선에 중복 지정되면 `APPROVAL_400_7`로 차단한다.
+- 템플릿 작성자는 실제 기안자가 아닐 수 있으므로, 템플릿 생성/수정에서는 자기 자신 포함 여부가 아니라 중복 결재자만 검증한다.
+
 ## 2026-08-14
 
 - `GeminiFieldExtractionAdapter`/`GeminiSummarizerAdapter`가 Gemini 호출 직전에 이번 달 AI 토큰 사용량이 플랜 한도(무료 10만/유료 100만 토큰)를 넘으면 429로 차단하도록 변경했다. `GeminiTokenUsageTracker`는 응답 이후 기록용이라 사전 차단 지점이 될 수 없어, 별도로 `resourceusage`의 월별 합계를 조회한다.

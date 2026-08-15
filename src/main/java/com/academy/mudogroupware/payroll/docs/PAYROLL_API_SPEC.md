@@ -35,40 +35,28 @@
 ## 1. 월 급여 목록 조회
 
 - Notion: [원문 페이지](https://app.notion.com/p/3ba13f22e20281e18d5dc8c130f8d567?pvs=204)
+- Method·URI: `GET /api/payrolls`
 
-<callout icon="🔒" color="blue_bg">
-	모든 요청은 `PAYROLL:MANAGE` 권한이 필요합니다.
-</callout>
-# **\[request\]**
+> 🔒 모든 요청은 `PAYROLL:MANAGE` 권한이 필요합니다.
+
+# **[request]**
 Request Header
-<table header-row="true">
-<tr>
-<td>name</td>
-<td>description</td>
-</tr>
-<tr>
-<td>`Authorization`</td>
-<td>`Bearer {AccessToken}` 형식입니다.</td>
-</tr>
-</table>
+
+| name | description |
+| --- | --- |
+| `Authorization` | `Bearer {AccessToken}` 형식입니다. |
+
 Request Parameter / Query
 Query: `year`, `month` 필수. `employmentType`, `status`, `employeeName` 선택. `page` 기본 0, `size` 기본 20(최대 100).
 Request Body
 없음
-# **\[response\]**
+# **[response]**
 ### 성공코드
-<table header-row="true">
-<tr>
-<td>HTTP 상태</td>
-<td>code</td>
-<td>message</td>
-</tr>
-<tr>
-<td>`200 OK`</td>
-<td>`PAYROLL_200_1`</td>
-<td>급여 목록을 조회했습니다.</td>
-</tr>
-</table>
+
+| HTTP 상태 | code | message |
+| --- | --- | --- |
+| `200 OK` | `PAYROLL_200_1` | 급여 목록을 조회했습니다. |
+
 Response Body
 ```json
 {
@@ -111,6 +99,7 @@ Response Body
     "summary": {
       "targetEmployeeCount": 2,
       "notCreatedCount": 1,
+      "draftCount": 0,
       "calculatedCount": 0,
       "confirmedCount": 1,
       "totalEarnings": 3380000,
@@ -123,34 +112,16 @@ Response Body
 ### Response Field
 `content`, `page`, `size`, `totalElements`, `totalPages`, `first`, `last`, `hasNext`, `hasPrevious`, `summary`를 반환합니다. `totalElements`와 `totalPages`는 필터가 적용된 전체 급여 대상 직원을 기준으로 계산합니다.
 ### 실패 코드
-<table header-row="true">
-<tr>
-<td>HTTP 상태</td>
-<td>code</td>
-<td>message</td>
-<td>발생 조건</td>
-</tr>
-<tr>
-<td>`401 Unauthorized`</td>
-<td>`COMMON_401_1` 또는 `AUTH_401_*`</td>
-<td>인증이 필요합니다.</td>
-<td>Access Token이 없거나 유효하지 않습니다.</td>
-</tr>
-<tr>
-<td>`403 Forbidden`</td>
-<td>`COMMON_403_1`</td>
-<td>접근 권한이 없습니다.</td>
-<td>`PAYROLL:MANAGE` 권한이 없습니다.</td>
-</tr>
-<tr>
-<td>`400 Bad Request`</td>
-<td>`COMMON_400_1` 또는 `INVALID_PAYROLL_REQUEST`</td>
-<td>입력값 또는 급여 준비 상태가 올바르지 않습니다.</td>
-<td>필수 Query, page/size, enum 또는 status가 올바르지 않습니다.</td>
-</tr>
-</table>
+
+| HTTP 상태 | code | message | 발생 조건 |
+| --- | --- | --- | --- |
+| `401 Unauthorized` | `COMMON_401_1` 또는 `AUTH_401_*` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않습니다. |
+| `403 Forbidden` | `COMMON_403_1` | 접근 권한이 없습니다. | `PAYROLL:MANAGE` 권한이 없습니다. |
+| `400 Bad Request` | `COMMON_400_1` 또는 `INVALID_PAYROLL_REQUEST` | 입력값 또는 급여 준비 상태가 올바르지 않습니다. | 필수 Query, page/size, enum 또는 status가 올바르지 않습니다. |
+
 ## 비즈니스 규칙
 - 급여가 없는 활성 직원도 NOT_CREATED로 포함합니다.
+- 플랫폼 SUPER_ADMIN(`accountType=ADMIN`, `adminScope=PLATFORM`)은 급여 대상에서 제외합니다.
 - 필터 적용 후 페이지와 요약을 계산합니다.
 
 ---
@@ -158,42 +129,32 @@ Response Body
 ## 2. 월 급여 초안 생성
 
 - Notion: [원문 페이지](https://app.notion.com/p/3ba13f22e2028141b04dd68347ec7194?pvs=204)
+- Method·URI: `POST /api/payrolls/employees/{employeeId}`
 
-<callout icon="🔒" color="blue_bg">
-	모든 요청은 `PAYROLL:MANAGE` 권한이 필요합니다.
-</callout>
-# **\[request\]**
+> 🔒 모든 요청은 `PAYROLL:MANAGE` 권한이 필요합니다.
+
+# **[request]**
 Request Header
-<table header-row="true">
-<tr>
-<td>name</td>
-<td>description</td>
-</tr>
-<tr>
-<td>`Authorization`</td>
-<td>`Bearer {AccessToken}` 형식입니다.</td>
-</tr>
-</table>
+
+| name | description |
+| --- | --- |
+| `Authorization` | `Bearer {AccessToken}` 형식입니다. |
+
 Request Parameter / Query
 Path: `employeeId`
 Request Body
 ```json
 {"year":2026,"month":8}
 ```
-# **\[response\]**
+# **[response]**
 ### 성공코드
-<table header-row="true">
-<tr>
-<td>HTTP 상태</td>
-<td>code</td>
-<td>message</td>
-</tr>
-<tr>
-<td>`201 Created`</td>
-<td>`PAYROLL_201_1`</td>
-<td>급여 초안을 생성했습니다.</td>
-</tr>
-</table>
+
+| HTTP 상태 | code | message |
+| --- | --- | --- |
+| `200 OK` | `PAYROLL_201_1` | 급여 초안을 생성했습니다. |
+
+현재 Controller는 `GlobalApiResponse.created(...)`를 직접 반환하므로 실제 HTTP 상태는 `200 OK`이고, 응답 본문의 `status`는 201입니다.
+
 Response Body
 ```json
 {
@@ -227,50 +188,16 @@ Response Body
 ### Response Field
 생성된 Payroll 상세와 `version=0`을 반환합니다.
 ### 실패 코드
-<table header-row="true">
-<tr>
-<td>HTTP 상태</td>
-<td>code</td>
-<td>message</td>
-<td>발생 조건</td>
-</tr>
-<tr>
-<td>`401 Unauthorized`</td>
-<td>`COMMON_401_1` 또는 `AUTH_401_*`</td>
-<td>인증이 필요합니다.</td>
-<td>Access Token이 없거나 유효하지 않습니다.</td>
-</tr>
-<tr>
-<td>`403 Forbidden`</td>
-<td>`COMMON_403_1`</td>
-<td>접근 권한이 없습니다.</td>
-<td>`PAYROLL:MANAGE` 권한이 없습니다.</td>
-</tr>
-<tr>
-<td>`400 Bad Request`</td>
-<td>`COMMON_400_1`</td>
-<td>입력값이 올바르지 않습니다.</td>
-<td>year 또는 month 검증에 실패했습니다.</td>
-</tr>
-<tr>
-<td>`404 Not Found`</td>
-<td>`PAYROLL_NOT_FOUND`</td>
-<td>급여를 찾을 수 없습니다.</td>
-<td>활성 직원을 찾을 수 없습니다.</td>
-</tr>
-<tr>
-<td>`409 Conflict`</td>
-<td>`PAYROLL_ALREADY_EXISTS`</td>
-<td>해당 직원의 급여가 이미 존재합니다.</td>
-<td>같은 직원·귀속월의 최초 급여가 이미 있습니다.</td>
-</tr>
-<tr>
-<td>`422 Unprocessable Entity`</td>
-<td>`PAYROLL_POLICY_NOT_FOUND`</td>
-<td>급여 정책이 없습니다.</td>
-<td>급여 지급일 정책이 없습니다.</td>
-</tr>
-</table>
+
+| HTTP 상태 | code | message | 발생 조건 |
+| --- | --- | --- | --- |
+| `401 Unauthorized` | `COMMON_401_1` 또는 `AUTH_401_*` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않습니다. |
+| `403 Forbidden` | `COMMON_403_1` | 접근 권한이 없습니다. | `PAYROLL:MANAGE` 권한이 없습니다. |
+| `400 Bad Request` | `COMMON_400_1` | 입력값이 올바르지 않습니다. | year 또는 month 검증에 실패했습니다. |
+| `404 Not Found` | `PAYROLL_NOT_FOUND` | 급여를 찾을 수 없습니다. | 활성 직원을 찾을 수 없습니다. |
+| `409 Conflict` | `PAYROLL_ALREADY_EXISTS` | 해당 직원의 급여가 이미 존재합니다. | 같은 직원·귀속월의 최초 급여가 이미 있습니다. |
+| `422 Unprocessable Entity` | `PAYROLL_POLICY_NOT_FOUND` | 급여 정책이 없습니다. | 급여 지급일 정책이 없습니다. |
+
 ## 비즈니스 규칙
 - 응답은 공통 `status`, `code`, `message`, `data` 구조입니다.
 - 변경 요청은 서버가 합계를 재계산하며 오래된 `expectedVersion`은 409로 거절합니다.
@@ -280,42 +207,33 @@ Response Body
 ## 3. 급여 계산 및 재계산
 
 - Notion: [원문 페이지](https://app.notion.com/p/3ba13f22e20281dea2ddc501a6329f7c?pvs=204)
+- Method·URI: `PATCH /api/payrolls/{payrollId}/calculate`
 
-<callout icon="🔒" color="blue_bg">
-	모든 요청은 `PAYROLL:MANAGE` 권한이 필요합니다.
-</callout>
-# **\[request\]**
+> 🔒 모든 요청은 `PAYROLL:MANAGE` 권한이 필요합니다.
+
+# **[request]**
 Request Header
-<table header-row="true">
-<tr>
-<td>name</td>
-<td>description</td>
-</tr>
-<tr>
-<td>`Authorization`</td>
-<td>`Bearer {AccessToken}` 형식입니다.</td>
-</tr>
-</table>
+
+| name | description |
+| --- | --- |
+| `Authorization` | `Bearer {AccessToken}` 형식입니다. |
+
 Request Parameter / Query
 Path: `payrollId`
 Request Body
 ```json
 {"expectedVersion":0}
 ```
-# **\[response\]**
+
+`expectedVersion`은 primitive `long`이므로 생략하면 `0`으로 처리됩니다.
+
+# **[response]**
 ### 성공코드
-<table header-row="true">
-<tr>
-<td>HTTP 상태</td>
-<td>code</td>
-<td>message</td>
-</tr>
-<tr>
-<td>`200 OK`</td>
-<td>`PAYROLL_200_2`</td>
-<td>급여를 계산했습니다.</td>
-</tr>
-</table>
+
+| HTTP 상태 | code | message |
+| --- | --- | --- |
+| `200 OK` | `PAYROLL_200_2` | 급여를 계산했습니다. |
+
 Response Body
 ```json
 {
@@ -419,50 +337,16 @@ Response Body
 ### Response Field
 `CALCULATED` 상태의 Payroll 상세를 반환합니다. 재계산 시 MANUAL 지급항목은 유지합니다.
 ### 실패 코드
-<table header-row="true">
-<tr>
-<td>HTTP 상태</td>
-<td>code</td>
-<td>message</td>
-<td>발생 조건</td>
-</tr>
-<tr>
-<td>`401 Unauthorized`</td>
-<td>`COMMON_401_1` 또는 `AUTH_401_*`</td>
-<td>인증이 필요합니다.</td>
-<td>Access Token이 없거나 유효하지 않습니다.</td>
-</tr>
-<tr>
-<td>`403 Forbidden`</td>
-<td>`COMMON_403_1`</td>
-<td>접근 권한이 없습니다.</td>
-<td>`PAYROLL:MANAGE` 권한이 없습니다.</td>
-</tr>
-<tr>
-<td>`400 Bad Request`</td>
-<td>`COMMON_400_1`</td>
-<td>입력값이 올바르지 않습니다.</td>
-<td>expectedVersion 검증에 실패했습니다.</td>
-</tr>
-<tr>
-<td>`404 Not Found`</td>
-<td>`PAYROLL_NOT_FOUND`</td>
-<td>급여를 찾을 수 없습니다.</td>
-<td>payrollId가 존재하지 않습니다.</td>
-</tr>
-<tr>
-<td>`409 Conflict`</td>
-<td>`PAYROLL_VERSION_CONFLICT` 또는 `INVALID_PAYROLL_STATE`</td>
-<td>현재 버전·상태에서는 계산할 수 없습니다.</td>
-<td>버전 불일치 또는 확정 급여입니다.</td>
-</tr>
-<tr>
-<td>`422 Unprocessable Entity`</td>
-<td>`COMPENSATION_NOT_FOUND` 또는 `PAYROLL_REFERENCE_DATA_MISSING`</td>
-<td>급여 계산 기준 데이터가 부족합니다.</td>
-<td>계약·통상시급·법정 기준·보험·세금 자료가 부족합니다.</td>
-</tr>
-</table>
+
+| HTTP 상태 | code | message | 발생 조건 |
+| --- | --- | --- | --- |
+| `401 Unauthorized` | `COMMON_401_1` 또는 `AUTH_401_*` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않습니다. |
+| `403 Forbidden` | `COMMON_403_1` | 접근 권한이 없습니다. | `PAYROLL:MANAGE` 권한이 없습니다. |
+| `400 Bad Request` | `COMMON_400_1` | 입력값이 올바르지 않습니다. | expectedVersion 검증에 실패했습니다. |
+| `404 Not Found` | `PAYROLL_NOT_FOUND` | 급여를 찾을 수 없습니다. | payrollId가 존재하지 않습니다. |
+| `409 Conflict` | `PAYROLL_VERSION_CONFLICT` 또는 `INVALID_PAYROLL_STATE` | 현재 버전·상태에서는 계산할 수 없습니다. | 버전 불일치 또는 확정 급여입니다. |
+| `422 Unprocessable Entity` | `COMPENSATION_NOT_FOUND` 또는 `PAYROLL_REFERENCE_DATA_MISSING` | 급여 계산 기준 데이터가 부족합니다. | 계약·통상시급·법정 기준·보험·세금 자료가 부족합니다. |
+
 ## 비즈니스 규칙
 - 응답은 공통 `status`, `code`, `message`, `data` 구조입니다.
 - 변경 요청은 서버가 합계를 재계산하며 오래된 `expectedVersion`은 409로 거절합니다.
@@ -472,40 +356,28 @@ Response Body
 ## 4. 급여 상세 조회
 
 - Notion: [원문 페이지](https://app.notion.com/p/3ba13f22e20281e5a347cedbdc2466a1?pvs=204)
+- Method·URI: `GET /api/payrolls/{payrollId}`
 
-<callout icon="🔒" color="blue_bg">
-	모든 요청은 `PAYROLL:MANAGE` 권한이 필요합니다.
-</callout>
-# **\[request\]**
+> 🔒 모든 요청은 `PAYROLL:MANAGE` 권한이 필요합니다.
+
+# **[request]**
 Request Header
-<table header-row="true">
-<tr>
-<td>name</td>
-<td>description</td>
-</tr>
-<tr>
-<td>`Authorization`</td>
-<td>`Bearer {AccessToken}` 형식입니다.</td>
-</tr>
-</table>
+
+| name | description |
+| --- | --- |
+| `Authorization` | `Bearer {AccessToken}` 형식입니다. |
+
 Request Parameter / Query
 Path: `payrollId`
 Request Body
 없음
-# **\[response\]**
+# **[response]**
 ### 성공코드
-<table header-row="true">
-<tr>
-<td>HTTP 상태</td>
-<td>code</td>
-<td>message</td>
-</tr>
-<tr>
-<td>`200 OK`</td>
-<td>`PAYROLL_200_3`</td>
-<td>급여를 조회했습니다.</td>
-</tr>
-</table>
+
+| HTTP 상태 | code | message |
+| --- | --- | --- |
+| `200 OK` | `PAYROLL_200_3` | 급여를 조회했습니다. |
+
 Response Body
 ```json
 {
@@ -609,32 +481,13 @@ Response Body
 ### Response Field
 직원, 귀속월, 항목, 합계, Snapshot, statement, memo, version을 반환합니다.
 ### 실패 코드
-<table header-row="true">
-<tr>
-<td>HTTP 상태</td>
-<td>code</td>
-<td>message</td>
-<td>발생 조건</td>
-</tr>
-<tr>
-<td>`401 Unauthorized`</td>
-<td>`COMMON_401_1` 또는 `AUTH_401_*`</td>
-<td>인증이 필요합니다.</td>
-<td>Access Token이 없거나 유효하지 않습니다.</td>
-</tr>
-<tr>
-<td>`403 Forbidden`</td>
-<td>`COMMON_403_1`</td>
-<td>접근 권한이 없습니다.</td>
-<td>`PAYROLL:MANAGE` 권한이 없습니다.</td>
-</tr>
-<tr>
-<td>`404 Not Found`</td>
-<td>`PAYROLL_NOT_FOUND`</td>
-<td>급여를 찾을 수 없습니다.</td>
-<td>급여 또는 연결된 직원을 찾을 수 없습니다.</td>
-</tr>
-</table>
+
+| HTTP 상태 | code | message | 발생 조건 |
+| --- | --- | --- | --- |
+| `401 Unauthorized` | `COMMON_401_1` 또는 `AUTH_401_*` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않습니다. |
+| `403 Forbidden` | `COMMON_403_1` | 접근 권한이 없습니다. | `PAYROLL:MANAGE` 권한이 없습니다. |
+| `404 Not Found` | `PAYROLL_NOT_FOUND` | 급여를 찾을 수 없습니다. | 급여 또는 연결된 직원을 찾을 수 없습니다. |
+
 ## 비즈니스 규칙
 - 응답은 공통 `status`, `code`, `message`, `data` 구조입니다.
 - 변경 요청은 서버가 합계를 재계산하며 오래된 `expectedVersion`은 409로 거절합니다.
@@ -644,42 +497,33 @@ Response Body
 ## 5. 급여 지급항목 및 메모 수정
 
 - Notion: [원문 페이지](https://app.notion.com/p/3ba13f22e2028167839cd6943bee85df?pvs=204)
+- Method·URI: `PATCH /api/payrolls/{payrollId}`
 
-<callout icon="🔒" color="blue_bg">
-	모든 요청은 `PAYROLL:MANAGE` 권한이 필요합니다.
-</callout>
-# **\[request\]**
+> 🔒 모든 요청은 `PAYROLL:MANAGE` 권한이 필요합니다.
+
+# **[request]**
 Request Header
-<table header-row="true">
-<tr>
-<td>name</td>
-<td>description</td>
-</tr>
-<tr>
-<td>`Authorization`</td>
-<td>`Bearer {AccessToken}` 형식입니다.</td>
-</tr>
-</table>
+
+| name | description |
+| --- | --- |
+| `Authorization` | `Bearer {AccessToken}` 형식입니다. |
+
 Request Parameter / Query
 Path: `payrollId`
 Request Body
 ```json
 {"expectedVersion":2,"memo":"확인 완료","adjustments":[{"itemId":1,"amount":3100000,"reason":"근태 정정 반영"}]}
 ```
-# **\[response\]**
+
+`expectedVersion`은 primitive `long`이므로 생략하면 `0`으로 처리됩니다.
+
+# **[response]**
 ### 성공코드
-<table header-row="true">
-<tr>
-<td>HTTP 상태</td>
-<td>code</td>
-<td>message</td>
-</tr>
-<tr>
-<td>`200 OK`</td>
-<td>`PAYROLL_200_4`</td>
-<td>급여를 수정했습니다.</td>
-</tr>
-</table>
+
+| HTTP 상태 | code | message |
+| --- | --- | --- |
+| `200 OK` | `PAYROLL_200_4` | 급여를 수정했습니다. |
+
 Response Body
 ```json
 {
@@ -783,44 +627,15 @@ Response Body
 ### Response Field
 수정된 Payroll 상세를 반환합니다. 보험·세금 공제와 Snapshot은 수정할 수 없습니다.
 ### 실패 코드
-<table header-row="true">
-<tr>
-<td>HTTP 상태</td>
-<td>code</td>
-<td>message</td>
-<td>발생 조건</td>
-</tr>
-<tr>
-<td>`401 Unauthorized`</td>
-<td>`COMMON_401_1` 또는 `AUTH_401_*`</td>
-<td>인증이 필요합니다.</td>
-<td>Access Token이 없거나 유효하지 않습니다.</td>
-</tr>
-<tr>
-<td>`403 Forbidden`</td>
-<td>`COMMON_403_1`</td>
-<td>접근 권한이 없습니다.</td>
-<td>`PAYROLL:MANAGE` 권한이 없습니다.</td>
-</tr>
-<tr>
-<td>`400 Bad Request`</td>
-<td>`COMMON_400_1`, `INVALID_PAYROLL_REQUEST`, `PAYROLL_ITEM_NOT_EDITABLE`</td>
-<td>입력값 또는 수정 대상 항목이 올바르지 않습니다.</td>
-<td>DTO 검증 실패, 공제항목 수정, 존재하지 않는 항목 등입니다.</td>
-</tr>
-<tr>
-<td>`404 Not Found`</td>
-<td>`PAYROLL_NOT_FOUND`</td>
-<td>급여를 찾을 수 없습니다.</td>
-<td>급여 또는 연결된 직원을 찾을 수 없습니다.</td>
-</tr>
-<tr>
-<td>`409 Conflict`</td>
-<td>`PAYROLL_VERSION_CONFLICT` 또는 `INVALID_PAYROLL_STATE`</td>
-<td>현재 버전·상태에서는 수정할 수 없습니다.</td>
-<td>버전 불일치 또는 DRAFT 상태입니다.</td>
-</tr>
-</table>
+
+| HTTP 상태 | code | message | 발생 조건 |
+| --- | --- | --- | --- |
+| `401 Unauthorized` | `COMMON_401_1` 또는 `AUTH_401_*` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않습니다. |
+| `403 Forbidden` | `COMMON_403_1` | 접근 권한이 없습니다. | `PAYROLL:MANAGE` 권한이 없습니다. |
+| `400 Bad Request` | `COMMON_400_1`, `INVALID_PAYROLL_REQUEST`, `PAYROLL_ITEM_NOT_EDITABLE` | 입력값 또는 수정 대상 항목이 올바르지 않습니다. | DTO 검증 실패, 공제항목 수정, 존재하지 않는 항목 등입니다. |
+| `404 Not Found` | `PAYROLL_NOT_FOUND` | 급여를 찾을 수 없습니다. | 급여 또는 연결된 직원을 찾을 수 없습니다. |
+| `409 Conflict` | `PAYROLL_VERSION_CONFLICT` 또는 `INVALID_PAYROLL_STATE` | 현재 버전·상태에서는 수정할 수 없습니다. | 버전 불일치 또는 DRAFT 상태입니다. |
+
 ## 비즈니스 규칙
 - 응답은 공통 `status`, `code`, `message`, `data` 구조입니다.
 - 변경 요청은 서버가 합계를 재계산하며 오래된 `expectedVersion`은 409로 거절합니다.
@@ -830,42 +645,35 @@ Response Body
 ## 6. 수기 지급항목 추가
 
 - Notion: [원문 페이지](https://app.notion.com/p/3ba13f22e202814da91ae549114a40a9?pvs=204)
+- Method·URI: `POST /api/payrolls/{payrollId}/earnings`
 
-<callout icon="🔒" color="blue_bg">
-	모든 요청은 `PAYROLL:MANAGE` 권한이 필요합니다.
-</callout>
-# **\[request\]**
+> 🔒 모든 요청은 `PAYROLL:MANAGE` 권한이 필요합니다.
+
+# **[request]**
 Request Header
-<table header-row="true">
-<tr>
-<td>name</td>
-<td>description</td>
-</tr>
-<tr>
-<td>`Authorization`</td>
-<td>`Bearer {AccessToken}` 형식입니다.</td>
-</tr>
-</table>
+
+| name | description |
+| --- | --- |
+| `Authorization` | `Bearer {AccessToken}` 형식입니다. |
+
 Request Parameter / Query
 Path: `payrollId`
 Request Body
 ```json
 {"expectedVersion":2,"name":"특별수당","amount":100000}
 ```
-# **\[response\]**
+
+`expectedVersion`은 primitive `long`이므로 생략하면 `0`으로 처리됩니다.
+
+# **[response]**
 ### 성공코드
-<table header-row="true">
-<tr>
-<td>HTTP 상태</td>
-<td>code</td>
-<td>message</td>
-</tr>
-<tr>
-<td>`201 Created`</td>
-<td>`PAYROLL_201_2`</td>
-<td>지급항목을 추가했습니다.</td>
-</tr>
-</table>
+
+| HTTP 상태 | code | message |
+| --- | --- | --- |
+| `200 OK` | `PAYROLL_201_2` | 지급항목을 추가했습니다. |
+
+현재 Controller는 `GlobalApiResponse.created(...)`를 직접 반환하므로 실제 HTTP 상태는 `200 OK`이고, 응답 본문의 `status`는 201입니다.
+
 Response Body
 ```json
 {
@@ -982,44 +790,15 @@ Response Body
 ### Response Field
 `OTHER_ALLOWANCE`·`MANUAL` 항목이 추가된 Payroll 상세를 반환합니다.
 ### 실패 코드
-<table header-row="true">
-<tr>
-<td>HTTP 상태</td>
-<td>code</td>
-<td>message</td>
-<td>발생 조건</td>
-</tr>
-<tr>
-<td>`401 Unauthorized`</td>
-<td>`COMMON_401_1` 또는 `AUTH_401_*`</td>
-<td>인증이 필요합니다.</td>
-<td>Access Token이 없거나 유효하지 않습니다.</td>
-</tr>
-<tr>
-<td>`403 Forbidden`</td>
-<td>`COMMON_403_1`</td>
-<td>접근 권한이 없습니다.</td>
-<td>`PAYROLL:MANAGE` 권한이 없습니다.</td>
-</tr>
-<tr>
-<td>`400 Bad Request`</td>
-<td>`COMMON_400_1` 또는 `INVALID_PAYROLL_REQUEST`</td>
-<td>입력값이 올바르지 않습니다.</td>
-<td>이름·금액·expectedVersion 검증에 실패했습니다.</td>
-</tr>
-<tr>
-<td>`404 Not Found`</td>
-<td>`PAYROLL_NOT_FOUND`</td>
-<td>급여를 찾을 수 없습니다.</td>
-<td>payrollId가 존재하지 않습니다.</td>
-</tr>
-<tr>
-<td>`409 Conflict`</td>
-<td>`PAYROLL_VERSION_CONFLICT` 또는 `INVALID_PAYROLL_STATE`</td>
-<td>현재 버전·상태에서는 추가할 수 없습니다.</td>
-<td>버전 불일치 또는 CALCULATED가 아닌 상태입니다.</td>
-</tr>
-</table>
+
+| HTTP 상태 | code | message | 발생 조건 |
+| --- | --- | --- | --- |
+| `401 Unauthorized` | `COMMON_401_1` 또는 `AUTH_401_*` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않습니다. |
+| `403 Forbidden` | `COMMON_403_1` | 접근 권한이 없습니다. | `PAYROLL:MANAGE` 권한이 없습니다. |
+| `400 Bad Request` | `COMMON_400_1` 또는 `INVALID_PAYROLL_REQUEST` | 입력값이 올바르지 않습니다. | 이름·금액·expectedVersion 검증에 실패했습니다. |
+| `404 Not Found` | `PAYROLL_NOT_FOUND` | 급여를 찾을 수 없습니다. | payrollId가 존재하지 않습니다. |
+| `409 Conflict` | `PAYROLL_VERSION_CONFLICT` 또는 `INVALID_PAYROLL_STATE` | 현재 버전·상태에서는 추가할 수 없습니다. | 버전 불일치 또는 CALCULATED가 아닌 상태입니다. |
+
 ## 비즈니스 규칙
 - 응답은 공통 `status`, `code`, `message`, `data` 구조입니다.
 - 변경 요청은 서버가 합계를 재계산하며 오래된 `expectedVersion`은 409로 거절합니다.
@@ -1029,40 +808,28 @@ Response Body
 ## 7. 수기 지급항목 삭제
 
 - Notion: [원문 페이지](https://app.notion.com/p/3ba13f22e20281c19f48f2dadf7af1b9?pvs=204)
+- Method·URI: `DELETE /api/payrolls/{payrollId}/earnings/{itemId}`
 
-<callout icon="🔒" color="blue_bg">
-	모든 요청은 `PAYROLL:MANAGE` 권한이 필요합니다.
-</callout>
-# **\[request\]**
+> 🔒 모든 요청은 `PAYROLL:MANAGE` 권한이 필요합니다.
+
+# **[request]**
 Request Header
-<table header-row="true">
-<tr>
-<td>name</td>
-<td>description</td>
-</tr>
-<tr>
-<td>`Authorization`</td>
-<td>`Bearer {AccessToken}` 형식입니다.</td>
-</tr>
-</table>
+
+| name | description |
+| --- | --- |
+| `Authorization` | `Bearer {AccessToken}` 형식입니다. |
+
 Request Parameter / Query
 Path: `payrollId`, `itemId`. Query: `expectedVersion` 필수.
 Request Body
 없음
-# **\[response\]**
+# **[response]**
 ### 성공코드
-<table header-row="true">
-<tr>
-<td>HTTP 상태</td>
-<td>code</td>
-<td>message</td>
-</tr>
-<tr>
-<td>`200 OK`</td>
-<td>`PAYROLL_200_5`</td>
-<td>지급항목을 삭제했습니다.</td>
-</tr>
-</table>
+
+| HTTP 상태 | code | message |
+| --- | --- | --- |
+| `200 OK` | `PAYROLL_200_5` | 지급항목을 삭제했습니다. |
+
 Response Body
 ```json
 {
@@ -1166,44 +933,15 @@ Response Body
 ### Response Field
 수기 항목이 삭제되고 합계가 재계산된 Payroll 상세를 반환합니다.
 ### 실패 코드
-<table header-row="true">
-<tr>
-<td>HTTP 상태</td>
-<td>code</td>
-<td>message</td>
-<td>발생 조건</td>
-</tr>
-<tr>
-<td>`401 Unauthorized`</td>
-<td>`COMMON_401_1` 또는 `AUTH_401_*`</td>
-<td>인증이 필요합니다.</td>
-<td>Access Token이 없거나 유효하지 않습니다.</td>
-</tr>
-<tr>
-<td>`403 Forbidden`</td>
-<td>`COMMON_403_1`</td>
-<td>접근 권한이 없습니다.</td>
-<td>`PAYROLL:MANAGE` 권한이 없습니다.</td>
-</tr>
-<tr>
-<td>`400 Bad Request`</td>
-<td>`COMMON_400_1` 또는 `PAYROLL_ITEM_NOT_EDITABLE`</td>
-<td>입력값 또는 삭제 대상 항목이 올바르지 않습니다.</td>
-<td>itemId 형식 오류, 비수기 항목 또는 존재하지 않는 항목입니다.</td>
-</tr>
-<tr>
-<td>`404 Not Found`</td>
-<td>`PAYROLL_NOT_FOUND`</td>
-<td>급여를 찾을 수 없습니다.</td>
-<td>payrollId가 존재하지 않습니다.</td>
-</tr>
-<tr>
-<td>`409 Conflict`</td>
-<td>`PAYROLL_VERSION_CONFLICT` 또는 `INVALID_PAYROLL_STATE`</td>
-<td>현재 버전·상태에서는 삭제할 수 없습니다.</td>
-<td>버전 불일치 또는 CALCULATED가 아닌 상태입니다.</td>
-</tr>
-</table>
+
+| HTTP 상태 | code | message | 발생 조건 |
+| --- | --- | --- | --- |
+| `401 Unauthorized` | `COMMON_401_1` 또는 `AUTH_401_*` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않습니다. |
+| `403 Forbidden` | `COMMON_403_1` | 접근 권한이 없습니다. | `PAYROLL:MANAGE` 권한이 없습니다. |
+| `400 Bad Request` | `COMMON_400_1` 또는 `PAYROLL_ITEM_NOT_EDITABLE` | 입력값 또는 삭제 대상 항목이 올바르지 않습니다. | itemId 형식 오류, 비수기 항목 또는 존재하지 않는 항목입니다. |
+| `404 Not Found` | `PAYROLL_NOT_FOUND` | 급여를 찾을 수 없습니다. | payrollId가 존재하지 않습니다. |
+| `409 Conflict` | `PAYROLL_VERSION_CONFLICT` 또는 `INVALID_PAYROLL_STATE` | 현재 버전·상태에서는 삭제할 수 없습니다. | 버전 불일치 또는 CALCULATED가 아닌 상태입니다. |
+
 ## 비즈니스 규칙
 - 응답은 공통 `status`, `code`, `message`, `data` 구조입니다.
 - 변경 요청은 서버가 합계를 재계산하며 오래된 `expectedVersion`은 409로 거절합니다.
@@ -1213,33 +951,23 @@ Response Body
 ## 8. 급여 확정 및 명세서 생성
 
 - Notion: [원문 페이지](https://app.notion.com/p/3ba13f22e20281f9a1eedbb17437be36?pvs=204)
+- Method·URI: `PATCH /api/payrolls/{payrollId}/confirm`
 
-<callout icon="🔒" color="blue_bg">
-	요청자는 `PAYROLL:MANAGE` 권한을 보유해야 합니다. 직원 본인 여부만으로는 접근할 수 없습니다.
-</callout>
-# **\[request\]**
+> 🔒 요청자는 `PAYROLL:MANAGE` 권한을 보유해야 합니다. 직원 본인 여부만으로는 접근할 수 없습니다.
+
+# **[request]**
 Request Header
-<table header-row="true">
-<tr>
-<td>name</td>
-<td>description</td>
-</tr>
-<tr>
-<td>`Authorization`</td>
-<td>`Bearer {AccessToken}` 형식의 사용자 인증 토큰입니다.</td>
-</tr>
-</table>
+
+| name | description |
+| --- | --- |
+| `Authorization` | `Bearer {AccessToken}` 형식의 사용자 인증 토큰입니다. |
+
 Request Parameter
-<table header-row="true">
-<tr>
-<td>name</td>
-<td>description</td>
-</tr>
-<tr>
-<td>`payrollId`</td>
-<td>Long 타입의 급여 식별자입니다.</td>
-</tr>
-</table>
+
+| name | description |
+| --- | --- |
+| `payrollId` | Long 타입의 급여 식별자입니다. |
+
 Request Query Parameter
 없음
 Request Body
@@ -1248,42 +976,24 @@ Request Body
   "expectedVersion": 2
 }
 ```
-<table header-row="true">
-<tr>
-<td>name</td>
-<td>type</td>
-<td>required</td>
-<td>설명</td>
-</tr>
-<tr>
-<td>`expectedVersion`</td>
-<td>Long</td>
-<td>true</td>
-<td>상세 조회에서 받은 현재 Payroll 버전입니다. 0 이상이어야 합니다.</td>
-</tr>
-</table>
+
+| name | type | required | 설명 |
+| --- | --- | --- | --- |
+| `expectedVersion` | Long | false | 상세 조회에서 받은 현재 Payroll 버전입니다. primitive `long`이므로 생략하면 `0`으로 처리됩니다. |
+
 ## 처리 흐름
 1. Payroll과 `expectedVersion`을 검증합니다.
 2. `CALCULATED → CONFIRMED` 상태 전이를 수행합니다.
 3. `payroll_statement`를 `PENDING`으로 한 번만 생성합니다.
 4. 트랜잭션 커밋 후 PDF를 생성해 Finance S3 버킷에 업로드합니다.
 5. 성공 시 명세서는 `READY`, 실패 시 `FAILED`가 됩니다.
-# **\[response\]**
+# **[response]**
 ### 성공코드
-<table header-row="true">
-<tr>
-<td>HTTP 상태</td>
-<td>code</td>
-<td>message</td>
-<td>description</td>
-</tr>
-<tr>
-<td>`200 OK`</td>
-<td>`PAYROLL_200_6`</td>
-<td>급여를 확정했습니다.</td>
-<td>현재 확정 Payroll Aggregate를 반환합니다.</td>
-</tr>
-</table>
+
+| HTTP 상태 | code | message | description |
+| --- | --- | --- | --- |
+| `200 OK` | `PAYROLL_200_6` | 급여를 확정했습니다. | 현재 확정 Payroll Aggregate를 반환합니다. |
+
 Response Body
 ```json
 {
@@ -1391,81 +1101,29 @@ Response Body
 }
 ```
 ### Response Field
-<table header-row="true">
-<tr>
-<td>name</td>
-<td>설명</td>
-</tr>
-<tr>
-<td>`status`</td>
-<td>HTTP 상태 코드입니다.</td>
-</tr>
-<tr>
-<td>`code`</td>
-<td>서비스 응답 코드입니다.</td>
-</tr>
-<tr>
-<td>`message`</td>
-<td>응답 메시지입니다.</td>
-</tr>
-</table>
-<table header-row="true">
-<tr>
-<td>name</td>
-<td>설명</td>
-</tr>
-<tr>
-<td>`data`</td>
-<td>확정된 Payroll 상세 데이터입니다. 미리보기 응답과 동일한 Aggregate 구조입니다.</td>
-</tr>
-<tr>
-<td>`data.status`</td>
-<td>확정 후 `CONFIRMED`입니다.</td>
-</tr>
-<tr>
-<td>`data.version`</td>
-<td>확정으로 증가한 낙관적 락 버전입니다.</td>
-</tr>
-</table>
+
+| name | 설명 |
+| --- | --- |
+| `status` | HTTP 상태 코드입니다. |
+| `code` | 서비스 응답 코드입니다. |
+| `message` | 응답 메시지입니다. |
+
+| name | 설명 |
+| --- | --- |
+| `data` | 확정된 Payroll 상세 데이터입니다. 미리보기 응답과 동일한 Aggregate 구조입니다. |
+| `data.status` | 확정 후 `CONFIRMED`입니다. |
+| `data.version` | 확정으로 증가한 낙관적 락 버전입니다. |
+
 ### 실패 코드
-<table header-row="true">
-<tr>
-<td>HTTP 상태</td>
-<td>code</td>
-<td>message</td>
-<td>발생 조건</td>
-</tr>
-<tr>
-<td>`401 Unauthorized`</td>
-<td>`COMMON_401_1` 또는 `AUTH_401_*`</td>
-<td>인증이 필요합니다.</td>
-<td>Access Token이 없거나 유효하지 않습니다.</td>
-</tr>
-<tr>
-<td>`403 Forbidden`</td>
-<td>`COMMON_403_1`</td>
-<td>접근 권한이 없습니다.</td>
-<td>`PAYROLL:MANAGE` 권한이 없습니다.</td>
-</tr>
-<tr>
-<td>`400 Bad Request`</td>
-<td>`COMMON_400_1`</td>
-<td>입력값이 올바르지 않습니다.</td>
-<td>expectedVersion 검증에 실패했습니다.</td>
-</tr>
-<tr>
-<td>`404 Not Found`</td>
-<td>`PAYROLL_NOT_FOUND`</td>
-<td>급여를 찾을 수 없습니다.</td>
-<td>payrollId가 존재하지 않습니다.</td>
-</tr>
-<tr>
-<td>`409 Conflict`</td>
-<td>`PAYROLL_VERSION_CONFLICT` 또는 `INVALID_PAYROLL_STATE`</td>
-<td>현재 버전·상태에서는 확정할 수 없습니다.</td>
-<td>버전 불일치 또는 CALCULATED가 아닌 상태입니다.</td>
-</tr>
-</table>
+
+| HTTP 상태 | code | message | 발생 조건 |
+| --- | --- | --- | --- |
+| `401 Unauthorized` | `COMMON_401_1` 또는 `AUTH_401_*` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않습니다. |
+| `403 Forbidden` | `COMMON_403_1` | 접근 권한이 없습니다. | `PAYROLL:MANAGE` 권한이 없습니다. |
+| `400 Bad Request` | `COMMON_400_1` | 입력값이 올바르지 않습니다. | expectedVersion 검증에 실패했습니다. |
+| `404 Not Found` | `PAYROLL_NOT_FOUND` | 급여를 찾을 수 없습니다. | payrollId가 존재하지 않습니다. |
+| `409 Conflict` | `PAYROLL_VERSION_CONFLICT` 또는 `INVALID_PAYROLL_STATE` | 현재 버전·상태에서는 확정할 수 없습니다. | 버전 불일치 또는 CALCULATED가 아닌 상태입니다. |
+
 ## 비즈니스 규칙
 - 이미 `CONFIRMED`인 Payroll의 중복 요청은 멱등 성공으로 현재 결과를 반환합니다.
 - PDF 생성 또는 S3 업로드 실패가 Payroll 확정을 되돌리지 않습니다.
@@ -1476,42 +1134,35 @@ Response Body
 ## 9. 급여 정정본 생성
 
 - Notion: [원문 페이지](https://app.notion.com/p/3ba13f22e2028180b938d173b4ff8d34?pvs=204)
+- Method·URI: `POST /api/payrolls/{payrollId}/revisions`
 
-<callout icon="🔒" color="blue_bg">
-	모든 요청은 `PAYROLL:MANAGE` 권한이 필요합니다.
-</callout>
-# **\[request\]**
+> 🔒 모든 요청은 `PAYROLL:MANAGE` 권한이 필요합니다.
+
+# **[request]**
 Request Header
-<table header-row="true">
-<tr>
-<td>name</td>
-<td>description</td>
-</tr>
-<tr>
-<td>`Authorization`</td>
-<td>`Bearer {AccessToken}` 형식입니다.</td>
-</tr>
-</table>
+
+| name | description |
+| --- | --- |
+| `Authorization` | `Bearer {AccessToken}` 형식입니다. |
+
 Request Parameter / Query
 Path: `payrollId`
 Request Body
 ```json
 {"expectedVersion":3}
 ```
-# **\[response\]**
+
+`expectedVersion`은 primitive `long`이므로 생략하면 `0`으로 처리됩니다.
+
+# **[response]**
 ### 성공코드
-<table header-row="true">
-<tr>
-<td>HTTP 상태</td>
-<td>code</td>
-<td>message</td>
-</tr>
-<tr>
-<td>`201 Created`</td>
-<td>`PAYROLL_201_3`</td>
-<td>급여 정정본을 생성했습니다.</td>
-</tr>
-</table>
+
+| HTTP 상태 | code | message |
+| --- | --- | --- |
+| `200 OK` | `PAYROLL_201_3` | 급여 정정본을 생성했습니다. |
+
+현재 Controller는 `GlobalApiResponse.created(...)`를 직접 반환하므로 실제 HTTP 상태는 `200 OK`이고, 응답 본문의 `status`는 201입니다.
+
 Response Body
 ```json
 {
@@ -1602,44 +1253,15 @@ Response Body
 ### Response Field
 항목과 Snapshot을 복사한 다음 revisionNo의 Payroll 상세를 반환합니다.
 ### 실패 코드
-<table header-row="true">
-<tr>
-<td>HTTP 상태</td>
-<td>code</td>
-<td>message</td>
-<td>발생 조건</td>
-</tr>
-<tr>
-<td>`401 Unauthorized`</td>
-<td>`COMMON_401_1` 또는 `AUTH_401_*`</td>
-<td>인증이 필요합니다.</td>
-<td>Access Token이 없거나 유효하지 않습니다.</td>
-</tr>
-<tr>
-<td>`403 Forbidden`</td>
-<td>`COMMON_403_1`</td>
-<td>접근 권한이 없습니다.</td>
-<td>`PAYROLL:MANAGE` 권한이 없습니다.</td>
-</tr>
-<tr>
-<td>`400 Bad Request`</td>
-<td>`COMMON_400_1`</td>
-<td>입력값이 올바르지 않습니다.</td>
-<td>expectedVersion 검증에 실패했습니다.</td>
-</tr>
-<tr>
-<td>`404 Not Found`</td>
-<td>`PAYROLL_NOT_FOUND`</td>
-<td>급여를 찾을 수 없습니다.</td>
-<td>급여 또는 최신 급여를 찾을 수 없습니다.</td>
-</tr>
-<tr>
-<td>`409 Conflict`</td>
-<td>`PAYROLL_VERSION_CONFLICT`, `PAYROLL_REVISION_CONFLICT`, `INVALID_PAYROLL_STATE`</td>
-<td>현재 버전·Revision·상태에서는 생성할 수 없습니다.</td>
-<td>버전 불일치, 최신본 아님 또는 미확정 상태입니다.</td>
-</tr>
-</table>
+
+| HTTP 상태 | code | message | 발생 조건 |
+| --- | --- | --- | --- |
+| `401 Unauthorized` | `COMMON_401_1` 또는 `AUTH_401_*` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않습니다. |
+| `403 Forbidden` | `COMMON_403_1` | 접근 권한이 없습니다. | `PAYROLL:MANAGE` 권한이 없습니다. |
+| `400 Bad Request` | `COMMON_400_1` | 입력값이 올바르지 않습니다. | expectedVersion 검증에 실패했습니다. |
+| `404 Not Found` | `PAYROLL_NOT_FOUND` | 급여를 찾을 수 없습니다. | 급여 또는 최신 급여를 찾을 수 없습니다. |
+| `409 Conflict` | `PAYROLL_VERSION_CONFLICT`, `PAYROLL_REVISION_CONFLICT`, `INVALID_PAYROLL_STATE` | 현재 버전·Revision·상태에서는 생성할 수 없습니다. | 버전 불일치, 최신본 아님 또는 미확정 상태입니다. |
+
 ## 비즈니스 규칙
 - 응답은 공통 `status`, `code`, `message`, `data` 구조입니다.
 - 클라이언트는 서버 계산 결과와 응답의 `version`을 다음 변경 요청에 사용합니다.
@@ -1649,40 +1271,28 @@ Response Body
 ## 10. 급여 정정 이력 조회
 
 - Notion: [원문 페이지](https://app.notion.com/p/3ba13f22e20281848ea3e41b56dd1477?pvs=204)
+- Method·URI: `GET /api/payrolls/{payrollId}/revisions`
 
-<callout icon="🔒" color="blue_bg">
-	모든 요청은 `PAYROLL:MANAGE` 권한이 필요합니다.
-</callout>
-# **\[request\]**
+> 🔒 모든 요청은 `PAYROLL:MANAGE` 권한이 필요합니다.
+
+# **[request]**
 Request Header
-<table header-row="true">
-<tr>
-<td>name</td>
-<td>description</td>
-</tr>
-<tr>
-<td>`Authorization`</td>
-<td>`Bearer {AccessToken}` 형식입니다.</td>
-</tr>
-</table>
+
+| name | description |
+| --- | --- |
+| `Authorization` | `Bearer {AccessToken}` 형식입니다. |
+
 Request Parameter / Query
 Path: `payrollId`
 Request Body
 없음
-# **\[response\]**
+# **[response]**
 ### 성공코드
-<table header-row="true">
-<tr>
-<td>HTTP 상태</td>
-<td>code</td>
-<td>message</td>
-</tr>
-<tr>
-<td>`200 OK`</td>
-<td>`PAYROLL_200_7`</td>
-<td>급여 정정 이력을 조회했습니다.</td>
-</tr>
-</table>
+
+| HTTP 상태 | code | message |
+| --- | --- | --- |
+| `200 OK` | `PAYROLL_200_7` | 급여 정정 이력을 조회했습니다. |
+
 Response Body
 ```json
 {
@@ -1860,32 +1470,13 @@ Response Body
 ### Response Field
 각 Revision의 Payroll 상세 배열을 반환합니다.
 ### 실패 코드
-<table header-row="true">
-<tr>
-<td>HTTP 상태</td>
-<td>code</td>
-<td>message</td>
-<td>발생 조건</td>
-</tr>
-<tr>
-<td>`401 Unauthorized`</td>
-<td>`COMMON_401_1` 또는 `AUTH_401_*`</td>
-<td>인증이 필요합니다.</td>
-<td>Access Token이 없거나 유효하지 않습니다.</td>
-</tr>
-<tr>
-<td>`403 Forbidden`</td>
-<td>`COMMON_403_1`</td>
-<td>접근 권한이 없습니다.</td>
-<td>`PAYROLL:MANAGE` 권한이 없습니다.</td>
-</tr>
-<tr>
-<td>`404 Not Found`</td>
-<td>`PAYROLL_NOT_FOUND`</td>
-<td>급여를 찾을 수 없습니다.</td>
-<td>기준 급여 또는 연결된 직원을 찾을 수 없습니다.</td>
-</tr>
-</table>
+
+| HTTP 상태 | code | message | 발생 조건 |
+| --- | --- | --- | --- |
+| `401 Unauthorized` | `COMMON_401_1` 또는 `AUTH_401_*` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않습니다. |
+| `403 Forbidden` | `COMMON_403_1` | 접근 권한이 없습니다. | `PAYROLL:MANAGE` 권한이 없습니다. |
+| `404 Not Found` | `PAYROLL_NOT_FOUND` | 급여를 찾을 수 없습니다. | 기준 급여 또는 연결된 직원을 찾을 수 없습니다. |
+
 ## 비즈니스 규칙
 - 기준 급여와 같은 직원·귀속월의 모든 Revision을 최신순으로 반환합니다.
 - 각 항목은 독립된 PayrollDetailResult와 version을 가집니다.
@@ -1895,33 +1486,23 @@ Response Body
 ## 11. 급여명세서 미리보기
 
 - Notion: [원문 페이지](https://app.notion.com/p/3ba13f22e2028184a0cec2faf745382a?pvs=204)
+- Method·URI: `GET /api/payrolls/{payrollId}/preview`
 
-<callout icon="🔒" color="blue_bg">
-	요청자는 `PAYROLL:MANAGE` 권한을 보유해야 합니다. 직원 본인 여부만으로는 접근할 수 없습니다.
-</callout>
-# **\[request\]**
+> 🔒 요청자는 `PAYROLL:MANAGE` 권한을 보유해야 합니다. 직원 본인 여부만으로는 접근할 수 없습니다.
+
+# **[request]**
 Request Header
-<table header-row="true">
-<tr>
-<td>name</td>
-<td>description</td>
-</tr>
-<tr>
-<td>`Authorization`</td>
-<td>`Bearer {AccessToken}` 형식의 사용자 인증 토큰입니다.</td>
-</tr>
-</table>
+
+| name | description |
+| --- | --- |
+| `Authorization` | `Bearer {AccessToken}` 형식의 사용자 인증 토큰입니다. |
+
 Request Parameter
-<table header-row="true">
-<tr>
-<td>name</td>
-<td>description</td>
-</tr>
-<tr>
-<td>`payrollId`</td>
-<td>Long 타입의 급여 식별자입니다.</td>
-</tr>
-</table>
+
+| name | description |
+| --- | --- |
+| `payrollId` | Long 타입의 급여 식별자입니다. |
+
 Request Query Parameter
 없음
 Request Body
@@ -1931,22 +1512,13 @@ Request Body
 2. 상태가 `CALCULATED` 또는 `CONFIRMED`인지 확인합니다.
 3. Payroll, 급여항목, 근태·계약·규칙 Snapshot, 직원 정보를 조합합니다.
 4. PDF나 S3 파일을 생성하지 않고 JSON 미리보기 데이터를 반환합니다.
-# **\[response\]**
+# **[response]**
 ### 성공코드
-<table header-row="true">
-<tr>
-<td>HTTP 상태</td>
-<td>code</td>
-<td>message</td>
-<td>description</td>
-</tr>
-<tr>
-<td>`200 OK`</td>
-<td>`PAYROLL_200_8`</td>
-<td>급여명세서 미리보기를 조회했습니다.</td>
-<td>계산 또는 확정된 급여명세서 데이터를 반환합니다.</td>
-</tr>
-</table>
+
+| HTTP 상태 | code | message | description |
+| --- | --- | --- | --- |
+| `200 OK` | `PAYROLL_200_8` | 급여명세서 미리보기를 조회했습니다. | 계산 또는 확정된 급여명세서 데이터를 반환합니다. |
+
 Response Body
 ```json
 {
@@ -2009,115 +1581,38 @@ Response Body
 }
 ```
 ### Response Field
-<table header-row="true">
-<tr>
-<td>name</td>
-<td>설명</td>
-</tr>
-<tr>
-<td>`status`</td>
-<td>HTTP 상태 코드입니다.</td>
-</tr>
-<tr>
-<td>`code`</td>
-<td>서비스 응답 코드입니다.</td>
-</tr>
-<tr>
-<td>`message`</td>
-<td>응답 메시지입니다.</td>
-</tr>
-</table>
-<table header-row="true">
-<tr>
-<td>name</td>
-<td>설명</td>
-</tr>
-<tr>
-<td>`data.payrollId`</td>
-<td>급여 식별자입니다.</td>
-</tr>
-<tr>
-<td>`data.employee`</td>
-<td>직원 식별자, 이름, 고용형태입니다.</td>
-</tr>
-<tr>
-<td>`data.yearMonth`</td>
-<td>급여 귀속월입니다.</td>
-</tr>
-<tr>
-<td>`data.scheduledPayDate`</td>
-<td>급여 지급 예정일입니다.</td>
-</tr>
-<tr>
-<td>`data.status`</td>
-<td>`CALCULATED` 또는 `CONFIRMED`입니다.</td>
-</tr>
-<tr>
-<td>`data.revisionNo`</td>
-<td>급여 Revision 번호입니다.</td>
-</tr>
-<tr>
-<td>`data.snapshots`</td>
-<td>계산 당시 근태·계약·법정 계산 기준 Snapshot입니다.</td>
-</tr>
-<tr>
-<td>`data.earnings`</td>
-<td>지급항목 목록입니다.</td>
-</tr>
-<tr>
-<td>`data.deductions`</td>
-<td>공제항목 목록입니다.</td>
-</tr>
-<tr>
-<td>`data.totalEarnings`</td>
-<td>지급 합계입니다.</td>
-</tr>
-<tr>
-<td>`data.totalDeductions`</td>
-<td>공제 합계입니다.</td>
-</tr>
-<tr>
-<td>`data.netPay`</td>
-<td>차인지급 예정액입니다.</td>
-</tr>
-<tr>
-<td>`data.version`</td>
-<td>낙관적 락 버전입니다.</td>
-</tr>
-</table>
+
+| name | 설명 |
+| --- | --- |
+| `status` | HTTP 상태 코드입니다. |
+| `code` | 서비스 응답 코드입니다. |
+| `message` | 응답 메시지입니다. |
+
+| name | 설명 |
+| --- | --- |
+| `data.payrollId` | 급여 식별자입니다. |
+| `data.employee` | 직원 식별자, 이름, 고용형태입니다. |
+| `data.yearMonth` | 급여 귀속월입니다. |
+| `data.scheduledPayDate` | 급여 지급 예정일입니다. |
+| `data.status` | `CALCULATED` 또는 `CONFIRMED`입니다. |
+| `data.revisionNo` | 급여 Revision 번호입니다. |
+| `data.snapshots` | 계산 당시 근태·계약·법정 계산 기준 Snapshot입니다. |
+| `data.earnings` | 지급항목 목록입니다. |
+| `data.deductions` | 공제항목 목록입니다. |
+| `data.totalEarnings` | 지급 합계입니다. |
+| `data.totalDeductions` | 공제 합계입니다. |
+| `data.netPay` | 차인지급 예정액입니다. |
+| `data.version` | 낙관적 락 버전입니다. |
+
 ### 실패 코드
-<table header-row="true">
-<tr>
-<td>HTTP 상태</td>
-<td>code</td>
-<td>message</td>
-<td>발생 조건</td>
-</tr>
-<tr>
-<td>`401 Unauthorized`</td>
-<td>`COMMON_401_1` 또는 `AUTH_401_*`</td>
-<td>인증이 필요합니다.</td>
-<td>Access Token이 없거나 유효하지 않습니다.</td>
-</tr>
-<tr>
-<td>`403 Forbidden`</td>
-<td>`COMMON_403_1`</td>
-<td>접근 권한이 없습니다.</td>
-<td>`PAYROLL:MANAGE` 권한이 없습니다.</td>
-</tr>
-<tr>
-<td>`404 Not Found`</td>
-<td>`PAYROLL_NOT_FOUND`</td>
-<td>급여를 찾을 수 없습니다.</td>
-<td>급여 또는 연결된 직원을 찾을 수 없습니다.</td>
-</tr>
-<tr>
-<td>`409 Conflict`</td>
-<td>`INVALID_PAYROLL_STATE`</td>
-<td>현재 급여 상태에서는 요청을 처리할 수 없습니다.</td>
-<td>급여가 DRAFT 상태입니다.</td>
-</tr>
-</table>
+
+| HTTP 상태 | code | message | 발생 조건 |
+| --- | --- | --- | --- |
+| `401 Unauthorized` | `COMMON_401_1` 또는 `AUTH_401_*` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않습니다. |
+| `403 Forbidden` | `COMMON_403_1` | 접근 권한이 없습니다. | `PAYROLL:MANAGE` 권한이 없습니다. |
+| `404 Not Found` | `PAYROLL_NOT_FOUND` | 급여를 찾을 수 없습니다. | 급여 또는 연결된 직원을 찾을 수 없습니다. |
+| `409 Conflict` | `INVALID_PAYROLL_STATE` | 현재 급여 상태에서는 요청을 처리할 수 없습니다. | 급여가 DRAFT 상태입니다. |
+
 ## 비즈니스 규칙
 - 미리보기는 JSON 조회이며 PDF를 생성하거나 S3에 저장하지 않습니다.
 - 저장된 Payroll Aggregate와 Snapshot을 단일 기준으로 사용합니다.
@@ -2127,33 +1622,23 @@ Response Body
 ## 12. 급여명세서 다운로드 URL 발급
 
 - Notion: [원문 페이지](https://app.notion.com/p/3ba13f22e20281d38819d769b0e916bc?pvs=204)
+- Method·URI: `GET /api/payrolls/{payrollId}/statement/download-url`
 
-<callout icon="🔒" color="blue_bg">
-	요청자는 `PAYROLL:MANAGE` 권한을 보유해야 합니다. 직원 본인 여부만으로는 접근할 수 없습니다.
-</callout>
-# **\[request\]**
+> 🔒 요청자는 `PAYROLL:MANAGE` 권한을 보유해야 합니다. 직원 본인 여부만으로는 접근할 수 없습니다.
+
+# **[request]**
 Request Header
-<table header-row="true">
-<tr>
-<td>name</td>
-<td>description</td>
-</tr>
-<tr>
-<td>`Authorization`</td>
-<td>`Bearer {AccessToken}` 형식의 사용자 인증 토큰입니다.</td>
-</tr>
-</table>
+
+| name | description |
+| --- | --- |
+| `Authorization` | `Bearer {AccessToken}` 형식의 사용자 인증 토큰입니다. |
+
 Request Parameter
-<table header-row="true">
-<tr>
-<td>name</td>
-<td>description</td>
-</tr>
-<tr>
-<td>`payrollId`</td>
-<td>Long 타입의 급여 식별자입니다.</td>
-</tr>
-</table>
+
+| name | description |
+| --- | --- |
+| `payrollId` | Long 타입의 급여 식별자입니다. |
+
 Request Query Parameter
 없음
 Request Body
@@ -2163,22 +1648,13 @@ Request Body
 2. 연결된 payroll_statement가 `READY`인지 확인합니다.
 3. Finance S3 객체에 대한 300초 만료 presigned URL을 생성합니다.
 4. 버킷명과 S3 object key를 제외한 다운로드 정보를 반환합니다.
-# **\[response\]**
+# **[response]**
 ### 성공코드
-<table header-row="true">
-<tr>
-<td>HTTP 상태</td>
-<td>code</td>
-<td>message</td>
-<td>description</td>
-</tr>
-<tr>
-<td>`200 OK`</td>
-<td>`PAYROLL_200_9`</td>
-<td>급여명세서 다운로드 URL을 발급했습니다.</td>
-<td>Finance S3의 단기 presigned URL을 반환합니다.</td>
-</tr>
-</table>
+
+| HTTP 상태 | code | message | description |
+| --- | --- | --- | --- |
+| `200 OK` | `PAYROLL_200_9` | 급여명세서 다운로드 URL을 발급했습니다. | Finance S3의 단기 presigned URL을 반환합니다. |
+
 Response Body
 ```json
 {
@@ -2195,83 +1671,30 @@ Response Body
 }
 ```
 ### Response Field
-<table header-row="true">
-<tr>
-<td>name</td>
-<td>설명</td>
-</tr>
-<tr>
-<td>`status`</td>
-<td>HTTP 상태 코드입니다.</td>
-</tr>
-<tr>
-<td>`code`</td>
-<td>서비스 응답 코드입니다.</td>
-</tr>
-<tr>
-<td>`message`</td>
-<td>응답 메시지입니다.</td>
-</tr>
-</table>
-<table header-row="true">
-<tr>
-<td>name</td>
-<td>설명</td>
-</tr>
-<tr>
-<td>`data.statementId`</td>
-<td>급여명세서 식별자입니다.</td>
-</tr>
-<tr>
-<td>`data.payrollId`</td>
-<td>명세서가 속한 급여 식별자입니다.</td>
-</tr>
-<tr>
-<td>`data.fileName`</td>
-<td>클라이언트에 표시할 PDF 파일명입니다.</td>
-</tr>
-<tr>
-<td>`data.downloadUrl`</td>
-<td>Finance S3 파일의 임시 다운로드 URL입니다.</td>
-</tr>
-<tr>
-<td>`data.expiresInSeconds`</td>
-<td>URL 유효시간이며 현재 300초입니다.</td>
-</tr>
-</table>
+
+| name | 설명 |
+| --- | --- |
+| `status` | HTTP 상태 코드입니다. |
+| `code` | 서비스 응답 코드입니다. |
+| `message` | 응답 메시지입니다. |
+
+| name | 설명 |
+| --- | --- |
+| `data.statementId` | 급여명세서 식별자입니다. |
+| `data.payrollId` | 명세서가 속한 급여 식별자입니다. |
+| `data.fileName` | 클라이언트에 표시할 PDF 파일명입니다. |
+| `data.downloadUrl` | Finance S3 파일의 임시 다운로드 URL입니다. |
+| `data.expiresInSeconds` | URL 유효시간이며 현재 300초입니다. |
+
 ### 실패 코드
-<table header-row="true">
-<tr>
-<td>HTTP 상태</td>
-<td>code</td>
-<td>message</td>
-<td>발생 조건</td>
-</tr>
-<tr>
-<td>`401 Unauthorized`</td>
-<td>`COMMON_401_1` 또는 `AUTH_401_*`</td>
-<td>인증이 필요합니다.</td>
-<td>Access Token이 없거나 유효하지 않습니다.</td>
-</tr>
-<tr>
-<td>`403 Forbidden`</td>
-<td>`COMMON_403_1`</td>
-<td>접근 권한이 없습니다.</td>
-<td>`PAYROLL:MANAGE` 권한이 없습니다.</td>
-</tr>
-<tr>
-<td>`404 Not Found`</td>
-<td>`PAYROLL_NOT_FOUND`</td>
-<td>급여를 찾을 수 없습니다.</td>
-<td>급여 또는 연결된 직원을 찾을 수 없습니다.</td>
-</tr>
-<tr>
-<td>`409 Conflict`</td>
-<td>`PAYROLL_STATEMENT_NOT_READY`</td>
-<td>급여명세서가 아직 준비되지 않았습니다.</td>
-<td>급여가 미확정이거나 READY 명세서·object key가 없습니다.</td>
-</tr>
-</table>
+
+| HTTP 상태 | code | message | 발생 조건 |
+| --- | --- | --- | --- |
+| `401 Unauthorized` | `COMMON_401_1` 또는 `AUTH_401_*` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않습니다. |
+| `403 Forbidden` | `COMMON_403_1` | 접근 권한이 없습니다. | `PAYROLL:MANAGE` 권한이 없습니다. |
+| `404 Not Found` | `PAYROLL_NOT_FOUND` | 급여를 찾을 수 없습니다. | 급여 또는 연결된 직원을 찾을 수 없습니다. |
+| `409 Conflict` | `PAYROLL_STATEMENT_NOT_READY` | 급여명세서가 아직 준비되지 않았습니다. | 급여가 미확정이거나 READY 명세서·object key가 없습니다. |
+
 ## 비즈니스 규칙
 - 자기 급여명세서라도 `PAYROLL:MANAGE` 권한이 없으면 다운로드할 수 없습니다.
 - 발급된 URL은 300초 동안 유효하며, URL 자체는 만료 전까지 S3가 검증합니다.
@@ -2282,33 +1705,23 @@ Response Body
 ## 13. 급여명세서 생성 재시도
 
 - Notion: [원문 페이지](https://app.notion.com/p/3ba13f22e202813aabb2d55aa9bd1f1a?pvs=204)
+- Method·URI: `PATCH /api/payrolls/{payrollId}/statement/retry`
 
-<callout icon="🔒" color="blue_bg">
-	요청자는 `PAYROLL:MANAGE` 권한을 보유해야 합니다. 직원 본인 여부만으로는 접근할 수 없습니다.
-</callout>
-# **\[request\]**
+> 🔒 요청자는 `PAYROLL:MANAGE` 권한을 보유해야 합니다. 직원 본인 여부만으로는 접근할 수 없습니다.
+
+# **[request]**
 Request Header
-<table header-row="true">
-<tr>
-<td>name</td>
-<td>description</td>
-</tr>
-<tr>
-<td>`Authorization`</td>
-<td>`Bearer {AccessToken}` 형식의 사용자 인증 토큰입니다.</td>
-</tr>
-</table>
+
+| name | description |
+| --- | --- |
+| `Authorization` | `Bearer {AccessToken}` 형식의 사용자 인증 토큰입니다. |
+
 Request Parameter
-<table header-row="true">
-<tr>
-<td>name</td>
-<td>description</td>
-</tr>
-<tr>
-<td>`payrollId`</td>
-<td>Long 타입의 급여 식별자입니다.</td>
-</tr>
-</table>
+
+| name | description |
+| --- | --- |
+| `payrollId` | Long 타입의 급여 식별자입니다. |
+
 Request Query Parameter
 없음
 Request Body
@@ -2318,22 +1731,13 @@ Request Body
 2. payroll_statement가 `FAILED`인지 확인합니다.
 3. 상태를 `PENDING`으로 변경하고 비동기 생성을 시작합니다.
 4. 성공 시 `READY`, 재실패 시 `FAILED`와 실패 사유를 저장합니다.
-# **\[response\]**
+# **[response]**
 ### 성공코드
-<table header-row="true">
-<tr>
-<td>HTTP 상태</td>
-<td>code</td>
-<td>message</td>
-<td>description</td>
-</tr>
-<tr>
-<td>`200 OK`</td>
-<td>`PAYROLL_200_10`</td>
-<td>급여명세서 생성을 재시도합니다.</td>
-<td>명세서 상태를 PENDING으로 변경하고 재생성을 시작합니다.</td>
-</tr>
-</table>
+
+| HTTP 상태 | code | message | description |
+| --- | --- | --- | --- |
+| `200 OK` | `PAYROLL_200_10` | 급여명세서 생성을 재시도합니다. | 명세서 상태를 PENDING으로 변경하고 재생성을 시작합니다. |
+
 Response Body
 ```json
 {
@@ -2349,79 +1753,29 @@ Response Body
 }
 ```
 ### Response Field
-<table header-row="true">
-<tr>
-<td>name</td>
-<td>설명</td>
-</tr>
-<tr>
-<td>`status`</td>
-<td>HTTP 상태 코드입니다.</td>
-</tr>
-<tr>
-<td>`code`</td>
-<td>서비스 응답 코드입니다.</td>
-</tr>
-<tr>
-<td>`message`</td>
-<td>응답 메시지입니다.</td>
-</tr>
-</table>
-<table header-row="true">
-<tr>
-<td>name</td>
-<td>설명</td>
-</tr>
-<tr>
-<td>`data.statementId`</td>
-<td>재시도하는 급여명세서 식별자입니다.</td>
-</tr>
-<tr>
-<td>`data.payrollId`</td>
-<td>명세서가 속한 급여 식별자입니다.</td>
-</tr>
-<tr>
-<td>`data.status`</td>
-<td>재시도 시작 직후 `PENDING`입니다.</td>
-</tr>
-<tr>
-<td>`data.failureReason`</td>
-<td>PENDING 전환 시 기존 실패 사유를 제거하므로 null입니다.</td>
-</tr>
-</table>
+
+| name | 설명 |
+| --- | --- |
+| `status` | HTTP 상태 코드입니다. |
+| `code` | 서비스 응답 코드입니다. |
+| `message` | 응답 메시지입니다. |
+
+| name | 설명 |
+| --- | --- |
+| `data.statementId` | 재시도하는 급여명세서 식별자입니다. |
+| `data.payrollId` | 명세서가 속한 급여 식별자입니다. |
+| `data.status` | 재시도 시작 직후 `PENDING`입니다. |
+| `data.failureReason` | PENDING 전환 시 기존 실패 사유를 제거하므로 null입니다. |
+
 ### 실패 코드
-<table header-row="true">
-<tr>
-<td>HTTP 상태</td>
-<td>code</td>
-<td>message</td>
-<td>발생 조건</td>
-</tr>
-<tr>
-<td>`401 Unauthorized`</td>
-<td>`COMMON_401_1` 또는 `AUTH_401_*`</td>
-<td>인증이 필요합니다.</td>
-<td>Access Token이 없거나 유효하지 않습니다.</td>
-</tr>
-<tr>
-<td>`403 Forbidden`</td>
-<td>`COMMON_403_1`</td>
-<td>접근 권한이 없습니다.</td>
-<td>`PAYROLL:MANAGE` 권한이 없습니다.</td>
-</tr>
-<tr>
-<td>`404 Not Found`</td>
-<td>`PAYROLL_NOT_FOUND`</td>
-<td>급여를 찾을 수 없습니다.</td>
-<td>급여 또는 연결된 직원을 찾을 수 없습니다.</td>
-</tr>
-<tr>
-<td>`409 Conflict`</td>
-<td>`PAYROLL_STATEMENT_RETRY_NOT_ALLOWED`</td>
-<td>실패한 급여명세서만 재시도할 수 있습니다.</td>
-<td>급여가 미확정이거나 명세서가 FAILED가 아닙니다.</td>
-</tr>
-</table>
+
+| HTTP 상태 | code | message | 발생 조건 |
+| --- | --- | --- | --- |
+| `401 Unauthorized` | `COMMON_401_1` 또는 `AUTH_401_*` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않습니다. |
+| `403 Forbidden` | `COMMON_403_1` | 접근 권한이 없습니다. | `PAYROLL:MANAGE` 권한이 없습니다. |
+| `404 Not Found` | `PAYROLL_NOT_FOUND` | 급여를 찾을 수 없습니다. | 급여 또는 연결된 직원을 찾을 수 없습니다. |
+| `409 Conflict` | `PAYROLL_STATEMENT_RETRY_NOT_ALLOWED` | 실패한 급여명세서만 재시도할 수 있습니다. | 급여가 미확정이거나 명세서가 FAILED가 아닙니다. |
+
 ## 비즈니스 규칙
 - 재시도는 기존 payroll_statement를 재사용하며 새 행을 만들지 않습니다.
 - 재시도 실패가 확정된 Payroll 상태를 변경하지 않습니다.
@@ -2431,33 +1785,23 @@ Response Body
 ## 14. 급여명세서 개별 이메일 발송
 
 - Notion: [원문 페이지](https://app.notion.com/p/3ba13f22e2028183bf20e31122a483e8?pvs=204)
+- Method·URI: `POST /api/payrolls/{payrollId}/statement/email-deliveries`
 
-<callout icon="🔒" color="blue_bg">
-	요청자는 `PAYROLL:MANAGE` 권한을 보유해야 합니다. 직원 본인 여부만으로는 접근할 수 없습니다.
-</callout>
-# **\[request\]**
+> 🔒 요청자는 `PAYROLL:MANAGE` 권한을 보유해야 합니다. 직원 본인 여부만으로는 접근할 수 없습니다.
+
+# **[request]**
 Request Header
-<table header-row="true">
-<tr>
-<td>name</td>
-<td>description</td>
-</tr>
-<tr>
-<td>`Authorization`</td>
-<td>`Bearer {AccessToken}` 형식의 사용자 인증 토큰입니다.</td>
-</tr>
-</table>
+
+| name | description |
+| --- | --- |
+| `Authorization` | `Bearer {AccessToken}` 형식의 사용자 인증 토큰입니다. |
+
 Request Parameter
-<table header-row="true">
-<tr>
-<td>name</td>
-<td>description</td>
-</tr>
-<tr>
-<td>`payrollId`</td>
-<td>Long 타입의 급여 식별자입니다.</td>
-</tr>
-</table>
+
+| name | description |
+| --- | --- |
+| `payrollId` | Long 타입의 급여 식별자입니다. |
+
 Request Query Parameter
 없음
 Request Body
@@ -2467,28 +1811,14 @@ Request Body
 2. `READY` 급여명세서 행을 잠그고 기존 활성 발송 이력을 확인합니다.
 3. 기존 이력이 있으면 해당 이력을 반환하고, 없으면 직원 이메일을 확인한 뒤 `PENDING` 발송 이력을 생성합니다.
 4. 새 이력을 생성한 경우에만 커밋 후 비동기 발송을 시작합니다.
-# **\[response\]**
+# **[response]**
 ### 성공코드
-<table header-row="true">
-<tr>
-<td>HTTP 상태</td>
-<td>code</td>
-<td>message</td>
-<td>description</td>
-</tr>
-<tr>
-<td>`201 Created`</td>
-<td>`PAYROLL_201_4`</td>
-<td>급여명세서 이메일 발송을 시작했습니다.</td>
-<td>생성된 발송 이력을 반환합니다.</td>
-</tr>
-<tr>
-<td>`200 OK`</td>
-<td>`PAYROLL_200_17`</td>
-<td>기존 급여명세서 이메일 발송 이력을 조회했습니다.</td>
-<td>동일 명세서의 기존 활성 발송 이력을 멱등 응답으로 반환합니다.</td>
-</tr>
-</table>
+
+| HTTP 상태 | code | message | description |
+| --- | --- | --- | --- |
+| `201 Created` | `PAYROLL_201_4` | 급여명세서 이메일 발송을 시작했습니다. | 생성된 발송 이력을 반환합니다. |
+| `200 OK` | `PAYROLL_200_17` | 기존 급여명세서 이메일 발송 이력을 조회했습니다. | 동일 명세서의 기존 활성 발송 이력을 멱등 응답으로 반환합니다. |
+
 Response Body
 ```json
 {
@@ -2505,98 +1835,34 @@ Response Body
 }
 ```
 ### Response Field
-<table header-row="true">
-<tr>
-<td>name</td>
-<td>설명</td>
-</tr>
-<tr>
-<td>`status`</td>
-<td>HTTP 상태 코드입니다.</td>
-</tr>
-<tr>
-<td>`code`</td>
-<td>서비스 응답 코드입니다.</td>
-</tr>
-<tr>
-<td>`message`</td>
-<td>응답 메시지입니다.</td>
-</tr>
-<tr>
-<td>`data.deliveryId`</td>
-<td>이메일 발송 이력 식별자입니다.</td>
-</tr>
-<tr>
-<td>`data.payrollId`</td>
-<td>급여 식별자입니다.</td>
-</tr>
-<tr>
-<td>`data.status`</td>
-<td>발송 이력 상태입니다. 새 이력은 `PENDING`, 재사용 이력은 기존 상태를 반환합니다.</td>
-</tr>
-<tr>
-<td>`data.requestedAt`</td>
-<td>발송 요청 시각입니다.</td>
-</tr>
-<tr>
-<td>`data.reused`</td>
-<td>기존 활성 발송 이력을 재사용한 멱등 응답이면 `true`입니다.</td>
-</tr>
-</table>
+
+| name | 설명 |
+| --- | --- |
+| `status` | HTTP 상태 코드입니다. |
+| `code` | 서비스 응답 코드입니다. |
+| `message` | 응답 메시지입니다. |
+| `data.deliveryId` | 이메일 발송 이력 식별자입니다. |
+| `data.payrollId` | 급여 식별자입니다. |
+| `data.status` | 발송 이력 상태입니다. 새 이력은 `PENDING`, 재사용 이력은 기존 상태를 반환합니다. |
+| `data.requestedAt` | 발송 요청 시각입니다. |
+| `data.reused` | 기존 활성 발송 이력을 재사용한 멱등 응답이면 `true`입니다. |
+
 ### 실패 코드
-<table header-row="true">
-<tr>
-<td>HTTP 상태</td>
-<td>code</td>
-<td>message</td>
-<td>발생 조건</td>
-</tr>
-<tr>
-<td>`401 Unauthorized`</td>
-<td>`COMMON_401_1` 또는 `AUTH_401_*`</td>
-<td>인증이 필요합니다.</td>
-<td>Access Token이 없거나 유효하지 않습니다.</td>
-</tr>
-<tr>
-<td>`403 Forbidden`</td>
-<td>`COMMON_403_1`</td>
-<td>접근 권한이 없습니다.</td>
-<td>`PAYROLL:MANAGE` 권한이 없습니다.</td>
-</tr>
-<tr>
-<td>`404 Not Found`</td>
-<td>`PAYROLL_NOT_FOUND`</td>
-<td>급여를 찾을 수 없습니다.</td>
-<td>급여가 존재하지 않습니다.</td>
-</tr>
-<tr>
-<td>`409 Conflict`</td>
-<td>`INVALID_PAYROLL_STATE`</td>
-<td>현재 급여 상태에서는 요청을 처리할 수 없습니다.</td>
-<td>급여가 CONFIRMED가 아닙니다.</td>
-</tr>
-<tr>
-<td>`409 Conflict`</td>
-<td>`PAYROLL_STATEMENT_NOT_READY`</td>
-<td>급여명세서가 아직 준비되지 않았습니다.</td>
-<td>READY 명세서 또는 object key가 없습니다.</td>
-</tr>
-<tr>
-<td>`409 Conflict`</td>
-<td>`PAYROLL_EMAIL_409_1`</td>
-<td>최신 급여 정정본만 이메일로 발송할 수 있습니다.</td>
-<td>최신 정정본이 아닙니다.</td>
-</tr>
-<tr>
-<td>`422 Unprocessable Entity`</td>
-<td>`PAYROLL_EMAIL_422_1`</td>
-<td>직원 이메일이 등록되어 있지 않습니다.</td>
-<td>직원 또는 이메일 정보가 없습니다.</td>
-</tr>
-</table>
+
+| HTTP 상태 | code | message | 발생 조건 |
+| --- | --- | --- | --- |
+| `401 Unauthorized` | `COMMON_401_1` 또는 `AUTH_401_*` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않습니다. |
+| `403 Forbidden` | `COMMON_403_1` | 접근 권한이 없습니다. | `PAYROLL:MANAGE` 권한이 없습니다. |
+| `404 Not Found` | `PAYROLL_NOT_FOUND` | 급여를 찾을 수 없습니다. | 급여가 존재하지 않습니다. |
+| `409 Conflict` | `INVALID_PAYROLL_STATE` | 현재 급여 상태에서는 요청을 처리할 수 없습니다. | 급여가 CONFIRMED가 아닙니다. |
+| `409 Conflict` | `PAYROLL_STATEMENT_NOT_READY` | 급여명세서가 아직 준비되지 않았습니다. | READY 명세서 또는 object key가 없습니다. |
+| `409 Conflict` | `PAYROLL_EMAIL_409_1` | 최신 급여 정정본만 이메일로 발송할 수 있습니다. | 최신 정정본이 아닙니다. |
+| `422 Unprocessable Entity` | `PAYROLL_EMAIL_422_1` | 직원 이메일이 등록되어 있지 않습니다. | 직원 또는 이메일 정보가 없습니다. |
+
 ## 비즈니스 규칙
 - API 성공은 메일 수신 완료가 아니라 발송 작업 등록 성공을 뜻합니다.
 - 동일 명세서가 이미 전달됐거나 발송 처리 중이면 새 작업을 만들지 않고 기존 이력을 `200 OK`, `reused=true`로 반환합니다.
+- 비동기 발송 시 월간 메일 플랜 한도를 초과하면 `PLAN_MAIL_LIMIT_EXCEEDED` 사유로 `SKIPPED` 처리합니다.
 - Mailgun 발송 및 Webhook 결과에 따라 이후 상태가 변경됩니다.
 
 ---
@@ -2604,22 +1870,17 @@ Response Body
 ## 15. 급여명세서 이메일 일괄 발송
 
 - Notion: [원문 페이지](https://app.notion.com/p/3ba13f22e20281a9aedad79257f3de6a?pvs=204)
+- Method·URI: `POST /api/payrolls/statement/email-delivery-batches`
 
-<callout icon="🔒" color="blue_bg">
-	요청자는 `PAYROLL:MANAGE` 권한을 보유해야 합니다. 직원 본인 여부만으로는 접근할 수 없습니다.
-</callout>
-# **\[request\]**
+> 🔒 요청자는 `PAYROLL:MANAGE` 권한을 보유해야 합니다. 직원 본인 여부만으로는 접근할 수 없습니다.
+
+# **[request]**
 Request Header
-<table header-row="true">
-<tr>
-<td>name</td>
-<td>description</td>
-</tr>
-<tr>
-<td>`Authorization`</td>
-<td>`Bearer {AccessToken}` 형식의 사용자 인증 토큰입니다.</td>
-</tr>
-</table>
+
+| name | description |
+| --- | --- |
+| `Authorization` | `Bearer {AccessToken}` 형식의 사용자 인증 토큰입니다. |
+
 Request Parameter
 없음
 Request Query Parameter
@@ -2631,46 +1892,25 @@ Request Body
   "month": 8
 }
 ```
-<table header-row="true">
-<tr>
-<td>name</td>
-<td>type</td>
-<td>required</td>
-<td>설명</td>
-</tr>
-<tr>
-<td>`year`</td>
-<td>`Integer`</td>
-<td>`true`</td>
-<td>급여 귀속 연도이며 2000 이상입니다.</td>
-</tr>
-<tr>
-<td>`month`</td>
-<td>`Integer`</td>
-<td>`true`</td>
-<td>급여 귀속 월이며 1\~12입니다.</td>
-</tr>
-</table>
+
+| name | type | required | 설명 |
+| --- | --- | --- | --- |
+| `year` | `Integer` | `true` | 급여 귀속 연도이며 2000 이상입니다. |
+| `month` | `Integer` | `true` | 급여 귀속 월이며 1\~12입니다. |
+
 ## 처리 흐름
 1. 귀속월의 직원별 최신 급여를 조회합니다.
 2. 각 급여를 발송 가능 여부에 따라 `PENDING` 또는 `SKIPPED`로 기록합니다.
 3. `PENDING` 건은 커밋 후 비동기 발송을 시작합니다.
-# **\[response\]**
+# **[response]**
 ### 성공코드
-<table header-row="true">
-<tr>
-<td>HTTP 상태</td>
-<td>code</td>
-<td>message</td>
-<td>description</td>
-</tr>
-<tr>
-<td>`201 Created`</td>
-<td>`PAYROLL_201_5`</td>
-<td>급여명세서 이메일 일괄 발송을 시작했습니다.</td>
-<td>생성된 배치와 전체 대상 수를 반환합니다.</td>
-</tr>
-</table>
+
+| HTTP 상태 | code | message | description |
+| --- | --- | --- | --- |
+| `200 OK` | `PAYROLL_201_5` | 급여명세서 이메일 일괄 발송을 시작했습니다. | 생성된 배치와 전체 대상 수를 반환합니다. |
+
+현재 Controller는 `GlobalApiResponse.created(...)`를 직접 반환하므로 실제 HTTP 상태는 `200 OK`이고, 응답 본문의 `status`는 201입니다.
+
 Response Body
 ```json
 {
@@ -2686,69 +1926,28 @@ Response Body
 }
 ```
 ### Response Field
-<table header-row="true">
-<tr>
-<td>name</td>
-<td>설명</td>
-</tr>
-<tr>
-<td>`status`</td>
-<td>HTTP 상태 코드입니다.</td>
-</tr>
-<tr>
-<td>`code`</td>
-<td>서비스 응답 코드입니다.</td>
-</tr>
-<tr>
-<td>`message`</td>
-<td>응답 메시지입니다.</td>
-</tr>
-<tr>
-<td>`data.batchId`</td>
-<td>일괄 발송 배치 식별자입니다.</td>
-</tr>
-<tr>
-<td>`data.payrollYearMonth`</td>
-<td>급여 귀속월이며 해당 월 1일의 `yyyy-MM-dd` 형식입니다.</td>
-</tr>
-<tr>
-<td>`data.targetCount`</td>
-<td>`PENDING`과 `SKIPPED`를 모두 포함한 생성 이력 수입니다.</td>
-</tr>
-<tr>
-<td>`data.status`</td>
-<td>`PENDING`, `PROCESSING`, `AWAITING_DELIVERY`, `COMPLETED` 중 하나입니다.</td>
-</tr>
-</table>
+
+| name | 설명 |
+| --- | --- |
+| `status` | HTTP 상태 코드입니다. |
+| `code` | 서비스 응답 코드입니다. |
+| `message` | 응답 메시지입니다. |
+| `data.batchId` | 일괄 발송 배치 식별자입니다. |
+| `data.payrollYearMonth` | 급여 귀속월이며 해당 월 1일의 `yyyy-MM-dd` 형식입니다. |
+| `data.targetCount` | `PENDING`과 `SKIPPED`를 모두 포함한 생성 이력 수입니다. |
+| `data.status` | `PENDING`, `PROCESSING`, `AWAITING_DELIVERY`, `COMPLETED` 중 하나입니다. |
+
 ### 실패 코드
-<table header-row="true">
-<tr>
-<td>HTTP 상태</td>
-<td>code</td>
-<td>message</td>
-<td>발생 조건</td>
-</tr>
-<tr>
-<td>`401 Unauthorized`</td>
-<td>`COMMON_401_1` 또는 `AUTH_401_*`</td>
-<td>인증이 필요합니다.</td>
-<td>Access Token이 없거나 유효하지 않습니다.</td>
-</tr>
-<tr>
-<td>`403 Forbidden`</td>
-<td>`COMMON_403_1`</td>
-<td>접근 권한이 없습니다.</td>
-<td>`PAYROLL:MANAGE` 권한이 없습니다.</td>
-</tr>
-<tr>
-<td>`400 Bad Request`</td>
-<td>`COMMON_400_1`</td>
-<td>입력값이 올바르지 않습니다.</td>
-<td>year 또는 month가 허용 범위를 벗어납니다.</td>
-</tr>
-</table>
+
+| HTTP 상태 | code | message | 발생 조건 |
+| --- | --- | --- | --- |
+| `401 Unauthorized` | `COMMON_401_1` 또는 `AUTH_401_*` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않습니다. |
+| `403 Forbidden` | `COMMON_403_1` | 접근 권한이 없습니다. | `PAYROLL:MANAGE` 권한이 없습니다. |
+| `400 Bad Request` | `COMMON_400_1` | 입력값이 올바르지 않습니다. | year 또는 month가 허용 범위를 벗어납니다. |
+
 ## 비즈니스 규칙
 - 미확정 급여는 `PAYROLL_NOT_CONFIRMED`, 준비되지 않은 명세서는 `STATEMENT_NOT_READY`, 이메일 없음은 `NO_EMAIL`, 중복·진행 중 발송은 `ALREADY_DELIVERED_OR_IN_PROGRESS`로 `SKIPPED` 처리합니다.
+- 비동기 발송 시 월간 메일 플랜 한도를 초과한 건은 `PLAN_MAIL_LIMIT_EXCEEDED`로 `SKIPPED` 처리합니다.
 - 제외 건 때문에 전체 요청을 실패시키지 않습니다.
 - 대상이 없으면 targetCount는 0이고 배치 상태는 `COMPLETED`입니다.
 
@@ -2757,76 +1956,39 @@ Response Body
 ## 16. 급여명세서 이메일 일괄 발송 결과 조회
 
 - Notion: [원문 페이지](https://app.notion.com/p/3ba13f22e202811ebd81c39457d7da97?pvs=204)
+- Method·URI: `GET /api/payrolls/statement/email-delivery-batches/{batchId}`
 
-<callout icon="🔒" color="blue_bg">
-	요청자는 `PAYROLL:MANAGE` 권한을 보유해야 합니다. 직원 본인 여부만으로는 접근할 수 없습니다.
-</callout>
-# **\[request\]**
+> 🔒 요청자는 `PAYROLL:MANAGE` 권한을 보유해야 합니다. 직원 본인 여부만으로는 접근할 수 없습니다.
+
+# **[request]**
 Request Header
-<table header-row="true">
-<tr>
-<td>name</td>
-<td>description</td>
-</tr>
-<tr>
-<td>`Authorization`</td>
-<td>`Bearer {AccessToken}` 형식의 사용자 인증 토큰입니다.</td>
-</tr>
-</table>
+
+| name | description |
+| --- | --- |
+| `Authorization` | `Bearer {AccessToken}` 형식의 사용자 인증 토큰입니다. |
+
 Request Parameter
-<table header-row="true">
-<tr>
-<td>name</td>
-<td>type</td>
-<td>required</td>
-<td>description</td>
-</tr>
-<tr>
-<td>`batchId`</td>
-<td>`Long`</td>
-<td>`true`</td>
-<td>일괄 발송 배치 식별자입니다.</td>
-</tr>
-</table>
+
+| name | type | required | description |
+| --- | --- | --- | --- |
+| `batchId` | `Long` | `true` | 일괄 발송 배치 식별자입니다. |
+
 Request Query Parameter
-<table header-row="true">
-<tr>
-<td>name</td>
-<td>type</td>
-<td>required</td>
-<td>description</td>
-</tr>
-<tr>
-<td>`page`</td>
-<td>`Integer`</td>
-<td>`false`</td>
-<td>0부터 시작하며 기본값은 0입니다.</td>
-</tr>
-<tr>
-<td>`size`</td>
-<td>`Integer`</td>
-<td>`false`</td>
-<td>1\~100이며 기본값은 20입니다.</td>
-</tr>
-</table>
+
+| name | type | required | description |
+| --- | --- | --- | --- |
+| `page` | `Integer` | `false` | 0부터 시작하며 기본값은 0입니다. |
+| `size` | `Integer` | `false` | 1\~100이며 기본값은 20입니다. |
+
 Request Body
 없음
-# **\[response\]**
+# **[response]**
 ### 성공코드
-<table header-row="true">
-<tr>
-<td>HTTP 상태</td>
-<td>code</td>
-<td>message</td>
-<td>description</td>
-</tr>
-<tr>
-<td>`200 OK`</td>
-<td>`PAYROLL_200_15`</td>
-<td>급여명세서 이메일 일괄 발송 결과를 조회했습니다.</td>
-<td>상태별 집계와 페이지 결과를 반환합니다.</td>
-</tr>
-</table>
+
+| HTTP 상태 | code | message | description |
+| --- | --- | --- | --- |
+| `200 OK` | `PAYROLL_200_15` | 급여명세서 이메일 일괄 발송 결과를 조회했습니다. | 상태별 집계와 페이지 결과를 반환합니다. |
+
 Response Body
 ```json
 {
@@ -2878,117 +2040,37 @@ Response Body
 }
 ```
 ### Response Field
-<table header-row="true">
-<tr>
-<td>name</td>
-<td>설명</td>
-</tr>
-<tr>
-<td>`status`, `code`, `message`</td>
-<td>공통 성공 응답 필드입니다.</td>
-</tr>
-<tr>
-<td>`data.batchId`</td>
-<td>일괄 발송 배치 식별자입니다.</td>
-</tr>
-<tr>
-<td>`data.payrollYearMonth`</td>
-<td>급여 귀속월의 1일입니다.</td>
-</tr>
-<tr>
-<td>`data.status`</td>
-<td>배치 상태입니다.</td>
-</tr>
-<tr>
-<td>`data.summary.*Count`</td>
-<td>전체 및 `PENDING`, `SENDING`, `RETRY_WAIT`, `UNKNOWN`, `SENT`, `DELIVERED`, `FAILED`, `SKIPPED` 상태별 건수입니다.</td>
-</tr>
-<tr>
-<td>`data.deliveries.content[].deliveryId`</td>
-<td>발송 이력 식별자입니다.</td>
-</tr>
-<tr>
-<td>`data.deliveries.content[].payrollId`</td>
-<td>급여 식별자입니다.</td>
-</tr>
-<tr>
-<td>`data.deliveries.content[].employeeId`</td>
-<td>직원 식별자입니다.</td>
-</tr>
-<tr>
-<td>`data.deliveries.content[].employeeName`</td>
-<td>직원 이름입니다.</td>
-</tr>
-<tr>
-<td>`data.deliveries.content[].recipientEmail`</td>
-<td>일부 마스킹된 수신 이메일입니다.</td>
-</tr>
-<tr>
-<td>`data.deliveries.content[].status`</td>
-<td>개별 발송 상태입니다.</td>
-</tr>
-<tr>
-<td>`data.deliveries.content[].failureCode`</td>
-<td>실패 또는 제외 사유 코드이며 없으면 null입니다.</td>
-</tr>
-<tr>
-<td>`data.deliveries.content[].failureReason`</td>
-<td>실패 또는 제외 사유이며 없으면 null입니다.</td>
-</tr>
-<tr>
-<td>`data.deliveries.content[].requestedAt`</td>
-<td>발송 요청 시각입니다.</td>
-</tr>
-<tr>
-<td>`data.deliveries.content[].sentAt`</td>
-<td>Mailgun 접수 시각이며 없으면 null입니다.</td>
-</tr>
-<tr>
-<td>`data.deliveries.content[].deliveredAt`</td>
-<td>수신 서버 전달 완료 시각이며 없으면 null입니다.</td>
-</tr>
-<tr>
-<td>`data.deliveries.content[].failedAt`</td>
-<td>영구 실패 시각이며 없으면 null입니다.</td>
-</tr>
-<tr>
-<td>`data.deliveries.page`, `size`, `totalElements`, `totalPages`, `first`, `last`, `hasNext`, `hasPrevious`</td>
-<td>현재 페이지, 요청 크기, 전체 항목·페이지 수, 첫·마지막 페이지 여부, 다음·이전 페이지 존재 여부입니다.</td>
-</tr>
-</table>
+
+| name | 설명 |
+| --- | --- |
+| `status`, `code`, `message` | 공통 성공 응답 필드입니다. |
+| `data.batchId` | 일괄 발송 배치 식별자입니다. |
+| `data.payrollYearMonth` | 급여 귀속월의 1일입니다. |
+| `data.status` | 배치 상태입니다. |
+| `data.summary.*Count` | 전체 및 `PENDING`, `SENDING`, `RETRY_WAIT`, `UNKNOWN`, `SENT`, `DELIVERED`, `FAILED`, `SKIPPED` 상태별 건수입니다. |
+| `data.deliveries.content[].deliveryId` | 발송 이력 식별자입니다. |
+| `data.deliveries.content[].payrollId` | 급여 식별자입니다. |
+| `data.deliveries.content[].employeeId` | 직원 식별자입니다. |
+| `data.deliveries.content[].employeeName` | 직원 이름입니다. |
+| `data.deliveries.content[].recipientEmail` | 일부 마스킹된 수신 이메일입니다. |
+| `data.deliveries.content[].status` | 개별 발송 상태입니다. |
+| `data.deliveries.content[].failureCode` | 실패 또는 제외 사유 코드이며 없으면 null입니다. |
+| `data.deliveries.content[].failureReason` | 실패 또는 제외 사유이며 없으면 null입니다. |
+| `data.deliveries.content[].requestedAt` | 발송 요청 시각입니다. |
+| `data.deliveries.content[].sentAt` | Mailgun 접수 시각이며 없으면 null입니다. |
+| `data.deliveries.content[].deliveredAt` | 수신 서버 전달 완료 시각이며 없으면 null입니다. |
+| `data.deliveries.content[].failedAt` | 영구 실패 시각이며 없으면 null입니다. |
+| `data.deliveries.page`, `size`, `totalElements`, `totalPages`, `first`, `last`, `hasNext`, `hasPrevious` | 현재 페이지, 요청 크기, 전체 항목·페이지 수, 첫·마지막 페이지 여부, 다음·이전 페이지 존재 여부입니다. |
+
 ### 실패 코드
-<table header-row="true">
-<tr>
-<td>HTTP 상태</td>
-<td>code</td>
-<td>message</td>
-<td>발생 조건</td>
-</tr>
-<tr>
-<td>`401 Unauthorized`</td>
-<td>`COMMON_401_1` 또는 `AUTH_401_*`</td>
-<td>인증이 필요합니다.</td>
-<td>Access Token이 없거나 유효하지 않습니다.</td>
-</tr>
-<tr>
-<td>`403 Forbidden`</td>
-<td>`COMMON_403_1`</td>
-<td>접근 권한이 없습니다.</td>
-<td>`PAYROLL:MANAGE` 권한이 없습니다.</td>
-</tr>
-<tr>
-<td>`400 Bad Request`</td>
-<td>`COMMON_400_1`</td>
-<td>입력값이 올바르지 않습니다.</td>
-<td>page 또는 size가 허용 범위를 벗어납니다.</td>
-</tr>
-<tr>
-<td>`404 Not Found`</td>
-<td>`PAYROLL_EMAIL_404_1`</td>
-<td>이메일 일괄 발송 내역을 찾을 수 없습니다.</td>
-<td>batchId에 해당하는 배치가 없습니다.</td>
-</tr>
-</table>
+
+| HTTP 상태 | code | message | 발생 조건 |
+| --- | --- | --- | --- |
+| `401 Unauthorized` | `COMMON_401_1` 또는 `AUTH_401_*` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않습니다. |
+| `403 Forbidden` | `COMMON_403_1` | 접근 권한이 없습니다. | `PAYROLL:MANAGE` 권한이 없습니다. |
+| `400 Bad Request` | `COMMON_400_1` | 입력값이 올바르지 않습니다. | page 또는 size가 허용 범위를 벗어납니다. |
+| `404 Not Found` | `PAYROLL_EMAIL_404_1` | 이메일 일괄 발송 내역을 찾을 수 없습니다. | batchId에 해당하는 배치가 없습니다. |
+
 ## 상태 규칙
 - `PENDING`: 전체 건이 아직 대기 중입니다.
 - `PROCESSING`: `PENDING`, `SENDING`, `RETRY_WAIT` 건이 하나 이상 있고 전체가 대기 상태는 아닙니다.
@@ -3000,40 +2082,28 @@ Response Body
 ## 17. 급여 정책 조회
 
 - Notion: [원문 페이지](https://app.notion.com/p/3ba13f22e20281e285adf75cea58918e?pvs=204)
+- Method·URI: `GET /api/payroll/policies`
 
-<callout icon="🔒" color="blue_bg">
-	모든 요청은 `PAYROLL:MANAGE` 권한이 필요합니다.
-</callout>
-# **\[request\]**
+> 🔒 모든 요청은 `PAYROLL:MANAGE` 권한이 필요합니다.
+
+# **[request]**
 Request Header
-<table header-row="true">
-<tr>
-<td>name</td>
-<td>description</td>
-</tr>
-<tr>
-<td>`Authorization`</td>
-<td>`Bearer {AccessToken}` 형식입니다.</td>
-</tr>
-</table>
+
+| name | description |
+| --- | --- |
+| `Authorization` | `Bearer {AccessToken}` 형식입니다. |
+
 Request Parameter / Query
 없음
 Request Body
 없음
-# **\[response\]**
+# **[response]**
 ### 성공코드
-<table header-row="true">
-<tr>
-<td>HTTP 상태</td>
-<td>code</td>
-<td>message</td>
-</tr>
-<tr>
-<td>`200 OK`</td>
-<td>`PAYROLL_200_11`</td>
-<td>급여 정책을 조회했습니다.</td>
-</tr>
-</table>
+
+| HTTP 상태 | code | message |
+| --- | --- | --- |
+| `200 OK` | `PAYROLL_200_11` | 급여 정책을 조회했습니다. |
+
 Response Body
 ```json
 {
@@ -3051,32 +2121,13 @@ Response Body
 ### Response Field
 `id`, `payDayType`, `payDay`, `paymentMonthOffset`을 반환합니다.
 ### 실패 코드
-<table header-row="true">
-<tr>
-<td>HTTP 상태</td>
-<td>code</td>
-<td>message</td>
-<td>발생 조건</td>
-</tr>
-<tr>
-<td>`401 Unauthorized`</td>
-<td>`COMMON_401_1` 또는 `AUTH_401_*`</td>
-<td>인증이 필요합니다.</td>
-<td>Access Token이 없거나 유효하지 않습니다.</td>
-</tr>
-<tr>
-<td>`403 Forbidden`</td>
-<td>`COMMON_403_1`</td>
-<td>접근 권한이 없습니다.</td>
-<td>`PAYROLL:MANAGE` 권한이 없습니다.</td>
-</tr>
-<tr>
-<td>`422 Unprocessable Entity`</td>
-<td>`PAYROLL_POLICY_NOT_FOUND`</td>
-<td>급여 정책이 없습니다.</td>
-<td>저장된 급여 정책이 없습니다.</td>
-</tr>
-</table>
+
+| HTTP 상태 | code | message | 발생 조건 |
+| --- | --- | --- | --- |
+| `401 Unauthorized` | `COMMON_401_1` 또는 `AUTH_401_*` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않습니다. |
+| `403 Forbidden` | `COMMON_403_1` | 접근 권한이 없습니다. | `PAYROLL:MANAGE` 권한이 없습니다. |
+| `422 Unprocessable Entity` | `PAYROLL_POLICY_NOT_FOUND` | 급여 정책이 없습니다. | 저장된 급여 정책이 없습니다. |
+
 ## 비즈니스 규칙
 - 정책이 없으면 422 PAYROLL_POLICY_NOT_FOUND입니다.
 - 이 응답에는 낙관적 락 version 필드가 없습니다.
@@ -3086,68 +2137,37 @@ Response Body
 ## 18. 급여 정책 수정
 
 - Notion: [원문 페이지](https://app.notion.com/p/3ba13f22e2028143962ec5767ebf9821?pvs=204)
+- Method·URI: `PATCH /api/payroll/policies`
 
-<callout icon="🔒" color="blue_bg">
-	모든 요청은 `PAYROLL:MANAGE` 권한이 필요합니다.
-</callout>
-# **\[request\]**
+> 🔒 모든 요청은 `PAYROLL:MANAGE` 권한이 필요합니다.
+
+# **[request]**
 Request Header
-<table header-row="true">
-<tr>
-<td>name</td>
-<td>description</td>
-</tr>
-<tr>
-<td>`Authorization`</td>
-<td>`Bearer {AccessToken}` 형식입니다.</td>
-</tr>
-</table>
+
+| name | description |
+| --- | --- |
+| `Authorization` | `Bearer {AccessToken}` 형식입니다. |
+
 Request Parameter / Query
 없음
 Request Body
 ```json
 {"payDayType":"FIXED_DAY","payDay":5,"paymentMonthOffset":1}
 ```
-<table header-row="true">
-<tr>
-<td>name</td>
-<td>type</td>
-<td>required</td>
-<td>설명</td>
-</tr>
-<tr>
-<td>`payDayType`</td>
-<td>`PayDayType`</td>
-<td>`true`</td>
-<td>FIXED_DAY 또는 MONTH_END입니다.</td>
-</tr>
-<tr>
-<td>`payDay`</td>
-<td>`Integer`</td>
-<td>조건부</td>
-<td>FIXED_DAY이면 1\~31 필수, MONTH_END이면 null이어야 합니다.</td>
-</tr>
-<tr>
-<td>`paymentMonthOffset`</td>
-<td>`Integer`</td>
-<td>`true`</td>
-<td>귀속월 대비 지급월 오프셋이며 0\~12입니다.</td>
-</tr>
-</table>
-# **\[response\]**
+
+| name | type | required | 설명 |
+| --- | --- | --- | --- |
+| `payDayType` | `PayDayType` | `true` | FIXED_DAY 또는 MONTH_END입니다. |
+| `payDay` | `Integer` | 조건부 | FIXED_DAY이면 1\~31 필수, MONTH_END이면 null이어야 합니다. |
+| `paymentMonthOffset` | `Integer` | `false` | 귀속월 대비 지급월 오프셋이며 0\~12입니다. primitive `int`이므로 생략하면 `0`으로 처리됩니다. |
+
+# **[response]**
 ### 성공코드
-<table header-row="true">
-<tr>
-<td>HTTP 상태</td>
-<td>code</td>
-<td>message</td>
-</tr>
-<tr>
-<td>`200 OK`</td>
-<td>`PAYROLL_200_12`</td>
-<td>급여 정책을 수정했습니다.</td>
-</tr>
-</table>
+
+| HTTP 상태 | code | message |
+| --- | --- | --- |
+| `200 OK` | `PAYROLL_200_12` | 급여 정책을 수정했습니다. |
+
 Response Body
 ```json
 {
@@ -3165,32 +2185,13 @@ Response Body
 ### Response Field
 수정된 정책을 반환합니다. 기존 Payroll의 scheduledPayDate는 바꾸지 않습니다.
 ### 실패 코드
-<table header-row="true">
-<tr>
-<td>HTTP 상태</td>
-<td>code</td>
-<td>message</td>
-<td>발생 조건</td>
-</tr>
-<tr>
-<td>`401 Unauthorized`</td>
-<td>`COMMON_401_1` 또는 `AUTH_401_*`</td>
-<td>인증이 필요합니다.</td>
-<td>Access Token이 없거나 유효하지 않습니다.</td>
-</tr>
-<tr>
-<td>`403 Forbidden`</td>
-<td>`COMMON_403_1`</td>
-<td>접근 권한이 없습니다.</td>
-<td>`PAYROLL:MANAGE` 권한이 없습니다.</td>
-</tr>
-<tr>
-<td>`400 Bad Request`</td>
-<td>`COMMON_400_1` 또는 `INVALID_PAYROLL_REQUEST`</td>
-<td>급여 요청 값이 올바르지 않습니다.</td>
-<td>필드 검증 또는 지급일 유형별 조건에 맞지 않습니다.</td>
-</tr>
-</table>
+
+| HTTP 상태 | code | message | 발생 조건 |
+| --- | --- | --- | --- |
+| `401 Unauthorized` | `COMMON_401_1` 또는 `AUTH_401_*` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않습니다. |
+| `403 Forbidden` | `COMMON_403_1` | 접근 권한이 없습니다. | `PAYROLL:MANAGE` 권한이 없습니다. |
+| `400 Bad Request` | `COMMON_400_1` 또는 `INVALID_PAYROLL_REQUEST` | 급여 요청 값이 올바르지 않습니다. | 필드 검증 또는 지급일 유형별 조건에 맞지 않습니다. |
+
 ## 비즈니스 규칙
 - 수정된 정책은 이후 생성하는 급여의 지급 예정일 계산에 사용됩니다.
 - 기존 급여의 scheduledPayDate는 변경하지 않습니다.
@@ -3200,40 +2201,28 @@ Response Body
 ## 19. 직원 급여 설정 조회
 
 - Notion: [원문 페이지](https://app.notion.com/p/3ba13f22e2028110b817e8a9b12fe920?pvs=204)
+- Method·URI: `GET /api/payroll/employees/{employeeId}/compensation`
 
-<callout icon="🔒" color="blue_bg">
-	모든 요청은 `PAYROLL:MANAGE` 권한이 필요합니다.
-</callout>
-# **\[request\]**
+> 🔒 모든 요청은 `PAYROLL:MANAGE` 권한이 필요합니다.
+
+# **[request]**
 Request Header
-<table header-row="true">
-<tr>
-<td>name</td>
-<td>description</td>
-</tr>
-<tr>
-<td>`Authorization`</td>
-<td>`Bearer {AccessToken}` 형식입니다.</td>
-</tr>
-</table>
+
+| name | description |
+| --- | --- |
+| `Authorization` | `Bearer {AccessToken}` 형식입니다. |
+
 Request Parameter / Query
 Path: `employeeId`
 Request Body
 없음
-# **\[response\]**
+# **[response]**
 ### 성공코드
-<table header-row="true">
-<tr>
-<td>HTTP 상태</td>
-<td>code</td>
-<td>message</td>
-</tr>
-<tr>
-<td>`200 OK`</td>
-<td>`PAYROLL_200_13`</td>
-<td>직원 급여 설정을 조회했습니다.</td>
-</tr>
-</table>
+
+| HTTP 상태 | code | message |
+| --- | --- | --- |
+| `200 OK` | `PAYROLL_200_13` | 직원 급여 설정을 조회했습니다. |
+
 Response Body
 ```json
 {
@@ -3292,32 +2281,13 @@ Response Body
 ### Response Field
 `employeeId`, `compensations`, `fixedAllowances`, `payBases`를 반환합니다.
 ### 실패 코드
-<table header-row="true">
-<tr>
-<td>HTTP 상태</td>
-<td>code</td>
-<td>message</td>
-<td>발생 조건</td>
-</tr>
-<tr>
-<td>`401 Unauthorized`</td>
-<td>`COMMON_401_1` 또는 `AUTH_401_*`</td>
-<td>인증이 필요합니다.</td>
-<td>Access Token이 없거나 유효하지 않습니다.</td>
-</tr>
-<tr>
-<td>`403 Forbidden`</td>
-<td>`COMMON_403_1`</td>
-<td>접근 권한이 없습니다.</td>
-<td>`PAYROLL:MANAGE` 권한이 없습니다.</td>
-</tr>
-<tr>
-<td>`404 Not Found`</td>
-<td>`PAYROLL_NOT_FOUND`</td>
-<td>급여를 찾을 수 없습니다.</td>
-<td>직원을 찾을 수 없습니다.</td>
-</tr>
-</table>
+
+| HTTP 상태 | code | message | 발생 조건 |
+| --- | --- | --- | --- |
+| `401 Unauthorized` | `COMMON_401_1` 또는 `AUTH_401_*` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않습니다. |
+| `403 Forbidden` | `COMMON_403_1` | 접근 권한이 없습니다. | `PAYROLL:MANAGE` 권한이 없습니다. |
+| `404 Not Found` | `PAYROLL_NOT_FOUND` | 급여를 찾을 수 없습니다. | 직원을 찾을 수 없습니다. |
+
 ## 비즈니스 규칙
 - 계약·고정수당·통상시급 이력을 적용 시작일 역순으로 반환합니다.
 - 이 응답에는 낙관적 락 version 필드가 없습니다.
@@ -3327,42 +2297,30 @@ Response Body
 ## 20. 직원 급여 설정 저장
 
 - Notion: [원문 페이지](https://app.notion.com/p/3ba13f22e20281c7a399d360103cb29f?pvs=204)
+- Method·URI: `PATCH /api/payroll/employees/{employeeId}/compensation`
 
-<callout icon="🔒" color="blue_bg">
-	모든 요청은 `PAYROLL:MANAGE` 권한이 필요합니다.
-</callout>
-# **\[request\]**
+> 🔒 모든 요청은 `PAYROLL:MANAGE` 권한이 필요합니다.
+
+# **[request]**
 Request Header
-<table header-row="true">
-<tr>
-<td>name</td>
-<td>description</td>
-</tr>
-<tr>
-<td>`Authorization`</td>
-<td>`Bearer {AccessToken}` 형식입니다.</td>
-</tr>
-</table>
+
+| name | description |
+| --- | --- |
+| `Authorization` | `Bearer {AccessToken}` 형식입니다. |
+
 Request Parameter / Query
 Path: `employeeId`
 Request Body
 ```json
 {"compensation":{"compensationId":null,"employmentType":"REGULAR","salaryType":"MONTHLY","baseSalary":3200000,"hourlyWage":null,"weeklyContractHours":40,"effectiveFrom":"2026-08-01","effectiveTo":null},"fixedAllowances":[{"allowanceId":null,"allowanceType":"MEAL","allowanceName":"식대","amount":200000,"effectiveFrom":"2026-08-01","effectiveTo":null}],"payBasis":{"payBasisId":null,"ordinaryHourlyWage":18500,"effectiveFrom":"2026-08-01","effectiveTo":null}}
 ```
-# **\[response\]**
+# **[response]**
 ### 성공코드
-<table header-row="true">
-<tr>
-<td>HTTP 상태</td>
-<td>code</td>
-<td>message</td>
-</tr>
-<tr>
-<td>`200 OK`</td>
-<td>`PAYROLL_200_14`</td>
-<td>직원 급여 설정을 저장했습니다.</td>
-</tr>
-</table>
+
+| HTTP 상태 | code | message |
+| --- | --- | --- |
+| `200 OK` | `PAYROLL_200_14` | 직원 급여 설정을 저장했습니다. |
+
 Response Body
 ```json
 {
@@ -3427,44 +2385,15 @@ Response Body
 - `weeklyContractHours`는 0\~168입니다.
 - 고정수당 `allowanceType`은 MEAL, POSITION, DUTY, TRANSPORTATION, OTHER 중 하나입니다.
 ### 실패 코드
-<table header-row="true">
-<tr>
-<td>HTTP 상태</td>
-<td>code</td>
-<td>message</td>
-<td>발생 조건</td>
-</tr>
-<tr>
-<td>`401 Unauthorized`</td>
-<td>`COMMON_401_1` 또는 `AUTH_401_*`</td>
-<td>인증이 필요합니다.</td>
-<td>Access Token이 없거나 유효하지 않습니다.</td>
-</tr>
-<tr>
-<td>`403 Forbidden`</td>
-<td>`COMMON_403_1`</td>
-<td>접근 권한이 없습니다.</td>
-<td>`PAYROLL:MANAGE` 권한이 없습니다.</td>
-</tr>
-<tr>
-<td>`400 Bad Request`</td>
-<td>`COMMON_400_1` 또는 `INVALID_PAYROLL_REQUEST`</td>
-<td>입력값 또는 급여 설정 값이 올바르지 않습니다.</td>
-<td>DTO 검증, 적용 기간, 급여형태별 필수 금액 등이 올바르지 않습니다.</td>
-</tr>
-<tr>
-<td>`404 Not Found`</td>
-<td>`PAYROLL_NOT_FOUND`</td>
-<td>급여를 찾을 수 없습니다.</td>
-<td>활성 직원을 찾을 수 없습니다.</td>
-</tr>
-<tr>
-<td>`409 Conflict`</td>
-<td>`COMPENSATION_PERIOD_OVERLAP`</td>
-<td>급여 설정 적용 기간이 겹칩니다.</td>
-<td>계약·동일 고정수당·통상시급의 기간이 겹칩니다.</td>
-</tr>
-</table>
+
+| HTTP 상태 | code | message | 발생 조건 |
+| --- | --- | --- | --- |
+| `401 Unauthorized` | `COMMON_401_1` 또는 `AUTH_401_*` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않습니다. |
+| `403 Forbidden` | `COMMON_403_1` | 접근 권한이 없습니다. | `PAYROLL:MANAGE` 권한이 없습니다. |
+| `400 Bad Request` | `COMMON_400_1` 또는 `INVALID_PAYROLL_REQUEST` | 입력값 또는 급여 설정 값이 올바르지 않습니다. | DTO 검증, 적용 기간, 급여형태별 필수 금액 등이 올바르지 않습니다. |
+| `404 Not Found` | `PAYROLL_NOT_FOUND` | 급여를 찾을 수 없습니다. | 활성 직원을 찾을 수 없습니다. |
+| `409 Conflict` | `COMPENSATION_PERIOD_OVERLAP` | 급여 설정 적용 기간이 겹칩니다. | 계약·동일 고정수당·통상시급의 기간이 겹칩니다. |
+
 ## 비즈니스 규칙
 - 요청에 포함된 설정 영역만 저장하고, 응답에는 세 영역의 전체 이력을 반환합니다.
 - 신규 계약·통상시급 등록 시 기존 무기한 이력은 새 적용일 전날로 종료됩니다.
@@ -3474,22 +2403,17 @@ Response Body
 ## 21. Mailgun 급여명세서 이메일 상태 Webhook
 
 - Notion: [원문 페이지](https://app.notion.com/p/3ba13f22e20281128f24cf5dd7c5767a?pvs=204)
+- Method·URI: `POST /api/webhooks/mailgun`
 
-<callout icon="🔐" color="yellow_bg">
-	사용자 Access Token은 사용하지 않습니다. Mailgun의 HTTP Webhook Signing Key로 HMAC 서명을 검증합니다.
-</callout>
-# **\[request\]**
+> 🔐 사용자 Access Token은 사용하지 않습니다. Mailgun의 HTTP Webhook Signing Key로 HMAC 서명을 검증합니다.
+
+# **[request]**
 Request Header
-<table header-row="true">
-<tr>
-<td>name</td>
-<td>description</td>
-</tr>
-<tr>
-<td>`Content-Type`</td>
-<td>`application/json`입니다.</td>
-</tr>
-</table>
+
+| name | description |
+| --- | --- |
+| `Content-Type` | `application/json`입니다. |
+
 Request Parameter
 없음
 Request Query Parameter
@@ -3520,84 +2444,26 @@ Request Body
   }
 }
 ```
-<table header-row="true">
-<tr>
-<td>name</td>
-<td>type</td>
-<td>required</td>
-<td>설명</td>
-</tr>
-<tr>
-<td>`signature.timestamp`</td>
-<td>`String`</td>
-<td>`true`</td>
-<td>Mailgun 서명 생성 시각입니다.</td>
-</tr>
-<tr>
-<td>`signature.token`</td>
-<td>`String`</td>
-<td>`true`</td>
-<td>Mailgun 서명 토큰입니다.</td>
-</tr>
-<tr>
-<td>`signature.signature`</td>
-<td>`String`</td>
-<td>`true`</td>
-<td>검증할 HMAC 서명입니다.</td>
-</tr>
-<tr>
-<td>`event-data.event`</td>
-<td>`String`</td>
-<td>`true`</td>
-<td>`delivered` 또는 `failed` 등의 Mailgun 이벤트입니다.</td>
-</tr>
-<tr>
-<td>`event-data.severity`</td>
-<td>`String`</td>
-<td>`false`</td>
-<td>실패 이벤트의 `permanent` 여부입니다.</td>
-</tr>
-<tr>
-<td>`event-data.timestamp`</td>
-<td>`Number`</td>
-<td>`false`</td>
-<td>이벤트 Unix epoch 초입니다.</td>
-</tr>
-<tr>
-<td>`event-data.user-variables.deliveryToken`</td>
-<td>`String`</td>
-<td>`true`</td>
-<td>발송 시 서버가 Mailgun에 전달한 내부 매칭 토큰입니다.</td>
-</tr>
-<tr>
-<td>`event-data.message.headers.message-id`</td>
-<td>`String`</td>
-<td>`false`</td>
-<td>Mailgun 메시지 식별자입니다.</td>
-</tr>
-<tr>
-<td>`event-data.delivery-status.message`</td>
-<td>`String`</td>
-<td>`false`</td>
-<td>실패 사유 또는 전달 상태 메시지입니다.</td>
-</tr>
-</table>
-# **\[response\]**
+
+| name | type | required | 설명 |
+| --- | --- | --- | --- |
+| `signature.timestamp` | `String` | `true` | Mailgun 서명 생성 시각입니다. |
+| `signature.token` | `String` | `true` | Mailgun 서명 토큰입니다. |
+| `signature.signature` | `String` | `true` | 검증할 HMAC 서명입니다. |
+| `event-data.event` | `String` | `false` | `delivered` 또는 `failed` 등의 Mailgun 이벤트입니다. 없거나 처리 대상이 아니면 상태를 변경하지 않고 200으로 응답합니다. |
+| `event-data.severity` | `String` | `false` | 실패 이벤트의 `permanent` 여부입니다. |
+| `event-data.timestamp` | `Number` | `false` | 이벤트 Unix epoch 초입니다. |
+| `event-data.user-variables.deliveryToken` | `String` | `false` | 발송 시 서버가 Mailgun에 전달한 내부 매칭 토큰입니다. 없거나 연결된 발송 이력이 없으면 상태를 변경하지 않고 200으로 응답합니다. |
+| `event-data.message.headers.message-id` | `String` | `false` | Mailgun 메시지 식별자입니다. |
+| `event-data.delivery-status.message` | `String` | `false` | 실패 사유 또는 전달 상태 메시지입니다. |
+
+# **[response]**
 ### 성공코드
-<table header-row="true">
-<tr>
-<td>HTTP 상태</td>
-<td>code</td>
-<td>message</td>
-<td>description</td>
-</tr>
-<tr>
-<td>`200 OK`</td>
-<td>`PAYROLL_200_16`</td>
-<td>이메일 발송 상태를 반영했습니다.</td>
-<td>유효한 Webhook을 멱등 처리합니다.</td>
-</tr>
-</table>
+
+| HTTP 상태 | code | message | description |
+| --- | --- | --- | --- |
+| `200 OK` | `PAYROLL_200_16` | 이메일 발송 상태를 반영했습니다. | 유효한 Webhook을 멱등 처리합니다. |
+
 Response Body
 ```json
 {
@@ -3608,47 +2474,24 @@ Response Body
 }
 ```
 ### Response Field
-<table header-row="true">
-<tr>
-<td>name</td>
-<td>설명</td>
-</tr>
-<tr>
-<td>`status`</td>
-<td>HTTP 상태 코드입니다.</td>
-</tr>
-<tr>
-<td>`code`</td>
-<td>서비스 응답 코드입니다.</td>
-</tr>
-<tr>
-<td>`message`</td>
-<td>응답 메시지입니다.</td>
-</tr>
-<tr>
-<td>`data`</td>
-<td>반환 데이터가 없어 null입니다.</td>
-</tr>
-</table>
+
+| name | 설명 |
+| --- | --- |
+| `status` | HTTP 상태 코드입니다. |
+| `code` | 서비스 응답 코드입니다. |
+| `message` | 응답 메시지입니다. |
+| `data` | 반환 데이터가 없어 null입니다. |
+
 ### 실패 코드
-<table header-row="true">
-<tr>
-<td>HTTP 상태</td>
-<td>code</td>
-<td>message</td>
-<td>발생 조건</td>
-</tr>
-<tr>
-<td>`401 Unauthorized`</td>
-<td>`PAYROLL_EMAIL_401_1`</td>
-<td>Mailgun Webhook 서명이 올바르지 않습니다.</td>
-<td>HMAC 서명 검증에 실패했습니다.</td>
-</tr>
-</table>
+
+| HTTP 상태 | code | message | 발생 조건 |
+| --- | --- | --- | --- |
+| `401 Unauthorized` | `PAYROLL_EMAIL_401_1` | Mailgun Webhook 서명이 올바르지 않습니다. | HMAC 서명 검증에 실패했습니다. |
+
 ## 비즈니스 규칙
+- 서명 timestamp는 서버 현재 시각과 5분을 초과하여 차이 나면 서명 검증 실패로 처리합니다.
 - `delivered` 이벤트는 `DELIVERED`와 deliveredAt을 기록합니다.
 - `permanent_fail` 또는 severity가 `permanent`인 `failed` 이벤트는 `FAILED`와 실패 사유를 기록합니다.
 - 일시 실패 등 그 밖의 이벤트는 상태를 변경하지 않고 200으로 응답합니다.
 - 유효한 deliveryToken과 연결되지 않은 이벤트도 상태를 변경하지 않고 200으로 응답합니다.
 - 이 Webhook의 성공은 최종 사용자가 메일을 열람했다는 의미가 아니라 수신 메일 서버까지 전달됐음을 의미합니다.
-

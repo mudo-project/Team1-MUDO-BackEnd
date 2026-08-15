@@ -20,3 +20,8 @@
 - 일반 파일은 Staff 버킷(`AWS_S3_STAFF_BUCKET_NAME`)을 사용한다.
 - 급여명세서는 Finance 버킷(`AWS_S3_FINANCE_BUCKET_NAME`)만 사용한다.
 - Key 형식은 `tenants/{tenantId}/payroll-statements/{yyyy}/{mm}/{uuid}.pdf`다.
+
+## 세부 문서
+
+- [Payroll API 명세](PAYROLL_API_SPEC.md)
+- [급여명세서 프론트엔드 디자인 가이드](PAYROLL_STATEMENT_FRONTEND_DESIGN_GUIDE.md)

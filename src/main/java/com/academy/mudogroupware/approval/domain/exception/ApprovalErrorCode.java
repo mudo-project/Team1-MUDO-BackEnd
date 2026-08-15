@@ -17,6 +17,8 @@ public enum ApprovalErrorCode implements ErrorCode {
     TEMPLATE_NAME_REQUIRED(HttpStatus.BAD_REQUEST, "APPROVAL_400_4", "템플릿 이름은 비어 있을 수 없습니다."),
     INVALID_LEAVE_PERIOD(HttpStatus.BAD_REQUEST, "APPROVAL_400_5",
             "휴가 기간은 시작일과 종료일을 함께 입력해야 하며, 종료일은 시작일보다 빠를 수 없습니다."),
+    APPROVER_SELF_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "APPROVAL_400_6", "신청자는 본인을 결재자로 지정할 수 없습니다."),
+    DUPLICATE_APPROVER(HttpStatus.BAD_REQUEST, "APPROVAL_400_7", "같은 결재자를 결재선에 중복 지정할 수 없습니다."),
 
     DOCUMENT_ACCESS_DENIED(HttpStatus.FORBIDDEN, "APPROVAL_403_1", "해당 결재를 조회할 권한이 없습니다."),
     NOT_DOCUMENT_OWNER_RESUBMIT(HttpStatus.FORBIDDEN, "APPROVAL_403_3", "본인이 신청한 결재만 재상신할 수 있습니다."),
