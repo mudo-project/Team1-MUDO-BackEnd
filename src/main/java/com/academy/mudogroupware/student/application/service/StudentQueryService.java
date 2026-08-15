@@ -17,6 +17,7 @@ import com.academy.mudogroupware.student.domain.exception.StudentErrorCode;
 import com.academy.mudogroupware.student.domain.exception.StudentException;
 import com.academy.mudogroupware.student.domain.model.Enrollment;
 import com.academy.mudogroupware.student.domain.model.Student;
+import com.academy.mudogroupware.student.domain.model.StudentSortDirection;
 import com.academy.mudogroupware.student.domain.repository.EnrollmentRepository;
 import com.academy.mudogroupware.student.domain.repository.StudentRepository;
 
@@ -33,7 +34,13 @@ public class StudentQueryService implements StudentQueryUseCase {
 
     @Override
     public PageResult<StudentSummary> getStudents(String keyword, int page, int size) {
-        PageResult<Student> result = studentRepository.findAll(keyword, page, size);
+        return getStudents(keyword, page, size, StudentSortDirection.ASC);
+    }
+
+    @Override
+    public PageResult<StudentSummary> getStudents(String keyword, int page, int size,
+                                                  StudentSortDirection direction) {
+        PageResult<Student> result = studentRepository.findAll(keyword, page, size, direction);
         List<Long> studentIds = result.content().stream().map(Student::getId).toList();
         Map<Long, Long> activeEnrollmentCounts = enrollmentRepository.countActiveByStudentIds(studentIds);
 

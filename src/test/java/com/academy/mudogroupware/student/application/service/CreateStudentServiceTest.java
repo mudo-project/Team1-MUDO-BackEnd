@@ -60,6 +60,21 @@ class CreateStudentServiceTest {
     }
 
     @Test
+    void createsRetakeStudent() {
+        Long studentId = service.createStudent(new CreateStudentCommand(
+                "박민서",
+                StudentGrade.RETAKE,
+                "서울여자대학교",
+                "010-5803-5011",
+                "010-7777-7777",
+                "컴퓨터 공학과"
+        ));
+
+        Student saved = studentRepository.findById(studentId).orElseThrow();
+        assertThat(saved.getGrade()).isEqualTo(StudentGrade.RETAKE);
+    }
+
+    @Test
     void throwsWhenStudentLimitReached() {
         for (int i = 0; i < 50; i++) {
             studentRepository.save(Student.create("학생" + i, StudentGrade.HIGH_1, "무도고",

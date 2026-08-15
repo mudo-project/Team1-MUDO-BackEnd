@@ -1,4 +1,4 @@
-# 강의 관리 API
+﻿# 강의 관리 API
 
 기준일: 2026-08-14
 
@@ -63,16 +63,30 @@
 {
   "name": "고1 수학 정규반",
   "classType": "CLASS",
-  "dayOfWeek": "MONDAY",
   "classroomCode": "A101",
-  "startTime": "19:00:00",
-  "endTime": "21:00:00",
   "grade": "HIGH_1",
   "teacherName": "김선생",
   "subjectName": "수학",
   "termName": "2026 1학기",
   "feeType": "PER_MONTH",
-  "feeAmount": 300000
+  "feeAmount": 300000,
+  "schedules": [
+    {
+      "dayOfWeek": "MONDAY",
+      "startTime": "19:00:00",
+      "endTime": "21:00:00"
+    },
+    {
+      "dayOfWeek": "WEDNESDAY",
+      "startTime": "19:00:00",
+      "endTime": "21:00:00"
+    },
+    {
+      "dayOfWeek": "FRIDAY",
+      "startTime": "19:00:00",
+      "endTime": "21:00:00"
+    }
+  ]
 }
 ```
 
@@ -86,10 +100,14 @@
 |---|---|---:|---|---|
 | `name` | `String` | true | `"고1 수학 정규반"` | 강의명 |
 | `classType` | `ClassType` | true | `CLASS` | 강의 유형. 허용값과 의미는 공통 Enum `ClassType` 참고 |
-| `dayOfWeek` | `DayOfWeek` | true | `MONDAY` | 수업 요일. 허용값은 공통 Enum `DayOfWeek` 참고 |
+| `dayOfWeek` | `DayOfWeek` | false | `MONDAY` | 단건 시간표 호환용 필드. `schedules`가 없을 때 `startTime`, `endTime`과 함께 사용 |
 | `classroomCode` | `String` | true | `"A101"` | 교실 코드/이름. 기존 교실이 없으면 새 교실로 생성될 수 있음 |
-| `startTime` | `LocalTime` | true | `"19:00:00"` | 시작 시간. `HH:mm:ss` 형식 |
-| `endTime` | `LocalTime` | true | `"21:00:00"` | 종료 시간. `startTime`보다 늦어야 함 |
+| `startTime` | `LocalTime` | false | `"19:00:00"` | 단건 시간표 호환용 시작 시간. `HH:mm:ss` 형식 |
+| `endTime` | `LocalTime` | false | `"21:00:00"` | 단건 시간표 호환용 종료 시간. `startTime`보다 늦어야 함 |
+| `schedules` | `ScheduleRequest[]` | false | `[{...}]` | 여러 요일 시간표 배열. 월/수/금 강의처럼 여러 행을 보낼 때 사용 |
+| `schedules[].dayOfWeek` | `DayOfWeek` | true | `MONDAY` | 수업 요일. 허용값은 공통 Enum `DayOfWeek` 참고 |
+| `schedules[].startTime` | `LocalTime` | true | `"19:00:00"` | 시작 시간. `HH:mm:ss` 형식 |
+| `schedules[].endTime` | `LocalTime` | true | `"21:00:00"` | 종료 시간. `startTime`보다 늦어야 함 |
 | `grade` | `Grade` | false | `HIGH_1` | 대상 학년. 허용값은 공통 Enum `Grade` 참고 |
 | `teacherName` | `String` | false | `"김선생"` | 선생님 표시명 |
 | `subjectName` | `String` | false | `"수학"` | 과목명. 기존 과목이 없으면 새 과목으로 생성될 수 있음 |
@@ -232,43 +250,54 @@
 | name | type | required | description |
 |---|---|---:|---|
 | `lectureId` | `Long` | true | 수정할 강의 id입니다. |
-
 ### Request Body
 
-등록 API와 같은 단일 요일/시간대 형태를 사용합니다.
+`schedules` array can be used for multiple weekly schedule rows. Legacy `dayOfWeek`, `startTime`, and `endTime` fields are still supported for one schedule row.
 
 ```json
 {
-  "name": "고2 수학 특강",
+  "name": "High 2 Math Special",
   "classType": "SPECIAL",
-  "dayOfWeek": "TUESDAY",
   "classroomCode": "B201",
-  "startTime": "10:00:00",
-  "endTime": "12:00:00",
   "grade": "HIGH_2",
-  "teacherName": "박선생",
-  "subjectName": "수학",
-  "termName": "2026 여름방학",
+  "teacherName": "Teacher Park",
+  "subjectName": "Math",
+  "termName": "2026 Summer",
   "feeType": "PER_MONTH",
-  "feeAmount": 320000
+  "feeAmount": 320000,
+  "schedules": [
+    {
+      "dayOfWeek": "MONDAY",
+      "startTime": "10:00:00",
+      "endTime": "12:00:00"
+    },
+    {
+      "dayOfWeek": "WEDNESDAY",
+      "startTime": "10:00:00",
+      "endTime": "12:00:00"
+    }
+  ]
 }
 ```
 
-| name | type | required | 설명 |
+| name | type | required | description |
 |---|---|---:|---|
-| `name` | `String` | true | 강의명입니다. |
-| `classType` | `ClassType` | true | 강의 유형입니다. `CLASS`, `SPECIAL`, `CLINIC`, `STANDING`, `EXAM` 중 하나입니다. |
-| `dayOfWeek` | `DayOfWeek` | true | 강의 요일입니다. 예: `MONDAY`, `TUESDAY` |
-| `classroomCode` | `String` | true | 교실 코드/이름입니다. |
-| `startTime` | `LocalTime` | true | 시작 시간입니다. 예: `10:00:00` |
-| `endTime` | `LocalTime` | true | 종료 시간입니다. 예: `12:00:00` |
-| `grade` | `Grade` | false | 대상 학년입니다. |
-| `teacherName` | `String` | false | 담당 선생님 이름입니다. |
-| `subjectName` | `String` | false | 과목명입니다. |
-| `termName` | `String` | false | 시수/학기/기간명입니다. |
-| `feeType` | `FeeType` | false | 수강료 정책입니다. `PER_SESSION`, `PER_MONTH` 중 하나입니다. |
-| `feeAmount` | `Integer` | false | 수강료 금액입니다. |
-
+| `name` | `String` | true | Lecture name. |
+| `classType` | `ClassType` | true | Lecture type. One of `CLASS`, `SPECIAL`, `CLINIC`, `STANDING`, `EXAM`. |
+| `classroomCode` | `String` | true | Classroom code or display name. |
+| `grade` | `Grade` | false | Target grade. |
+| `teacherName` | `String` | false | Teacher display name. |
+| `subjectName` | `String` | false | Subject display name. |
+| `termName` | `String` | false | Term display name. |
+| `feeType` | `FeeType` | false | Fee type. One of `PER_SESSION`, `PER_MONTH`. |
+| `feeAmount` | `Integer` | false | Fee amount. |
+| `schedules` | `ScheduleRequest[]` | false | Multiple weekly schedule rows. Prefer this for new clients. |
+| `schedules[].dayOfWeek` | `DayOfWeek` | true | Class day. Example: `MONDAY`, `WEDNESDAY`. |
+| `schedules[].startTime` | `LocalTime` | true | Start time. Format: `HH:mm:ss`. |
+| `schedules[].endTime` | `LocalTime` | true | End time. Must be later than `startTime`. |
+| `dayOfWeek` | `DayOfWeek` | false | Legacy single-schedule field. Used only when `schedules` is empty. |
+| `startTime` | `LocalTime` | false | Legacy single-schedule start time. |
+| `endTime` | `LocalTime` | false | Legacy single-schedule end time. |
 ### Response
 
 ```json
