@@ -9,6 +9,8 @@ import com.academy.mudogroupware.platform.domain.model.ApiCallMetric;
 import com.academy.mudogroupware.platform.domain.model.DashboardPeriod;
 import com.academy.mudogroupware.platform.infrastructure.PlatformDashboardProperties;
 import com.fasterxml.jackson.databind.JsonNode;
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -17,7 +19,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -56,18 +57,28 @@ public class PrometheusOperationalMetricsAdapter implements OperationalMetricsPo
   public Map<String, List<ApiCallMetric>> apiCallMetricsByAcademy(List<AcademyRuntime> academies, DashboardPeriod period) {
     String tenantMatcher = tenantMatcher(academies);
     String window = window(period);
-    Map<String, List<ApiCallMetric>> byAcademy = new ConcurrentHashMap<>();
+    // 학원마다 11개 카테고리를 항상 채운다(activity 없는 조합은 count 0) — operational-metrics의
+    // apiCallMetrics()와 동일한 규칙으로 맞춰, 클라이언트가 "배열에 없으면 0"을 직접 처리하지 않게 한다.
+    Map<String, Map<String, Long>> countsByTenantAndCategory = new ConcurrentHashMap<>();
     List<CompletableFuture<Void>> futures = API_CATEGORIES.stream()
         .map(category -> CompletableFuture.runAsync(() -> {
           Map<String, Long> countsByTenant = scalarByTenant(
               "sum by (tenant) (increase(http_server_requests_seconds_count{tenant=~\"%s\",method=~\"%s\",uri=~\"%s\"}[%s]))"
                   .formatted(tenantMatcher, category.methodPattern(), category.uriPattern(), window));
-          countsByTenant.forEach((tenant, count) -> byAcademy
-              .computeIfAbsent(tenant, ignored -> new CopyOnWriteArrayList<>())
-              .add(new ApiCallMetric(category.name(), count)));
+          countsByTenant.forEach((tenant, count) -> countsByTenantAndCategory
+              .computeIfAbsent(tenant, ignored -> new ConcurrentHashMap<>())
+              .put(category.name(), count));
         }, executor))
         .toList();
     futures.forEach(CompletableFuture::join);
+
+    Map<String, List<ApiCallMetric>> byAcademy = new java.util.LinkedHashMap<>();
+    for (AcademyRuntime academy : academies) {
+      Map<String, Long> counts = countsByTenantAndCategory.getOrDefault(academy.code(), Map.of());
+      byAcademy.put(academy.code(), API_CATEGORIES.stream()
+          .map(category -> new ApiCallMetric(category.name(), counts.getOrDefault(category.name(), 0L)))
+          .toList());
+    }
     return byAcademy;
   }
 
@@ -89,11 +100,19 @@ public class PrometheusOperationalMetricsAdapter implements OperationalMetricsPo
     return (int) scalar("sum(hikaricp_connections_active{tenant=~\"%s\"})".formatted(tenantMatcher(academies)));
   }
 
+  private JsonNode executeQuery(String query) {
+    // PromQL은 label selector에 {..."..."~...|...} 같은 문자를 쓰는데, UriComponentsBuilder는
+    // '{'/'}'를 URI 템플릿 변수 문법으로 취급해 encode()를 거쳐도 그대로 남긴다({}/"/| 는 URI
+    // query에서 허용되지 않는 문자라 URISyntaxException이 난다). URLEncoder로 직접
+    // percent-encode해서 템플릿 해석 자체를 우회한다.
+    String encodedQuery = java.net.URLEncoder.encode(query, StandardCharsets.UTF_8);
+    URI uri = URI.create(properties.getPrometheusUrl() + "/api/v1/query?query=" + encodedQuery);
+    return RestClient.create().get().uri(uri).retrieve().body(JsonNode.class);
+  }
+
   private double scalar(String query) {
     try {
-      JsonNode root = RestClient.create(properties.getPrometheusUrl())
-          .get().uri(uri -> uri.path("/api/v1/query").queryParam("query", query).build())
-          .retrieve().body(JsonNode.class);
+      JsonNode root = executeQuery(query);
       JsonNode result = root.path("data").path("result");
       if (!"success".equals(root.path("status").asText()) || result.isEmpty()) return 0;
       return result.get(0).path("value").get(1).asDouble(0);
@@ -104,9 +123,7 @@ public class PrometheusOperationalMetricsAdapter implements OperationalMetricsPo
 
   private Map<String, Long> scalarByTenant(String query) {
     try {
-      JsonNode root = RestClient.create(properties.getPrometheusUrl())
-          .get().uri(uri -> uri.path("/api/v1/query").queryParam("query", query).build())
-          .retrieve().body(JsonNode.class);
+      JsonNode root = executeQuery(query);
       JsonNode result = root.path("data").path("result");
       if (!"success".equals(root.path("status").asText()) || result.isEmpty()) return Map.of();
       Map<String, Long> counts = new java.util.LinkedHashMap<>();
