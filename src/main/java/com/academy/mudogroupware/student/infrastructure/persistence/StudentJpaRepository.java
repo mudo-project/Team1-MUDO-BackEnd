@@ -25,6 +25,18 @@ public interface StudentJpaRepository extends JpaRepository<StudentEntity, Long>
             Pageable pageable
     );
 
+    @Query("""
+            select s
+            from StudentEntity s
+            where s.deletedAt is null
+              and (:keyword is null or :keyword = '' or s.name like concat('%', :keyword, '%'))
+            order by s.name desc, s.id desc
+            """)
+    Slice<StudentEntity> findAllByKeywordOrderByNameDesc(
+            @Param("keyword") String keyword,
+            Pageable pageable
+    );
+
     Optional<StudentEntity> findByIdAndDeletedAtIsNull(Long id);
 
     long countByDeletedAtIsNull();
