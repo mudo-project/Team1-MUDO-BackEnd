@@ -246,7 +246,8 @@ Response Body
     "expenseCategory": null,
     "purpose": null,
     "approvalDocumentId": null,
-    "status": "UNWRITTEN"
+    "status": "UNWRITTEN",
+    "approvalLines": null
   }
 }
 ```
@@ -311,6 +312,26 @@ Response Body
 <tr>
 <td>`data.status`</td>
 <td>`UNWRITTEN`, `IN_PROGRESS`, `APPROVED`, `REJECTED` 중 하나입니다.</td>
+</tr>
+<tr>
+<td>`data.approvalLines`</td>
+<td>실제 결재 문서의 결재선입니다. 미상신이거나 결재선이 없으면 null입니다.</td>
+</tr>
+<tr>
+<td>`data.approvalLines[].approverId`</td>
+<td>결재자 식별자입니다.</td>
+</tr>
+<tr>
+<td>`data.approvalLines[].approverName`</td>
+<td>현재 결재자 이름이며 사용자를 찾을 수 없으면 null입니다.</td>
+</tr>
+<tr>
+<td>`data.approvalLines[].positionName`</td>
+<td>조회 시점에 결재자에게 배정된 현재 역할 이름이며 역할이 없으면 null입니다.</td>
+</tr>
+<tr>
+<td>`data.approvalLines[].stepOrder`</td>
+<td>1부터 시작하는 결재 순서입니다.</td>
 </tr>
 </table>
 ### 실패 코드

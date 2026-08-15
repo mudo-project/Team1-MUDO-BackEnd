@@ -55,4 +55,14 @@ public class S3FileStorageAdapter implements FileStoragePort {
       throw new S3StorageException(e);
     }
   }
+
+  public long headObjectSize(String k) {
+    try {
+      return client
+          .headObject(HeadObjectRequest.builder().bucket(p.staffBucket()).key(k).build())
+          .contentLength();
+    } catch (S3Exception e) {
+      throw new S3StorageException(e);
+    }
+  }
 }

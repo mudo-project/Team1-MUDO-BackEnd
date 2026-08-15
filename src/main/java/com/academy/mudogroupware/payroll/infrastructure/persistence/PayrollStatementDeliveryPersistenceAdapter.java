@@ -6,6 +6,7 @@ import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.List;
@@ -207,6 +208,28 @@ public class PayrollStatementDeliveryPersistenceAdapter implements PayrollStatem
         + "and (d.last_reconciled_at is null or d.last_reconciled_at<=?) "
         + "order by coalesce(d.last_reconciled_at, d.requested_at), d.delivery_id limit ?",
         this::mapDelivery, sentBefore, reconciledBefore, limit);
+  }
+
+  @Override
+  public Optional<LocalDateTime> findNextWakeupAt(
+      Duration sendingTimeout, Duration reconcileAfter, Duration reconcileCooldown) {
+    LocalDateTime next = jdbc.queryForObject("select min(next_at) from ("
+            + "select min(requested_at) next_at from payroll_statement_delivery "
+            + "where status='PENDING' union all "
+            + "select min(next_attempt_at) next_at from payroll_statement_delivery "
+            + "where status='RETRY_WAIT' union all "
+            + "select min(timestampadd(second, ?, sending_started_at)) next_at "
+            + "from payroll_statement_delivery where status='SENDING' union all "
+            + "select min(case when status='SENT' then greatest("
+            + "timestampadd(second, ?, sent_at), "
+            + "coalesce(timestampadd(second, ?, last_reconciled_at), sent_at)) "
+            + "else coalesce(timestampadd(second, ?, last_reconciled_at), "
+            + "failed_at, requested_at) end) next_at "
+            + "from payroll_statement_delivery where status in ('SENT','UNKNOWN')"
+            + ") delivery_schedule",
+        LocalDateTime.class, sendingTimeout.toSeconds(), reconcileAfter.toSeconds(),
+        reconcileCooldown.toSeconds(), reconcileCooldown.toSeconds());
+    return Optional.ofNullable(next);
   }
 
   @Override

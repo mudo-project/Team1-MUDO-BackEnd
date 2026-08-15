@@ -1,6 +1,7 @@
 package com.academy.mudogroupware.payroll.application.port.out;
 
 import com.academy.mudogroupware.payroll.domain.model.PayrollTypes.DeliveryStatus;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.List;
@@ -31,6 +32,8 @@ public interface PayrollStatementDeliveryPort {
   Optional<DeliveryData> findByToken(String deliveryToken);
   List<DeliveryData> findReconciliationCandidates(
       LocalDateTime sentBefore, LocalDateTime reconciledBefore, int limit);
+  Optional<LocalDateTime> findNextWakeupAt(
+      Duration sendingTimeout, Duration reconcileAfter, Duration reconcileCooldown);
   void markReconciled(Long deliveryId, LocalDateTime reconciledAt);
   OperationalSnapshot getOperationalSnapshot(LocalDateTime now);
   List<DeliveryData> findByBatch(Long batchId, int limit, int offset);

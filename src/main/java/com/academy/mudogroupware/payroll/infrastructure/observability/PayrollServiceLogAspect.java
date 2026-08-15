@@ -14,19 +14,39 @@ public class PayrollServiceLogAspect {
 
   @Around("execution(public * com.academy.mudogroupware.payroll.application.service..*(..))")
   public Object logServiceEvent(ProceedingJoinPoint joinPoint) throws Throwable {
+    if (isEmailDispatch(joinPoint)) return joinPoint.proceed();
+
     String action = snake(joinPoint.getSignature().getDeclaringType().getSimpleName()) + "_"
         + snake(joinPoint.getSignature().getName());
     Object key = firstSafeKey(joinPoint.getArgs());
-    log.info("event=payroll_{}_시작 requestKey={}", action, key);
+    boolean debugOnly = isDispatchBatchSizeLookup(joinPoint);
+    if (debugOnly) log.debug("event=payroll_{}_시작 requestKey={}", action, key);
+    else log.info("event=payroll_{}_시작 requestKey={}", action, key);
     try {
       Object result = joinPoint.proceed();
-      log.info("event=payroll_{}_완료 requestKey={}, result=success", action, key);
+      if (debugOnly) {
+        log.debug("event=payroll_{}_완료 requestKey={}, result=success", action, key);
+      } else {
+        log.info("event=payroll_{}_완료 requestKey={}, result=success", action, key);
+      }
       return result;
     } catch (Throwable e) {
       log.warn("event=payroll_{}_실패 requestKey={}, errorType={}",
           action, key, e.getClass().getSimpleName());
       throw e;
     }
+  }
+
+  private boolean isEmailDispatch(ProceedingJoinPoint joinPoint) {
+    return "PayrollStatementEmailDispatchService".equals(
+        joinPoint.getSignature().getDeclaringType().getSimpleName())
+        && "dispatch".equals(joinPoint.getSignature().getName());
+  }
+
+  private boolean isDispatchBatchSizeLookup(ProceedingJoinPoint joinPoint) {
+    return "PayrollStatementEmailPolicy".equals(
+        joinPoint.getSignature().getDeclaringType().getSimpleName())
+        && "dispatchBatchSize".equals(joinPoint.getSignature().getName());
   }
 
   private Object firstSafeKey(Object[] arguments) {

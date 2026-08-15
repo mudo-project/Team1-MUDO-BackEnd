@@ -78,7 +78,7 @@ jobs:
       - name: Build and test application
         run: |
           chmod +x gradlew
-          ./gradlew clean test bootJar --no-daemon
+          ./gradlew test bootJar --no-daemon
           python -m pip install --disable-pip-version-check -r infra/requirements.txt
           python infra/scripts/deploy_production.py --validate-only
 
@@ -127,7 +127,9 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
-          file: Dockerfile
+          file: Dockerfile.ci
+          build-contexts: |
+            prebuilt-jar=build/libs
           push: true
           tags: ${{ steps.ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY }}:${{ github.sha }}
           cache-from: type=gha,scope=production-app

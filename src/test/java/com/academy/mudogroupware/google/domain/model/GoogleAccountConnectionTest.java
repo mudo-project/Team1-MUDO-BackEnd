@@ -49,13 +49,15 @@ class GoogleAccountConnectionTest {
     }
 
     @Test
-    void deriveStatusReturnsExpiringAtSevenDayBoundaryBeforeActualExpiry() {
+    void deriveStatusReturnsExpiringAtThreeDayBoundaryBeforeActualExpiry() {
         LocalDateTime refreshTokenExpiresAt = CONNECTED_AT.plusDays(30);
         GoogleAccountConnection connection = GoogleAccountConnection.connect(
                 "a@b.com", 7L, "scope", "token", CONNECTED_AT, refreshTokenExpiresAt);
 
-        assertThat(connection.deriveStatus(refreshTokenExpiresAt.minusDays(7)))
+        assertThat(connection.deriveStatus(refreshTokenExpiresAt.minusDays(3)))
                 .isEqualTo(GoogleConnectionStatus.EXPIRING);
+        assertThat(connection.deriveStatus(refreshTokenExpiresAt.minusDays(3).minusNanos(1)))
+                .isEqualTo(GoogleConnectionStatus.CONNECTED);
     }
 
     @Test

@@ -98,6 +98,11 @@ class EnrollStudentServiceTest {
         public void markDeleted(Long id, LocalDateTime deletedAt) {
             students.removeIf(student -> student.getId().equals(id));
         }
+
+        @Override
+        public long countAll() {
+            return students.size();
+        }
     }
 
     private static final class FakeEnrollmentRepository implements EnrollmentRepository {

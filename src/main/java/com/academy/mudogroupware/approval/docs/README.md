@@ -20,6 +20,7 @@
 - file: 첨부파일 다운로드 URL 발급은 file 모듈이 공개하는 `GetFileDownloadUrlUseCase`를 직접 주입해서 쓴다(`GetApprovalAttachmentDownloadUrlService`). approval이 신청자/결재선 참여자 검증과 fileId의 문서 소속 검증을 먼저 마친 뒤에만 호출한다 — file 모듈의 범용 다운로드 API는 인증만 되면 fileId를 아는 누구나 호출할 수 있으므로, 그대로 노출하면 결재선과 무관한 사람도 URL을 받을 수 있다.
 - attendance: 휴가 기간이 포함된 결재는 `LeaveRequestSubmittedEvent`와 `ApprovalDocumentDecidedEvent`로 휴가 상태를 전달한다.
 - corporatecard: `ExtractApprovalAttachmentFieldsUseCase`를 corporatecard가 직접 주입해서 쓴다. 결재 문서의 첫 번째 첨부파일에서 Gemini 구조화 출력으로 금액/일자/가맹점을 추출해준다(영수증-카드거래 대사 검증용). REST 엔드포인트는 없고 UseCase만 공개한다.
+- corporatecard: `CorporateCardApprovalSubmissionAdapter`가 상신, 상태, 기본 결재선과 함께 법인카드 상세에 필요한 실제 문서 결재자 ID와 순서를 제공한다.
 - global security: `AuthUser`로 인증 사용자 정보를 받는다.
 
 ## 권한 정책

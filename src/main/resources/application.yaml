@@ -23,6 +23,14 @@ spring:
       max-file-size: 100MB
       max-request-size: 100MB
 
+server:
+  tomcat:
+    mbeanregistry:
+      # Tomcat 스레드풀·글로벌 요청 처리량(바이트) 메트릭은 Tomcat의 JMX MBean에서 값을 읽어오는데,
+      # 기본값(false)이면 이 MBean 자체가 등록되지 않아 tomcat_threads_*, tomcat_global_* 메트릭이
+      # /actuator/prometheus에 아예 안 잡힌다. local/prod 둘 다 항상 켜져 있어야 해서 공통에 둔다.
+      enabled: true
+
 security:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:8080}
@@ -37,16 +45,12 @@ app:
     connect-timeout: ${MAILGUN_CONNECT_TIMEOUT:PT5S}
     read-timeout: ${MAILGUN_READ_TIMEOUT:PT10S}
     sending-timeout: ${MAIL_SENDING_TIMEOUT:PT15M}
-    recovery-interval-ms: ${MAIL_RECOVERY_INTERVAL_MS:300000}
-    dispatch-interval-ms: ${MAIL_DISPATCH_INTERVAL_MS:10000}
     dispatch-batch-size: ${MAIL_DISPATCH_BATCH_SIZE:20}
     max-attempts: ${MAIL_MAX_ATTEMPTS:3}
     retry-base-delay: ${MAIL_RETRY_BASE_DELAY:PT1M}
     retry-max-delay: ${MAIL_RETRY_MAX_DELAY:PT30M}
     reconcile-after: ${MAIL_RECONCILE_AFTER:PT10M}
     reconcile-cooldown: ${MAIL_RECONCILE_COOLDOWN:PT5M}
-    reconcile-interval-ms: ${MAIL_RECONCILE_INTERVAL_MS:300000}
-    metrics-interval-ms: ${MAIL_METRICS_INTERVAL_MS:60000}
   instance:
     tenant-id: ${TENANT_ID:local}
     plan: ${TENANT_PLAN:local}

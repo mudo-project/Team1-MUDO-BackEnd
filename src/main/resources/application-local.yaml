@@ -12,3 +12,16 @@ app:
   payroll:
     statement:
       local-storage-path: ${PAYROLL_LOCAL_STORAGE_PATH:build/local-payroll-statements}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # 로컬 monitoring/prometheus/prometheus.yml이 스크랩하는 /actuator/prometheus를 노출한다.
+        # SecurityConfig에는 이미 permitAll로 등록돼 있어 별도 인증 설정은 필요 없다.
+        include: health,prometheus
+  metrics:
+    distribution:
+      percentiles-histogram:
+        # http.server.requests의 p95/p99 히스토그램 버킷을 Prometheus로 내보낸다.
+        http.server.requests: true

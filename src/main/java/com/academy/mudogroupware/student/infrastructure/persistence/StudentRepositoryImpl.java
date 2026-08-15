@@ -49,6 +49,11 @@ public class StudentRepositoryImpl implements StudentRepository {
         studentJpaRepository.markDeleted(id, deletedAt);
     }
 
+    @Override
+    public long countAll() {
+        return studentJpaRepository.countByDeletedAtIsNull();
+    }
+
     private StudentEntity toNewEntity(Student student) {
         return StudentEntity.builder()
                 .name(student.getName())

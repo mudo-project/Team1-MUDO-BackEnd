@@ -2,6 +2,7 @@
 
 ## 2026-08-14
 
+- `GeminiFieldExtractionAdapter`/`GeminiSummarizerAdapter`가 Gemini 호출 직전에 이번 달 AI 토큰 사용량이 플랜 한도(무료 10만/유료 100만 토큰)를 넘으면 429로 차단하도록 변경했다. `GeminiTokenUsageTracker`는 응답 이후 기록용이라 사전 차단 지점이 될 수 없어, 별도로 `resourceusage`의 월별 합계를 조회한다.
 - 전자결재 문서 보존 정책을 코드와 DB에 반영했다.
 - `approval_document`에 `retention_policy`, `retention_until`, `legal_hold`, `archived_at` 컬럼을 추가했다.
 - 일반 결재는 `GENERAL_BUSINESS`로 생성일 기준 3년, 법인카드/비용정산 결재는 `TAX_EVIDENCE`로 생성일 기준 5년 보존기한을 자동 계산한다.

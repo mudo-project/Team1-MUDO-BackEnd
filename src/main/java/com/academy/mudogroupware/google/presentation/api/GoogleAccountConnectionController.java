@@ -22,9 +22,11 @@ import com.academy.mudogroupware.google.application.usecase.CheckGoogleAccountCo
 import com.academy.mudogroupware.google.application.usecase.CompleteGoogleAccountConnectionUseCase;
 import com.academy.mudogroupware.google.application.usecase.DisconnectGoogleAccountUseCase;
 import com.academy.mudogroupware.google.application.usecase.GetGoogleAccountConnectionUseCase;
+import com.academy.mudogroupware.google.application.usecase.GetGoogleAccountConnectionStatusUseCase;
 import com.academy.mudogroupware.google.application.usecase.StartGoogleAccountConnectionUseCase;
 import com.academy.mudogroupware.google.presentation.api.common.GoogleResponseCode;
 import com.academy.mudogroupware.google.presentation.api.response.GoogleAccountConnectionResponse;
+import com.academy.mudogroupware.google.presentation.api.response.GoogleAccountConnectionStatusResponse;
 import com.academy.mudogroupware.google.presentation.api.response.GoogleAuthorizationUrlResponse;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -44,6 +46,7 @@ public class GoogleAccountConnectionController {
     private final StartGoogleAccountConnectionUseCase startGoogleAccountConnectionUseCase;
     private final CompleteGoogleAccountConnectionUseCase completeGoogleAccountConnectionUseCase;
     private final GetGoogleAccountConnectionUseCase getGoogleAccountConnectionUseCase;
+    private final GetGoogleAccountConnectionStatusUseCase getGoogleAccountConnectionStatusUseCase;
     private final CheckGoogleAccountConnectionUseCase checkGoogleAccountConnectionUseCase;
     private final DisconnectGoogleAccountUseCase disconnectGoogleAccountUseCase;
 
@@ -116,6 +119,19 @@ public class GoogleAccountConnectionController {
                 .map(GoogleAccountConnectionResponse::from)
                 .orElse(null);
         return ResponseEntity.ok(GlobalApiResponse.ok(GoogleResponseCode.CONNECTION_RETRIEVED, response));
+    }
+
+    @Operation(summary = "구글 연동 상태 요약 조회", description = "화면 요약 카드에 표시할 현재 구글 연동 상태만 조회합니다.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "조회 성공"),
+        @ApiResponse(responseCode = "403", description = "원장(academy 관리자) 계정이 아닌 경우")
+    })
+    @PreAuthorize("hasAuthority('ACADEMY:OWNER')")
+    @GetMapping("/status")
+    public ResponseEntity<GlobalApiResponse<GoogleAccountConnectionStatusResponse>> getConnectionStatus() {
+        return ResponseEntity.ok(GlobalApiResponse.ok(
+                GoogleResponseCode.CONNECTION_STATUS_RETRIEVED,
+                new GoogleAccountConnectionStatusResponse(getGoogleAccountConnectionStatusUseCase.getStatus())));
     }
 
     @Operation(summary = "구글 연동 상태 확인", description = "저장된 리프레시 토큰으로 구글에 실제 유효성을 확인합니다.")

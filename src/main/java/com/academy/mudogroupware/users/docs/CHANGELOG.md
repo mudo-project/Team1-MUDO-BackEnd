@@ -1,5 +1,9 @@
 # 📚 계정·권한(users) Changelog
 
+## 2026-08-15 · 직원 계정 생성 시 플랜 한도 체크 추가
+
+- `POST /api/users`(직원 계정 발급)가 생성 직전에 `UserRepository.countActiveUsers()`로 현재 활성 직원 수를 확인하고, 플랜별 한도(무료 20명/유료 500명)를 초과하면 429로 차단합니다. 자세한 설계는 `docs/superpowers/specs/2026-08-15-plan-resource-quota-design.md` 참고.
+
 ## 2026-08-13 · 내 권한 목록 조회 API 추가 🔑
 
 - `GET /api/users/me/permissions`가 추가됐습니다. 로그인 응답과 같은 로직으로 계산한 최종 유효 권한 목록을 다시 조회할 수 있습니다. 로그인 응답엔 이 목록이 있지만 토큰 재발급 응답엔 없어서, 관리자가 역할/권한을 바꿔도 재로그인 전까지 프론트가 최신 권한을 알 방법이 없던 문제를 보완합니다.
