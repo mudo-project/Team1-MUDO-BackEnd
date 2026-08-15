@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 
 import org.junit.jupiter.api.Test;
 
+import com.academy.mudogroupware.memo.domain.exception.MemoErrorCode;
 import com.academy.mudogroupware.memo.domain.exception.MemoException;
 
 class MemoTest {
@@ -48,7 +49,33 @@ class MemoTest {
     @Test
     void createRejectsInvalidColorFormat() {
         assertThatThrownBy(() -> Memo.create(1L, "제목", "내용", "not-a-color", NOW))
+                .isInstanceOf(MemoException.class)
+                .extracting(e -> ((MemoException) e).getErrorCode())
+                .isEqualTo(MemoErrorCode.COLOR_INVALID_FORMAT);
+    }
+
+    @Test
+    void createAcceptsBoundaryValidHexColors() {
+        assertThat(Memo.create(1L, "제목", "내용", "000000", NOW).getColor()).isEqualTo("000000");
+        assertThat(Memo.create(1L, "제목", "내용", "ffffff", NOW).getColor()).isEqualTo("ffffff");
+        assertThat(Memo.create(1L, "제목", "내용", "AbCdEf", NOW).getColor()).isEqualTo("AbCdEf");
+    }
+
+    @Test
+    void createRejectsMalformedHexColors() {
+        assertThatThrownBy(() -> Memo.create(1L, "제목", "내용", "#D3A340", NOW))
                 .isInstanceOf(MemoException.class);
+        assertThatThrownBy(() -> Memo.create(1L, "제목", "내용", "ABCDE", NOW))
+                .isInstanceOf(MemoException.class);
+        assertThatThrownBy(() -> Memo.create(1L, "제목", "내용", "ABCDEFA", NOW))
+                .isInstanceOf(MemoException.class);
+    }
+
+    @Test
+    void restoreDoesNotValidateColorFormat() {
+        Memo memo = Memo.restore(1L, 1L, "제목", "내용", "MUSTARD", null, null, null, null, NOW, NOW);
+
+        assertThat(memo.getColor()).isEqualTo("MUSTARD");
     }
 
     @Test
@@ -121,7 +148,9 @@ class MemoTest {
         Memo memo = Memo.create(1L, "제목", "내용", MUSTARD, NOW);
 
         assertThatThrownBy(() -> memo.updateColor("not-a-color", NOW))
-                .isInstanceOf(MemoException.class);
+                .isInstanceOf(MemoException.class)
+                .extracting(e -> ((MemoException) e).getErrorCode())
+                .isEqualTo(MemoErrorCode.COLOR_INVALID_FORMAT);
     }
 
     @Test
