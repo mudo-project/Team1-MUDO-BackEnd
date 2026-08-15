@@ -63,6 +63,13 @@ class GoogleAccountConnectionSecurityIntegrationTest {
     }
 
     @Test
+    void getConnectionStatusReturns403WhenNotAcademyOwner() throws Exception {
+        mockMvc.perform(get("/api/google/connections/status")
+                        .with(authentication(authenticatedUser())))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void checkConnectionReturns403WhenNotAcademyOwner() throws Exception {
         mockMvc.perform(post("/api/google/connections/check")
                         .with(authentication(authenticatedUser()))

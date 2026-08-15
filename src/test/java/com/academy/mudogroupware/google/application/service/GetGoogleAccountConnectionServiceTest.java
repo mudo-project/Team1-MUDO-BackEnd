@@ -16,6 +16,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.academy.mudogroupware.google.application.query.GoogleAccountConnectionView;
+import com.academy.mudogroupware.google.application.port.GoogleConnectionUserDirectoryPort;
+import com.academy.mudogroupware.google.application.port.GoogleConnectionUserInfo;
 import com.academy.mudogroupware.google.domain.model.GoogleAccountConnection;
 import com.academy.mudogroupware.google.domain.model.GoogleConnectionStatus;
 import com.academy.mudogroupware.google.domain.repository.GoogleAccountConnectionRepository;
@@ -27,13 +29,15 @@ class GetGoogleAccountConnectionServiceTest {
     private static final LocalDateTime CONNECTED_AT = LocalDateTime.of(2026, 7, 1, 0, 0);
 
     @Mock private GoogleAccountConnectionRepository googleAccountConnectionRepository;
+    @Mock private GoogleConnectionUserDirectoryPort googleConnectionUserDirectoryPort;
 
     private GetGoogleAccountConnectionService service;
 
     @BeforeEach
     void setUp() {
         Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
-        service = new GetGoogleAccountConnectionService(googleAccountConnectionRepository, clock);
+        service = new GetGoogleAccountConnectionService(
+                googleAccountConnectionRepository, googleConnectionUserDirectoryPort, clock);
     }
 
     @Test
@@ -49,13 +53,30 @@ class GetGoogleAccountConnectionServiceTest {
                 10L, "academy@mudo.co.kr", 7L, "scope", "refresh-token", CONNECTED_AT,
                 null, CONNECTED_AT, false);
         when(googleAccountConnectionRepository.find()).thenReturn(Optional.of(connection));
+        when(googleConnectionUserDirectoryPort.findByUserId(7L))
+                .thenReturn(Optional.of(new GoogleConnectionUserInfo(7L, "원장")));
 
         Optional<GoogleAccountConnectionView> view = service.getConnection();
 
         assertThat(view).isPresent();
         assertThat(view.get().googleEmail()).isEqualTo("academy@mudo.co.kr");
         assertThat(view.get().connectedByUserId()).isEqualTo(7L);
+        assertThat(view.get().connectedByUserName()).isEqualTo("원장");
         assertThat(view.get().status()).isEqualTo(GoogleConnectionStatus.CONNECTED);
+    }
+
+    @Test
+    void getConnectionReturnsNullConnectorNameWhenHistoricalUserDoesNotExist() {
+        GoogleAccountConnection connection = GoogleAccountConnection.restore(
+                10L, "academy@mudo.co.kr", 7L, "scope", "refresh-token", CONNECTED_AT,
+                null, CONNECTED_AT, false);
+        when(googleAccountConnectionRepository.find()).thenReturn(Optional.of(connection));
+        when(googleConnectionUserDirectoryPort.findByUserId(7L)).thenReturn(Optional.empty());
+
+        Optional<GoogleAccountConnectionView> view = service.getConnection();
+
+        assertThat(view).isPresent();
+        assertThat(view.get().connectedByUserName()).isNull();
     }
 
     @Test

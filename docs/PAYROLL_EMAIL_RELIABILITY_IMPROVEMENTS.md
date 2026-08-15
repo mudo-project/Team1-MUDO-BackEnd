@@ -17,17 +17,17 @@
 
 다음 항목을 구현했다.
 
-1. `PENDING` 영속 폴러
+1. `PENDING` 영속 Delivery Worker
 2. 재시도 상태와 시도 횟수
 3. Mailgun HTTP API 발송
-4. `SENT`, `UNKNOWN` 대사 스케줄러
+4. `SENT`, `UNKNOWN` 단발 대사 예약
 5. 운영 지표와 Prometheus 알림
 
 법인카드 등 다른 도메인의 로직은 이번 이메일 신뢰성 개선 범위에 포함하지 않았다.
 
 ## 3. 설계 의사결정과 Trade-off
 
-### 3.1 영속 폴러와 기존 Delivery 테이블 재사용
+### 3.1 동적 Delivery Worker와 기존 Delivery 테이블 재사용
 
 **개선 전 한계**
 
@@ -38,9 +38,10 @@
 **선택한 방식**
 
 발송 요청을 먼저 `payroll_statement_delivery`에 `PENDING`으로 저장하고, AFTER_COMMIT
-이벤트는 빠른 실행 경로로만 사용한다. 별도의 폴러가 DB에 남은 `PENDING`과 실행 시각이 된
-`RETRY_WAIT`을 주기적으로 조회한다. 실제 발송 전에는 조건부 UPDATE로 `SENDING` 상태를
-선점한다.
+이벤트는 빠른 실행 경로로 사용한다. 발송 요청 커밋과 서버 시작 시 Delivery Worker를
+실행하고, DB에 남은 `PENDING`과 실행 시각이 된 `RETRY_WAIT`을 조회한다. 처리 후에는 DB의
+가장 가까운 재시도·복구·대사 시각에 단발 실행만 예약한다. 실제 발송 전에는 조건부
+UPDATE로 `SENDING` 상태를 선점한다.
 
 **이 방식을 선택한 이유**
 
@@ -144,7 +145,7 @@ Webhook 유실을 구분하기 어려웠다.
 
 **선택한 방식**
 
-Webhook은 빠른 상태 반영 경로로 유지하고, 스케줄러가 오래된 `SENT`와 `UNKNOWN`을 Mailgun
+Webhook은 빠른 상태 반영 경로로 유지하고, Worker가 예약 시각에 오래된 `SENT`와 `UNKNOWN`을 Mailgun
 Logs API에서 다시 조회한다. 결과가 없으면 미접수로 단정하지 않고 기존 상태를 유지한다.
 
 **이 방식을 선택한 이유**
@@ -162,7 +163,7 @@ Webhook과 조회 API는 장애 형태가 다르다. Push 방식의 빠른 반�
 
 - 내부 상태는 즉시 강한 일관성이 아니라 최종적 일관성을 가진다.
 - Mailgun Logs 보존 기간, 조회 지연, 사용량 제한의 영향을 받는다.
-- 대사 스케줄러와 오류 대응 절차를 추가로 운영해야 한다.
+- 단발 대사 예약과 오류 대응 절차를 추가로 운영해야 한다.
 - `NOT_FOUND`는 미접수를 의미하지 않으므로 일부 `UNKNOWN`이 자동으로 종결되지 않을 수 있다.
 
 ### 3.5 DB 기반 운영 지표와 알림
@@ -174,7 +175,7 @@ Webhook과 조회 API는 장애 형태가 다르다. Push 방식의 빠른 반�
 
 **선택한 방식**
 
-DB의 현재 상태를 주기적으로 집계하여 Micrometer Gauge로 노출하고, 대사 오류는 Counter로
+Worker 실행과 상태 변경 시 DB의 현재 상태를 집계하여 Micrometer Gauge로 노출하고, 대사 오류는 Counter로
 기록한다. Prometheus가 정체와 반복 실패 조건을 평가하도록 Alert Rule을 추가한다.
 
 **이 방식을 선택한 이유**
@@ -235,17 +236,17 @@ DB의 현재 상태를 주기적으로 집계하여 Micrometer Gauge로 노출�
   → 트랜잭션 커밋
   → AFTER_COMMIT 비동기 발송 시도
        또는
-     영속 폴러가 PENDING 재조회
+     서버 시작 또는 단발 Worker가 PENDING 재조회
   → 조건부 선점: PENDING/RETRY_WAIT → SENDING
   → PDF 준비
   → Mailgun HTTP API 호출
   → 결과에 따라 SENT / RETRY_WAIT / UNKNOWN / FAILED / SKIPPED
-  → Webhook 또는 대사 스케줄러
+  → Webhook 또는 단발 대사 Worker
   → DELIVERED / FAILED / SENT 보정
 ```
 
 커밋 직후 이벤트가 유실되더라도 Delivery가 DB에 `PENDING`으로 남기 때문에 재기동 후
-폴러가 다시 조회할 수 있다. 여러 서버가 동일 작업을 조회하더라도 조건부 UPDATE에
+서버 시작 Worker가 다시 조회할 수 있다. 여러 서버가 동일 작업을 조회하더라도 조건부 UPDATE에
 성공한 하나의 실행자만 `SENDING` 상태를 획득한다.
 
 ## 5. 상태 모델
@@ -324,7 +325,7 @@ Authentication: Basic api:{MAILGUN_API_KEY}
 
 ## 8. Webhook 유실 대비 대사
 
-대사 스케줄러는 일정 시간이 지난 `SENT`와 `UNKNOWN` 작업을 조회하고 Mailgun의 다음 API를
+Delivery Worker는 예약 시각에 일정 시간이 지난 `SENT`와 `UNKNOWN` 작업을 조회하고 Mailgun의 다음 API를
 호출한다.
 
 ```text

@@ -13,6 +13,8 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 import com.academy.mudogroupware.approval.application.usecase.CreateApprovalDocumentUseCase;
+import com.academy.mudogroupware.approval.domain.model.ApprovalDocument;
+import com.academy.mudogroupware.approval.domain.model.ApprovalDocumentLine;
 import com.academy.mudogroupware.approval.domain.model.ApprovalTemplate;
 import com.academy.mudogroupware.approval.domain.model.ApprovalTemplateLine;
 import com.academy.mudogroupware.approval.domain.repository.ApprovalDocumentRepository;
@@ -25,9 +27,10 @@ class CorporateCardApprovalSubmissionAdapterTest {
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 11, 10, 0);
 
     private final ApprovalTemplateRepository templateRepository = mock(ApprovalTemplateRepository.class);
+    private final ApprovalDocumentRepository documentRepository = mock(ApprovalDocumentRepository.class);
     private final CorporateCardApprovalSubmissionAdapter adapter = new CorporateCardApprovalSubmissionAdapter(
             mock(CreateApprovalDocumentUseCase.class),
-            mock(ApprovalDocumentRepository.class),
+            documentRepository,
             templateRepository,
             mock(ApprovalDocumentJpaRepository.class));
 
@@ -54,5 +57,26 @@ class CorporateCardApprovalSubmissionAdapterTest {
 
         assertThat(template.approverIdsInOrder()).containsExactly(10L);
         verify(templateRepository, never()).save(template);
+    }
+
+    @Test
+    void returnsDocumentApprovalLinesInStepOrder() {
+        ApprovalDocument document = mock(ApprovalDocument.class);
+        ApprovalDocumentLine second = mock(ApprovalDocumentLine.class);
+        ApprovalDocumentLine first = mock(ApprovalDocumentLine.class);
+        when(second.getApproverId()).thenReturn(20L);
+        when(second.getStepOrder()).thenReturn(2);
+        when(first.getApproverId()).thenReturn(10L);
+        when(first.getStepOrder()).thenReturn(1);
+        when(document.getLines()).thenReturn(List.of(second, first));
+        when(documentRepository.findById(99L)).thenReturn(Optional.of(document));
+
+        var result = adapter.findApprovalLines(99L);
+
+        assertThat(result).containsExactly(
+                new com.academy.mudogroupware.corporatecard.application.port.ApprovalSubmissionPort.ApprovalLineInfo(
+                        10L, 1),
+                new com.academy.mudogroupware.corporatecard.application.port.ApprovalSubmissionPort.ApprovalLineInfo(
+                        20L, 2));
     }
 }

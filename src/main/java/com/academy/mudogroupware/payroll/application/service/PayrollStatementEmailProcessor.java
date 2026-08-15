@@ -1,6 +1,7 @@
 package com.academy.mudogroupware.payroll.application.service;
 
 import com.academy.mudogroupware.payroll.application.event.PayrollStatementEmailRequestedEvent;
+import com.academy.mudogroupware.payroll.application.event.PayrollStatementEmailWorkChangedEvent;
 import com.academy.mudogroupware.payroll.application.port.out.PayrollRepository;
 import com.academy.mudogroupware.payroll.application.port.out.PayrollStatementDeliveryPort.DeliveryData;
 import com.academy.mudogroupware.payroll.application.port.out.PayrollStatementEmailSender;
@@ -17,6 +18,7 @@ import java.time.LocalDateTime;
 import java.util.concurrent.locks.ReentrantLock;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.event.TransactionPhase;
@@ -32,6 +34,7 @@ public class PayrollStatementEmailProcessor {
   private final PayrollStatementStoragePort storage;
   private final PayrollStatementEmailSender sender;
   private final PayrollStatementEmailPolicy policy;
+  private final ApplicationEventPublisher events;
   private final ResourceUsageQueryPort resourceUsageQueryPort;
   private final ResourceUsageRecorder resourceUsageRecorder;
   private final CurrentPlanProvider currentPlanProvider;
@@ -45,10 +48,13 @@ public class PayrollStatementEmailProcessor {
   @Async
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void onRequested(PayrollStatementEmailRequestedEvent event) {
-    process(event.deliveryId());
+    try {
+      process(event.deliveryId());
+    } finally {
+      events.publishEvent(new PayrollStatementEmailWorkChangedEvent());
+    }
   }
 
-  @Async
   public void processPending(Long deliveryId) {
     process(deliveryId);
   }

@@ -12,6 +12,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.academy.mudogroupware.payroll.application.event.PayrollStatementEmailRequestedEvent;
+import com.academy.mudogroupware.payroll.application.event.PayrollStatementEmailWorkChangedEvent;
 import com.academy.mudogroupware.payroll.application.port.out.PayrollRepository;
 import com.academy.mudogroupware.payroll.application.port.out.PayrollStatementDeliveryPort.DeliveryData;
 import com.academy.mudogroupware.payroll.application.port.out.PayrollStatementEmailSender;
@@ -37,6 +39,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 @ExtendWith(MockitoExtension.class)
 class PayrollStatementEmailProcessorTest {
@@ -45,6 +48,7 @@ class PayrollStatementEmailProcessorTest {
   @Mock PayrollStatementPort statements;
   @Mock PayrollStatementStoragePort storage;
   @Mock PayrollStatementEmailSender sender;
+  @Mock ApplicationEventPublisher events;
   @Mock Payroll payroll;
   @Mock ResourceUsageQueryPort resourceUsageQueryPort;
   @Mock ResourceUsageRecorder resourceUsageRecorder;
@@ -56,7 +60,7 @@ class PayrollStatementEmailProcessorTest {
     processor = new PayrollStatementEmailProcessor(executor, payrolls, statements, storage, sender,
         new PayrollStatementEmailPolicy(20, 3, Duration.ofMinutes(1), Duration.ofMinutes(30),
             Duration.ofMinutes(10), Duration.ofMinutes(5)),
-        resourceUsageQueryPort, resourceUsageRecorder, currentPlanProvider);
+        events, resourceUsageQueryPort, resourceUsageRecorder, currentPlanProvider);
   }
 
   @Test
@@ -121,6 +125,15 @@ class PayrollStatementEmailProcessorTest {
 
     verify(executor, never()).retry(any(), anyString(), anyString(), any());
     verify(executor, never()).unknown(any(), anyString(), anyString());
+  }
+
+  @Test
+  void 즉시발송이_끝나면_다음_작업시각을_다시_계산하도록_알린다() {
+    when(executor.claim(30L)).thenReturn(Optional.empty());
+
+    processor.onRequested(new PayrollStatementEmailRequestedEvent(30L));
+
+    verify(events).publishEvent(any(PayrollStatementEmailWorkChangedEvent.class));
   }
 
   @Test
