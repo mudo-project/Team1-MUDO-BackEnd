@@ -1,6 +1,7 @@
 package com.academy.mudogroupware.memo.domain.model;
 
 import java.time.LocalDateTime;
+import java.util.regex.Pattern;
 
 import com.academy.mudogroupware.memo.domain.exception.MemoErrorCode;
 import com.academy.mudogroupware.memo.domain.exception.MemoException;
@@ -8,12 +9,13 @@ import com.academy.mudogroupware.memo.domain.exception.MemoException;
 public final class Memo {
 
     private static final int TITLE_MAX_LENGTH = 100;
+    private static final Pattern HEX_COLOR = Pattern.compile("^[0-9A-Fa-f]{6}$");
 
     private final Long id;
     private final Long userId;
     private String title;
     private String content;
-    private MemoColor color;
+    private String color;
     private Integer positionX;
     private Integer positionY;
     private Integer width;
@@ -21,7 +23,7 @@ public final class Memo {
     private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    private Memo(Long id, Long userId, String title, String content, MemoColor color, Integer positionX,
+    private Memo(Long id, Long userId, String title, String content, String color, Integer positionX,
                  Integer positionY, Integer width, Integer height, LocalDateTime createdAt, LocalDateTime updatedAt) {
         if (userId == null) {
             throw new IllegalArgumentException("userId must not be null");
@@ -32,9 +34,7 @@ public final class Memo {
         if (title.length() > TITLE_MAX_LENGTH) {
             throw new MemoException(MemoErrorCode.TITLE_TOO_LONG);
         }
-        if (color == null) {
-            throw new MemoException(MemoErrorCode.COLOR_REQUIRED);
-        }
+        validateColor(color);
         if (createdAt == null) {
             throw new IllegalArgumentException("createdAt must not be null");
         }
@@ -51,11 +51,11 @@ public final class Memo {
         this.updatedAt = updatedAt;
     }
 
-    public static Memo create(Long userId, String title, String content, MemoColor color, LocalDateTime now) {
+    public static Memo create(Long userId, String title, String content, String color, LocalDateTime now) {
         return new Memo(null, userId, title, content, color, null, null, null, null, now, now);
     }
 
-    public static Memo restore(Long id, Long userId, String title, String content, MemoColor color,
+    public static Memo restore(Long id, Long userId, String title, String content, String color,
                                 Integer positionX, Integer positionY, Integer width, Integer height,
                                 LocalDateTime createdAt, LocalDateTime updatedAt) {
         return new Memo(id, userId, title, content, color, positionX, positionY, width, height, createdAt,
@@ -74,12 +74,19 @@ public final class Memo {
         this.updatedAt = now;
     }
 
-    public void updateColor(MemoColor color, LocalDateTime now) {
-        if (color == null) {
-            throw new MemoException(MemoErrorCode.COLOR_REQUIRED);
-        }
+    public void updateColor(String color, LocalDateTime now) {
+        validateColor(color);
         this.color = color;
         this.updatedAt = now;
+    }
+
+    private static void validateColor(String color) {
+        if (color == null || color.isBlank()) {
+            throw new MemoException(MemoErrorCode.COLOR_REQUIRED);
+        }
+        if (!HEX_COLOR.matcher(color).matches()) {
+            throw new MemoException(MemoErrorCode.COLOR_INVALID_FORMAT);
+        }
     }
 
     public void updatePosition(int positionX, int positionY, int width, int height, LocalDateTime now) {
@@ -116,7 +123,7 @@ public final class Memo {
         return content;
     }
 
-    public MemoColor getColor() {
+    public String getColor() {
         return color;
     }
 

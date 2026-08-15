@@ -24,7 +24,6 @@ import com.academy.mudogroupware.memo.application.usecase.UpdateMemoColorUseCase
 import com.academy.mudogroupware.memo.application.usecase.UpdateMemoContentUseCase;
 import com.academy.mudogroupware.memo.application.usecase.UpdateMemoPositionUseCase;
 import com.academy.mudogroupware.memo.domain.model.Memo;
-import com.academy.mudogroupware.memo.domain.model.MemoColor;
 import com.academy.mudogroupware.memo.presentation.api.request.CreateMemoRequest;
 import com.academy.mudogroupware.memo.presentation.api.request.UpdateMemoColorRequest;
 import com.academy.mudogroupware.memo.presentation.api.request.UpdateMemoContentRequest;
@@ -51,7 +50,7 @@ class MemoControllerTest {
         when(createMemoUseCase.createMemo(any())).thenReturn(1L);
 
         ResponseEntity<GlobalApiResponse<MemoCreateResponse>> response = controller.createMemo(AUTH_USER,
-                new CreateMemoRequest("제목", "내용", MemoColor.MUSTARD));
+                new CreateMemoRequest("제목", "내용", "D3A340"));
 
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
         assertEquals(1L, response.getBody().data().id());
@@ -59,7 +58,7 @@ class MemoControllerTest {
 
     @Test
     void getMemosReturnsListFromUseCase() {
-        Memo memo = Memo.create(10L, "제목", "내용", MemoColor.MUSTARD, LocalDateTime.now());
+        Memo memo = Memo.create(10L, "제목", "내용", "D3A340", LocalDateTime.now());
         when(memoQueryUseCase.getMemos(10L, MemoSortOrder.NEWEST)).thenReturn(List.of(memo));
 
         ResponseEntity<GlobalApiResponse<List<MemoResponse>>> response = controller.getMemos(AUTH_USER,
@@ -81,7 +80,7 @@ class MemoControllerTest {
     @Test
     void updateColorReturnsNoContent() {
         ResponseEntity<Void> response = controller.updateColor(AUTH_USER, 1L,
-                new UpdateMemoColorRequest(MemoColor.BLUE));
+                new UpdateMemoColorRequest("6F96C2"));
 
         assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
         verify(updateMemoColorUseCase).updateColor(any());

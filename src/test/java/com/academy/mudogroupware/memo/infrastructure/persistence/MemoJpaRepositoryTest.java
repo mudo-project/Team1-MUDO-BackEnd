@@ -9,7 +9,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 
-import com.academy.mudogroupware.memo.domain.model.MemoColor;
 
 @DataJpaTest(properties = "spring.jpa.hibernate.ddl-auto=create-drop")
 class MemoJpaRepositoryTest {
@@ -22,7 +21,7 @@ class MemoJpaRepositoryTest {
                 .userId(1L)
                 .title("제목")
                 .content("내용")
-                .color(MemoColor.MUSTARD)
+                .color("D3A340")
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
