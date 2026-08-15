@@ -12,7 +12,9 @@ import com.academy.mudogroupware.timetable.domain.repository.TimetableSetReposit
 import com.academy.mudogroupware.timetable.domain.repository.TimetableSlotRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -23,6 +25,8 @@ public class GetTimetableSlotService implements GetTimetableSlotUseCase {
 
     @Override
     public TimetableSlotView getSlot(Long timetableSetId, Long timetableSlotId) {
+        log.info("event=timetable_slot_get_시작 timetableSetId={}, slotId={}", timetableSetId, timetableSlotId);
+
         timetableSetRepository.findById(timetableSetId)
                 .orElseThrow(TimetableSetNotFoundException::new);
 
@@ -30,9 +34,12 @@ public class GetTimetableSlotService implements GetTimetableSlotUseCase {
                 .filter(found -> found.getTimetableSetId().equals(timetableSetId))
                 .orElseThrow(TimetableSlotNotFoundException::new);
 
-        return new TimetableSlotView(
+        TimetableSlotView view = new TimetableSlotView(
                 slot.getId(), slot.getClassType(), slot.getDayOfWeek(), slot.getClassroomCode(),
                 slot.getStartTime(), slot.getEndTime(), slot.getGrade(), slot.getTeacherName(),
                 slot.getSubjectName(), slot.getColor());
+
+        log.info("event=timetable_slot_get_완료 timetableSetId={}, slotId={}", timetableSetId, timetableSlotId);
+        return view;
     }
 }
