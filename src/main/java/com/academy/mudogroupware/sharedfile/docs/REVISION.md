@@ -1,5 +1,23 @@
 # 🔄 공유파일 도메인 변경 이력
 
+## ✅ 2026-08-16 · 공유 파일 서비스 시작·완료 로그 추가
+
+### 변경 목적
+
+공유 파일 요청의 처리 시작과 정상 완료를 운영 로그에서 추적할 수 있도록 한다. API 예외는 기존 `GlobalExceptionHandler`가 `event=exception_handled`로 기록하므로 서비스에서 다시 기록하지 않아 중복 로그를 피한다.
+
+### 구현 변경
+
+- 폴더 목록, 파일 상세, 검색, 폴더 생성, 파일 업로드, Google Docs·Sheets·Slides 생성, 파일명 변경·이동, 휴지통 이동, 원본 다운로드·Export 서비스에 `shared_file_*_시작`/`shared_file_*_완료` 로그를 추가했다.
+- 완료 로그에는 item ID, 결과 건수, 다음 페이지 여부, 파일 크기 등 운영 추적에 필요한 최소 정보만 남긴다.
+- 커서 값, 액세스 토큰, 업로드 파일 본문은 로그에 남기지 않는다.
+- `AFTER_COMMIT` 루트 초기화 및 Drive 보상 처리 실패처럼 전역 예외 핸들러까지 도달하지 않는 경로의 기존 실패 로그는 유지한다.
+
+### 검증
+
+- `./gradlew.bat test --tests "com.academy.mudogroupware.sharedfile.application.service.*" --tests "com.academy.mudogroupware.sharedfile.presentation.api.SharedFileControllerTest" --tests "com.academy.mudogroupware.sharedfile.infrastructure.external.google.GoogleDriveAdapterTest"` 통과.
+- `git diff --check` 통과.
+
 ## ✅ 2026-08-14 · PATCH(이름 변경+이동) 원자성 확보 — UpdateSharedFileItemUseCase 통합 (이슈 #406)
 
 ### 변경 목적

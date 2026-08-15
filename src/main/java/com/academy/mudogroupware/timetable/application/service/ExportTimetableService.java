@@ -19,7 +19,9 @@ import com.academy.mudogroupware.timetable.domain.model.TimetableExportFormat;
 import com.academy.mudogroupware.timetable.domain.model.TimetableExportOptions;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ExportTimetableService implements ExportTimetableUseCase {
@@ -30,6 +32,9 @@ public class ExportTimetableService implements ExportTimetableUseCase {
 
     @Override
     public byte[] export(ExportTimetableCommand command) {
+        log.info("event=timetable_export_시작 timetableSetId={}, format={}",
+                command.timetableSetId(), command.format());
+
         TimetableSetDetailView set = getTimetableSetUseCase
                 .getTimetableSet(command.timetableSetId());
 
@@ -51,7 +56,10 @@ public class ExportTimetableService implements ExportTimetableUseCase {
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("지원하지 않는 내보내기 형식: " + command.format()));
 
-        return renderer.render(set.name(), slotsToRender, options);
+        byte[] rendered = renderer.render(set.name(), slotsToRender, options);
+        log.info("event=timetable_export_완료 timetableSetId={}, format={}, bytes={}",
+                command.timetableSetId(), command.format(), rendered.length);
+        return rendered;
     }
 
     private List<TimetableSlotView> applyFilters(

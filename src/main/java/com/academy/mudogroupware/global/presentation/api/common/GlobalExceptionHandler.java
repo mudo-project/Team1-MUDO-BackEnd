@@ -4,6 +4,7 @@ import com.academy.mudogroupware.global.domain.common.exception.*;
 import io.sentry.Sentry;
 import jakarta.validation.ConstraintViolationException;
 import java.util.*;
+import java.util.concurrent.CompletionException;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.core.task.TaskRejectedException;
@@ -174,6 +175,19 @@ public class GlobalExceptionHandler {
         e.getMessage());
     return ResponseEntity.status(CommonErrorCode.ACCESS_DENIED.getHttpStatus())
         .body(GlobalApiErrorResponse.of(CommonErrorCode.ACCESS_DENIED, traceId));
+  }
+
+  // CompletableFuture.join()/get()은 비동기 작업이 던진 예외를 항상 CompletionException으로
+  // 감싼다. 그대로 두면 ApplicationException(예: PlatformException)이 원래 상태 코드(503 등)
+  // 대신 뒤의 Exception.class 캐치올에 걸려 500으로 나간다. 원인을 풀어서 적절한 핸들러로
+  // 다시 위임한다.
+  @ExceptionHandler(CompletionException.class)
+  public ResponseEntity<GlobalApiErrorResponse> completion(CompletionException e) {
+    Throwable cause = e.getCause();
+    if (cause instanceof ApplicationException applicationException) {
+      return application(applicationException);
+    }
+    return unexpected(cause instanceof Exception causeException ? causeException : e);
   }
 
   @ExceptionHandler(TaskRejectedException.class)
