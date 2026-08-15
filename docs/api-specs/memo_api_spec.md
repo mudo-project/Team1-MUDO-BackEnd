@@ -25,14 +25,14 @@ Request Body
 {
   "title": "9월 시간표 초안",
   "content": "수학A반 월·수·금 4시",
-  "color": "MUSTARD"
+  "color": "D3A340"
 }
 ```
 | name | type | required | 설명 |
 | --- | --- | --- | --- |
 | `title` | `String` | `true` | 메모 제목. 공백 불가, 최대 100자. |
 | `content` | `String` | `false` | 메모 내용. |
-| `color` | `String` | `true` | 메모 색상 키(팔레트 RGB 매핑은 FE 담당). `ROSE`, `MUSTARD`, `SAGE`, `BLUE`, `LAVENDER`, `PINK`, `SLATE`, `PEACH`, `TEAL`, `OLIVE`, `CLAY`, `INDIGO` 중 하나. |
+| `color` | `String` | `true` | 6자리 16진수 색상 코드(`RRGGBB`, `#` 없이). 실제 팔레트·색상값은 FE가 자유롭게 정한다. |
 
 # **[response]**
 
@@ -64,7 +64,7 @@ Response Body
 
 | HTTP 상태 | code | message | 설명 |
 | --- | --- | --- | --- |
-| `400 Bad Request` | `COMMON_400_1` | 입력값이 올바르지 않습니다. | `title` 공백/누락/100자 초과, `color` 누락/유효하지 않은 값 (Bean Validation이 도메인 검증보다 먼저 적용되어 `MEMO_400_*` 대신 공통 코드로 응답, `details.errors[]`에 필드별 사유 포함) |
+| `400 Bad Request` | `COMMON_400_1` | 입력값이 올바르지 않습니다. | `title` 공백/누락/100자 초과, `color` 누락/6자리 16진수 형식이 아님 (Bean Validation이 도메인 검증보다 먼저 적용되어 `MEMO_400_*` 대신 공통 코드로 응답, `details.errors[]`에 필드별 사유 포함) |
 | `400 Bad Request` | `MEMO_400_4` | 메모는 최대 200개까지 만들 수 있습니다. | 이미 200개 이상을 보유한 사용자가 추가로 생성을 시도함 (목록조회에 페이지네이션이 없어 응답 크기가 무한히 커지는 것을 막기 위한 상한, 2026-08-07 부하테스트로 발견) |
 | `401 Unauthorized` | `COMMON_401_1` | 인증이 필요합니다. | 토큰 누락/만료 |
 
@@ -107,7 +107,7 @@ Response Body
       "id": 1,
       "title": "9월 시간표 초안",
       "content": "수학A반 월·수·금 4시",
-      "color": "MUSTARD",
+      "color": "D3A340",
       "positionX": null,
       "positionY": null,
       "width": null,
@@ -125,7 +125,7 @@ Response Body
 | `data[].id` | 메모 ID입니다. |
 | `data[].title` | 메모 제목입니다. |
 | `data[].content` | 메모 내용입니다. |
-| `data[].color` | 메모 색상입니다. |
+| `data[].color` | 메모 색상입니다. 6자리 16진수 색상 코드(`RRGGBB`)입니다. |
 | `data[].positionX` / `positionY` / `width` / `height` | 자유배치 위치·크기입니다. 아직 자유배치하지 않았으면 `null`입니다. |
 | `data[].createdAt` / `updatedAt` | 생성/수정 시각입니다. |
 
@@ -207,12 +207,12 @@ Request Parameter
 Request Body
 ```json
 {
-  "color": "BLUE"
+  "color": "6F96C2"
 }
 ```
 | name | type | required | 설명 |
 | --- | --- | --- | --- |
-| `color` | `String` | `true` | 변경할 색상 키(팔레트 RGB 매핑은 FE 담당). `ROSE`, `MUSTARD`, `SAGE`, `BLUE`, `LAVENDER`, `PINK`, `SLATE`, `PEACH`, `TEAL`, `OLIVE`, `CLAY`, `INDIGO` 중 하나. |
+| `color` | `String` | `true` | 변경할 6자리 16진수 색상 코드(`RRGGBB`, `#` 없이). |
 
 # **[response]**
 
@@ -226,7 +226,7 @@ Request Body
 
 | HTTP 상태 | code | message | 설명 |
 | --- | --- | --- | --- |
-| `400 Bad Request` | `COMMON_400_1` | 입력값이 올바르지 않습니다. | `color` 누락/유효하지 않은 값 (Bean Validation이 도메인 검증보다 먼저 적용되어 `MEMO_400_*` 대신 공통 코드로 응답) |
+| `400 Bad Request` | `COMMON_400_1` | 입력값이 올바르지 않습니다. | `color` 누락/6자리 16진수 형식이 아님 (Bean Validation이 도메인 검증보다 먼저 적용되어 `MEMO_400_*` 대신 공통 코드로 응답) |
 | `401 Unauthorized` | `COMMON_401_1` | 인증이 필요합니다. | 토큰 누락/만료 |
 | `403 Forbidden` | `MEMO_403_1` | 본인의 메모가 아닙니다. | 다른 사용자의 메모를 변경하려는 경우 |
 | `404 Not Found` | `MEMO_404_1` | 메모를 찾을 수 없습니다. | `memoId`에 해당하는 메모가 없음 |
