@@ -266,6 +266,7 @@ infra/monitoring/runtime/
 
 # Local payroll email test data
 /docs/payroll-email-local-mock.sql
+/docs/finance_mock_data_20_employees.sql
 
 # Local concurrency/correctness analysis for presentation (개인 발표 준비 자료)
 /CONCURRENCY_ANALYSIS.md
