@@ -151,7 +151,7 @@ PATCH /api/workspaces/{workspaceId}/tasks/{taskId}/comments/{commentId}
 
 ### 5. 멘션 대상 검증과 전체 교체
 
-댓글 생성과 동일하게 멘션 대상을 검증한 뒤(`400_6`), 수정 전 멘션 ID 집합을 보존하고 `comment.updateContent(content, mentionedUserIds, now)`로 content와 멘션을 함께 교체한 새 `TaskComment`를 만든다(불변 도메인 모델). `TaskCommentRepository.save`는 기존 멘션을 전부 삭제하고 새 목록으로 재삽입한다. 영속성은 전체 교체를 유지하고, 알림 수신자 계산에만 수정 전후 멘션 차집합을 사용한다.
+댓글 생성과 동일하게 멘션 대상을 검증한 뒤(`400_6`), 수정 전 멘션 ID 집합을 보존하고 `comment.updateContent(content, mentionedUserIds, now)`로 content와 멘션을 함께 교체한 새 `TaskComment`를 만든다(불변 도메인 모델). 응답에 보이는 최종 멘션 목록은 요청한 `mentionedUserIds`로 전체 교체되지만, `TaskCommentRepository.save`의 내부 구현(`TaskCommentPersistenceAdapter.syncMentions`)은 2026-08-13부터 diff 기반으로 바뀌었다 — 기존·신규 멘션 사용자 ID 집합을 비교해 **제거된 것만 삭제, 추가된 것만 insert**하고, 겹치는 멘션은 delete/insert 어느 쪽도 타지 않는다(이유: 전체 삭제 후 재삽입 방식은 Hibernate의 insert-before-delete flush 순서와 멘션 PK의 `IDENTITY` 생성 전략이 겹쳐, 수정 전후 멘션이 부분적으로 겹칠 때 유니크 제약 위반 409가 날 수 있었다 — 이슈 [#462](https://github.com/mudo-project/Team1-MUDO-BackEnd/issues/462)에서 토글 경로에 났던 것과 동일 계열, 이슈 [#467](https://github.com/mudo-project/Team1-MUDO-BackEnd/issues/467)에서 수정 경로도 예방 처리). 알림 수신자 계산은 기존과 동일하게 수정 전후 멘션 차집합을 쓴다.
 
 ### 6. 새로 추가된 멘션 알림
 
@@ -210,7 +210,7 @@ PATCH /api/workspaces/{workspaceId}/tasks/{taskId}/comments/{commentId}/complete
   → TaskCommentRepository.findById (락 없음)
   → TaskCommentPersistenceAdapter
   → TaskComment.toggleComplete (Domain Model)
-  → TaskCommentRepository.save
+  → TaskCommentRepository.updateCompletion
   → TaskCommentPersistenceAdapter
 ```
 
@@ -221,6 +221,8 @@ PATCH /api/workspaces/{workspaceId}/tasks/{taskId}/comments/{commentId}/complete
 ### 5. 완료↔취소 반전
 
 `comment.toggleComplete(requesterId, now)`가 호출마다 완료 상태를 반전한다. 완료로 전환되면 `completedBy = requesterId`, `completedAt = now`. 취소로 전환되면 둘 다 `null`로 초기화된다. **호출마다 반전**하므로, 두 참여자가 거의 동시에 같은 댓글을 토글하면 나중 트랜잭션이 앞선 트랜잭션의 결과를 반전시킨다(예: A가 완료시킨 걸 B가 취소로 되돌림) — 이는 "워크스페이스가 실시간으로 공유되고 있음"을 드러내는 의도된 동작이며 버그가 아니다.
+
+토글은 `TaskCommentRepository.save` 대신 전용 메서드 `updateCompletion`을 쓴다(2026-08-13, [#462](https://github.com/mudo-project/Team1-MUDO-BackEnd/issues/462)). `save`는 update 분기에서 멘션을 항상 전체 삭제 후 재삽입하는데, 토글은 멘션을 전혀 바꾸지 않아 삭제 전 동일 값을 재삽입하다 유니크 제약(`uk_task_comment_mention_comment_user`) 위반이 났다. `updateCompletion`은 `completed`/`completedBy`/`completedAt`만 갱신하고 멘션 테이블은 조회 외에 건드리지 않는다.
 
 ### 6. 응답
 

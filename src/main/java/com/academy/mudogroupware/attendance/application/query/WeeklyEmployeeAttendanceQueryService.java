@@ -23,7 +23,7 @@ import com.academy.mudogroupware.attendance.domain.model.AttendancePolicy;
 import com.academy.mudogroupware.attendance.domain.model.MyAttendanceDayStatus;
 import com.academy.mudogroupware.attendance.domain.repository.AttendancePolicyRepository;
 import com.academy.mudogroupware.attendance.domain.repository.LeaveRequestRepository;
-import com.academy.mudogroupware.global.domain.common.page.PageResult;
+import com.academy.mudogroupware.global.domain.common.page.PagedResult;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -64,12 +64,12 @@ public class WeeklyEmployeeAttendanceQueryService implements GetWeeklyEmployeeAt
 
         int scheduledWorkDays = 0;
         Map<LocalDate, MyAttendanceScheduleResolver.WorkSchedule> schedules = new LinkedHashMap<>();
-        Map<LocalDate, Set<Long>> approvedLeaves = new LinkedHashMap<>();
+        Map<LocalDate, Set<Long>> approvedLeaves =
+                leaveRequestRepository.findApprovedUserIdsBetween(startDate, endDate);
         for (LocalDate current = startDate; !current.isAfter(endDate); current = current.plusDays(1)) {
             MyAttendanceScheduleResolver.WorkSchedule schedule = scheduleResolver.resolve(policy, current);
             boolean workday = schedule.workday();
             schedules.put(current, schedule);
-            approvedLeaves.put(current, leaveRequestRepository.findApprovedUserIds(current));
             if (workday) {
                 scheduledWorkDays++;
             }
@@ -112,7 +112,7 @@ public class WeeklyEmployeeAttendanceQueryService implements GetWeeklyEmployeeAt
         int from = Math.min(page * size, filtered.size());
         int to = Math.min(from + size, filtered.size());
         WeeklyEmployeeAttendanceView result = new WeeklyEmployeeAttendanceView(startDate, endDate, scheduledWorkDays,
-                PageResult.of(filtered.subList(from, to), page, size, to < filtered.size()));
+                PagedResult.of(filtered.subList(from, to), page, size, filtered.size()));
         log.info("event=attendance_employee_weekly_read_완료 count={}", filtered.size());
         return result;
         } catch (RuntimeException e) {

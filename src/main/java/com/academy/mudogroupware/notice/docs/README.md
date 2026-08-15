@@ -29,7 +29,7 @@
 
 ## 발행·소비하는 Event
 
-- 현재 없음.
+- `NoticeAttachmentFilesCleanupRequestedEvent`: 공지 retention 배치가 만료된 공지의 읽음 기록·첨부 연결·본문을 정리한 뒤, 정리 대상 첨부 `fileId` 목록을 파일 모듈에 전달하기 위해 발행한다. 파일 모듈은 이 이벤트를 커밋 후 소비해 다른 도메인 참조 여부를 확인하고, 더 이상 참조되지 않는 S3 객체와 `file_metadata`를 정리한다.
 
 ## 변경 시 주의 사항
 
@@ -40,6 +40,14 @@
 - 목록 조회(`getNotices`)는 `page`/`size` 쿼리 파라미터 기반 Slice 페이지네이션을 지원한다 (`API_CONTRACT.md` 규칙 반영).
 - 작성/수정은 `NOTICE:WRITE`, 고정/고정 해제는 `NOTICE:PIN` 권한으로 제한한다. 삭제는 별도 관리자 권한 없이 작성자 본인만 가능하다.
 - `Notice.create()`/`update()`, `NoticeReadRepositoryImpl.markRead()`는 `LocalDateTime.now()`를 직접 호출하지 않고 `Clock`(`Asia/Seoul` 고정) 기반 시각을 파라미터로 받는다 — approval 모듈에서 먼저 고친 서버 시간대(UTC) 버그를 notice에도 동일하게 반영했다 ([REVISION.md](REVISION.md) 참고).
+
+## 데이터 생명주기 정책
+
+- 공지사항은 삭제 요청 후 바로 완전 삭제하지 않고 일정 기간 일반 조회에서 숨긴 뒤 정리하는 도메인이다.
+- 현재 삭제 API는 즉시 하드 삭제하지 않고 `deleted_at`, `retention_until`을 채워 일반 조회에서 숨긴다.
+- 공통 retention 배치가 `retention_until`이 지난 공지의 읽음 기록·첨부 연결·본문을 정리하고, 첨부 `fileId`는 커밋 후 파일 모듈에 S3 객체/메타데이터 정리를 요청한다.
+- 파일 모듈은 해당 `fileId`가 공지·결재·템플릿·메신저 어디에서도 참조되지 않을 때만 S3 객체와 `file_metadata`를 함께 삭제한다.
+- 담당 도메인 기준은 [DATA_LIFECYCLE_POLICY.md](../../../../../../../../docs/DATA_LIFECYCLE_POLICY.md)를 따른다.
 
 ## 세부 문서
 

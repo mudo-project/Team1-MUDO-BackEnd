@@ -21,6 +21,14 @@ public interface LeaveRequestJpaRepository extends JpaRepository<LeaveRequestJpa
     List<Long> findUserIdsByStatusAndDateBetween(@Param("status") LeaveRequestStatus status,
                                                               @Param("date") LocalDate date);
 
+    @Query("select l from LeaveRequestJpaEntity l "
+            + "where l.status = :status "
+            + "and l.startDate <= :endDate and l.endDate >= :startDate")
+    List<LeaveRequestJpaEntity> findAllOverlapping(
+            @Param("status") LeaveRequestStatus status,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
+
     @Query("select (count(l) > 0) from LeaveRequestJpaEntity l "
             + "where l.userId = :userId and l.status in :statuses "
             + "and l.startDate <= :endDate and l.endDate >= :startDate")

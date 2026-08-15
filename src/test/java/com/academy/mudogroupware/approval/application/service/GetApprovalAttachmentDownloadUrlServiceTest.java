@@ -102,4 +102,18 @@ class GetApprovalAttachmentDownloadUrlServiceTest {
 
         assertThat(downloadUrl).isEqualTo("https://example.com/signed");
     }
+
+    @Test
+    void wrapsUnexpectedFileDownloadUrlFailure() {
+        when(approvalDocumentRepository.findById(1L)).thenReturn(Optional.of(newDocument()));
+        RuntimeException storageFailure = new RuntimeException("s3 presign failed");
+        when(getFileDownloadUrlUseCase.getDownloadUrl(FILE_ID)).thenThrow(storageFailure);
+
+        assertThatThrownBy(() -> service.getDownloadUrl(
+                new GetApprovalAttachmentDownloadUrlCommand(1L, FILE_ID, CREATOR_ID)))
+                .isInstanceOf(ApprovalException.class)
+                .hasCause(storageFailure)
+                .extracting(e -> ((ApprovalException) e).getErrorCode())
+                .isEqualTo(ApprovalErrorCode.ATTACHMENT_DOWNLOAD_URL_FAILED);
+    }
 }

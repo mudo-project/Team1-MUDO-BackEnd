@@ -19,6 +19,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
 
 import com.academy.mudogroupware.global.domain.auth.AccountType;
+import com.academy.mudogroupware.global.domain.auth.AdminScope;
 import com.academy.mudogroupware.users.domain.exception.ProfileUpdateConflictException;
 import com.academy.mudogroupware.users.domain.exception.RoleNotFoundException;
 import com.academy.mudogroupware.users.domain.exception.UsernameDuplicateException;
@@ -50,6 +51,33 @@ class UserRepositoryImplTest {
         doThrow(violation).when(jpaRepository).flush();
 
         assertThatThrownBy(() -> adapter.changeRole(1L, 5L)).isSameAs(violation);
+    }
+
+    @Test
+    void findAcademyOwnerIdReturnsIdWhenAcademyOwnerExists() {
+        UserJpaRepository jpaRepository = mock(UserJpaRepository.class);
+        UserRepositoryImpl adapter = new UserRepositoryImpl(jpaRepository);
+        UserEntity owner = userEntity();
+        when(jpaRepository.findFirstByAccountTypeAndAdminScopeAndStatus(
+                AccountType.ADMIN, AdminScope.ACADEMY, UserStatus.ACTIVE))
+                .thenReturn(Optional.of(owner));
+
+        Optional<Long> result = adapter.findAcademyOwnerId();
+
+        assertThat(result).contains(owner.getId());
+    }
+
+    @Test
+    void findAcademyOwnerIdReturnsEmptyWhenNoAcademyOwnerExists() {
+        UserJpaRepository jpaRepository = mock(UserJpaRepository.class);
+        UserRepositoryImpl adapter = new UserRepositoryImpl(jpaRepository);
+        when(jpaRepository.findFirstByAccountTypeAndAdminScopeAndStatus(
+                AccountType.ADMIN, AdminScope.ACADEMY, UserStatus.ACTIVE))
+                .thenReturn(Optional.empty());
+
+        Optional<Long> result = adapter.findAcademyOwnerId();
+
+        assertThat(result).isEmpty();
     }
 
     @Test

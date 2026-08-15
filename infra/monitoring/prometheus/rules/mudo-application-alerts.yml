@@ -70,6 +70,51 @@ groups:
           summary: "{{ $labels.tenant }} 서버 오류율 5% 초과"
           runbook_url: "https://github.com/mudo-project/Team1-MUDO-BackEnd/blob/main/infra/runbooks/application-down.md"
 
+      - alert: MudoPayrollEmailPendingStuck
+        expr: mudo_payroll_email_oldest_waiting_age_seconds{environment="prod"} > 300
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.tenant }} 급여명세서 이메일 PENDING 작업 정체"
+          runbook_url: "https://github.com/mudo-project/Team1-MUDO-BackEnd/blob/main/infra/runbooks/payroll-email-delivery.md"
+
+      - alert: MudoPayrollEmailUnknown
+        expr: mudo_payroll_email_unknown{environment="prod"} > 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.tenant }} Mailgun 접수 여부 불명확 작업 발생"
+          runbook_url: "https://github.com/mudo-project/Team1-MUDO-BackEnd/blob/main/infra/runbooks/payroll-email-delivery.md"
+
+      - alert: MudoPayrollEmailRetryWaitStuck
+        expr: mudo_payroll_email_retry_wait{environment="prod"} > 0
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.tenant }} 급여명세서 이메일 재시도 대기 지속"
+          runbook_url: "https://github.com/mudo-project/Team1-MUDO-BackEnd/blob/main/infra/runbooks/payroll-email-delivery.md"
+
+      - alert: MudoPayrollEmailRepeatedRetries
+        expr: delta(mudo_payroll_email_retry_attempts{environment="prod"}[15m]) >= 3
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.tenant }} 급여명세서 이메일 반복 재시도 발생"
+          runbook_url: "https://github.com/mudo-project/Team1-MUDO-BackEnd/blob/main/infra/runbooks/payroll-email-delivery.md"
+
+      - alert: MudoPayrollEmailReconciliationFailure
+        expr: increase(mudo_payroll_email_reconciliation_failures_total{environment="prod"}[10m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.tenant }} Mailgun 대사 조회 실패"
+          runbook_url: "https://github.com/mudo-project/Team1-MUDO-BackEnd/blob/main/infra/runbooks/payroll-email-delivery.md"
+
   - name: mudo-observability
     rules:
       - alert: MudoObservabilityTargetDown

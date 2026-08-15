@@ -266,3 +266,12 @@ infra/monitoring/runtime/
 
 # Local payroll email test data
 /docs/payroll-email-local-mock.sql
+
+# Local concurrency/correctness analysis for presentation (개인 발표 준비 자료)
+/CONCURRENCY_ANALYSIS.md
+/PRESENTATION_CANDIDATES.md
+/ACCESS_TOKEN_CACHING.md
+
+# Python bytecode cache (infra/scripts 실행 시 생성)
+__pycache__/
+*.pyc

@@ -6,10 +6,14 @@ import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -77,24 +81,71 @@ public class PayrollStatementDeliveryPersistenceAdapter implements PayrollStatem
   }
 
   @Override
-  public boolean existsBlocking(Long statementId) {
-    Integer count = jdbc.queryForObject("select count(*) from payroll_statement_delivery "
-        + "where statement_id=? and status in ('PENDING','SENDING','SENT','DELIVERED')",
-        Integer.class, statementId);
-    return count != null && count > 0;
+  public Optional<DeliveryData> findBlocking(Long statementId) {
+    try {
+      return Optional.ofNullable(jdbc.queryForObject(DELIVERY_SELECT
+          + "where d.statement_id=? "
+          + "and d.status in ('PENDING','SENDING','RETRY_WAIT','UNKNOWN','SENT','DELIVERED') "
+          + "order by d.delivery_id desc limit 1", this::mapDelivery, statementId));
+    } catch (EmptyResultDataAccessException e) {
+      return Optional.empty();
+    }
+  }
+
+  @Override
+  public Map<Long, DeliveryData> findBlockingByStatementIds(Set<Long> statementIds) {
+    if (statementIds.isEmpty()) return Map.of();
+    List<DeliveryData> rows = namedJdbc.query(DELIVERY_SELECT
+            + "where d.statement_id in (:statementIds) "
+            + "and d.status in ('PENDING','SENDING','RETRY_WAIT','UNKNOWN','SENT','DELIVERED') "
+            + "order by d.statement_id, d.delivery_id desc",
+        new MapSqlParameterSource("statementIds", statementIds), this::mapDelivery);
+    Map<Long, DeliveryData> result = new LinkedHashMap<>();
+    for (DeliveryData row : rows) result.putIfAbsent(row.statementId(), row);
+    return result;
+  }
+
+  @Override
+  public List<Long> findDispatchableIds(LocalDateTime now, int limit) {
+    return jdbc.queryForList("select delivery_id from payroll_statement_delivery "
+        + "where status='PENDING' or (status='RETRY_WAIT' and next_attempt_at<=?) "
+        + "order by coalesce(next_attempt_at, requested_at), delivery_id limit ?",
+        Long.class, now, limit);
   }
 
   @Override
   public Optional<DeliveryData> claim(Long deliveryId, LocalDateTime startedAt) {
     int changed = jdbc.update("update payroll_statement_delivery set status='SENDING', "
-        + "sending_started_at=? where delivery_id=? and status='PENDING'", startedAt, deliveryId);
+        + "sending_started_at=?, last_attempt_at=?, attempt_count=attempt_count+1, "
+        + "failure_code=null, failure_reason=null, next_attempt_at=null where delivery_id=? "
+        + "and (status='PENDING' or (status='RETRY_WAIT' and next_attempt_at<=?))",
+        startedAt, startedAt, deliveryId, startedAt);
     return changed == 0 ? Optional.empty() : findById(deliveryId);
   }
 
   @Override
-  public void markSent(Long deliveryId, LocalDateTime sentAt) {
-    jdbc.update("update payroll_statement_delivery set status='SENT', sent_at=? "
-        + "where delivery_id=? and status='SENDING'", sentAt, deliveryId);
+  public void markSent(Long deliveryId, String messageId, LocalDateTime sentAt) {
+    jdbc.update("update payroll_statement_delivery set status='SENT', "
+        + "mailgun_message_id=coalesce(?, mailgun_message_id), "
+        + "sent_at=coalesce(sent_at, ?), next_attempt_at=null, "
+        + "failure_code=null, failure_reason=null, failed_at=null "
+        + "where delivery_id=? and status in ('SENDING','UNKNOWN','SENT')",
+        messageId, sentAt, deliveryId);
+  }
+
+  @Override
+  public void markRetry(Long deliveryId, String code, String reason,
+      LocalDateTime nextAttemptAt) {
+    jdbc.update("update payroll_statement_delivery set status='RETRY_WAIT', failure_code=?, "
+        + "failure_reason=?, next_attempt_at=? where delivery_id=? and status='SENDING'",
+        code, safe(reason), nextAttemptAt, deliveryId);
+  }
+
+  @Override
+  public void markUnknown(Long deliveryId, String code, String reason, LocalDateTime failedAt) {
+    jdbc.update("update payroll_statement_delivery set status='UNKNOWN', failure_code=?, "
+        + "failure_reason=?, failed_at=?, next_attempt_at=null "
+        + "where delivery_id=? and status='SENDING'", code, safe(reason), failedAt, deliveryId);
   }
 
   @Override
@@ -115,7 +166,8 @@ public class PayrollStatementDeliveryPersistenceAdapter implements PayrollStatem
     jdbc.update("update payroll_statement_delivery set status='DELIVERED', "
         + "mailgun_message_id=coalesce(?, mailgun_message_id), delivered_at=?, "
         + "failure_code=null, failure_reason=null, failed_at=null "
-        + "where delivery_token=? and status in ('SENDING','SENT','FAILED')",
+        + "where delivery_token=? "
+        + "and status in ('SENDING','RETRY_WAIT','UNKNOWN','SENT','FAILED')",
         messageId, deliveredAt, token);
   }
 
@@ -125,13 +177,15 @@ public class PayrollStatementDeliveryPersistenceAdapter implements PayrollStatem
     jdbc.update("update payroll_statement_delivery set status='FAILED', "
         + "mailgun_message_id=coalesce(?, mailgun_message_id), failure_code='PERMANENT_FAILURE', "
         + "failure_reason=?, failed_at=? where delivery_token=? "
-        + "and status in ('SENDING','SENT')", messageId, safe(reason), failedAt, token);
+        + "and status in ('SENDING','RETRY_WAIT','UNKNOWN','SENT')",
+        messageId, safe(reason), failedAt, token);
   }
 
   @Override
-  public int failStaleSending(LocalDateTime startedBefore, LocalDateTime failedAt) {
-    return jdbc.update("update payroll_statement_delivery set status='FAILED', "
-            + "failure_code='WORKER_TIMEOUT', failure_reason='발송 작업이 제한 시간 안에 완료되지 않았습니다.', "
+  public int markStaleSendingUnknown(LocalDateTime startedBefore, LocalDateTime failedAt) {
+    return jdbc.update("update payroll_statement_delivery set status='UNKNOWN', "
+            + "failure_code='WORKER_TIMEOUT_UNKNOWN', "
+            + "failure_reason='발송 작업 제한 시간을 초과하여 외부 접수 여부 확인이 필요합니다.', "
             + "failed_at=? where status='SENDING' and sending_started_at<?",
         failedAt, startedBefore);
   }
@@ -144,6 +198,60 @@ public class PayrollStatementDeliveryPersistenceAdapter implements PayrollStatem
     } catch (EmptyResultDataAccessException e) {
       return Optional.empty();
     }
+  }
+
+  @Override
+  public List<DeliveryData> findReconciliationCandidates(
+      LocalDateTime sentBefore, LocalDateTime reconciledBefore, int limit) {
+    return jdbc.query(DELIVERY_SELECT
+        + "where ((d.status='SENT' and d.sent_at<=?) or d.status='UNKNOWN') "
+        + "and (d.last_reconciled_at is null or d.last_reconciled_at<=?) "
+        + "order by coalesce(d.last_reconciled_at, d.requested_at), d.delivery_id limit ?",
+        this::mapDelivery, sentBefore, reconciledBefore, limit);
+  }
+
+  @Override
+  public Optional<LocalDateTime> findNextWakeupAt(
+      Duration sendingTimeout, Duration reconcileAfter, Duration reconcileCooldown) {
+    LocalDateTime next = jdbc.queryForObject("select min(next_at) from ("
+            + "select min(requested_at) next_at from payroll_statement_delivery "
+            + "where status='PENDING' union all "
+            + "select min(next_attempt_at) next_at from payroll_statement_delivery "
+            + "where status='RETRY_WAIT' union all "
+            + "select min(timestampadd(second, ?, sending_started_at)) next_at "
+            + "from payroll_statement_delivery where status='SENDING' union all "
+            + "select min(case when status='SENT' then greatest("
+            + "timestampadd(second, ?, sent_at), "
+            + "coalesce(timestampadd(second, ?, last_reconciled_at), sent_at)) "
+            + "else coalesce(timestampadd(second, ?, last_reconciled_at), "
+            + "failed_at, requested_at) end) next_at "
+            + "from payroll_statement_delivery where status in ('SENT','UNKNOWN')"
+            + ") delivery_schedule",
+        LocalDateTime.class, sendingTimeout.toSeconds(), reconcileAfter.toSeconds(),
+        reconcileCooldown.toSeconds(), reconcileCooldown.toSeconds());
+    return Optional.ofNullable(next);
+  }
+
+  @Override
+  public void markReconciled(Long deliveryId, LocalDateTime reconciledAt) {
+    jdbc.update("update payroll_statement_delivery set last_reconciled_at=? "
+        + "where delivery_id=? and status in ('SENT','UNKNOWN')", reconciledAt, deliveryId);
+  }
+
+  @Override
+  public OperationalSnapshot getOperationalSnapshot(LocalDateTime now) {
+    return jdbc.queryForObject("select "
+            + "sum(case when status='PENDING' then 1 else 0 end) pending_count, "
+            + "sum(case when status='RETRY_WAIT' then 1 else 0 end) retry_count, "
+            + "sum(case when status='UNKNOWN' then 1 else 0 end) unknown_count, "
+            + "coalesce(timestampdiff(second, min(case when status='PENDING' "
+            + "then requested_at end), ?), 0) oldest_age "
+            + ", coalesce(sum(greatest(attempt_count-1, 0)), 0) retry_attempt_count "
+            + "from payroll_statement_delivery",
+        (rs, row) -> new OperationalSnapshot(rs.getLong("pending_count"),
+            rs.getLong("retry_count"), rs.getLong("unknown_count"), rs.getLong("oldest_age"),
+            rs.getLong("retry_attempt_count")),
+        now);
   }
 
   @Override
@@ -191,7 +299,8 @@ public class PayrollStatementDeliveryPersistenceAdapter implements PayrollStatem
         rs.getString("delivery_token"), rs.getString("mailgun_message_id"),
         rs.getLong("requested_by"), time(rs, "requested_at"),
         time(rs, "sending_started_at"), time(rs, "sent_at"), time(rs, "delivered_at"),
-        time(rs, "failed_at"));
+        time(rs, "failed_at"), rs.getInt("attempt_count"), time(rs, "next_attempt_at"),
+        time(rs, "last_attempt_at"), time(rs, "last_reconciled_at"));
   }
 
   private Long nullableLong(ResultSet rs, String column) throws SQLException {

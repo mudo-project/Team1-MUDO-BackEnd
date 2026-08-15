@@ -26,7 +26,7 @@ import com.academy.mudogroupware.attendance.domain.model.AttendanceStatus;
 import com.academy.mudogroupware.attendance.domain.repository.AttendanceCorrectionRequestRepository;
 import com.academy.mudogroupware.attendance.domain.repository.AttendancePolicyRepository;
 import com.academy.mudogroupware.attendance.domain.repository.AttendanceRecordRepository;
-import com.academy.mudogroupware.global.domain.common.page.PageResult;
+import com.academy.mudogroupware.global.domain.common.page.PagedResult;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,15 +44,15 @@ public class ManageAttendanceCorrectionService implements ManageAttendanceCorrec
 
     @Override
     @Transactional(readOnly = true)
-    public PageResult<AdminAttendanceCorrectionView> getAll(AttendanceCorrectionStatus status,
+    public PagedResult<AdminAttendanceCorrectionView> getAll(AttendanceCorrectionStatus status,
                                                               int page, int size) {
         log.info("event=attendance_admin_correction_list_read_시작 status={}, page={}, size={}", status, page, size);
         try {
-        PageResult<AttendanceCorrectionRequest> result = correctionRepository
+        PagedResult<AttendanceCorrectionRequest> result = correctionRepository
                 .findAll(status, page, size);
         Map<Long, Requester> requesters = requesterPort.findByUserIds(
                 result.content().stream().map(AttendanceCorrectionRequest::getUserId).collect(java.util.stream.Collectors.toSet()));
-        PageResult<AdminAttendanceCorrectionView> mapped = result.map(request -> new AdminAttendanceCorrectionView(
+        PagedResult<AdminAttendanceCorrectionView> mapped = result.map(request -> new AdminAttendanceCorrectionView(
                 AttendanceCorrectionView.from(request), requesters.get(request.getUserId())));
         log.info("event=attendance_admin_correction_list_read_완료 count={}", mapped.content().size());
         return mapped;
@@ -79,7 +79,7 @@ public class ManageAttendanceCorrectionService implements ManageAttendanceCorrec
         try {
         AttendanceCorrectionRequest request = findRequestForUpdate(requestId);
         LocalDateTime now = LocalDateTime.now(clock);
-        AttendanceRecord current = attendanceRepository.findByUserIdAndWorkDate(
+        AttendanceRecord current = attendanceRepository.findByUserIdAndWorkDateForUpdate(
                 request.getUserId(), request.getWorkDate()).orElse(null);
         AttendanceRecord corrected = applyCorrection(request, current, now);
         AttendanceRecord saved = attendanceRepository.save(corrected);

@@ -14,8 +14,11 @@ import org.springframework.context.annotation.Import;
 
 import com.academy.mudogroupware.global.infrastructure.config.TimeConfig;
 import com.academy.mudogroupware.lecture.domain.model.ClassType;
+import com.academy.mudogroupware.lecture.domain.model.FeeType;
+import com.academy.mudogroupware.lecture.domain.model.Grade;
 import com.academy.mudogroupware.lecture.domain.model.Lecture;
 import com.academy.mudogroupware.lecture.domain.model.LectureSchedule;
+import com.academy.mudogroupware.lecture.domain.repository.LectureFilter;
 
 @DataJpaTest(properties = "spring.jpa.hibernate.ddl-auto=create-drop")
 @Import({TimeConfig.class, LectureRepositoryImpl.class})
@@ -75,5 +78,249 @@ class LectureRepositoryImplDataJpaTest {
                 .isTrue();
         assertThat(repository.existsOverlap("602", DayOfWeek.MONDAY, LocalTime.of(20, 0), LocalTime.of(22, 0)))
                 .isFalse();
+    }
+
+    @Test
+    void updatesExistingLectureAndReplacesSchedules() {
+        Lecture saved = repository.save(Lecture.create(
+                "Original Math",
+                ClassType.CLASS,
+                "601",
+                Grade.HIGH_1,
+                null,
+                null,
+                null,
+                null,
+                "Teacher A",
+                "Math",
+                FeeType.PER_SESSION,
+                50000,
+                List.of(LectureSchedule.create(DayOfWeek.MONDAY, LocalTime.of(19, 0), LocalTime.of(21, 0))),
+                LocalDateTime.of(2026, 8, 11, 9, 0)));
+
+        Lecture updated = Lecture.restore(
+                saved.getId(),
+                "Updated Math",
+                ClassType.SPECIAL,
+                "602",
+                Grade.HIGH_2,
+                null,
+                null,
+                null,
+                null,
+                "Teacher B",
+                "Advanced Math",
+                FeeType.PER_MONTH,
+                300000,
+                List.of(LectureSchedule.create(DayOfWeek.TUESDAY, LocalTime.of(20, 0), LocalTime.of(22, 0))),
+                saved.getCreatedAt());
+
+        repository.save(updated);
+
+        Lecture found = repository.findById(saved.getId()).orElseThrow();
+        assertThat(found.getName()).isEqualTo("Updated Math");
+        assertThat(found.getClassType()).isEqualTo(ClassType.SPECIAL);
+        assertThat(found.getClassroomCode()).isEqualTo("602");
+        assertThat(found.getSchedules()).hasSize(1);
+        assertThat(found.getSchedules().get(0).getDayOfWeek()).isEqualTo(DayOfWeek.TUESDAY);
+        assertThat(repository.findAllById(List.of(saved.getId()))).hasSize(1);
+    }
+
+    @Test
+    void filtersLecturesByTimetableVisibleFields() {
+        Lecture target = repository.save(Lecture.create(
+                "High Math",
+                ClassType.CLASS,
+                "601",
+                Grade.HIGH_1,
+                null,
+                null,
+                null,
+                null,
+                "Teacher A",
+                "Math",
+                FeeType.PER_MONTH,
+                300000,
+                List.of(LectureSchedule.create(DayOfWeek.MONDAY, LocalTime.of(19, 0), LocalTime.of(21, 0))),
+                LocalDateTime.of(2026, 8, 11, 9, 0)));
+        repository.save(Lecture.create(
+                "High English",
+                ClassType.CLASS,
+                "602",
+                Grade.HIGH_1,
+                null,
+                null,
+                null,
+                null,
+                "Teacher B",
+                "English",
+                FeeType.PER_MONTH,
+                300000,
+                List.of(LectureSchedule.create(DayOfWeek.MONDAY, LocalTime.of(19, 0), LocalTime.of(21, 0))),
+                LocalDateTime.of(2026, 8, 11, 9, 0)));
+
+        List<Lecture> lectures = repository.findAll(
+                new LectureFilter(null, Grade.HIGH_1, "Math", "Teacher A", "601", DayOfWeek.MONDAY),
+                0,
+                20).content();
+
+        assertThat(lectures).extracting(Lecture::getId).containsExactly(target.getId());
+    }
+
+    @Test
+    void softDeletedLectureIsHiddenFromFindAllAndOverlapCheck() {
+        Lecture saved = repository.save(Lecture.create(
+                "Delete Target",
+                ClassType.CLASS,
+                "601",
+                null,
+                null,
+                null,
+                null,
+                null,
+                "Teacher A",
+                "Math",
+                null,
+                null,
+                List.of(LectureSchedule.create(DayOfWeek.MONDAY, LocalTime.of(19, 0), LocalTime.of(21, 0))),
+                LocalDateTime.of(2026, 8, 11, 9, 0)));
+
+        repository.deleteById(saved.getId(), LocalDateTime.of(2026, 8, 13, 10, 0));
+
+        assertThat(repository.findById(saved.getId())).isEmpty();
+        assertThat(repository.findAll(new LectureFilter(null, null, null, null, null, null), 0, 20).content())
+                .isEmpty();
+        assertThat(repository.findAllById(List.of(saved.getId()))).isEmpty();
+        assertThat(repository.existsOverlap("601", DayOfWeek.MONDAY, LocalTime.of(20, 0), LocalTime.of(22, 0)))
+                .isFalse();
+        assertThat(repository.existsOverlapExcludingLecture(saved.getId(), "601", DayOfWeek.MONDAY,
+                LocalTime.of(20, 0), LocalTime.of(22, 0))).isFalse();
+    }
+
+    @Test
+    void findsDistinctTeacherNamesExcludingDeletedAndBlank() {
+        repository.save(lectureWithTeacher("601", "김선생"));
+        repository.save(lectureWithTeacher("602", "김선생"));
+        repository.save(lectureWithTeacher("603", "이선생"));
+        repository.save(lectureWithTeacher("604", null));
+        Lecture deleted = repository.save(lectureWithTeacher("605", "박선생"));
+        repository.deleteById(deleted.getId(), LocalDateTime.of(2026, 8, 13, 10, 0));
+
+        List<String> teacherNames = repository.findDistinctTeacherNames();
+
+        assertThat(teacherNames).containsExactly("김선생", "이선생");
+    }
+
+    @Test
+    void findsDistinctSubjectNamesExcludingDeletedAndBlank() {
+        repository.save(lectureWithSubject("601", "수학"));
+        repository.save(lectureWithSubject("602", "수학"));
+        repository.save(lectureWithSubject("603", "영어"));
+        repository.save(lectureWithSubject("604", null));
+        Lecture deleted = repository.save(lectureWithSubject("605", "과학"));
+        repository.deleteById(deleted.getId(), LocalDateTime.of(2026, 8, 13, 10, 0));
+
+        List<String> subjectNames = repository.findDistinctSubjectNames();
+
+        assertThat(subjectNames).containsExactly("수학", "영어");
+    }
+
+    @Test
+    void findsDistinctClassroomCodesExcludingDeleted() {
+        repository.save(lectureWithClassroom("601"));
+        repository.save(lectureWithClassroom("601"));
+        repository.save(lectureWithClassroom("602"));
+        Lecture deleted = repository.save(lectureWithClassroom("603"));
+        repository.deleteById(deleted.getId(), LocalDateTime.of(2026, 8, 13, 10, 0));
+
+        List<String> classroomCodes = repository.findDistinctClassroomCodes();
+
+        assertThat(classroomCodes).containsExactly("601", "602");
+    }
+
+    @Test
+    void findsDistinctTermIdsExcludingDeleted() {
+        repository.save(lectureWithTerm("601", 10L));
+        repository.save(lectureWithTerm("602", 10L));
+        repository.save(lectureWithTerm("603", 20L));
+        repository.save(lectureWithTerm("604", null));
+        Lecture deleted = repository.save(lectureWithTerm("605", 30L));
+        repository.deleteById(deleted.getId(), LocalDateTime.of(2026, 8, 13, 10, 0));
+
+        List<Long> termIds = repository.findDistinctTermIds();
+
+        assertThat(termIds).containsExactlyInAnyOrder(10L, 20L);
+    }
+
+    private Lecture lectureWithTeacher(String classroomCode, String teacherName) {
+        return Lecture.create(
+                "Lecture " + classroomCode,
+                ClassType.CLASS,
+                classroomCode,
+                null,
+                null,
+                null,
+                null,
+                null,
+                teacherName,
+                "Math",
+                null,
+                null,
+                List.of(LectureSchedule.create(DayOfWeek.MONDAY, LocalTime.of(19, 0), LocalTime.of(21, 0))),
+                LocalDateTime.of(2026, 8, 11, 9, 0));
+    }
+
+    private Lecture lectureWithSubject(String classroomCode, String subjectName) {
+        return Lecture.create(
+                "Lecture " + classroomCode,
+                ClassType.CLASS,
+                classroomCode,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "Teacher",
+                subjectName,
+                null,
+                null,
+                List.of(LectureSchedule.create(DayOfWeek.MONDAY, LocalTime.of(19, 0), LocalTime.of(21, 0))),
+                LocalDateTime.of(2026, 8, 11, 9, 0));
+    }
+
+    private Lecture lectureWithClassroom(String classroomCode) {
+        return Lecture.create(
+                "Lecture " + classroomCode,
+                ClassType.CLASS,
+                classroomCode,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "Teacher",
+                "Math",
+                null,
+                null,
+                List.of(LectureSchedule.create(DayOfWeek.MONDAY, LocalTime.of(19, 0), LocalTime.of(21, 0))),
+                LocalDateTime.of(2026, 8, 11, 9, 0));
+    }
+
+    private Lecture lectureWithTerm(String classroomCode, Long termId) {
+        return Lecture.create(
+                "Lecture " + classroomCode,
+                ClassType.CLASS,
+                classroomCode,
+                null,
+                termId,
+                null,
+                null,
+                null,
+                "Teacher",
+                "Math",
+                null,
+                null,
+                List.of(LectureSchedule.create(DayOfWeek.MONDAY, LocalTime.of(19, 0), LocalTime.of(21, 0))),
+                LocalDateTime.of(2026, 8, 11, 9, 0));
     }
 }

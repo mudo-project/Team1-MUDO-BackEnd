@@ -21,7 +21,7 @@ import lombok.RequiredArgsConstructor;
 public class AttendanceRecordRepositoryImpl implements AttendanceRecordRepository {
 
     private static final String UNIQUE_CONSTRAINT_NAME =
-            "uk_attendance_record_academy_user_date";
+            "uk_attendance_record_user_date";
 
     private final AttendanceRecordJpaRepository attendanceRecordJpaRepository;
 
@@ -80,6 +80,14 @@ public class AttendanceRecordRepositoryImpl implements AttendanceRecordRepositor
             Long userId, LocalDate workDate) {
         return attendanceRecordJpaRepository
                 .findByUserIdAndWorkDate(userId, workDate)
+                .map(this::toDomain);
+    }
+
+    @Override
+    public Optional<AttendanceRecord> findByUserIdAndWorkDateForUpdate(
+            Long userId, LocalDate workDate) {
+        return attendanceRecordJpaRepository
+                .findByUserIdAndWorkDateForUpdate(userId, workDate)
                 .map(this::toDomain);
     }
 

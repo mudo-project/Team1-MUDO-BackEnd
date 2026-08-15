@@ -32,13 +32,13 @@ public class SubmitLeaveRequestService implements SubmitLeaveRequestUseCase {
     public void submit(SubmitLeaveRequestCommand command) {
         log.info("event=attendance_leave_request_submit_시작 userId={}, documentId={}", command.userId(), command.documentId());
         try {
-        AttendancePolicy policy = attendancePolicyRepository.findCurrent()
-                .orElseThrow(() -> new AttendanceException(AttendanceErrorCode.ATTENDANCE_POLICY_NOT_FOUND));
-        int usedDays = leaveUsedDaysCalculator.calculate(policy, command.startDate(), command.endDate());
-
         LeaveGrant grant = leaveGrantRepository.findActiveForUpdate(command.userId(),
                         command.submittedAt().toLocalDate())
                 .orElseThrow(() -> new AttendanceException(AttendanceErrorCode.INSUFFICIENT_LEAVE_BALANCE));
+
+        AttendancePolicy policy = attendancePolicyRepository.findCurrent()
+                .orElseThrow(() -> new AttendanceException(AttendanceErrorCode.ATTENDANCE_POLICY_NOT_FOUND));
+        int usedDays = leaveUsedDaysCalculator.calculate(policy, command.startDate(), command.endDate());
         if (!grant.contains(command.startDate()) || !grant.contains(command.endDate())) {
             throw new AttendanceException(AttendanceErrorCode.INVALID_LEAVE_PERIOD);
         }

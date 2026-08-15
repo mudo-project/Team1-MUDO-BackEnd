@@ -11,7 +11,6 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -27,13 +26,10 @@ import com.academy.mudogroupware.timetable.application.query.TimetableSetDetailV
 import com.academy.mudogroupware.timetable.application.query.TimetableSlotView;
 import com.academy.mudogroupware.timetable.application.usecase.GetTimetableSetUseCase;
 import com.academy.mudogroupware.timetable.application.usecase.GetTimetableSlotsUseCase;
-import com.academy.mudogroupware.timetable.domain.exception.InvalidExportColorException;
 import com.academy.mudogroupware.timetable.domain.exception.TimetableSetNotFoundException;
 import com.academy.mudogroupware.timetable.domain.model.ClassType;
 import com.academy.mudogroupware.timetable.domain.model.Grade;
 import com.academy.mudogroupware.timetable.domain.model.TimetableClassroom;
-import com.academy.mudogroupware.timetable.domain.model.TimetableExportColor;
-import com.academy.mudogroupware.timetable.domain.model.TimetableExportColorCriterion;
 import com.academy.mudogroupware.timetable.domain.model.TimetableExportDensity;
 import com.academy.mudogroupware.timetable.domain.model.TimetableExportFormat;
 import com.academy.mudogroupware.timetable.domain.model.TimetableExportOptions;
@@ -55,10 +51,6 @@ class ExportTimetableServiceTest {
                 getTimetableSetUseCase, getTimetableSlotsUseCase, List.of(excelRenderer, pdfRenderer));
     }
 
-    private Map<String, String> validColors() {
-        return Map.of("601", "FFCC00", "602", "00AACC");
-    }
-
     private TimetableSetDetailView setWithClassrooms() {
         return new TimetableSetDetailView(
                 1L, "2026 여름특강", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16),
@@ -70,8 +62,7 @@ class ExportTimetableServiceTest {
     private ExportTimetableCommand command(TimetableExportFormat format, DayOfWeek dayOfWeek, String floor,
                                             ClassType classType) {
         return new ExportTimetableCommand(
-                1L, format, TimetableExportColorCriterion.CLASSROOM, validColors(),
-                TimetableExportDensity.NORMAL, dayOfWeek, floor, classType);
+                1L, format, TimetableExportDensity.NORMAL, dayOfWeek, floor, classType);
     }
 
     @Test
@@ -80,10 +71,10 @@ class ExportTimetableServiceTest {
 
         TimetableSlotView tuesdaySlot = new TimetableSlotView(
                 200L, ClassType.CLASS, DayOfWeek.TUESDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                Grade.HIGH_3, "정T", "미적분");
+                Grade.HIGH_3, "정T", "미적분", "FFCC00");
         TimetableSlotView mondaySlot = new TimetableSlotView(
                 100L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                Grade.HIGH_3, "정T", "미적분");
+                Grade.HIGH_3, "정T", "미적분", "FFCC00");
         when(getTimetableSlotsUseCase.getSlots(1L)).thenReturn(List.of(tuesdaySlot, mondaySlot));
 
         when(excelRenderer.supports(TimetableExportFormat.EXCEL)).thenReturn(true);
@@ -100,10 +91,7 @@ class ExportTimetableServiceTest {
         assertThat(slotsCaptor.getValue()).containsExactly(mondaySlot, tuesdaySlot);
 
         TimetableExportOptions options = optionsCaptor.getValue();
-        assertThat(options.colorCriterion()).isEqualTo(TimetableExportColorCriterion.CLASSROOM);
         assertThat(options.density()).isEqualTo(TimetableExportDensity.NORMAL);
-        assertThat(options.colorFor("601", null)).isEqualTo(TimetableExportColor.fromHex("FFCC00"));
-        assertThat(options.colorFor("602", null)).isEqualTo(TimetableExportColor.fromHex("00AACC"));
     }
 
     @Test
@@ -112,10 +100,10 @@ class ExportTimetableServiceTest {
 
         TimetableSlotView classSlot = new TimetableSlotView(
                 100L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                Grade.HIGH_3, "정T", "미적분");
+                Grade.HIGH_3, "정T", "미적분", "FFCC00");
         TimetableSlotView specialSlot = new TimetableSlotView(
                 200L, ClassType.SPECIAL, DayOfWeek.MONDAY, "601", LocalTime.of(13, 0), LocalTime.of(15, 0),
-                Grade.HIGH_2, "오T", "물리");
+                Grade.HIGH_2, "오T", "물리", "FFCC00");
         when(getTimetableSlotsUseCase.getSlots(1L)).thenReturn(List.of(classSlot, specialSlot));
 
         when(excelRenderer.supports(TimetableExportFormat.EXCEL)).thenReturn(true);
@@ -135,10 +123,10 @@ class ExportTimetableServiceTest {
 
         TimetableSlotView mondaySlot = new TimetableSlotView(
                 100L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                Grade.HIGH_3, "정T", "미적분");
+                Grade.HIGH_3, "정T", "미적분", "FFCC00");
         TimetableSlotView tuesdaySlot = new TimetableSlotView(
                 200L, ClassType.CLASS, DayOfWeek.TUESDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                Grade.HIGH_3, "정T", "미적분");
+                Grade.HIGH_3, "정T", "미적분", "FFCC00");
         when(getTimetableSlotsUseCase.getSlots(1L)).thenReturn(List.of(mondaySlot, tuesdaySlot));
 
         when(excelRenderer.supports(TimetableExportFormat.EXCEL)).thenReturn(true);
@@ -158,10 +146,10 @@ class ExportTimetableServiceTest {
 
         TimetableSlotView floor6Slot = new TimetableSlotView(
                 100L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                Grade.HIGH_3, "정T", "미적분");
+                Grade.HIGH_3, "정T", "미적분", "FFCC00");
         TimetableSlotView floor5Slot = new TimetableSlotView(
                 200L, ClassType.CLASS, DayOfWeek.MONDAY, "602", LocalTime.of(13, 0), LocalTime.of(15, 0),
-                Grade.HIGH_2, "오T", "물리");
+                Grade.HIGH_2, "오T", "물리", "FFCC00");
         when(getTimetableSlotsUseCase.getSlots(1L)).thenReturn(List.of(floor6Slot, floor5Slot));
 
         when(excelRenderer.supports(TimetableExportFormat.EXCEL)).thenReturn(true);
@@ -181,10 +169,10 @@ class ExportTimetableServiceTest {
 
         TimetableSlotView mondaySlot = new TimetableSlotView(
                 100L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                Grade.HIGH_3, "정T", "미적분");
+                Grade.HIGH_3, "정T", "미적분", "FFCC00");
         TimetableSlotView tuesdaySlot = new TimetableSlotView(
                 200L, ClassType.CLASS, DayOfWeek.TUESDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                Grade.HIGH_3, "정T", "미적분");
+                Grade.HIGH_3, "정T", "미적분", "FFCC00");
         when(getTimetableSlotsUseCase.getSlots(1L)).thenReturn(List.of(mondaySlot, tuesdaySlot));
 
         when(pdfRenderer.supports(TimetableExportFormat.PDF)).thenReturn(true);
@@ -200,22 +188,10 @@ class ExportTimetableServiceTest {
     }
 
     @Test
-    void exportThrowsWhenColorIsNotValidHex() {
-        when(getTimetableSetUseCase.getTimetableSet(1L)).thenReturn(setWithClassrooms());
-        ExportTimetableCommand command = new ExportTimetableCommand(
-                1L, TimetableExportFormat.EXCEL, TimetableExportColorCriterion.CLASSROOM,
-                Map.of("601", "ZZZZZZ"), TimetableExportDensity.NORMAL, null, null, null);
-
-        assertThatThrownBy(() -> service.export(command))
-                .isInstanceOf(InvalidExportColorException.class);
-    }
-
-    @Test
     void exportPropagatesNotFoundFromGetTimetableSetUseCase() {
         when(getTimetableSetUseCase.getTimetableSet(999L)).thenThrow(new TimetableSetNotFoundException());
         ExportTimetableCommand command = new ExportTimetableCommand(
-                999L, TimetableExportFormat.EXCEL, TimetableExportColorCriterion.CLASSROOM, validColors(),
-                TimetableExportDensity.NORMAL, null, null, null);
+                999L, TimetableExportFormat.EXCEL, TimetableExportDensity.NORMAL, null, null, null);
 
         assertThatThrownBy(() -> service.export(command))
                 .isInstanceOf(TimetableSetNotFoundException.class);

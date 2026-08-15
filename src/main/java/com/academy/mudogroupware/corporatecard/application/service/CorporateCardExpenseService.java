@@ -14,7 +14,10 @@ import com.academy.mudogroupware.corporatecard.application.command.SubmitCardExp
 import com.academy.mudogroupware.corporatecard.application.port.ApprovalAttachmentFieldsPort;
 import com.academy.mudogroupware.corporatecard.application.port.ApprovalSubmissionPort;
 import com.academy.mudogroupware.corporatecard.application.port.CardExpensePort;
+import com.academy.mudogroupware.corporatecard.application.port.CorporateCardApproverDirectoryPort;
 import com.academy.mudogroupware.corporatecard.application.port.CorporateCardTransactionPort;
+import com.academy.mudogroupware.corporatecard.application.query.ApprovalLineView;
+import com.academy.mudogroupware.corporatecard.application.query.CardExpenseDetailView;
 import com.academy.mudogroupware.corporatecard.application.query.CardExpenseView;
 import com.academy.mudogroupware.corporatecard.application.query.CardExpensePage;
 import com.academy.mudogroupware.corporatecard.application.query.ReceiptReconciliationView;
@@ -34,6 +37,7 @@ public class CorporateCardExpenseService {
     private final CardExpensePort expensePort;
     private final ApprovalSubmissionPort approvalSubmissionPort;
     private final ApprovalAttachmentFieldsPort approvalAttachmentFieldsPort;
+    private final CorporateCardApproverDirectoryPort approverDirectoryPort;
 
     @Transactional(readOnly = true)
     public CardExpensePage getTransactions(int page, int size) {
@@ -46,7 +50,9 @@ public class CorporateCardExpenseService {
                 .map(CardExpensePort.ExpenseView::approvalDocumentId).filter(java.util.Objects::nonNull).collect(Collectors.toSet()));
         CardExpensePage result = new CardExpensePage(
                 transactionPage.content().stream().map(t -> toView(t, expenses.get(t.id()), statuses)).toList(),
-                transactionPage.page(), transactionPage.size(), transactionPage.hasNext());
+                transactionPage.page(), transactionPage.size(), transactionPage.totalElements(),
+                transactionPage.totalPages(), transactionPage.first(), transactionPage.last(),
+                transactionPage.hasNext(), transactionPage.hasPrevious());
         log.info("event=corporate_card_transaction_list_read_완료 page={}, count={}", page, result.content().size());
         return result;
         } catch (RuntimeException e) {
@@ -57,7 +63,7 @@ public class CorporateCardExpenseService {
     }
 
     @Transactional(readOnly = true)
-    public CardExpenseView getTransaction(Long transactionId) {
+    public CardExpenseDetailView getTransaction(Long transactionId) {
         log.info("event=corporate_card_transaction_detail_read_시작 transactionId={}", transactionId);
         try {
         var transaction = transactionPort.find(transactionId)
@@ -65,8 +71,11 @@ public class CorporateCardExpenseService {
         var expense = expensePort.findByTransactionId(transactionId).orElse(null);
         var statuses = approvalSubmissionPort.findStatuses(expense == null || expense.approvalDocumentId() == null
                 ? java.util.Set.of() : java.util.Set.of(expense.approvalDocumentId()));
-        CardExpenseView result = toView(transaction, expense, statuses);
-        log.info("event=corporate_card_transaction_detail_read_완료 transactionId={}, status={}", transactionId, result.status());
+        List<ApprovalLineView> approvalLines = findApprovalLines(expense);
+        CardExpenseDetailView result = new CardExpenseDetailView(
+                toView(transaction, expense, statuses), approvalLines);
+        log.info("event=corporate_card_transaction_detail_read_완료 transactionId={}, status={}",
+                transactionId, result.expense().status());
         return result;
         } catch (RuntimeException e) {
             log.warn("event=corporate_card_transaction_detail_read_실패 transactionId={}, errorType={}",
@@ -206,5 +215,25 @@ public class CorporateCardExpenseService {
                 transaction.installmentMonths(), transaction.amount(), expense == null ? null : expense.id(),
                 expense == null ? null : expense.userId(), expense == null ? null : expense.category(),
                 expense == null ? null : expense.purpose(), expense == null ? null : expense.approvalDocumentId(), status);
+    }
+
+    private List<ApprovalLineView> findApprovalLines(CardExpensePort.ExpenseView expense) {
+        if (expense == null || expense.approvalDocumentId() == null) {
+            return null;
+        }
+        var lines = approvalSubmissionPort.findApprovalLines(expense.approvalDocumentId());
+        if (lines.isEmpty()) {
+            return null;
+        }
+        var approvers = approverDirectoryPort.getApprovers(
+                lines.stream().map(ApprovalSubmissionPort.ApprovalLineInfo::approverId).toList());
+        return lines.stream().map(line -> {
+            var approver = approvers.get(line.approverId());
+            return new ApprovalLineView(
+                    line.approverId(),
+                    approver == null ? null : approver.name(),
+                    approver == null ? null : approver.positionName(),
+                    line.stepOrder());
+        }).toList();
     }
 }

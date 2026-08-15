@@ -59,7 +59,7 @@ class CompleteGoogleAccountConnectionServiceTest {
         GoogleOAuthStateClaims claims = new GoogleOAuthStateClaims(7L,false);
         when(googleOAuthStatePort.verify("state")).thenReturn(claims);
         when(googleOAuthPort.exchangeAuthorizationCode("auth-code"))
-                .thenReturn(new GoogleTokenExchangeResult("access-token", "refresh-token", "scope", 3600L));
+                .thenReturn(new GoogleTokenExchangeResult("access-token", "refresh-token", "scope", 3600L, null));
         when(googleOAuthPort.fetchAccountEmail("access-token")).thenReturn("academy@mudo.co.kr");
         when(googleAccountConnectionRepository.find()).thenReturn(Optional.empty());
 

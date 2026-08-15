@@ -3,6 +3,7 @@ package com.academy.mudogroupware.lecture.infrastructure.persistence;
 import java.time.DayOfWeek;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
@@ -14,30 +15,66 @@ import com.academy.mudogroupware.lecture.domain.model.Grade;
 
 public interface LectureJpaRepository extends JpaRepository<LectureEntity, Long> {
 
+    Optional<LectureEntity> findByIdAndDeletedAtIsNull(Long id);
+
+    List<LectureEntity> findAllByIdInAndDeletedAtIsNull(List<Long> ids);
+
     @Query("select l from LectureEntity l where "
-            + "(:termId is null or l.termId = :termId) "
+            + "l.deletedAt is null "
+            + "and (:termId is null or l.termId = :termId) "
             + "and (:grade is null or l.grade = :grade) "
-            + "and (:subjectId is null or l.subjectId = :subjectId) "
-            + "and (:teacherId is null or l.teacherId = :teacherId) "
-            + "and (:classroomId is null or l.classroomId = :classroomId) "
+            + "and (:subjectName is null or l.subjectName like concat('%', :subjectName, '%')) "
+            + "and (:teacherName is null or l.teacherName like concat('%', :teacherName, '%')) "
+            + "and (:classroomCode is null or l.classroomCode = :classroomCode) "
             + "and (:dayOfWeek is null or exists ("
             + "  select 1 from LectureScheduleEntity s where s.lecture = l and s.dayOfWeek = :dayOfWeek)) "
             + "order by l.id desc")
     Slice<LectureEntity> findAllByFilter(@Param("termId") Long termId,
                                           @Param("grade") Grade grade,
-                                          @Param("subjectId") Long subjectId,
-                                          @Param("teacherId") Long teacherId,
-                                          @Param("classroomId") Long classroomId,
+                                          @Param("subjectName") String subjectName,
+                                          @Param("teacherName") String teacherName,
+                                          @Param("classroomCode") String classroomCode,
                                           @Param("dayOfWeek") DayOfWeek dayOfWeek,
                                           Pageable pageable);
 
     @Query("select count(s) > 0 from LectureScheduleEntity s "
-            + "where s.lecture.classroomCode = :classroomCode and s.dayOfWeek = :dayOfWeek "
+            + "where s.lecture.deletedAt is null "
+            + "and s.lecture.classroomCode = :classroomCode and s.dayOfWeek = :dayOfWeek "
             + "and s.startTime < :endTime and :startTime < s.endTime")
     boolean existsOverlap(@Param("classroomCode") String classroomCode,
                            @Param("dayOfWeek") DayOfWeek dayOfWeek,
                            @Param("startTime") LocalTime startTime,
                            @Param("endTime") LocalTime endTime);
+
+    @Query("select count(s) > 0 from LectureScheduleEntity s "
+            + "where s.lecture.deletedAt is null "
+            + "and s.lecture.id <> :excludedLectureId "
+            + "and s.lecture.classroomCode = :classroomCode and s.dayOfWeek = :dayOfWeek "
+            + "and s.startTime < :endTime and :startTime < s.endTime")
+    boolean existsOverlapExcludingLecture(@Param("excludedLectureId") Long excludedLectureId,
+                                           @Param("classroomCode") String classroomCode,
+                                           @Param("dayOfWeek") DayOfWeek dayOfWeek,
+                                           @Param("startTime") LocalTime startTime,
+                                           @Param("endTime") LocalTime endTime);
+
+    @Query("select distinct l.teacherName from LectureEntity l "
+            + "where l.deletedAt is null and l.teacherName is not null "
+            + "order by l.teacherName")
+    List<String> findDistinctTeacherNames();
+
+    @Query("select distinct l.subjectName from LectureEntity l "
+            + "where l.deletedAt is null and l.subjectName is not null "
+            + "order by l.subjectName")
+    List<String> findDistinctSubjectNames();
+
+    @Query("select distinct l.classroomCode from LectureEntity l "
+            + "where l.deletedAt is null and l.classroomCode is not null "
+            + "order by l.classroomCode")
+    List<String> findDistinctClassroomCodes();
+
+    @Query("select distinct l.termId from LectureEntity l "
+            + "where l.deletedAt is null and l.termId is not null")
+    List<Long> findDistinctTermIds();
 
     /**
      * 매출 리포트 집계 전용 조회. Lecture aggregate(schedules 포함)를 통째로 복원하지 않고
@@ -45,7 +82,7 @@ public interface LectureJpaRepository extends JpaRepository<LectureEntity, Long>
      * schedules 지연로딩이 LazyInitializationException을 던졌었다.
      */
     @Query("select l.id as id, l.name as name, l.teacherName as teacherName, l.feeAmount as feeAmount "
-            + "from LectureEntity l")
+            + "from LectureEntity l where l.deletedAt is null")
     List<LectureRevenueProjection> findAllRevenueProjection();
 
     interface LectureRevenueProjection {

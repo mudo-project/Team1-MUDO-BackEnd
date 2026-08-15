@@ -53,12 +53,14 @@ class GetTimetableSlotServiceTest {
         when(timetableSetRepository.findById(1L)).thenReturn(Optional.of(timetableSet()));
         TimetableSlot slot = TimetableSlot.restore(
                 100L, 1L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                Grade.HIGH_3, "정T", "미적분", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16), null, null);
+                Grade.HIGH_3, "정T", "미적분", "FFCC00", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16), null,
+                null);
         when(timetableSlotRepository.findById(100L)).thenReturn(Optional.of(slot));
 
         TimetableSlotView view = service.getSlot(1L, 100L);
 
         assertThat(view.teacherName()).isEqualTo("정T");
+        assertThat(view.color()).isEqualTo("FFCC00");
     }
 
     @Test
@@ -91,7 +93,8 @@ class GetTimetableSlotServiceTest {
         when(timetableSetRepository.findById(1L)).thenReturn(Optional.of(timetableSet()));
         TimetableSlot slot = TimetableSlot.restore(
                 100L, 2L, ClassType.CLASS, DayOfWeek.MONDAY, "601", LocalTime.of(9, 0), LocalTime.of(11, 0),
-                Grade.HIGH_3, "정T", "미적분", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16), null, null);
+                Grade.HIGH_3, "정T", "미적분", "FFCC00", LocalDate.of(2026, 7, 20), LocalDate.of(2026, 8, 16), null,
+                null);
         when(timetableSlotRepository.findById(100L)).thenReturn(Optional.of(slot));
 
         assertThatThrownBy(() -> service.getSlot(1L, 100L))

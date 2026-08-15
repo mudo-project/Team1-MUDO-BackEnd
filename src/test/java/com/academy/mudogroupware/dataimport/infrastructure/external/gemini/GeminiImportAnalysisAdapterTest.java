@@ -1,6 +1,11 @@
 package com.academy.mudogroupware.dataimport.infrastructure.external.gemini;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
@@ -19,12 +24,50 @@ import com.academy.mudogroupware.dataimport.application.port.ImportFileRole;
 import com.academy.mudogroupware.dataimport.application.port.ParsedImportRow;
 import com.academy.mudogroupware.dataimport.application.port.ParsedImportSheet;
 import com.academy.mudogroupware.global.infrastructure.observability.ai.GeminiTokenUsageTracker;
+import com.academy.mudogroupware.planquota.application.service.CurrentPlanProvider;
+import com.academy.mudogroupware.planquota.domain.exception.PlanLimitExceededException;
+import com.academy.mudogroupware.planquota.domain.model.Plan;
+import com.academy.mudogroupware.planquota.domain.model.PlanLimits;
+import com.academy.mudogroupware.resourceusage.application.port.ResourceUsageQueryPort;
+import com.academy.mudogroupware.resourceusage.domain.model.ResourceUsageType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 class GeminiImportAnalysisAdapterTest {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final GeminiTokenUsageTracker tokenUsageTracker = new GeminiTokenUsageTracker();
+    private final ResourceUsageQueryPort resourceUsageQueryPort = unlimitedUsage();
+    private final CurrentPlanProvider currentPlanProvider = unlimitedPlan();
+
+    private static ResourceUsageQueryPort unlimitedUsage() {
+        ResourceUsageQueryPort stub = mock(ResourceUsageQueryPort.class);
+        when(stub.sumByTypeAndPeriod(eq(ResourceUsageType.AI_TOKEN), any(), any())).thenReturn(0L);
+        return stub;
+    }
+
+    private static CurrentPlanProvider unlimitedPlan() {
+        CurrentPlanProvider stub = mock(CurrentPlanProvider.class);
+        when(stub.currentLimits()).thenReturn(PlanLimits.of(Plan.PAID));
+        return stub;
+    }
+
+    @Test
+    void throwsWhenMonthlyAiTokenLimitReachedWithoutCallingGemini() {
+        RestClient.Builder builder = RestClient.builder()
+                .baseUrl("https://generativelanguage.googleapis.com");
+        MockRestServiceServer.bindTo(builder).build();
+        ResourceUsageQueryPort exhaustedUsage = mock(ResourceUsageQueryPort.class);
+        when(exhaustedUsage.sumByTypeAndPeriod(eq(ResourceUsageType.AI_TOKEN), any(), any())).thenReturn(100_000L);
+        CurrentPlanProvider freePlan = mock(CurrentPlanProvider.class);
+        when(freePlan.currentPlan()).thenReturn(Plan.FREE);
+        when(freePlan.currentLimits()).thenReturn(PlanLimits.of(Plan.FREE));
+        GeminiImportAnalysisAdapter adapter = new GeminiImportAnalysisAdapter(builder.build(),
+                new DataImportGeminiProperties("test-key", "gemini-test"), objectMapper, tokenUsageTracker,
+                exhaustedUsage, freePlan);
+
+        assertThatThrownBy(() -> adapter.analyze(List.of(studentSheet())))
+                .isInstanceOf(PlanLimitExceededException.class);
+    }
 
     @Test
     void returnsOriginalSheetsWhenApiKeyIsMissing() {
@@ -32,7 +75,8 @@ class GeminiImportAnalysisAdapterTest {
                 .baseUrl("https://generativelanguage.googleapis.com");
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
         GeminiImportAnalysisAdapter adapter = new GeminiImportAnalysisAdapter(
-                builder.build(), new DataImportGeminiProperties("", "gemini-test"), objectMapper, tokenUsageTracker);
+                builder.build(), new DataImportGeminiProperties("", "gemini-test"), objectMapper, tokenUsageTracker,
+                resourceUsageQueryPort, currentPlanProvider);
         ParsedImportSheet sheet = studentSheet();
 
         List<ParsedImportSheet> result = adapter.analyze(List.of(sheet));
@@ -48,7 +92,7 @@ class GeminiImportAnalysisAdapterTest {
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
         GeminiImportAnalysisAdapter adapter = new GeminiImportAnalysisAdapter(
                 builder.build(), new DataImportGeminiProperties("test-key", "gemini-test"), objectMapper,
-                tokenUsageTracker);
+                tokenUsageTracker, resourceUsageQueryPort, currentPlanProvider);
         String analysisJson = """
                 {"sheets":[{"role":"STUDENT","fileName":"students.csv","headerMappings":{"student_name_column":"name","grade_column":"grade"}}]}
                 """;
@@ -82,7 +126,7 @@ class GeminiImportAnalysisAdapterTest {
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
         GeminiImportAnalysisAdapter adapter = new GeminiImportAnalysisAdapter(
                 builder.build(), new DataImportGeminiProperties("test-key", "gemini-test"), objectMapper,
-                tokenUsageTracker);
+                tokenUsageTracker, resourceUsageQueryPort, currentPlanProvider);
         ParsedImportSheet sheet = studentSheet();
         server.expect(requestTo(
                         "https://generativelanguage.googleapis.com/v1beta/models/gemini-test:generateContent"))

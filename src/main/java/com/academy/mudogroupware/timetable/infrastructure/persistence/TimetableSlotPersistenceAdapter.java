@@ -3,11 +3,15 @@ package com.academy.mudogroupware.timetable.infrastructure.persistence;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Repository;
 
+import com.academy.mudogroupware.timetable.domain.exception.TimetableSlotNotFoundException;
+import com.academy.mudogroupware.timetable.domain.exception.TimetableSlotUpdateConflictException;
 import com.academy.mudogroupware.timetable.domain.model.TimetableSlot;
 import com.academy.mudogroupware.timetable.domain.repository.TimetableSlotRepository;
 
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 
 @Repository
@@ -18,8 +22,21 @@ public class TimetableSlotPersistenceAdapter implements TimetableSlotRepository 
 
     @Override
     public TimetableSlot save(TimetableSlot slot) {
-        TimetableSlotEntity entity = slot.getId() != null ? updateExisting(slot) : toEntity(slot);
-        return toDomain(timetableSlotJpaRepository.save(entity));
+        if (slot.getId() != null) {
+            try {
+                // 슬롯 동시 쓰기는 이미 TimetableSet 비관적 락(CreateTimetableSlotService/UpdateTimetableSlotService의
+                // findByIdForUpdate)이 직렬화한다. 이 버전 검사는 그 락을 거치지 않는 향후 호출 경로에 대한
+                // 방어 계층이다.
+                TimetableSlotEntity entity = updateExisting(slot);
+                timetableSlotJpaRepository.flush();
+                return toDomain(entity);
+            } catch (EntityNotFoundException exception) {
+                throw new TimetableSlotNotFoundException();
+            } catch (OptimisticLockingFailureException exception) {
+                throw new TimetableSlotUpdateConflictException(exception);
+            }
+        }
+        return toDomain(timetableSlotJpaRepository.save(toEntity(slot)));
     }
 
     @Override
@@ -51,7 +68,7 @@ public class TimetableSlotPersistenceAdapter implements TimetableSlotRepository 
         TimetableSlotEntity entity = timetableSlotJpaRepository.getReferenceById(domain.getId());
         entity.update(domain.getClassType(), domain.getDayOfWeek(), domain.getClassroomCode(),
                 domain.getStartTime(), domain.getEndTime(), domain.getGrade(), domain.getTeacherName(),
-                domain.getSubjectName(), domain.getEffectiveFrom(), domain.getEffectiveUntil());
+                domain.getSubjectName(), domain.getColor(), domain.getEffectiveFrom(), domain.getEffectiveUntil());
         return entity;
     }
 
@@ -67,6 +84,7 @@ public class TimetableSlotPersistenceAdapter implements TimetableSlotRepository 
                 .grade(domain.getGrade())
                 .teacherName(domain.getTeacherName())
                 .subjectName(domain.getSubjectName())
+                .color(domain.getColor())
                 .effectiveFrom(domain.getEffectiveFrom())
                 .effectiveUntil(domain.getEffectiveUntil())
                 .build();
@@ -76,7 +94,7 @@ public class TimetableSlotPersistenceAdapter implements TimetableSlotRepository 
         return TimetableSlot.restore(
                 entity.getId(), entity.getTimetableSetId(), entity.getClassType(), entity.getDayOfWeek(),
                 entity.getClassroomCode(), entity.getStartTime(), entity.getEndTime(), entity.getGrade(),
-                entity.getTeacherName(), entity.getSubjectName(), entity.getEffectiveFrom(),
+                entity.getTeacherName(), entity.getSubjectName(), entity.getColor(), entity.getEffectiveFrom(),
                 entity.getEffectiveUntil(), entity.getCreatedAt(), entity.getUpdatedAt());
     }
 }

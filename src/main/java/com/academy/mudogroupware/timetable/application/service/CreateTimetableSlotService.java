@@ -24,13 +24,13 @@ public class CreateTimetableSlotService implements CreateTimetableSlotUseCase {
 
     @Override
     public Long createSlot(CreateTimetableSlotCommand command) {
-        TimetableSet set = timetableSetRepository.findById(command.timetableSetId())
+        TimetableSet set = timetableSetRepository.findByIdForUpdate(command.timetableSetId())
                 .orElseThrow(TimetableSetNotFoundException::new);
 
         TimetableSlot candidate = TimetableSlot.create(
                 set.getId(), command.classType(), command.dayOfWeek(), command.classroomCode(),
                 command.startTime(), command.endTime(), command.grade(), command.teacherName(),
-                command.subjectName(), set.getStartDate(), set.getEndDate());
+                command.subjectName(), command.color(), set.getStartDate(), set.getEndDate());
 
         boolean conflicts = timetableSlotRepository
                 .findAllByTimetableSetIdAndClassroomCode(set.getId(), command.classroomCode()).stream()

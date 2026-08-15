@@ -23,6 +23,7 @@ import com.academy.mudogroupware.lecture.application.port.TeacherDirectoryPort;
 import com.academy.mudogroupware.lecture.application.port.TeacherInfo;
 import com.academy.mudogroupware.lecture.application.query.LectureDetailView;
 import com.academy.mudogroupware.lecture.application.query.LectureSummaryView;
+import com.academy.mudogroupware.lecture.application.query.TermOptionView;
 import com.academy.mudogroupware.lecture.domain.exception.LectureNotFoundException;
 import com.academy.mudogroupware.lecture.domain.model.ClassType;
 import com.academy.mudogroupware.lecture.domain.model.Classroom;
@@ -153,5 +154,47 @@ class LectureQueryServiceTest {
                 .containsExactly(3, 1);
         verify(enrolledStudentsPort).countByLectureIds(List.of(1L, 2L));
         verify(enrolledStudentsPort, never()).findByLectureId(1L);
+    }
+
+    @Test
+    void returnsDistinctTeacherNamesFromRepository() {
+        when(lectureRepository.findDistinctTeacherNames()).thenReturn(List.of("김선생", "이선생"));
+
+        List<String> result = service.getTeacherNames();
+
+        assertThat(result).containsExactly("김선생", "이선생");
+    }
+
+    @Test
+    void returnsDistinctSubjectNamesFromRepository() {
+        when(lectureRepository.findDistinctSubjectNames()).thenReturn(List.of("수학", "영어"));
+
+        List<String> result = service.getSubjectNames();
+
+        assertThat(result).containsExactly("수학", "영어");
+    }
+
+    @Test
+    void returnsDistinctClassroomCodesFromRepository() {
+        when(lectureRepository.findDistinctClassroomCodes()).thenReturn(List.of("A101", "B201"));
+
+        List<String> result = service.getClassroomCodes();
+
+        assertThat(result).containsExactly("A101", "B201");
+    }
+
+    @Test
+    void returnsDistinctTermsSortedByName() {
+        when(lectureRepository.findDistinctTermIds()).thenReturn(List.of(10L, 20L));
+        when(termRepository.findAllById(List.of(10L, 20L))).thenReturn(List.of(
+                Term.restore(10L, "2026 여름학기", NOW),
+                Term.restore(20L, "2026 1학기", NOW)));
+
+        List<TermOptionView> result = service.getTerms();
+
+        assertThat(result).extracting(TermOptionView::termId, TermOptionView::termName)
+                .containsExactly(
+                        org.assertj.core.groups.Tuple.tuple(20L, "2026 1학기"),
+                        org.assertj.core.groups.Tuple.tuple(10L, "2026 여름학기"));
     }
 }

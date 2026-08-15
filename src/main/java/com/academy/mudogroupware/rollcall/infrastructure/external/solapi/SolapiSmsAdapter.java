@@ -12,6 +12,7 @@ import javax.crypto.spec.SecretKeySpec;
 
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
@@ -56,6 +57,10 @@ public class SolapiSmsAdapter implements SmsSenderPort {
                     .body(body)
                     .retrieve()
                     .body(String.class);
+        } catch (ResourceAccessException e) {
+            // 응답을 받기 전에 타임아웃/연결 끊김 발생 — SOLAPI가 실제로 접수했는지 알 수 없다.
+            log.warn("event=solapi_sms_send_불확정 receiver={}, reason={}", maskPhone(receiver), e.getMessage());
+            return SmsSendResult.indeterminate("SMS 발송 결과를 확인할 수 없습니다: " + e.getMessage());
         } catch (RestClientException e) {
             log.warn("event=solapi_sms_send_실패 receiver={}, reason={}", maskPhone(receiver), e.getMessage());
             return SmsSendResult.failed("SMS 발송 API 호출에 실패했습니다: " + e.getMessage());

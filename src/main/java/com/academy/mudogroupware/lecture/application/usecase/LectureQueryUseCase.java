@@ -1,8 +1,11 @@
 package com.academy.mudogroupware.lecture.application.usecase;
 
+import java.util.List;
+
 import com.academy.mudogroupware.global.domain.common.page.PageResult;
 import com.academy.mudogroupware.lecture.application.query.LectureDetailView;
 import com.academy.mudogroupware.lecture.application.query.LectureSummaryView;
+import com.academy.mudogroupware.lecture.application.query.TermOptionView;
 import com.academy.mudogroupware.lecture.domain.repository.LectureFilter;
 
 public interface LectureQueryUseCase {
@@ -10,4 +13,12 @@ public interface LectureQueryUseCase {
     PageResult<LectureSummaryView> getLectures(LectureFilter filter, int page, int size);
 
     LectureDetailView getLectureDetail(Long lectureId);
+
+    List<String> getTeacherNames();
+
+    List<String> getSubjectNames();
+
+    List<String> getClassroomCodes();
+
+    List<TermOptionView> getTerms();
 }

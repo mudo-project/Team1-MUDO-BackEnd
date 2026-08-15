@@ -1,11 +1,34 @@
 # 매출 리포트(revenuereport) 리비전 로그
 
 > 작성일: 2026-08-12
-> 상태: 🚧 Spring 쪽(집계·저장·조회·배치) 완료. mudo-ai-server 쪽(AI 서술 생성 엔드포인트)은 별도 저장소 작업(Plan 2/2) 대기 중 — 그 전까지 배치는 매번 실패 로그만 남기고 리포트를 저장하지 못한다.
+> 상태: 🚧 Spring 쪽(집계·저장·조회·배치) 완료. mudo-ai-server 쪽(AI 서술 생성 엔드포인트) 완료. 리포트 생성 시 알림함 연동 완료.
 
 ## 🎯 변경 목적
 
 원장이 매달 학원의 매출/지출/순이익 현황을 AI가 서술한 리포트로 받아볼 수 있게 한다. 짐짝(Gym-Jjak)의 "트레이너 시장동향 리포트"(월간 배치로 AI가 생성, 인앱에서 조회) 구조를 참고했다.
+
+---
+
+## ✅ 2026-08-13 · 리포트 생성 시 알림함 연동
+
+### 배경
+
+리포트 기능을 처음 만들 당시(2026-08-12) MUDO엔 영속 알림함이 없어서, 별도 알림 인프라 대신 리포트 테이블 자체의 `read_at`으로만 안읽음을 표현하기로 했었다(`docs/superpowers/specs/2026-08-12-ai-revenue-report-design.md` 참고). 이후 다른 팀원이 `notification` 도메인(이벤트 구독 기반 영속 알림함)을 만들어 develop에 병합했다.
+
+### 확정된 정책
+
+- `revenuereport/domain/event/RevenueReportGeneratedEvent(recipientUserId, reportId, targetMonth)` 신설. `GenerateRevenueReportService`가 저장 성공 직후 발행한다(approval 도메인의 `ApprovalLineActivatedEvent` 발행 패턴과 동일하게 `ApplicationEventPublisher.publishEvent()`를 서비스에서 직접 호출).
+- 수신자는 이벤트 발행 시점에 `revenuereport` 도메인이 직접 조회해 이벤트에 담는다(다른 알림 이벤트들과 동일한 컨벤션 — notification 리스너가 아니라 발행하는 도메인이 수신자를 안다). 신규 `AcademyOwnerLookupPort`(원장 userId 조회)를 `users` 도메인이 `AcademyOwnerLookupAdapter`로 구현한다.
+- 원장 계정이 아직 없으면(부트스트랩 전 등) `Optional.empty()`로 조용히 건너뛴다 — 알림 발행 실패/스킵이 리포트 생성 자체의 성공 여부에 영향을 주지 않는다.
+- `notification` 도메인의 `NotificationCreationListener`에 `handle(RevenueReportGeneratedEvent)` 케이스 추가, `NotificationType.REVENUE_REPORT_GENERATED` 신규.
+- 기존 `read_at`/안읽음-카운트 API는 그대로 유지한다 — 목록 화면 안읽음 표시용으로는 여전히 유효하고, 이번 알림함 연동은 벨 아이콘 등 별도 알림 UI에 뜨게 하는 걸 추가하는 것뿐이다.
+
+### 로컬 검증
+
+- `GenerateRevenueReportServiceTest`: 원장 존재 시 이벤트 발행(수신자/reportId/targetMonth 검증), 원장 부재 시 이벤트 미발행 검증.
+- `NotificationCreationListenerTest`: 이벤트 수신 시 올바른 `CreateNotificationCommand`(수신자/타입/targetId/문구) 생성 검증.
+- `UserRepositoryImplTest`: `findAcademyOwnerId()` 존재/부재 케이스 검증.
+- 로컬 `bootRun`으로 전체 빈 그래프(신규 포트/어댑터/이벤트 리스너 포함) 정상 기동 확인.
 
 ---
 

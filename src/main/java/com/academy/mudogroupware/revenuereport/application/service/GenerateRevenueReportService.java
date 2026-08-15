@@ -5,12 +5,15 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
+import com.academy.mudogroupware.revenuereport.application.port.AcademyOwnerLookupPort;
 import com.academy.mudogroupware.revenuereport.application.port.RevenueReportAiPort;
 import com.academy.mudogroupware.revenuereport.application.port.RevenueSnapshot;
 import com.academy.mudogroupware.revenuereport.application.usecase.GenerateRevenueReportUseCase;
+import com.academy.mudogroupware.revenuereport.domain.event.RevenueReportGeneratedEvent;
 import com.academy.mudogroupware.revenuereport.domain.model.RevenueReport;
 import com.academy.mudogroupware.revenuereport.domain.repository.RevenueReportRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -37,6 +40,8 @@ public class GenerateRevenueReportService implements GenerateRevenueReportUseCas
     private final Clock clock;
     private final ObjectMapper objectMapper;
     private final MeterRegistry meterRegistry;
+    private final ApplicationEventPublisher eventPublisher;
+    private final AcademyOwnerLookupPort academyOwnerLookupPort;
 
     public GenerateRevenueReportService(RevenueReportAggregationReader aggregationReader,
                                         RevenueReportAiPort revenueReportAiPort,
@@ -44,13 +49,17 @@ public class GenerateRevenueReportService implements GenerateRevenueReportUseCas
                                         RevenueSnapshotCalculator calculator,
                                         Clock clock,
                                         ObjectMapper objectMapper,
-                                        MeterRegistry meterRegistry) {
+                                        MeterRegistry meterRegistry,
+                                        ApplicationEventPublisher eventPublisher,
+                                        AcademyOwnerLookupPort academyOwnerLookupPort) {
         this.aggregationReader = aggregationReader;
         this.revenueReportAiPort = revenueReportAiPort;
         this.revenueReportRepository = revenueReportRepository;
         this.calculator = calculator;
         this.clock = clock;
         this.meterRegistry = meterRegistry;
+        this.eventPublisher = eventPublisher;
+        this.academyOwnerLookupPort = academyOwnerLookupPort;
         // Spring이 구성한 ObjectMapper(날짜를 [2026,7,1] 배열이 아니라 "2026-07-01" ISO
         // 문자열로 직렬화)를 그대로 복사해 쓴다. 직접 new ObjectMapper()를 만들면 이 설정이
         // 빠져서 실제로 날짜 직렬화 버그를 겪었다. FAIL_ON_UNKNOWN_PROPERTIES도 꺼서, 나중에
@@ -98,6 +107,7 @@ public class GenerateRevenueReportService implements GenerateRevenueReportUseCas
 
             log.info("event=revenue_report_generate_완료 targetMonth={}, reportId={}", targetMonth, saved.getId());
             recordMetric(sample, "success");
+            publishGeneratedEvent(saved);
         } catch (RuntimeException e) {
             log.warn("event=revenue_report_generate_실패 targetMonth={}, reason={}", targetMonth, e.getMessage(), e);
             recordMetric(sample, "failure");
@@ -117,6 +127,15 @@ public class GenerateRevenueReportService implements GenerateRevenueReportUseCas
         } catch (RuntimeException metricError) {
             log.warn("event=revenue_report_metric_기록_실패 reason={}", metricError.getMessage(), metricError);
         }
+    }
+
+    /**
+     * 원장(ACADEMY:OWNER) 계정이 아직 없으면(부트스트랩 전 등) 조용히 건너뛴다 — 알림 발송은
+     * 리포트 생성의 성공 여부에 영향을 주지 않는다.
+     */
+    private void publishGeneratedEvent(RevenueReport saved) {
+        academyOwnerLookupPort.findAcademyOwnerUserId().ifPresent(ownerUserId -> eventPublisher.publishEvent(
+                new RevenueReportGeneratedEvent(ownerUserId, saved.getId(), saved.getTargetMonth())));
     }
 
     /**

@@ -32,11 +32,10 @@ import com.academy.mudogroupware.sharedfile.application.usecase.DownloadSharedFi
 import com.academy.mudogroupware.sharedfile.application.usecase.GetSharedFileItemUseCase;
 import com.academy.mudogroupware.sharedfile.application.usecase.GetSharedFileRootUseCase;
 import com.academy.mudogroupware.sharedfile.application.usecase.ListSharedFileItemsUseCase;
-import com.academy.mudogroupware.sharedfile.application.usecase.MoveSharedFileItemUseCase;
 import com.academy.mudogroupware.sharedfile.application.usecase.RecreateSharedFileRootUseCase;
-import com.academy.mudogroupware.sharedfile.application.usecase.RenameSharedFileItemUseCase;
 import com.academy.mudogroupware.sharedfile.application.usecase.SearchSharedFileItemsUseCase;
 import com.academy.mudogroupware.sharedfile.application.usecase.TrashSharedFileItemUseCase;
+import com.academy.mudogroupware.sharedfile.application.usecase.UpdateSharedFileItemUseCase;
 import com.academy.mudogroupware.sharedfile.application.usecase.UploadSharedFileUseCase;
 import com.academy.mudogroupware.sharedfile.presentation.api.common.SharedFileResponseCode;
 import com.academy.mudogroupware.sharedfile.presentation.api.request.CreateGoogleWorkspaceFileRequest;
@@ -74,8 +73,7 @@ public class SharedFileController {
     private final CreateSharedFolderUseCase createSharedFolderUseCase;
     private final UploadSharedFileUseCase uploadSharedFileUseCase;
     private final CreateGoogleWorkspaceFileUseCase createGoogleWorkspaceFileUseCase;
-    private final RenameSharedFileItemUseCase renameSharedFileItemUseCase;
-    private final MoveSharedFileItemUseCase moveSharedFileItemUseCase;
+    private final UpdateSharedFileItemUseCase updateSharedFileItemUseCase;
     private final TrashSharedFileItemUseCase trashSharedFileItemUseCase;
     private final DownloadSharedFileUseCase downloadSharedFileUseCase;
 
@@ -146,7 +144,8 @@ public class SharedFileController {
         return ResponseEntity.ok(GlobalApiResponse.ok(SharedFileResponseCode.ITEMS_SEARCHED, response));
     }
 
-    @Operation(summary = "하위 폴더 생성", description = "parentId 하위에 새 폴더를 만듭니다.")
+    @Operation(summary = "하위 폴더 생성",
+            description = "parentId 하위에 새 폴더를 만듭니다. parentId를 생략하면 시스템 루트 바로 아래에 만듭니다.")
     @ApiResponses({
         @ApiResponse(responseCode = "201", description = "생성 성공"),
         @ApiResponse(responseCode = "400", description = "이름이 올바르지 않음")
@@ -160,7 +159,8 @@ public class SharedFileController {
                 GlobalApiResponse.created(SharedFileResponseCode.FOLDER_CREATED, SharedFileItemResponse.from(view)));
     }
 
-    @Operation(summary = "로컬 파일 업로드", description = "최대 100MB의 파일 한 개를 parentId 하위에 업로드합니다.")
+    @Operation(summary = "로컬 파일 업로드",
+            description = "최대 100MB의 파일 한 개를 parentId 하위에 업로드합니다. parentId를 생략하면 시스템 루트 바로 아래에 업로드합니다.")
     @ApiResponses({
         @ApiResponse(responseCode = "201", description = "업로드 성공"),
         @ApiResponse(responseCode = "400", description = "이름이 올바르지 않거나 100MB를 초과함")
@@ -168,7 +168,7 @@ public class SharedFileController {
     @PreAuthorize(MANAGE_PERMISSION)
     @PostMapping(value = "/items/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<GlobalApiResponse<SharedFileItemResponse>> uploadItem(
-            @RequestParam String parentId,
+            @RequestParam(required = false) String parentId,
             @RequestPart MultipartFile file) throws IOException {
         if (file.isEmpty()) {
             throw new IllegalArgumentException("업로드할 파일이 비어 있습니다.");
@@ -179,7 +179,8 @@ public class SharedFileController {
                 GlobalApiResponse.created(SharedFileResponseCode.FILE_UPLOADED, SharedFileItemResponse.from(view)));
     }
 
-    @Operation(summary = "Google 파일 생성", description = "Docs·Sheets·Slides 중 하나의 빈 파일을 생성합니다.")
+    @Operation(summary = "Google 파일 생성",
+            description = "Docs·Sheets·Slides 중 하나의 빈 파일을 생성합니다. parentId를 생략하면 시스템 루트 바로 아래에 만듭니다.")
     @ApiResponses({
         @ApiResponse(responseCode = "201", description = "생성 성공"),
         @ApiResponse(responseCode = "400", description = "이름이 올바르지 않음")
@@ -208,13 +209,7 @@ public class SharedFileController {
         if (!request.hasAnyChange()) {
             throw new IllegalArgumentException("name 또는 parentId 중 하나는 필수입니다.");
         }
-        SharedFileItemView view = null;
-        if (request.name() != null && !request.name().isBlank()) {
-            view = renameSharedFileItemUseCase.rename(itemId, request.name());
-        }
-        if (request.parentId() != null && !request.parentId().isBlank()) {
-            view = moveSharedFileItemUseCase.move(itemId, request.parentId());
-        }
+        SharedFileItemView view = updateSharedFileItemUseCase.update(itemId, request.name(), request.parentId());
         return ResponseEntity.ok(
                 GlobalApiResponse.ok(SharedFileResponseCode.ITEM_UPDATED, SharedFileItemResponse.from(view)));
     }

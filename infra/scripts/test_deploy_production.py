@@ -27,16 +27,20 @@ class DeploymentManifestTest(unittest.TestCase):
         cells["cell-1"]["rds_max_connections"] = 100
         return tenants, cells
 
-    def test_repository_manifests_are_valid_with_academy_a_enabled(self):
+    def test_repository_manifests_are_valid_with_enabled_tenants(self):
         enabled = validate_manifests(
             self.profiles, self.tenants, self.cells, deployment=False
         )
-        self.assertEqual(["academy-a"], [tenant["code"] for tenant in enabled])
+        self.assertEqual(
+            ["academy-a", "academy-d"], [tenant["code"] for tenant in enabled]
+        )
 
     def test_capacity_includes_one_sequential_deployment_surge(self):
         tenants, cells = self.enabled_configuration()
         enabled = validate_manifests(self.profiles, tenants, cells, deployment=True)
-        self.assertEqual(["academy-a"], [tenant["code"] for tenant in enabled])
+        self.assertEqual(
+            ["academy-a", "academy-d"], [tenant["code"] for tenant in enabled]
+        )
 
         cells["cell-1"]["rds_max_connections"] = 10
         with self.assertRaises(DeploymentError):
@@ -75,7 +79,11 @@ class DeploymentManifestTest(unittest.TestCase):
         self.assertIn("GOOGLE_CLIENT_SECRET", secret_names)
         self.assertIn("GOOGLE_REDIRECT_URI", secret_names)
         self.assertIn("GOOGLE_OAUTH_FRONTEND_REDIRECT_URI", secret_names)
+        self.assertIn("MAILGUN_API_KEY", secret_names)
+        self.assertIn("MAIL_FROM", secret_names)
+        self.assertIn("MAILGUN_WEBHOOK_SIGNING_KEY", secret_names)
         self.assertIn("GEMINI_API_KEY", secret_names)
+        self.assertIn("CLIENT_IP_SIGNING_SECRET", secret_names)
         self.assertEqual(
             "arn:aws:ssm:ap-northeast-2:123456789012:parameter/mudo/prod/shared/SENTRY_DSN",
             secrets["SENTRY_DSN"],

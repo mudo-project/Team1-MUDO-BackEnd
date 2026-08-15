@@ -70,8 +70,21 @@ class UploadSharedFileServiceTest {
     }
 
     @Test
-    void throwsWhenParentIdIsNull() {
-        assertThatThrownBy(() -> service.upload(null, "a.txt", "text/plain", CONTENT))
+    void uploadsUnderRootWhenParentIdIsOmitted() {
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
+        when(drivePort.upload("access-token", "root-id", "a.txt", "text/plain", CONTENT))
+                .thenReturn(driveItem("uploaded-id"));
+
+        SharedFileItemView view = service.upload(null, "a.txt", "text/plain", CONTENT);
+
+        assertThat(view.id()).isEqualTo("uploaded-id");
+        verify(rootGuard, never()).requireDescendant(any(), any(), any());
+    }
+
+    @Test
+    void throwsWhenParentIdIsBlank() {
+        assertThatThrownBy(() -> service.upload(" ", "a.txt", "text/plain", CONTENT))
                 .isInstanceOf(BadRequestException.class);
 
         verify(drivePort, never()).upload(any(), any(), any(), any(), any());

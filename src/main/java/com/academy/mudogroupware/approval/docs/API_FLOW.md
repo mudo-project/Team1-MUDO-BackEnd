@@ -25,7 +25,7 @@ POST /api/approvals/{documentId}/decide
 -> /topic/approvals/users/{approverId}
 ```
 
-최종 승인/반려가 되면 `ApprovalDocumentDecidedEvent`를 발행한다. attendance는 이 이벤트를 받아 휴가 결재 상태를 `CONFIRMED` 또는 `CANCELLED`로 반영한다.
+최종 승인/반려가 되면 `ApprovalDocumentDecidedEvent(status=APPROVED|REJECTED)`를 발행한다. attendance는 이 이벤트의 `approved()` 호환 메서드를 받아 휴가 결재 상태를 `CONFIRMED` 또는 `CANCELLED`로 반영한다.
 
 ## 결재 신청 취소
 
@@ -36,7 +36,7 @@ POST /api/approvals/{documentId}/cancel
 -> 아직 승인/반려 처리된 결재선이 없는지 검증
 -> ApprovalDocument.cancel
 -> ApprovalDocumentRepository.save
--> ApprovalDocumentDecidedEvent(approved=false) 발행
+-> ApprovalDocumentDecidedEvent(status=CANCELLED) 발행
 ```
 
 취소는 신청자 본인만 가능하며, 이미 결재 처리가 시작된 문서는 취소할 수 없다. 문서는 `CANCELLED` 상태로 남긴다.

@@ -64,7 +64,7 @@ public class ToggleTaskCommentCompleteService implements ToggleTaskCommentComple
 
     TaskComment toggled = comment.toggleComplete(command.requesterId(), LocalDateTime.now(clock));
 
-    TaskComment saved = taskCommentRepository.save(toggled);
+    TaskComment saved = taskCommentRepository.updateCompletion(toggled);
 
     AfterCommitLogger.run(
         () ->

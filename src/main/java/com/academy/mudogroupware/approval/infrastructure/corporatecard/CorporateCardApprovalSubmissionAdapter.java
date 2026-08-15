@@ -1,6 +1,7 @@
 package com.academy.mudogroupware.approval.infrastructure.corporatecard;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -75,5 +76,16 @@ public class CorporateCardApprovalSubmissionAdapter implements ApprovalSubmissio
                 .collect(Collectors.toMap(
                         document -> document.getId(),
                         document -> new ApprovalStatusView(document.getStatus().name(), document.getStatus().name())));
+    }
+
+    /** Consumer: corporatecard / Purpose: 법인카드 상세의 실제 문서 결재선 조회 */
+    @Override
+    public List<ApprovalLineInfo> findApprovalLines(Long documentId) {
+        return approvalDocumentRepository.findById(documentId)
+                .map(document -> document.getLines().stream()
+                        .sorted(Comparator.comparingInt(line -> line.getStepOrder()))
+                        .map(line -> new ApprovalLineInfo(line.getApproverId(), line.getStepOrder()))
+                        .toList())
+                .orElse(List.of());
     }
 }

@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import com.academy.mudogroupware.resourceusage.domain.model.ResourceUsageFeatureSummary;
+import com.academy.mudogroupware.resourceusage.domain.model.ResourceUsageType;
 
 public interface ResourceUsageJpaRepository extends JpaRepository<ResourceUsageEventEntity, Long> {
 
@@ -30,4 +31,22 @@ public interface ResourceUsageJpaRepository extends JpaRepository<ResourceUsageE
     List<ResourceUsageFeatureSummary> summarizeByFeature(
             @Param("fromInclusive") LocalDateTime fromInclusive,
             @Param("toExclusive") LocalDateTime toExclusive);
+
+    @Query("""
+            select coalesce(sum(e.amount), 0)
+            from ResourceUsageEventEntity e
+            where e.resourceType = :type
+            """)
+    long sumByType(@Param("type") ResourceUsageType type);
+
+    @Query("""
+            select coalesce(sum(e.amount), 0)
+            from ResourceUsageEventEntity e
+            where e.resourceType = :type
+              and e.occurredAt >= :fromInclusive
+              and e.occurredAt < :toExclusive
+            """)
+    long sumByTypeAndPeriod(@Param("type") ResourceUsageType type,
+                             @Param("fromInclusive") LocalDateTime fromInclusive,
+                             @Param("toExclusive") LocalDateTime toExclusive);
 }

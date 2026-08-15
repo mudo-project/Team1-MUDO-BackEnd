@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
+import com.academy.mudogroupware.payroll.application.event.PayrollStatementEmailWorkChangedEvent;
 import com.academy.mudogroupware.payroll.application.port.out.PayrollEmailWebhookVerifier;
 import com.academy.mudogroupware.payroll.application.port.out.PayrollStatementDeliveryPort;
 import com.academy.mudogroupware.payroll.application.port.out.PayrollStatementDeliveryPort.DeliveryData;
@@ -17,11 +18,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 @ExtendWith(MockitoExtension.class)
 class PayrollEmailWebhookServiceTest {
   @Mock PayrollEmailWebhookVerifier verifier;
   @Mock PayrollStatementDeliveryPort deliveries;
+  @Mock ApplicationEventPublisher events;
   @InjectMocks PayrollEmailWebhookService service;
 
   @Test
@@ -32,6 +35,7 @@ class PayrollEmailWebhookServiceTest {
     service.handle(command);
     verify(deliveries).markDelivered(eq("delivery-token"), eq("message-id"),
         any(LocalDateTime.class));
+    verify(events).publishEvent(any(PayrollStatementEmailWorkChangedEvent.class));
   }
 
   @Test
@@ -60,6 +64,6 @@ class PayrollEmailWebhookServiceTest {
   private DeliveryData delivery() {
     return new DeliveryData(1L, null, 2L, 3L, 4L, "staff@example.com", SENT,
         null, null, "delivery-token", null, 5L, LocalDateTime.now(), null,
-        LocalDateTime.now(), null, null);
+        LocalDateTime.now(), null, null, 1, null, LocalDateTime.now(), null);
   }
 }

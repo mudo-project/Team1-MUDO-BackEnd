@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 import com.academy.mudogroupware.resourceusage.domain.model.ResourceUsageEvent;
 import com.academy.mudogroupware.resourceusage.domain.model.ResourceUsageFeatureSummary;
 import com.academy.mudogroupware.resourceusage.domain.model.ResourceUsageRepository;
+import com.academy.mudogroupware.resourceusage.domain.model.ResourceUsageType;
 
 import lombok.RequiredArgsConstructor;
 
@@ -26,6 +27,16 @@ public class ResourceUsagePersistenceAdapter implements ResourceUsageRepository 
     public List<ResourceUsageFeatureSummary> summarizeByFeature(LocalDateTime fromInclusive,
                                                                 LocalDateTime toExclusive) {
         return resourceUsageJpaRepository.summarizeByFeature(fromInclusive, toExclusive);
+    }
+
+    @Override
+    public long sumByType(ResourceUsageType type) {
+        return resourceUsageJpaRepository.sumByType(type);
+    }
+
+    @Override
+    public long sumByTypeAndPeriod(ResourceUsageType type, LocalDateTime fromInclusive, LocalDateTime toExclusive) {
+        return resourceUsageJpaRepository.sumByTypeAndPeriod(type, fromInclusive, toExclusive);
     }
 
     private ResourceUsageEventEntity toEntity(ResourceUsageEvent event) {

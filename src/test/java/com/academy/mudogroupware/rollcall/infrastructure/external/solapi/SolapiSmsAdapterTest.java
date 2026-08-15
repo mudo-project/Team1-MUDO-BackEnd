@@ -6,7 +6,10 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
+
+import java.io.IOException;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
@@ -56,6 +59,36 @@ class SolapiSmsAdapterTest {
                 .send("010-1111-2222", "결석했습니다");
 
         assertThat(result.success()).isTrue();
+        server.verify();
+    }
+
+    @Test
+    void returnsFailedResultWhenSolapiRespondsWithAnErrorStatus() {
+        RestClient.Builder builder = builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        server.expect(requestTo(SEND_URL)).andRespond(withServerError());
+
+        SmsSendResult result = adapter(builder, new SolapiProperties("test-key", "test-secret", "010-1234-5678"))
+                .send("010-1111-2222", "결석했습니다");
+
+        assertThat(result.success()).isFalse();
+        assertThat(result.indeterminate()).isFalse();
+        server.verify();
+    }
+
+    @Test
+    void returnsIndeterminateResultWhenConnectionFailsBeforeAResponseArrives() {
+        RestClient.Builder builder = builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        server.expect(requestTo(SEND_URL)).andRespond(request -> {
+            throw new IOException("Connection reset");
+        });
+
+        SmsSendResult result = adapter(builder, new SolapiProperties("test-key", "test-secret", "010-1234-5678"))
+                .send("010-1111-2222", "결석했습니다");
+
+        assertThat(result.success()).isFalse();
+        assertThat(result.indeterminate()).isTrue();
         server.verify();
     }
 }

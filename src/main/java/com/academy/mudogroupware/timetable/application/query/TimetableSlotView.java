@@ -8,5 +8,6 @@ import com.academy.mudogroupware.timetable.domain.model.Grade;
 
 public record TimetableSlotView(
         Long timetableSlotId, ClassType classType, DayOfWeek dayOfWeek, String classroomCode,
-        LocalTime startTime, LocalTime endTime, Grade grade, String teacherName, String subjectName) {
+        LocalTime startTime, LocalTime endTime, Grade grade, String teacherName, String subjectName,
+        String color) {
 }

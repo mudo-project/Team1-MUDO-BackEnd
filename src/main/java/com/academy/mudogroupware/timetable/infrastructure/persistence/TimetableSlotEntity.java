@@ -16,6 +16,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -62,16 +63,23 @@ public class TimetableSlotEntity extends BaseTimeEntity {
     @Column(name = "subject_name", length = 50)
     private String subjectName;
 
+    @Column(length = 6, nullable = false)
+    private String color;
+
     @Column(name = "effective_from", nullable = false)
     private LocalDate effectiveFrom;
 
     @Column(name = "effective_until", nullable = false)
     private LocalDate effectiveUntil;
 
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
     @Builder
     private TimetableSlotEntity(Long id, Long timetableSetId, ClassType classType, DayOfWeek dayOfWeek,
                                  String classroomCode, LocalTime startTime, LocalTime endTime, Grade grade,
-                                 String teacherName, String subjectName, LocalDate effectiveFrom,
+                                 String teacherName, String subjectName, String color, LocalDate effectiveFrom,
                                  LocalDate effectiveUntil) {
         this.id = id;
         this.timetableSetId = timetableSetId;
@@ -83,12 +91,13 @@ public class TimetableSlotEntity extends BaseTimeEntity {
         this.grade = grade;
         this.teacherName = teacherName;
         this.subjectName = subjectName;
+        this.color = color;
         this.effectiveFrom = effectiveFrom;
         this.effectiveUntil = effectiveUntil;
     }
 
     public void update(ClassType classType, DayOfWeek dayOfWeek, String classroomCode, LocalTime startTime,
-                        LocalTime endTime, Grade grade, String teacherName, String subjectName,
+                        LocalTime endTime, Grade grade, String teacherName, String subjectName, String color,
                         LocalDate effectiveFrom, LocalDate effectiveUntil) {
         this.classType = classType;
         this.dayOfWeek = dayOfWeek;
@@ -98,6 +107,7 @@ public class TimetableSlotEntity extends BaseTimeEntity {
         this.grade = grade;
         this.teacherName = teacherName;
         this.subjectName = subjectName;
+        this.color = color;
         this.effectiveFrom = effectiveFrom;
         this.effectiveUntil = effectiveUntil;
     }

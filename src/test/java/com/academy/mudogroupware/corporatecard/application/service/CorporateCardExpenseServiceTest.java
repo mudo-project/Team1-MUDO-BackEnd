@@ -7,6 +7,8 @@ import static org.mockito.Mockito.when;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -14,9 +16,11 @@ import org.junit.jupiter.api.Test;
 import com.academy.mudogroupware.corporatecard.application.port.ApprovalAttachmentFieldsPort;
 import com.academy.mudogroupware.corporatecard.application.port.ApprovalSubmissionPort;
 import com.academy.mudogroupware.corporatecard.application.port.CardExpensePort;
+import com.academy.mudogroupware.corporatecard.application.port.CorporateCardApproverDirectoryPort;
 import com.academy.mudogroupware.corporatecard.application.port.CorporateCardTransactionPort;
 import com.academy.mudogroupware.corporatecard.application.query.ReceiptReconciliationView;
 import com.academy.mudogroupware.corporatecard.domain.model.ExpenseCategory;
+import com.academy.mudogroupware.global.domain.common.page.PagedResult;
 
 class CorporateCardExpenseServiceTest {
 
@@ -26,9 +30,12 @@ class CorporateCardExpenseServiceTest {
     private final CardExpensePort expensePort = mock(CardExpensePort.class);
     private final ApprovalSubmissionPort approvalSubmissionPort = mock(ApprovalSubmissionPort.class);
     private final ApprovalAttachmentFieldsPort approvalAttachmentFieldsPort = mock(ApprovalAttachmentFieldsPort.class);
+    private final CorporateCardApproverDirectoryPort approverDirectoryPort =
+            mock(CorporateCardApproverDirectoryPort.class);
 
     private final CorporateCardExpenseService service = new CorporateCardExpenseService(
-            transactionPort, expensePort, approvalSubmissionPort, approvalAttachmentFieldsPort);
+            transactionPort, expensePort, approvalSubmissionPort, approvalAttachmentFieldsPort,
+            approverDirectoryPort);
 
     private CorporateCardTransactionPort.TransactionView transaction() {
         return new CorporateCardTransactionPort.TransactionView(TRANSACTION_ID,
@@ -75,5 +82,73 @@ class CorporateCardExpenseServiceTest {
 
         assertThat(result.transactionId()).isEqualTo(TRANSACTION_ID);
         assertThat(result.overallStatus()).isEqualTo(ReceiptReconciliationView.OverallStatus.MATCH);
+    }
+
+    @Test
+    void returnsTransactionPageMetadata() {
+        when(transactionPort.findPage(0, 20))
+                .thenReturn(PagedResult.of(List.of(transaction()), 0, 20, 42));
+        when(expensePort.findByTransactionIds(List.of(TRANSACTION_ID))).thenReturn(Map.of());
+        when(approvalSubmissionPort.findStatuses(java.util.Set.of())).thenReturn(Map.of());
+
+        var result = service.getTransactions(0, 20);
+
+        assertThat(result.totalElements()).isEqualTo(42);
+        assertThat(result.totalPages()).isEqualTo(3);
+        assertThat(result.first()).isTrue();
+        assertThat(result.last()).isFalse();
+        assertThat(result.hasNext()).isTrue();
+        assertThat(result.hasPrevious()).isFalse();
+    }
+
+    @Test
+    void returnsNullApprovalLinesWhenApprovalDocumentDoesNotExist() {
+        when(transactionPort.find(TRANSACTION_ID)).thenReturn(Optional.of(transaction()));
+        when(expensePort.findByTransactionId(TRANSACTION_ID)).thenReturn(Optional.empty());
+        when(approvalSubmissionPort.findStatuses(java.util.Set.of())).thenReturn(Map.of());
+
+        var result = service.getTransaction(TRANSACTION_ID);
+
+        assertThat(result.approvalLines()).isNull();
+    }
+
+    @Test
+    void returnsNullApprovalLinesWhenApprovalDocumentHasNoLines() {
+        when(transactionPort.find(TRANSACTION_ID)).thenReturn(Optional.of(transaction()));
+        when(expensePort.findByTransactionId(TRANSACTION_ID)).thenReturn(Optional.of(
+                new CardExpensePort.ExpenseView(
+                        1L, TRANSACTION_ID, 5L, ExpenseCategory.MEAL, "점심", 99L)));
+        when(approvalSubmissionPort.findStatuses(java.util.Set.of(99L))).thenReturn(Map.of());
+        when(approvalSubmissionPort.findApprovalLines(99L)).thenReturn(List.of());
+
+        var result = service.getTransaction(TRANSACTION_ID);
+
+        assertThat(result.approvalLines()).isNull();
+    }
+
+    @Test
+    void returnsApproverNameCurrentPositionAndStepOrder() {
+        when(transactionPort.find(TRANSACTION_ID)).thenReturn(Optional.of(transaction()));
+        when(expensePort.findByTransactionId(TRANSACTION_ID)).thenReturn(Optional.of(
+                new CardExpensePort.ExpenseView(
+                        1L, TRANSACTION_ID, 5L, ExpenseCategory.MEAL, "점심", 99L)));
+        when(approvalSubmissionPort.findStatuses(java.util.Set.of(99L))).thenReturn(Map.of());
+        when(approvalSubmissionPort.findApprovalLines(99L)).thenReturn(List.of(
+                new ApprovalSubmissionPort.ApprovalLineInfo(10L, 1),
+                new ApprovalSubmissionPort.ApprovalLineInfo(20L, 2)));
+        when(approverDirectoryPort.getApprovers(List.of(10L, 20L))).thenReturn(Map.of(
+                10L, new CorporateCardApproverDirectoryPort.ApproverInfo(10L, "김원장", "원장"),
+                20L, new CorporateCardApproverDirectoryPort.ApproverInfo(20L, "이실장", "실장")));
+
+        var result = service.getTransaction(TRANSACTION_ID);
+
+        assertThat(result.approvalLines()).extracting(
+                        line -> line.approverId(),
+                        line -> line.approverName(),
+                        line -> line.positionName(),
+                        line -> line.stepOrder())
+                .containsExactly(
+                        org.assertj.core.groups.Tuple.tuple(10L, "김원장", "원장", 1),
+                        org.assertj.core.groups.Tuple.tuple(20L, "이실장", "실장", 2));
     }
 }

@@ -20,6 +20,7 @@
 - file: 첨부파일 다운로드 URL 발급은 file 모듈이 공개하는 `GetFileDownloadUrlUseCase`를 직접 주입해서 쓴다(`GetApprovalAttachmentDownloadUrlService`). approval이 신청자/결재선 참여자 검증과 fileId의 문서 소속 검증을 먼저 마친 뒤에만 호출한다 — file 모듈의 범용 다운로드 API는 인증만 되면 fileId를 아는 누구나 호출할 수 있으므로, 그대로 노출하면 결재선과 무관한 사람도 URL을 받을 수 있다.
 - attendance: 휴가 기간이 포함된 결재는 `LeaveRequestSubmittedEvent`와 `ApprovalDocumentDecidedEvent`로 휴가 상태를 전달한다.
 - corporatecard: `ExtractApprovalAttachmentFieldsUseCase`를 corporatecard가 직접 주입해서 쓴다. 결재 문서의 첫 번째 첨부파일에서 Gemini 구조화 출력으로 금액/일자/가맹점을 추출해준다(영수증-카드거래 대사 검증용). REST 엔드포인트는 없고 UseCase만 공개한다.
+- corporatecard: `CorporateCardApprovalSubmissionAdapter`가 상신, 상태, 기본 결재선과 함께 법인카드 상세에 필요한 실제 문서 결재자 ID와 순서를 제공한다.
 - global security: `AuthUser`로 인증 사용자 정보를 받는다.
 
 ## 권한 정책
@@ -43,9 +44,29 @@
 - 파일 메타데이터가 없거나 미지원 contentType(hwp 등)이면 `APPROVAL_409_7`로 실패하고 `summaryStatus=FAILED`로 저장한다.
 - 지원 범위는 UTF-8 텍스트 계열, PDF, 이미지(jpeg/png/webp/heic/heif), docx contentType이다. PDF·이미지는 15MB를 초과하면 `APPROVAL_409_7`로 실패한다.
 
+## 데이터 생명주기 정책
+
+- 결재 문서, 승인/반려 이력, 결재선, 결재 첨부파일은 업무 증빙 데이터로 보고 플랜에 따라 보관 여부를 다르게 두지 않는다.
+- 결재 문서에 반영된 AI 최종 요약·추출 결과는 결재 문서의 일부로 보고 같은 보존 정책을 따른다.
+- AI 업로드 원본, 프롬프트/응답 원문, 중간 로그, 단순 미리보기 결과는 결재 증빙으로 확정된 데이터가 아니므로 저장하지 않거나 짧은 기간 후 삭제하는 정책으로 둔다.
+- 중요 증빙이나 분쟁 가능 문서는 향후 `legal_hold` 같은 플래그로 자동 삭제에서 제외한다.
+- 담당 도메인 기준은 [DATA_LIFECYCLE_POLICY.md](../../../../../../../../docs/DATA_LIFECYCLE_POLICY.md)를 따른다.
+
 ## 문서
 
 - [API.md](API.md)
 - [API_FLOW.md](API_FLOW.md)
 - [REVISION.md](REVISION.md)
 - [CHANGELOG.md](CHANGELOG.md)
+
+## 2026-08-14 전자결재 보존 정책
+
+전자결재 문서는 삭제 중심이 아니라 증빙 보존 중심으로 관리한다. 이번 구현부터 `approval_document`에 `retention_policy`, `retention_until`, `legal_hold`, `archived_at` 컬럼을 두고 문서 생성 시 기본 보존 정책을 자동 기록한다.
+
+| 문서 유형 | 정책 | 보존기한 |
+| --- | --- | --- |
+| 일반 업무 결재, 휴가/근태 결재 | `GENERAL_BUSINESS` | 생성일로부터 3년 |
+| 법인카드/비용정산 결재 | `TAX_EVIDENCE` | 생성일로부터 5년 |
+| 계약/중요 지출/핵심 의사결정 | `IMPORTANT_BUSINESS` | 생성일로부터 10년. 현재 자동 분류 대상은 아니며 추후 문서 유형 확장 시 사용한다. |
+
+`legal_hold=true`인 문서는 보존기한이 지나도 자동 정리 대상에서 제외한다. `archived_at`은 추후 장기 보관 화면/배치에서 일반 조회와 분리할 때 사용한다. 첨부파일 AI 요약 결과는 결재 문서의 일부로 보고 원문 문서와 같은 보존 정책을 따른다.

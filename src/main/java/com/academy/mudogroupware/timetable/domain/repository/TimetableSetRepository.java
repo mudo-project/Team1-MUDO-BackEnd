@@ -11,6 +11,8 @@ public interface TimetableSetRepository {
 
     Optional<TimetableSet> findById(Long id);
 
+    Optional<TimetableSet> findByIdForUpdate(Long id);
+
     List<TimetableSet> findAll();
 
     void deleteById(Long id);

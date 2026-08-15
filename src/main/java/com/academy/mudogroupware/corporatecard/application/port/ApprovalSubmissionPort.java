@@ -10,6 +10,8 @@ public interface ApprovalSubmissionPort {
     void saveDefaultApproverIdsIfEmpty(Long templateId, List<Long> approverIds);
     ApprovalStatusView findStatus(Long documentId);
     Map<Long, ApprovalStatusView> findStatuses(Set<Long> documentIds);
+    List<ApprovalLineInfo> findApprovalLines(Long documentId);
 
     record ApprovalStatusView(String code, String name) { }
+    record ApprovalLineInfo(Long approverId, int stepOrder) { }
 }

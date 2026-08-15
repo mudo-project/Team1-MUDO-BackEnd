@@ -31,7 +31,7 @@ public class NoticeRepositoryImpl implements NoticeRepository {
 
     @Override
     public Optional<Notice> findById(Long id) {
-        return noticeJpaRepository.findById(id).map(this::toDomain);
+        return noticeJpaRepository.findActiveById(id).map(this::toDomain);
     }
 
     @Override
@@ -56,6 +56,8 @@ public class NoticeRepositoryImpl implements NoticeRepository {
                 .viewCount(domain.getViewCount())
                 .createdAt(domain.getCreatedAt())
                 .updatedAt(domain.getUpdatedAt())
+                .deletedAt(domain.getDeletedAt())
+                .retentionUntil(domain.getRetentionUntil())
                 .build();
         domain.getAttachments().forEach(attachment -> entity.addAttachment(toAttachmentEntity(attachment)));
         return entity;
@@ -68,6 +70,8 @@ public class NoticeRepositoryImpl implements NoticeRepository {
         entity.setPinned(domain.isPinned());
         entity.setViewCount(domain.getViewCount());
         entity.setUpdatedAt(domain.getUpdatedAt());
+        entity.setDeletedAt(domain.getDeletedAt());
+        entity.setRetentionUntil(domain.getRetentionUntil());
         return entity;
     }
 
@@ -86,7 +90,7 @@ public class NoticeRepositoryImpl implements NoticeRepository {
 
         return Notice.restore(entity.getId(), entity.getAuthorUserId(), entity.getTitle(),
                 entity.getContent(), entity.isPinned(), entity.getViewCount(), attachments, entity.getCreatedAt(),
-                entity.getUpdatedAt());
+                entity.getUpdatedAt(), entity.getDeletedAt(), entity.getRetentionUntil());
     }
 
     private NoticeAttachment toAttachmentDomain(NoticeAttachmentEntity entity) {

@@ -54,6 +54,7 @@ class RecreateSharedFileRootServiceTest {
         SharedFileRootView view = service.recreate();
 
         assertThat(view.ready()).isTrue();
+        assertThat(view.rootId()).isEqualTo("new-folder-id");
         ArgumentCaptor<SharedFileRoot> captor = ArgumentCaptor.forClass(SharedFileRoot.class);
         verify(sharedFileRootRepository).save(captor.capture());
         assertThat(captor.getValue().isReady()).isTrue();
@@ -70,6 +71,7 @@ class RecreateSharedFileRootServiceTest {
         SharedFileRootView view = service.recreate();
 
         assertThat(view.ready()).isTrue();
+        assertThat(view.rootId()).isEqualTo("recreated-folder-id");
         ArgumentCaptor<SharedFileRoot> captor = ArgumentCaptor.forClass(SharedFileRoot.class);
         verify(sharedFileRootRepository).save(captor.capture());
         assertThat(captor.getValue().isReady()).isTrue();

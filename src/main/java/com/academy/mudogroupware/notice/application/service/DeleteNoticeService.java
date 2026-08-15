@@ -1,8 +1,12 @@
 package com.academy.mudogroupware.notice.application.service;
 
+import java.time.Clock;
+import java.time.LocalDateTime;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.academy.mudogroupware.notice.application.retention.NoticeRetentionProperties;
 import com.academy.mudogroupware.notice.application.usecase.DeleteNoticeUseCase;
 import com.academy.mudogroupware.notice.domain.exception.NoticeErrorCode;
 import com.academy.mudogroupware.notice.domain.exception.NoticeException;
@@ -19,6 +23,8 @@ import lombok.extern.slf4j.Slf4j;
 public class DeleteNoticeService implements DeleteNoticeUseCase {
 
     private final NoticeRepository noticeRepository;
+    private final Clock clock;
+    private final NoticeRetentionProperties retentionProperties;
 
     @Override
     public void deleteNotice(Long noticeId, Long requesterId) {
@@ -30,7 +36,9 @@ public class DeleteNoticeService implements DeleteNoticeUseCase {
             throw new NoticeException(NoticeErrorCode.NOT_AUTHOR_DELETE);
         }
 
-        noticeRepository.deleteById(noticeId);
+        LocalDateTime deletedAt = LocalDateTime.now(clock);
+        notice.markDeleted(deletedAt, retentionProperties.retentionUntil(deletedAt));
+        noticeRepository.save(notice);
         log.info("event=notice_delete_완료 noticeId={}, requesterId={}", noticeId, requesterId);
     }
 }

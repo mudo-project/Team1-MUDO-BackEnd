@@ -3,6 +3,7 @@ package com.academy.mudogroupware.sharedfile.presentation.api;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -47,11 +48,10 @@ import com.academy.mudogroupware.sharedfile.application.usecase.DownloadSharedFi
 import com.academy.mudogroupware.sharedfile.application.usecase.GetSharedFileItemUseCase;
 import com.academy.mudogroupware.sharedfile.application.usecase.GetSharedFileRootUseCase;
 import com.academy.mudogroupware.sharedfile.application.usecase.ListSharedFileItemsUseCase;
-import com.academy.mudogroupware.sharedfile.application.usecase.MoveSharedFileItemUseCase;
 import com.academy.mudogroupware.sharedfile.application.usecase.RecreateSharedFileRootUseCase;
-import com.academy.mudogroupware.sharedfile.application.usecase.RenameSharedFileItemUseCase;
 import com.academy.mudogroupware.sharedfile.application.usecase.SearchSharedFileItemsUseCase;
 import com.academy.mudogroupware.sharedfile.application.usecase.TrashSharedFileItemUseCase;
+import com.academy.mudogroupware.sharedfile.application.usecase.UpdateSharedFileItemUseCase;
 import com.academy.mudogroupware.sharedfile.application.usecase.UploadSharedFileUseCase;
 
 @WebMvcTest(SharedFileController.class)
@@ -80,9 +80,7 @@ class SharedFileControllerTest {
     @MockitoBean
     private CreateGoogleWorkspaceFileUseCase createGoogleWorkspaceFileUseCase;
     @MockitoBean
-    private RenameSharedFileItemUseCase renameSharedFileItemUseCase;
-    @MockitoBean
-    private MoveSharedFileItemUseCase moveSharedFileItemUseCase;
+    private UpdateSharedFileItemUseCase updateSharedFileItemUseCase;
     @MockitoBean
     private TrashSharedFileItemUseCase trashSharedFileItemUseCase;
     @MockitoBean
@@ -94,12 +92,23 @@ class SharedFileControllerTest {
 
     @Test
     void getRootReturnsReadyState() throws Exception {
-        when(getSharedFileRootUseCase.getRoot()).thenReturn(new SharedFileRootView(true));
+        when(getSharedFileRootUseCase.getRoot()).thenReturn(new SharedFileRootView(true, "root-id"));
 
         mockMvc.perform(get("/api/shared-files/root").with(authentication(manageUser())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("SHAREDFILE_200_1"))
-                .andExpect(jsonPath("$.data.ready").value(true));
+                .andExpect(jsonPath("$.data.ready").value(true))
+                .andExpect(jsonPath("$.data.rootId").value("root-id"));
+    }
+
+    @Test
+    void getRootReturnsNotReadyStateWithNullRootId() throws Exception {
+        when(getSharedFileRootUseCase.getRoot()).thenReturn(new SharedFileRootView(false, null));
+
+        mockMvc.perform(get("/api/shared-files/root").with(authentication(manageUser())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.ready").value(false))
+                .andExpect(jsonPath("$.data.rootId").value(org.hamcrest.Matchers.nullValue()));
     }
 
     @Test
@@ -128,13 +137,14 @@ class SharedFileControllerTest {
 
     @Test
     void recreateRootSucceedsWithRootManageAuthority() throws Exception {
-        when(recreateSharedFileRootUseCase.recreate()).thenReturn(new SharedFileRootView(true));
+        when(recreateSharedFileRootUseCase.recreate()).thenReturn(new SharedFileRootView(true, "root-id"));
 
         mockMvc.perform(post("/api/shared-files/root/recreation")
                         .with(authentication(rootManageUser()))
                         .with(csrf()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value("SHAREDFILE_200_2"));
+                .andExpect(jsonPath("$.code").value("SHAREDFILE_200_2"))
+                .andExpect(jsonPath("$.data.rootId").value("root-id"));
     }
 
     @Test
@@ -197,6 +207,20 @@ class SharedFileControllerTest {
     }
 
     @Test
+    void createFolderSucceedsWithoutParentId() throws Exception {
+        when(createSharedFolderUseCase.create(null, "수업 운영"))
+                .thenReturn(item("folder-1", "수업 운영"));
+
+        mockMvc.perform(post("/api/shared-files/folders")
+                        .with(authentication(manageUser()))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"수업 운영\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.id").value("folder-1"));
+    }
+
+    @Test
     void createFolderRejectsBlankName() throws Exception {
         mockMvc.perform(post("/api/shared-files/folders")
                         .with(authentication(manageUser()))
@@ -225,6 +249,21 @@ class SharedFileControllerTest {
     }
 
     @Test
+    void uploadItemSucceedsWithoutParentId() throws Exception {
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "수업계획.docx", "application/octet-stream", "content".getBytes());
+        when(uploadSharedFileUseCase.upload(eq(null), eq("수업계획.docx"), any(), any()))
+                .thenReturn(item("item-1", "수업계획.docx"));
+
+        mockMvc.perform(multipart("/api/shared-files/items/upload")
+                        .file(file)
+                        .with(authentication(manageUser()))
+                        .with(csrf()))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.id").value("item-1"));
+    }
+
+    @Test
     void createGoogleFileReturns201() throws Exception {
         when(createGoogleWorkspaceFileUseCase.create("root-id", "9월 수업계획", GoogleWorkspaceFileType.DOCS))
                 .thenReturn(item("gdoc-1", "9월 수업계획"));
@@ -239,8 +278,22 @@ class SharedFileControllerTest {
     }
 
     @Test
+    void createGoogleFileSucceedsWithoutParentId() throws Exception {
+        when(createGoogleWorkspaceFileUseCase.create(null, "9월 수업계획", GoogleWorkspaceFileType.DOCS))
+                .thenReturn(item("gdoc-1", "9월 수업계획"));
+
+        mockMvc.perform(post("/api/shared-files/google-files")
+                        .with(authentication(manageUser()))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"9월 수업계획\",\"type\":\"DOCS\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.id").value("gdoc-1"));
+    }
+
+    @Test
     void updateItemRenamesWhenOnlyNameGiven() throws Exception {
-        when(renameSharedFileItemUseCase.rename("item-1", "새이름.docx"))
+        when(updateSharedFileItemUseCase.update("item-1", "새이름.docx", null))
                 .thenReturn(item("item-1", "새이름.docx"));
 
         mockMvc.perform(patch("/api/shared-files/items/item-1")
@@ -250,8 +303,24 @@ class SharedFileControllerTest {
                         .content("{\"name\":\"새이름.docx\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.name").value("새이름.docx"));
+    }
 
-        verifyNoInteractions(moveSharedFileItemUseCase);
+    // 이름변경+이동 원자성의 핵심: 두 필드가 함께 오면 UpdateSharedFileItemUseCase.update() 호출 1번으로
+    // 넘어간다(예전처럼 rename UseCase·move UseCase를 순서대로 따로 부르지 않는다).
+    @Test
+    void updateItemUpdatesNameAndParentIdInOneCallWhenBothGiven() throws Exception {
+        when(updateSharedFileItemUseCase.update("item-1", "새이름.docx", "new-parent-id"))
+                .thenReturn(item("item-1", "새이름.docx"));
+
+        mockMvc.perform(patch("/api/shared-files/items/item-1")
+                        .with(authentication(manageUser()))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"새이름.docx\",\"parentId\":\"new-parent-id\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.name").value("새이름.docx"));
+
+        verify(updateSharedFileItemUseCase, times(1)).update(any(), any(), any());
     }
 
     @Test
@@ -263,7 +332,7 @@ class SharedFileControllerTest {
                         .content("{}"))
                 .andExpect(status().isBadRequest());
 
-        verifyNoInteractions(renameSharedFileItemUseCase, moveSharedFileItemUseCase);
+        verifyNoInteractions(updateSharedFileItemUseCase);
     }
 
     @Test

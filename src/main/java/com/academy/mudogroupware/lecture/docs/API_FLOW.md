@@ -45,3 +45,32 @@ GET /api/lectures/{lectureId}
 ```
 
 student 데이터의 소유권은 student 모듈에 있다. lecture는 수강 학생 Entity/Repository를 직접 참조하지 않고 Port로 Projection만 받는다.
+
+## 강의 수정
+
+```text
+PATCH /api/lectures/{lectureId}
+-> LectureController.updateLecture
+-> UpdateLectureRequest.toCommand
+-> UpdateLectureService.updateLecture
+-> LectureRepository.findById
+-> TermRepository.findByName or save
+-> SubjectRepository.findByName or save
+-> ClassroomRepository.findByNameForUpdate or save
+-> LectureRepository.existsOverlapExcludingLecture
+-> LectureRepository.save
+```
+
+강의 수정은 등록과 같은 요청 형태를 사용한다. 단, 시간 충돌 검사는 수정 대상 강의 id를 제외하고 수행한다.
+
+## 강의 삭제
+
+```text
+DELETE /api/lectures/{lectureId}
+-> LectureController.deleteLecture
+-> DeleteLectureService.deleteLecture
+-> LectureRepository.findById
+-> LectureRepository.deleteById
+```
+
+강의 삭제는 `deletedAt`을 채우는 소프트 삭제다. 삭제된 강의는 목록/상세 조회, id 목록 조회, 교실 시간 충돌 검사, 매출 리포트용 강의 조회에서 제외한다.
