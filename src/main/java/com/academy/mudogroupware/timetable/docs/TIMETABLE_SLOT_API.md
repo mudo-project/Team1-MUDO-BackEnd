@@ -34,7 +34,7 @@
 | `classroomCode` | String | true | 강의실 코드. 같은 세트 안에서 겹침 검사의 기준이 됨 |
 | `startTime` | LocalTime | true | 시작 시각. `endTime`보다 이전이어야 함 |
 | `endTime` | LocalTime | true | 종료 시각 |
-| `grade` | Enum | true | 학년. `ELEMENTARY_1`~`ELEMENTARY_6`/`MIDDLE_1`~`MIDDLE_3`/`HIGH_1`~`HIGH_3` 중 하나(초1~고3 고정 12단계) |
+| `grade` | Enum | true | 학년. `ELEMENTARY_1`~`ELEMENTARY_6`/`MIDDLE_1`~`MIDDLE_3`/`HIGH_1`~`HIGH_3`/`COMMON`(공통) 중 하나(초1~고3 12단계 + 공통, 고정 13단계) |
 | `teacherName` | String | false | 강사명 |
 | `subjectName` | String | false | 과목 |
 | `color` | String | true | 색상(6자리 16진수, RRGGBB) |
