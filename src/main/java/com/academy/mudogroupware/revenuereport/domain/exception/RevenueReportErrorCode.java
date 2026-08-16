@@ -9,7 +9,8 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum RevenueReportErrorCode implements ErrorCode {
     REVENUE_REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "REVENUE_REPORT_404_1", "리포트를 찾을 수 없습니다."),
-    REVENUE_REPORT_AI_ERROR(HttpStatus.BAD_GATEWAY, "REVENUE_REPORT_502_1", "매출 리포트 생성 중 오류가 발생했습니다.");
+    REVENUE_REPORT_AI_ERROR(HttpStatus.BAD_GATEWAY, "REVENUE_REPORT_502_1", "매출 리포트 생성 중 오류가 발생했습니다."),
+    REVENUE_REPORT_ALREADY_EXISTS(HttpStatus.CONFLICT, "REVENUE_REPORT_409_1", "해당 월 리포트가 이미 존재합니다.");
 
     private final HttpStatus httpStatus;
     private final String code;
