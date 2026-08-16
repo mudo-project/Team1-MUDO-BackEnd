@@ -10,7 +10,9 @@ import com.academy.mudogroupware.timetable.domain.model.TimetableSet;
 import com.academy.mudogroupware.timetable.domain.repository.TimetableSetRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -20,7 +22,9 @@ public class UpdateTimetableSetService implements UpdateTimetableSetUseCase {
 
     @Override
     public void updateTimetableSet(UpdateTimetableSetCommand command) {
-        TimetableSet set = timetableSetRepository.findById(command.timetableSetId())
+        log.info("event=timetable_set_update_시작 timetableSetId={}", command.timetableSetId());
+
+        TimetableSet set = timetableSetRepository.findByIdForUpdate(command.timetableSetId())
                 .orElseThrow(TimetableSetNotFoundException::new);
 
         set.update(command.name(), command.startDate(), command.endDate(), command.operatingStartTime(),
@@ -28,5 +32,6 @@ public class UpdateTimetableSetService implements UpdateTimetableSetUseCase {
                 command.classrooms());
 
         timetableSetRepository.save(set);
+        log.info("event=timetable_set_update_완료 timetableSetId={}", command.timetableSetId());
     }
 }

@@ -27,7 +27,8 @@ public enum PayrollResponseCode implements ResponseCode {
   STATEMENT_EMAIL_SEND_STARTED("PAYROLL_201_4", "급여명세서 이메일 발송을 시작했습니다."),
   STATEMENT_EMAIL_BATCH_STARTED("PAYROLL_201_5", "급여명세서 이메일 일괄 발송을 시작했습니다."),
   STATEMENT_EMAIL_BATCH_RETRIEVED("PAYROLL_200_15", "급여명세서 이메일 일괄 발송 결과를 조회했습니다."),
-  STATEMENT_EMAIL_WEBHOOK_RECEIVED("PAYROLL_200_16", "이메일 발송 상태를 반영했습니다.");
+  STATEMENT_EMAIL_WEBHOOK_RECEIVED("PAYROLL_200_16", "이메일 발송 상태를 반영했습니다."),
+  STATEMENT_EMAIL_DELIVERY_REUSED("PAYROLL_200_17", "기존 급여명세서 이메일 발송 이력을 조회했습니다.");
 
   private final String code;
   private final String message;

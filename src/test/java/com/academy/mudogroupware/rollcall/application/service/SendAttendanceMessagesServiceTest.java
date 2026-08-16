@@ -3,6 +3,7 @@ package com.academy.mudogroupware.rollcall.application.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -34,8 +35,14 @@ import com.academy.mudogroupware.rollcall.domain.model.AttendanceStatus;
 import com.academy.mudogroupware.rollcall.domain.model.MessageTemplate;
 import com.academy.mudogroupware.rollcall.domain.repository.AttendanceMessageSendRecordRepository;
 import com.academy.mudogroupware.rollcall.domain.repository.MessageTemplateRepository;
+import com.academy.mudogroupware.planquota.application.service.CurrentPlanProvider;
+import com.academy.mudogroupware.planquota.domain.exception.PlanLimitExceededException;
+import com.academy.mudogroupware.planquota.domain.model.Plan;
+import com.academy.mudogroupware.planquota.domain.model.PlanLimits;
 import com.academy.mudogroupware.resourceusage.application.command.RecordSmsUsageCommand;
+import com.academy.mudogroupware.resourceusage.application.port.ResourceUsageQueryPort;
 import com.academy.mudogroupware.resourceusage.application.port.ResourceUsageRecorder;
+import com.academy.mudogroupware.resourceusage.domain.model.ResourceUsageType;
 
 class SendAttendanceMessagesServiceTest {
 
@@ -50,6 +57,8 @@ class SendAttendanceMessagesServiceTest {
     private final ResourceUsageRecorder resourceUsageRecorder = mock(ResourceUsageRecorder.class);
     private final AttendanceMessageSendRecordRepository attendanceMessageSendRecordRepository =
             mock(AttendanceMessageSendRecordRepository.class);
+    private final ResourceUsageQueryPort resourceUsageQueryPort = mock(ResourceUsageQueryPort.class);
+    private final CurrentPlanProvider currentPlanProvider = mock(CurrentPlanProvider.class);
     private final Clock clock = Clock.fixed(NOW.toInstant(ZoneOffset.UTC), ZoneOffset.UTC);
 
     private SendAttendanceMessagesService service;
@@ -58,12 +67,63 @@ class SendAttendanceMessagesServiceTest {
     void setUp() {
         service = new SendAttendanceMessagesService(
                 getMessageSendCandidatesUseCase, messageTemplateRepository, smsSenderPort, resourceUsageRecorder,
-                attendanceMessageSendRecordRepository, clock);
+                attendanceMessageSendRecordRepository, clock, resourceUsageQueryPort, currentPlanProvider);
         when(attendanceMessageSendRecordRepository.createOrGetExisting(any(), any(), any(), any()))
                 .thenAnswer(invocation -> AttendanceMessageSendRecord.createPending(
                         invocation.getArgument(0), invocation.getArgument(1), invocation.getArgument(2),
                         invocation.getArgument(3), NOW));
         when(attendanceMessageSendRecordRepository.claimForSending(any())).thenReturn(true);
+        when(currentPlanProvider.currentLimits()).thenReturn(PlanLimits.of(Plan.PAID));
+        when(resourceUsageQueryPort.sumByTypeAndPeriod(eq(ResourceUsageType.SMS), any(), any())).thenReturn(0L);
+    }
+
+    @Test
+    void throwsWhenMonthlySmsLimitReached() {
+        when(resourceUsageQueryPort.sumByTypeAndPeriod(eq(ResourceUsageType.SMS), any(), any()))
+                .thenReturn(150L);
+        when(currentPlanProvider.currentPlan()).thenReturn(Plan.FREE);
+        when(currentPlanProvider.currentLimits()).thenReturn(PlanLimits.of(Plan.FREE));
+
+        assertThatThrownBy(() -> service.send(
+                new SendAttendanceMessagesCommand(LECTURE_ID, DATE, List.of(10L))))
+                .isInstanceOf(PlanLimitExceededException.class);
+
+        verifyNoInteractions(smsSenderPort);
+        verifyNoInteractions(getMessageSendCandidatesUseCase);
+    }
+
+    @Test
+    void stopsSendingOnceMonthlyLimitIsExhaustedMidBatch() {
+        when(resourceUsageQueryPort.sumByTypeAndPeriod(eq(ResourceUsageType.SMS), any(), any()))
+                .thenReturn(148L);
+        when(currentPlanProvider.currentPlan()).thenReturn(Plan.FREE);
+        when(currentPlanProvider.currentLimits()).thenReturn(PlanLimits.of(Plan.FREE));
+        MessageTemplate template = MessageTemplate.restore(
+                7L, "결석 안내", AttendanceStatus.ABSENT, "결석했습니다", 1L, NOW, NOW);
+        MessageSendCandidateView first = new MessageSendCandidateView(
+                10L, "학생1", AttendanceStatus.ABSENT, "010-1111-1111", 7L, "결석 안내", true);
+        MessageSendCandidateView second = new MessageSendCandidateView(
+                11L, "학생2", AttendanceStatus.ABSENT, "010-2222-2222", 7L, "결석 안내", true);
+        MessageSendCandidateView third = new MessageSendCandidateView(
+                12L, "학생3", AttendanceStatus.ABSENT, "010-3333-3333", 7L, "결석 안내", true);
+        when(getMessageSendCandidatesUseCase.getCandidates(LECTURE_ID, DATE))
+                .thenReturn(List.of(first, second, third));
+        when(messageTemplateRepository.findById(7L)).thenReturn(Optional.of(template));
+        // 학생 순회 순서(Set 기반이라 보장되지 않음)에 상관없이 예산 소진 이후 첫 시도는 실제 발송을
+        // 안 하므로, 셋 다 성공하도록 스텁해두고 "정확히 2건만 실제로 보내졌는지"를 검증한다.
+        when(smsSenderPort.send("010-1111-1111", "결석했습니다")).thenReturn(SmsSendResult.succeeded());
+        when(smsSenderPort.send("010-2222-2222", "결석했습니다")).thenReturn(SmsSendResult.succeeded());
+        when(smsSenderPort.send("010-3333-3333", "결석했습니다")).thenReturn(SmsSendResult.succeeded());
+
+        List<MessageSendResultView> results = service.send(
+                new SendAttendanceMessagesCommand(LECTURE_ID, DATE, List.of(10L, 11L, 12L)));
+
+        assertThat(results).filteredOn(MessageSendResultView::sent).hasSize(2);
+        assertThat(results).filteredOn(r -> !r.sent())
+                .hasSize(1)
+                .allSatisfy(r -> assertThat(r.failureReason()).contains("한도"));
+        verify(smsSenderPort, org.mockito.Mockito.times(2)).send(any(), any());
+        verify(resourceUsageRecorder).recordSmsMessages(new RecordSmsUsageCommand("rollcall-attendance-sms", 2));
     }
 
     @Test
@@ -121,6 +181,32 @@ class SendAttendanceMessagesServiceTest {
         assertThat(results.get(0).sent()).isTrue();
         verify(smsSenderPort).send("010-1111-1111",
                 "[학원명] 오늘 이준호 학생이 수학 기초반 강의에 결석했습니다. 기준일 2026-08-05.");
+    }
+
+    @Test
+    void replacesEnglishTemplateVariablesBeforeSendingSms() {
+        MessageTemplate template = MessageTemplate.restore(
+                7L,
+                "absence notice",
+                AttendanceStatus.ABSENT,
+                "{studentName} missed {lectureName} on {date}.",
+                1L,
+                NOW,
+                NOW);
+        MessageSendCandidateView candidate = new MessageSendCandidateView(
+                10L, "Kim Minsoo", AttendanceStatus.ABSENT, "010-1111-1111", 7L, "absence notice", true,
+                "Math A");
+        when(getMessageSendCandidatesUseCase.getCandidates(LECTURE_ID, DATE))
+                .thenReturn(List.of(candidate));
+        when(messageTemplateRepository.findById(7L)).thenReturn(Optional.of(template));
+        when(smsSenderPort.send("010-1111-1111", "Kim Minsoo missed Math A on 2026-08-05."))
+                .thenReturn(SmsSendResult.succeeded());
+
+        List<MessageSendResultView> results = service.send(
+                new SendAttendanceMessagesCommand(LECTURE_ID, DATE, List.of(10L)));
+
+        assertThat(results.get(0).sent()).isTrue();
+        verify(smsSenderPort).send("010-1111-1111", "Kim Minsoo missed Math A on 2026-08-05.");
     }
 
     @Test

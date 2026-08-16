@@ -1,6 +1,7 @@
 package com.academy.mudogroupware.approval.infrastructure.external.gemini;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
@@ -15,6 +16,11 @@ import com.academy.mudogroupware.approval.application.port.AttachmentFieldExtrac
 import com.academy.mudogroupware.approval.application.port.AttachmentFieldExtractorPort;
 import com.academy.mudogroupware.approval.application.port.ExtractedReceiptFields;
 import com.academy.mudogroupware.global.infrastructure.observability.ai.GeminiTokenUsageTracker;
+import com.academy.mudogroupware.planquota.application.service.CurrentPlanProvider;
+import com.academy.mudogroupware.planquota.domain.exception.PlanLimitErrorCode;
+import com.academy.mudogroupware.planquota.domain.exception.PlanLimitExceededException;
+import com.academy.mudogroupware.resourceusage.application.port.ResourceUsageQueryPort;
+import com.academy.mudogroupware.resourceusage.domain.model.ResourceUsageType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.RequiredArgsConstructor;
@@ -47,9 +53,13 @@ public class GeminiFieldExtractionAdapter implements AttachmentFieldExtractorPor
     private final GeminiProperties geminiProperties;
     private final ObjectMapper objectMapper;
     private final GeminiTokenUsageTracker tokenUsageTracker;
+    private final ResourceUsageQueryPort resourceUsageQueryPort;
+    private final CurrentPlanProvider currentPlanProvider;
 
     @Override
     public ExtractedReceiptFields extract(AttachmentContent content) {
+        checkAiTokenLimit();
+
         GeminiGenerateContentRequest request = switch (content.kind()) {
             case TEXT -> GeminiGenerateContentRequest.ofTextWithSchema(
                     EXTRACTION_INSTRUCTION + "\n\n" + content.text(), RECEIPT_FIELDS_SCHEMA);
@@ -88,6 +98,18 @@ public class GeminiFieldExtractionAdapter implements AttachmentFieldExtractorPor
             throw new AttachmentFieldExtractionException("Gemini 응답을 파싱하지 못했습니다.", e);
         }
         return new ExtractedReceiptFields(raw.amount(), parseDate(raw.date()), raw.merchant());
+    }
+
+    private void checkAiTokenLimit() {
+        LocalDate today = LocalDate.now();
+        LocalDateTime from = today.withDayOfMonth(1).atStartOfDay();
+        LocalDateTime to = from.plusMonths(1);
+        long current = resourceUsageQueryPort.sumByTypeAndPeriod(ResourceUsageType.AI_TOKEN, from, to);
+        long limit = currentPlanProvider.currentLimits().aiTokenMonthlyLimit();
+        if (current >= limit) {
+            throw new PlanLimitExceededException(PlanLimitErrorCode.AI_TOKEN_LIMIT_EXCEEDED,
+                    currentPlanProvider.currentPlan(), limit, current);
+        }
     }
 
     private LocalDate parseDate(String date) {

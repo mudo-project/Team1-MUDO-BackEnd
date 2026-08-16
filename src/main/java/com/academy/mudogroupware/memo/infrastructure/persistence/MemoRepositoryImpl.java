@@ -7,7 +7,6 @@ import java.util.Optional;
 import org.springframework.stereotype.Repository;
 
 import com.academy.mudogroupware.memo.domain.model.Memo;
-import com.academy.mudogroupware.memo.domain.model.MemoColor;
 import com.academy.mudogroupware.memo.domain.repository.MemoRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -27,6 +26,11 @@ public class MemoRepositoryImpl implements MemoRepository {
     @Override
     public Optional<Memo> findById(Long id) {
         return memoJpaRepository.findById(id).map(this::toDomain);
+    }
+
+    @Override
+    public Optional<Memo> findMostRecentByUserId(Long userId) {
+        return memoJpaRepository.findFirstByUserIdOrderByCreatedAtDescIdDesc(userId).map(this::toDomain);
     }
 
     @Override
@@ -54,7 +58,7 @@ public class MemoRepositoryImpl implements MemoRepository {
     }
 
     @Override
-    public void updateColor(Long id, MemoColor color, LocalDateTime updatedAt) {
+    public void updateColor(Long id, String color, LocalDateTime updatedAt) {
         memoJpaRepository.updateColor(id, color, updatedAt);
     }
 

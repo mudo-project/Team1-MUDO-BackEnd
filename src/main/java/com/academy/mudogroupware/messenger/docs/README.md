@@ -25,7 +25,7 @@ BE6 메신저 담당
 - `SendMessageUseCase` — 메시지 전송
 - `ChatMessageQueryUseCase` — 메시지 목록 조회 (cursor 페이지네이션, 아래 참고)
 - `CreateTaskCardUseCase` — 업무지시 카드 등록 (방 멤버만 담당자로 지정 가능)
-- `TaskCardQueryUseCase` — 업무지시 카드 목록 조회 (완료 인원/전체 담당자 수, 전원완료 여부 포함)
+- `TaskCardQueryUseCase` — 업무지시 카드 목록 조회 (완료 인원/전체 담당자 수, 전원완료 여부 포함). 방 하나를 지정해 조회(`getTaskCards`)하거나, 방을 가리지 않고 내가 전달한/받은 카드를 모아 조회(`getMyTaskCards`, 2026-08-17)할 수 있다.
 - `CompleteTaskUseCase` — 담당자 본인의 업무지시 완료 처리
 
 ## 다른 모듈 또는 외부 시스템에 요청하는 의존성

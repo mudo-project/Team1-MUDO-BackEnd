@@ -19,10 +19,12 @@ public final class Notice {
     private final List<NoticeAttachment> attachments;
     private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private LocalDateTime deletedAt;
+    private LocalDateTime retentionUntil;
 
     private Notice(Long id, Long authorUserId, String title, String content, boolean pinned,
                     long viewCount, List<NoticeAttachment> attachments, LocalDateTime createdAt,
-                    LocalDateTime updatedAt) {
+                    LocalDateTime updatedAt, LocalDateTime deletedAt, LocalDateTime retentionUntil) {
         if (authorUserId == null) {
             throw new IllegalArgumentException("authorUserId must not be null");
         }
@@ -47,18 +49,29 @@ public final class Notice {
         this.attachments = attachments != null ? new ArrayList<>(attachments) : new ArrayList<>();
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.deletedAt = deletedAt;
+        this.retentionUntil = retentionUntil;
     }
 
     public static Notice create(Long authorUserId, String title, String content,
                                  boolean pinned, List<NoticeAttachment> attachments, LocalDateTime now) {
-        return new Notice(null, authorUserId, title, content, pinned, 0L, attachments, now, now);
+        return new Notice(null, authorUserId, title, content, pinned, 0L, attachments, now, now,
+                null, null);
     }
 
     public static Notice restore(Long id, Long authorUserId, String title, String content,
                                   boolean pinned, long viewCount, List<NoticeAttachment> attachments,
                                   LocalDateTime createdAt, LocalDateTime updatedAt) {
         return new Notice(id, authorUserId, title, content, pinned, viewCount, attachments, createdAt,
-                updatedAt);
+                updatedAt, null, null);
+    }
+
+    public static Notice restore(Long id, Long authorUserId, String title, String content,
+                                  boolean pinned, long viewCount, List<NoticeAttachment> attachments,
+                                  LocalDateTime createdAt, LocalDateTime updatedAt, LocalDateTime deletedAt,
+                                  LocalDateTime retentionUntil) {
+        return new Notice(id, authorUserId, title, content, pinned, viewCount, attachments, createdAt,
+                updatedAt, deletedAt, retentionUntil);
     }
 
     public void recordView() {
@@ -90,6 +103,22 @@ public final class Notice {
 
     public boolean isAuthor(Long userId) {
         return authorUserId.equals(userId);
+    }
+
+    public void markDeleted(LocalDateTime deletedAt, LocalDateTime retentionUntil) {
+        if (deletedAt == null) {
+            throw new IllegalArgumentException("deletedAt must not be null");
+        }
+        if (retentionUntil == null) {
+            throw new IllegalArgumentException("retentionUntil must not be null");
+        }
+        this.deletedAt = deletedAt;
+        this.retentionUntil = retentionUntil;
+        this.updatedAt = deletedAt;
+    }
+
+    public boolean isDeleted() {
+        return deletedAt != null;
     }
 
     public Long getId() {
@@ -126,5 +155,13 @@ public final class Notice {
 
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
+    }
+
+    public LocalDateTime getDeletedAt() {
+        return deletedAt;
+    }
+
+    public LocalDateTime getRetentionUntil() {
+        return retentionUntil;
     }
 }

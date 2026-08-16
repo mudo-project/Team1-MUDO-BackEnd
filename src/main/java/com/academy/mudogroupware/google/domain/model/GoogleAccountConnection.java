@@ -4,7 +4,7 @@ import java.time.LocalDateTime;
 import java.util.Set;
 public final class GoogleAccountConnection {
 
-    private static final long EXPIRING_WARNING_DAYS = 7;
+    private static final long EXPIRING_WARNING_DAYS = 3;
 
     private final Long id;
     private final String googleEmail;

@@ -19,6 +19,7 @@ import com.academy.mudogroupware.corporatecard.presentation.api.request.BatchSub
 import com.academy.mudogroupware.corporatecard.presentation.api.request.SubmitCardExpenseRequest;
 import com.academy.mudogroupware.corporatecard.presentation.api.request.SaveCardExpenseRequest;
 import com.academy.mudogroupware.corporatecard.presentation.api.response.BatchSubmitCardExpensesResponse;
+import com.academy.mudogroupware.corporatecard.presentation.api.response.CardExpenseDetailResponse;
 import com.academy.mudogroupware.corporatecard.presentation.api.response.CardExpenseResponse;
 import com.academy.mudogroupware.corporatecard.presentation.api.response.CorporateCardTransactionPageResponse;
 import com.academy.mudogroupware.corporatecard.presentation.api.response.ReceiptReconciliationResponse;
@@ -56,10 +57,10 @@ public class CorporateCardController {
     @Operation(summary = "법인카드 사용내역 상세 조회")
     @PreAuthorize("hasAuthority('CORPORATE_CARD:EXPENSE')")
     @GetMapping("/{transactionId}")
-    public GlobalApiResponse<CardExpenseResponse> getTransaction(
+    public GlobalApiResponse<CardExpenseDetailResponse> getTransaction(
             @AuthenticationPrincipal AuthUser authUser, @PathVariable Long transactionId) {
         return GlobalApiResponse.ok("CORPORATE_CARD_TRANSACTION_RETRIEVED", "법인카드 사용내역 조회가 완료되었습니다.",
-                CardExpenseResponse.from(service.getTransaction(transactionId)));
+                CardExpenseDetailResponse.from(service.getTransaction(transactionId)));
     }
 
     @Operation(summary = "영수증-카드거래 대사 검증", description = "정산 상신된 영수증 첨부파일에서 AI로 금액/일자/가맹점을 추출해 "

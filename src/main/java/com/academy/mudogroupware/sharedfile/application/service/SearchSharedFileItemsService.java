@@ -21,10 +21,12 @@ import com.academy.mudogroupware.sharedfile.domain.model.SharedFileRoot;
 import com.academy.mudogroupware.sharedfile.domain.repository.SharedFileRootRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
+@Slf4j
 public class SearchSharedFileItemsService implements SearchSharedFileItemsUseCase {
 
     private final SharedFileRootRepository sharedFileRootRepository;
@@ -38,6 +40,8 @@ public class SearchSharedFileItemsService implements SearchSharedFileItemsUseCas
     // 않으면 필터링 전 크기만 보고 실제로는 결과가 더 있는데도 적게, 심지어 0건으로 응답할 수 있다.
     @Override
     public SharedFileItemsView search(String keyword, SharedFileItemType type, String cursor, int size) {
+        log.info("event=shared_file_search_시작 type={} cursorPresent={} size={}",
+                type, cursor != null && !cursor.isBlank(), size);
         SharedFileRoot root = sharedFileRootRepository.find()
                 .filter(SharedFileRoot::isReady)
                 .orElseThrow(SharedFileRootUnavailableException::new);
@@ -68,7 +72,10 @@ public class SearchSharedFileItemsService implements SearchSharedFileItemsUseCas
         boolean overflowedWithinLastPage = matches.size() > size;
         List<SharedFileItemView> items = overflowedWithinLastPage ? matches.subList(0, size) : matches;
         boolean hasNext = rawHasNext || overflowedWithinLastPage;
-        return new SharedFileItemsView(items, hasNext, rawNextCursor);
+        SharedFileItemsView result = new SharedFileItemsView(items, hasNext, rawNextCursor);
+        log.info("event=shared_file_search_완료 type={} itemCount={} hasNext={}",
+                type, result.items().size(), result.hasNext());
+        return result;
     }
 
     private boolean matchesType(DriveItem candidate, SharedFileItemType type) {

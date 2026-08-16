@@ -66,7 +66,7 @@ class DeploymentManifestTest(unittest.TestCase):
         self.assertEqual("academy-a", environment["TENANT_ID"])
         self.assertEqual("mudo-prod-staff-123456789012", environment["AWS_S3_STAFF_BUCKET_NAME"])
         self.assertEqual("mudo-prod-finance-123456789012", environment["AWS_S3_FINANCE_BUCKET_NAME"])
-        self.assertEqual("basic", environment["TENANT_PLAN"])
+        self.assertEqual("paid", environment["TENANT_PLAN"])
         self.assertEqual("true", environment["PLATFORM_DASHBOARD_ENABLED"])
         self.assertIn('"code":"academy-a"', environment["PLATFORM_DASHBOARD_TENANT_REGISTRY_JSON"])
         self.assertEqual("30", environment["SERVER_TOMCAT_THREADS_MAX"])
@@ -80,11 +80,11 @@ class DeploymentManifestTest(unittest.TestCase):
         self.assertIn("GOOGLE_CLIENT_SECRET", secret_names)
         self.assertIn("GOOGLE_REDIRECT_URI", secret_names)
         self.assertIn("GOOGLE_OAUTH_FRONTEND_REDIRECT_URI", secret_names)
-        self.assertIn("MAILGUN_SMTP_USERNAME", secret_names)
-        self.assertIn("MAILGUN_SMTP_PASSWORD", secret_names)
+        self.assertIn("MAILGUN_API_KEY", secret_names)
         self.assertIn("MAIL_FROM", secret_names)
         self.assertIn("MAILGUN_WEBHOOK_SIGNING_KEY", secret_names)
         self.assertIn("GEMINI_API_KEY", secret_names)
+        self.assertIn("CLIENT_IP_SIGNING_SECRET", secret_names)
         self.assertEqual(
             "arn:aws:ssm:ap-northeast-2:123456789012:parameter/mudo/prod/shared/SENTRY_DSN",
             secrets["SENTRY_DSN"],

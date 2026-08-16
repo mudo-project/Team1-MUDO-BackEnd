@@ -34,7 +34,7 @@
 | `classroomCode` | String | true | 강의실 코드. 같은 세트 안에서 겹침 검사의 기준이 됨 |
 | `startTime` | LocalTime | true | 시작 시각. `endTime`보다 이전이어야 함 |
 | `endTime` | LocalTime | true | 종료 시각 |
-| `grade` | Enum | true | 학년. `ELEMENTARY_1`~`ELEMENTARY_6`/`MIDDLE_1`~`MIDDLE_3`/`HIGH_1`~`HIGH_3` 중 하나(초1~고3 고정 12단계) |
+| `grade` | Enum | true | 학년. `ELEMENTARY_1`~`ELEMENTARY_6`/`MIDDLE_1`~`MIDDLE_3`/`HIGH_1`~`HIGH_3`/`COMMON`(공통) 중 하나(초1~고3 12단계 + 공통, 고정 13단계) |
 | `teacherName` | String | false | 강사명 |
 | `subjectName` | String | false | 과목 |
 | `color` | String | true | 색상(6자리 16진수, RRGGBB) |
@@ -204,6 +204,7 @@ HTTP `204 No Content` (응답 본문 없음)
 | `404 Not Found` | `TIMETABLE_404_1` | 시간표 세트가 존재하지 않거나 다른 학원 소속인 경우 |
 | `404 Not Found` | `TIMETABLE_404_2` | 슬롯이 존재하지 않는 경우 |
 | `409 Conflict` | `TIMETABLE_409_1` | 변경하려는 강의실/요일/시간이 다른 슬롯과 겹치는 경우 |
+| `409 Conflict` | `TIMETABLE_409_3` | 다른 요청이 먼저 같은 수업 슬롯을 수정한 경우 |
 | `500 Internal Server Error` | `COMMON_500_1` | 처리되지 않은 서버 오류 |
 
 ## 수업 슬롯 삭제

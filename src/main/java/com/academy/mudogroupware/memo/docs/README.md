@@ -11,7 +11,7 @@
 ## 소유하는 주요 데이터와 상태
 
 - `Memo` — DB 테이블 `personal_memo` (user_id, title(최대 100자, 필수), content(nullable), color, position_x/position_y/width/height(nullable — 자유배치 전에는 비어있음), created_at, updated_at)
-- `color`는 ERD상 ENUM이지만 실제 DB는 `VARCHAR(10)`으로 구현했다(messenger의 `chat_room.type` 등과 동일 컨벤션 — 네이티브 ENUM 대신 문자열).
+- `color`는 6자리 16진수 색상 코드(`RRGGBB`)를 담는 `VARCHAR(10)` 문자열이다. 2026-08-16 이전엔 BE가 12개 색상 키로 구성된 고정 enum(`MemoColor`)을 강제했으나, FE가 다른 도메인(timetable 등)처럼 색상을 자유롭게 선택할 수 있게 해달라고 요청해 자유 hex 문자열로 전환했다. 형식 검증(6자리 16진수)만 서버가 하고, 실제 팔레트는 FE가 전담한다.
 
 ## 외부에 공개하는 Application API
 

@@ -120,8 +120,7 @@ public class PayrollService {
       throw new PayrollException(PayrollErrorCode.PAYROLL_REVISION_CONFLICT);
     }
     Payroll revision = payrollRepository.save(original.revision());
-    payrollRepository.replaceSnapshots(revision.getId(), snapshots(original));
-    return detail(revision, snapshots(revision));
+    return calculate(revision.getId(), revision.getVersion());
   }
 
   @Transactional(readOnly = true)
@@ -142,8 +141,16 @@ public class PayrollService {
   @Transactional(readOnly = true)
   public List<PayrollDetailResult> revisions(Long payrollId) {
     Payroll current = payroll(payrollId);
-    return payrollRepository.findRevisions(current.getUserId(), current.getYearMonth()).stream()
-        .map(p -> detail(p, snapshots(p))).toList();
+    List<Payroll> revisions = payrollRepository.findRevisions(
+        current.getUserId(), current.getYearMonth());
+    Set<Long> payrollIds = revisions.stream().map(Payroll::getId).collect(Collectors.toSet());
+    Map<Long, PayrollRepository.SnapshotBundle> snapshots =
+        payrollRepository.findSnapshots(payrollIds);
+    Map<Long, PayrollStatementPort.StatementData> statements =
+        statementPort.findByPayrollIds(payrollIds);
+    EmployeeView employee = employee(current.getUserId());
+    return revisions.stream().map(revision -> PayrollDetailResult.of(revision, employee,
+        snapshots.get(revision.getId()), statements.get(revision.getId()))).toList();
   }
 
   @Transactional(readOnly = true)
@@ -157,9 +164,12 @@ public class PayrollService {
     List<EmployeeView> employees = employeePort.findAllActive(name);
     Map<Long, Payroll> payrolls = payrollRepository.findLatestByMonth(month).stream()
         .collect(Collectors.toMap(Payroll::getUserId, Function.identity()));
+    Set<Long> employeeIds = employees.stream().map(EmployeeView::id).collect(Collectors.toSet());
+    Map<Long, List<CompensationData>> compensations =
+        referenceData.findCompensations(employeeIds, month);
     List<PayrollListResult.Row> filteredRows = employees.stream().map(employee -> {
       Payroll p = payrolls.get(employee.id());
-      EmploymentType type = referenceData.findCompensations(employee.id(), month).stream()
+      EmploymentType type = compensations.getOrDefault(employee.id(), List.of()).stream()
           .reduce((first, second) -> second).map(CompensationData::employmentType).orElse(null);
       return new PayrollListResult.Row(employee.id(), employee.name(), type,
           p == null ? null : p.getId(), p == null ? "NOT_CREATED" : p.getStatus().name(),
@@ -172,6 +182,7 @@ public class PayrollService {
     int to = Math.min(from + size, filteredRows.size());
     List<PayrollListResult.Row> rows = filteredRows.subList(from, to);
     long notCreated = filteredRows.stream().filter(r -> r.payrollId() == null).count();
+    long draft = filteredRows.stream().filter(r -> "DRAFT".equals(r.preparationStatus())).count();
     long calculated = filteredRows.stream().filter(r -> "CALCULATED".equals(r.preparationStatus())).count();
     long confirmed = filteredRows.stream().filter(r -> "CONFIRMED".equals(r.preparationStatus())).count();
     BigDecimal earnings = sum(filteredRows, PayrollListResult.Row::totalEarnings);
@@ -181,7 +192,7 @@ public class PayrollService {
     return new PayrollListResult(result.content(), result.page(), result.size(),
         result.totalElements(), result.totalPages(), result.first(), result.last(),
         result.hasNext(), result.hasPrevious(),
-        new PayrollListResult.Summary(filteredRows.size(), notCreated, calculated, confirmed,
+        new PayrollListResult.Summary(filteredRows.size(), notCreated, draft, calculated, confirmed,
             earnings, deductions, net));
   }
 

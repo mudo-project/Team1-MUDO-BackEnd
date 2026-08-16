@@ -85,6 +85,8 @@ Response Body
 | `400 Bad Request` | `APPROVAL_400_2` | 결재 제목은 비어 있을 수 없습니다. | `title`이 비어 있는 경우 |
 | `400 Bad Request` | `APPROVAL_400_3` | 결재선은 최소 1명 이상 지정해야 합니다. | 최종 결재선이 비어 있는 경우 |
 | `400 Bad Request` | `APPROVAL_400_5` | 휴가 기간은 시작일과 종료일을 함께 입력해야 하며, 종료일은 시작일보다 빠를 수 없습니다. | `leaveStartDate`/`leaveEndDate` 중 하나만 있거나 순서가 잘못된 경우 |
+| `400 Bad Request` | `APPROVAL_400_6` | 신청자는 본인을 결재자로 지정할 수 없습니다. | 최종 결재선에 신청자 본인이 포함된 경우 |
+| `400 Bad Request` | `APPROVAL_400_7` | 같은 결재자를 결재선에 중복 지정할 수 없습니다. | 최종 결재선에 같은 사용자가 2번 이상 포함된 경우 |
 | `401 Unauthorized` | `COMMON_401_1` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않은 경우 |
 | `403 Forbidden` | `APPROVAL_403_2` | 다른 학원의 템플릿으로는 결재를 신청할 수 없습니다. | `templateId`가 다른 학원 소속인 경우 |
 | `403 Forbidden` | `APPROVAL_403_6` | 다른 학원 소속 사용자를 결재자로 지정할 수 없습니다. | `approverIds`에 다른 학원 사용자가 포함된 경우 |
@@ -515,6 +517,8 @@ Request Body
 | **HTTP 상태** | **code** | **message** | **설명** |
 | --- | --- | --- | --- |
 | `400 Bad Request` | `APPROVAL_400_3` | 결재선은 최소 1명 이상 지정해야 합니다. | `approverIds`가 비어 있는 경우 |
+| `400 Bad Request` | `APPROVAL_400_6` | 신청자는 본인을 결재자로 지정할 수 없습니다. | 새 결재선에 신청자 본인이 포함된 경우 |
+| `400 Bad Request` | `APPROVAL_400_7` | 같은 결재자를 결재선에 중복 지정할 수 없습니다. | 새 결재선에 같은 사용자가 2번 이상 포함된 경우 |
 | `401 Unauthorized` | `COMMON_401_1` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않은 경우 |
 | `403 Forbidden` | `APPROVAL_403_4` | 본인이 신청한 결재만 결재선을 수정할 수 있습니다. | 신청자 본인이 아닌 경우 |
 | `403 Forbidden` | `APPROVAL_403_6` | 다른 학원 소속 사용자를 결재자로 지정할 수 없습니다. | `approverIds`에 다른 학원 사용자가 포함된 경우 |
@@ -809,6 +813,7 @@ Response Body
 | `404 Not Found` | `APPROVAL_404_2` | 결재 문서를 찾을 수 없습니다. | `documentId`에 해당하는 결재 문서가 없는 경우 |
 | `404 Not Found` | `APPROVAL_404_4` | 첨부파일을 찾을 수 없습니다. | `fileId`가 해당 문서의 첨부파일이 아닌 경우 |
 | `404 Not Found` | `FILE_404_1` | 파일을 찾을 수 없습니다. | 문서 소속 확인은 통과했지만 file 모듈에 해당 fileId 메타데이터가 없는 경우(정상 상황에서는 발생하지 않음) |
+| `502 Bad Gateway` | `APPROVAL_502_3` | 첨부파일 다운로드 URL 생성에 실패했습니다. | 결재 문서/첨부 검증은 통과했지만 S3 presigned 다운로드 URL 생성 등 파일 저장소 연동이 실패한 경우 |
 
 ### **알려진 제약**
 
@@ -871,6 +876,7 @@ Response Body
 | --- | --- | --- | --- |
 | `400 Bad Request` | `APPROVAL_400_4` | 템플릿 이름은 비어 있을 수 없습니다. | `name`이 비어 있는 경우 |
 | `400 Bad Request` | `APPROVAL_400_3` | 결재선은 최소 1명 이상 지정해야 합니다. | `approverIds`가 비어 있는 경우 |
+| `400 Bad Request` | `APPROVAL_400_7` | 같은 결재자를 결재선에 중복 지정할 수 없습니다. | 기본 결재선에 같은 사용자가 2번 이상 포함된 경우 |
 | `401 Unauthorized` | `COMMON_401_1` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않은 경우 |
 | `403 Forbidden` | `APPROVAL_403_6` | 다른 학원 소속 사용자를 결재자로 지정할 수 없습니다. | `approverIds`에 다른 학원 사용자가 포함된 경우 |
 | `404 Not Found` | `APPROVAL_404_3` | 사용자를 찾을 수 없습니다. | `approverIds`에 존재하지 않는 사용자가 포함된 경우 |
@@ -1035,6 +1041,7 @@ Request Body
 | --- | --- | --- | --- |
 | `400 Bad Request` | `APPROVAL_400_4` | 템플릿 이름은 비어 있을 수 없습니다. | `name`이 비어 있는 경우 |
 | `400 Bad Request` | `APPROVAL_400_3` | 결재선은 최소 1명 이상 지정해야 합니다. | `approverIds`가 비어 있는 경우 |
+| `400 Bad Request` | `APPROVAL_400_7` | 같은 결재자를 결재선에 중복 지정할 수 없습니다. | 결재선에 같은 사용자가 2번 이상 포함된 경우 |
 | `401 Unauthorized` | `COMMON_401_1` | 인증이 필요합니다. | Access Token이 없거나 유효하지 않은 경우 |
 | `403 Forbidden` | `APPROVAL_403_5` | 해당 템플릿에 접근할 권한이 없습니다. | 다른 학원의 템플릿인 경우 |
 | `403 Forbidden` | `APPROVAL_403_6` | 다른 학원 소속 사용자를 결재자로 지정할 수 없습니다. | `approverIds`에 다른 학원 사용자가 포함된 경우 |
@@ -1205,6 +1212,8 @@ Request Query Parameter
 | `APPROVAL_400_3` | 400 | 결재선은 최소 1명 이상 지정해야 합니다. |
 | `APPROVAL_400_4` | 400 | 템플릿 이름은 비어 있을 수 없습니다. |
 | `APPROVAL_400_5` | 400 | 휴가 기간은 시작일과 종료일을 함께 입력해야 하며, 종료일은 시작일보다 빠를 수 없습니다. |
+| `APPROVAL_400_6` | 400 | 신청자는 본인을 결재자로 지정할 수 없습니다. |
+| `APPROVAL_400_7` | 400 | 같은 결재자를 결재선에 중복 지정할 수 없습니다. |
 | `APPROVAL_403_1` | 403 | 해당 결재를 조회할 권한이 없습니다. |
 | `APPROVAL_403_2` | 403 | 다른 학원의 템플릿으로는 결재를 신청할 수 없습니다. |
 | `APPROVAL_403_3` | 403 | 본인이 신청한 결재만 재상신할 수 있습니다. |

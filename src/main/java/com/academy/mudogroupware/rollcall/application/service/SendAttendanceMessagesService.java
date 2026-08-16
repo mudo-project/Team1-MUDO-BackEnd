@@ -6,11 +6,15 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
+import com.academy.mudogroupware.planquota.application.service.CurrentPlanProvider;
+import com.academy.mudogroupware.planquota.domain.exception.PlanLimitErrorCode;
+import com.academy.mudogroupware.planquota.domain.exception.PlanLimitExceededException;
 import com.academy.mudogroupware.rollcall.application.command.SendAttendanceMessagesCommand;
 import com.academy.mudogroupware.rollcall.application.port.SmsSendResult;
 import com.academy.mudogroupware.rollcall.application.port.SmsSenderPort;
@@ -25,7 +29,9 @@ import com.academy.mudogroupware.rollcall.domain.model.MessageTemplate;
 import com.academy.mudogroupware.rollcall.domain.repository.AttendanceMessageSendRecordRepository;
 import com.academy.mudogroupware.rollcall.domain.repository.MessageTemplateRepository;
 import com.academy.mudogroupware.resourceusage.application.command.RecordSmsUsageCommand;
+import com.academy.mudogroupware.resourceusage.application.port.ResourceUsageQueryPort;
 import com.academy.mudogroupware.resourceusage.application.port.ResourceUsageRecorder;
+import com.academy.mudogroupware.resourceusage.domain.model.ResourceUsageType;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -43,6 +49,8 @@ public class SendAttendanceMessagesService implements SendAttendanceMessagesUseC
     private final ResourceUsageRecorder resourceUsageRecorder;
     private final AttendanceMessageSendRecordRepository attendanceMessageSendRecordRepository;
     private final Clock clock;
+    private final ResourceUsageQueryPort resourceUsageQueryPort;
+    private final CurrentPlanProvider currentPlanProvider;
 
     @Override
     public List<MessageSendResultView> send(SendAttendanceMessagesCommand command) {
@@ -52,6 +60,14 @@ public class SendAttendanceMessagesService implements SendAttendanceMessagesUseC
         if (command.studentIds() == null || command.studentIds().isEmpty()) {
             throw new NoStudentsSelectedException();
         }
+
+        long limit = currentPlanProvider.currentLimits().smsMonthlyLimit();
+        long current = monthlySmsUsage();
+        if (current >= limit) {
+            throw new PlanLimitExceededException(PlanLimitErrorCode.SMS_LIMIT_EXCEEDED,
+                    currentPlanProvider.currentPlan(), limit, current);
+        }
+        AtomicLong remainingBudget = new AtomicLong(limit - current);
 
         List<MessageSendCandidateView> candidates = getMessageSendCandidatesUseCase
                 .getCandidates(command.lectureId(), command.date());
@@ -68,7 +84,7 @@ public class SendAttendanceMessagesService implements SendAttendanceMessagesUseC
         Set<Long> requestedStudentIds = Set.copyOf(command.studentIds());
         List<SendOutcome> outcomes = requestedStudentIds.stream()
                 .map(studentId -> sendToStudent(command.lectureId(), studentId, candidatesByStudentId.get(studentId),
-                        templatesById, command.date()))
+                        templatesById, command.date(), remainingBudget))
                 .toList();
         List<MessageSendResultView> results = outcomes.stream().map(SendOutcome::view).toList();
 
@@ -87,8 +103,16 @@ public class SendAttendanceMessagesService implements SendAttendanceMessagesUseC
         return results;
     }
 
+    private long monthlySmsUsage() {
+        LocalDate today = LocalDate.now(clock);
+        LocalDateTime from = today.withDayOfMonth(1).atStartOfDay();
+        LocalDateTime to = from.plusMonths(1);
+        return resourceUsageQueryPort.sumByTypeAndPeriod(ResourceUsageType.SMS, from, to);
+    }
+
     private SendOutcome sendToStudent(Long lectureId, Long studentId, MessageSendCandidateView candidate,
-                                       Map<Long, MessageTemplate> templatesById, LocalDate date) {
+                                       Map<Long, MessageTemplate> templatesById, LocalDate date,
+                                       AtomicLong remainingBudget) {
         if (candidate == null || !candidate.eligible()) {
             return new SendOutcome(new MessageSendResultView(studentId,
                     candidate != null ? candidate.studentName() : null, false,
@@ -117,6 +141,16 @@ public class SendAttendanceMessagesService implements SendAttendanceMessagesUseC
                     "다른 요청이 처리 중이거나 이미 처리되었습니다."), false);
         }
 
+        if (remainingBudget.get() <= 0) {
+            // 배치 처리 도중 이번 달 SMS 한도를 소진했다 — 나머지 학생은 보내지 않고 건너뛴다. 배치 시작
+            // 시점의 1회성 한도 체크만으로는 배치 크기(학생 수)만큼 한도를 초과해 보낼 수 있어서, 실제
+            // 발송 직전마다 잔여 한도를 다시 확인한다(이 스트림은 순차 처리라 스레드 경합은 없음).
+            record.markResult(AttendanceMessageSendStatus.FAILED, "PLAN_SMS_LIMIT_EXCEEDED", LocalDateTime.now(clock));
+            attendanceMessageSendRecordRepository.save(record);
+            return new SendOutcome(new MessageSendResultView(studentId, candidate.studentName(), false,
+                    "이번 달 SMS 발송 한도에 도달해 전송하지 않았습니다."), false);
+        }
+
         SmsSendResult result;
         String message = renderMessage(template.getContent(), candidate, date);
         try {
@@ -133,9 +167,13 @@ public class SendAttendanceMessagesService implements SendAttendanceMessagesUseC
         AttendanceMessageSendStatus status = classifyStatus(result);
         record.markResult(status, result.failureReason(), LocalDateTime.now(clock));
         attendanceMessageSendRecordRepository.save(record);
+        boolean newlySent = status == AttendanceMessageSendStatus.SENT;
+        if (newlySent) {
+            remainingBudget.decrementAndGet();
+        }
         MessageSendResultView view = new MessageSendResultView(studentId, candidate.studentName(), result.success(),
                 result.success() ? null : result.failureReason());
-        return new SendOutcome(view, status == AttendanceMessageSendStatus.SENT);
+        return new SendOutcome(view, newlySent);
     }
 
     private AttendanceMessageSendStatus classifyStatus(SmsSendResult result) {
@@ -148,8 +186,11 @@ public class SendAttendanceMessagesService implements SendAttendanceMessagesUseC
     private String renderMessage(String content, MessageSendCandidateView candidate, LocalDate date) {
         return content
                 .replace("{학생명}", valueOrBlank(candidate.studentName()))
+                .replace("{studentName}", valueOrBlank(candidate.studentName()))
                 .replace("{강의명}", valueOrBlank(candidate.lectureName()))
-                .replace("{날짜}", date != null ? date.toString() : "");
+                .replace("{lectureName}", valueOrBlank(candidate.lectureName()))
+                .replace("{날짜}", date != null ? date.toString() : "")
+                .replace("{date}", date != null ? date.toString() : "");
     }
 
     private String valueOrBlank(String value) {

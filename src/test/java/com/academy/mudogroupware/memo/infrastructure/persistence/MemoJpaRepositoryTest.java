@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 
-import com.academy.mudogroupware.memo.domain.model.MemoColor;
+import jakarta.persistence.EntityManager;
 
 @DataJpaTest(properties = "spring.jpa.hibernate.ddl-auto=create-drop")
 class MemoJpaRepositoryTest {
@@ -17,12 +17,15 @@ class MemoJpaRepositoryTest {
     @Autowired
     private MemoJpaRepository memoJpaRepository;
 
+    @Autowired
+    private EntityManager entityManager;
+
     private Long insertMemo() {
         MemoEntity entity = MemoEntity.builder()
                 .userId(1L)
                 .title("제목")
                 .content("내용")
-                .color(MemoColor.MUSTARD)
+                .color("D3A340")
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -54,5 +57,17 @@ class MemoJpaRepositoryTest {
     @Test
     void deleteByIdIfExistsDoesNotThrowForNonExistentId() {
         assertThatCode(() -> memoJpaRepository.deleteByIdIfExists(999_999L)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void updateColorPersistsNewHexStringValue() {
+        Long id = insertMemo();
+
+        memoJpaRepository.updateColor(id, "6F96C2", LocalDateTime.now());
+        entityManager.clear();
+
+        assertThat(memoJpaRepository.findById(id)).get()
+                .extracting(MemoEntity::getColor)
+                .isEqualTo("6F96C2");
     }
 }

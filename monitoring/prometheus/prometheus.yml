@@ -1,0 +1,20 @@
+global:
+  # Metric 수집 주기입니다.
+  scrape_interval: 15s
+
+  # Alert rule 평가 주기입니다. 현재 alert rule이 없어도 기본값으로 유지합니다.
+  evaluation_interval: 15s
+
+scrape_configs:
+  # Spring Boot Actuator Prometheus endpoint를 수집합니다.
+  - job_name: "mudo-groupware-local"
+    metrics_path: "/actuator/prometheus"
+    static_configs:
+      - targets:
+          - "127.0.0.1:8080"
+        labels:
+          service: "backend"
+          environment: "local"
+          tenant: "local"
+          plan: "local"
+          deployment: "local"

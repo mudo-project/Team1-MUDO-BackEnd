@@ -7,12 +7,14 @@ POST /api/approvals
 -> CreateApprovalDocumentService
 -> ApproverDirectoryPort.getApprover(creatorId)
 -> ApproverDirectoryPort.getApprovers(approverIds)
+-> 신청자 본인 결재자 지정/중복 결재자 검증
 -> ApprovalDocument.create
 -> ApprovalDocumentRepository.save
 -> leaveStartDate/leaveEndDate가 있으면 LeaveRequestSubmittedEvent 발행
 ```
 
 `ApproverDirectoryPort`는 approval이 정의하고 users 모듈의 `ApprovalApproverDirectoryAdapter`가 구현한다.
+최종 결재선에는 신청자 본인이 포함될 수 없고, 같은 결재자가 2번 이상 들어갈 수 없다.
 
 ## 결재 처리와 실시간 알림
 

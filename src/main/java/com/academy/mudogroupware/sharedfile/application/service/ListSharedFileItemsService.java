@@ -14,10 +14,12 @@ import com.academy.mudogroupware.sharedfile.domain.model.SharedFileRoot;
 import com.academy.mudogroupware.sharedfile.domain.repository.SharedFileRootRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
+@Slf4j
 public class ListSharedFileItemsService implements ListSharedFileItemsUseCase {
 
     private final SharedFileRootRepository sharedFileRootRepository;
@@ -29,6 +31,8 @@ public class ListSharedFileItemsService implements ListSharedFileItemsUseCase {
     // 필요 없고, 값이 주어지면 루트 하위인지 반드시 확인한 뒤에만 Drive를 호출한다.
     @Override
     public SharedFileItemsView list(String parentId, String cursor, int size) {
+        log.info("event=shared_file_list_시작 parentId={} cursorPresent={} size={}",
+                parentId, cursor != null && !cursor.isBlank(), size);
         SharedFileRoot root = sharedFileRootRepository.find()
                 .filter(SharedFileRoot::isReady)
                 .orElseThrow(SharedFileRootUnavailableException::new);
@@ -41,8 +45,11 @@ public class ListSharedFileItemsService implements ListSharedFileItemsUseCase {
         }
 
         DrivePage page = sharedFileDrivePort.listChildren(accessToken, targetParentId, cursor, size);
-        return new SharedFileItemsView(
+        SharedFileItemsView result = new SharedFileItemsView(
                 page.items().stream().map(SharedFileItemViewMapper::toView).toList(),
                 page.hasNext(), page.nextCursor());
+        log.info("event=shared_file_list_완료 parentId={} itemCount={} hasNext={}",
+                targetParentId, result.items().size(), result.hasNext());
+        return result;
     }
 }

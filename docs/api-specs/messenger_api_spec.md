@@ -1,6 +1,6 @@
 # 메신저(Messenger) API 명세서
 
-> REST 섹션(1~12)의 각 `## `이 Notion 하위 페이지 1개(엔드포인트 1개)에 대응합니다. WebSocket 섹션(13)은 이벤트 8종이 destination 하나로 멀티플렉스되어 하위 페이지 1개로 관리합니다.
+> REST 섹션(1~13)의 각 `## `이 Notion 하위 페이지 1개(엔드포인트 1개)에 대응합니다. WebSocket 섹션(14)은 이벤트 8종이 destination 하나로 멀티플렉스되어 하위 페이지 1개로 관리합니다.
 > 공통 성공 응답 포맷: `{ "status", "code", "message", "data" }` (`GlobalApiResponse`). `204 No Content`는 본문 없음.
 > 공통 실패 응답 포맷: `{ "timestamp", "status", "code", "message", "traceId", "details" }`
 > 모든 API는 `Authorization: Bearer {AccessToken}` 헤더가 필요합니다 (미인증 시 `401 COMMON_401_1`).
@@ -211,7 +211,7 @@ Request Body
 {
   "messageType": "TEXT",
   "content": "안녕하세요",
-  "fileUrl": null,
+  "fileId": null,
   "fileName": null
 }
 ```
@@ -219,8 +219,56 @@ Request Body
 | --- | --- | --- | --- |
 | `messageType` | `String` | `true` | `TEXT`, `IMAGE`, `FILE` 중 하나. |
 | `content` | `String` | `messageType=TEXT`일 때 `true` | 메시지 내용. |
-| `fileUrl` | `String` | `messageType=IMAGE/FILE`일 때 `true` | 파일 모듈에서 발급받은 presigned URL. |
+| `fileId` | `Long` | `messageType=IMAGE/FILE`일 때 `true` | 아래 "파일 첨부 사전 절차"로 미리 발급받은 파일 ID. |
 | `fileName` | `String` | `false` | 원본 파일명. |
+
+> **⚠️ 2026-08-10 변경**: 이전엔 프론트가 파일 URL(`fileUrl`)을 직접 채워서 보내는 방식이었으나, 그 URL을 발급하는 API 자체가 없어 실제로는 채울 수 없는 값이었다. 그래서 approval/notice와 동일하게 공용 `file` 모듈에서 발급받는 `fileId` 참조 방식으로 변경했다. 이 문서는 그동안 갱신이 안 된 채 옛 `fileUrl` 방식으로 남아있었다 — IMAGE/FILE 메시지를 보내려면 반드시 아래 절차를 먼저 거쳐야 한다.
+
+### 파일 첨부 사전 절차 (messageType=IMAGE/FILE일 때 필수)
+
+메신저 도메인이 아니라 **공용 `file` 모듈**(`/api/files`, 결재/공지 등 다른 도메인도 공유)에서 처리한다. 순서:
+
+**1) 업로드용 presigned URL 발급**
+
+`POST /api/files/presigned-url`
+
+Request Body
+```json
+{ "fileName": "사진.jpg", "contentType": "image/jpeg" }
+```
+
+Response Body (`200 OK`)
+```json
+{
+  "status": 200,
+  "code": "FILE_200_1",
+  "message": "presigned URL 발급에 성공했습니다.",
+  "data": { "objectKey": "tenants/academy-a/files/3f2c-사진.jpg", "uploadUrl": "https://..." }
+}
+```
+
+**2) 클라이언트가 `uploadUrl`로 S3에 파일을 직접 `PUT` 업로드** (백엔드를 거치지 않음, `Content-Type` 헤더를 1)에서 보낸 `contentType`과 동일하게 지정)
+
+**3) 업로드 완료 후 파일 메타데이터 등록**
+
+`POST /api/files`
+
+Request Body
+```json
+{ "objectKey": "tenants/academy-a/files/3f2c-사진.jpg", "contentType": "image/jpeg" }
+```
+
+Response Body (`201 Created`)
+```json
+{
+  "status": 201,
+  "code": "FILE_201_1",
+  "message": "파일 등록에 성공했습니다.",
+  "data": { "fileId": 42 }
+}
+```
+
+**4) 발급받은 `fileId`로 메시지 전송** (위 4번 API에 `messageType: "IMAGE"` 또는 `"FILE"`, `fileId: 42`로 요청)
 
 # **[response]**
 
@@ -253,7 +301,7 @@ Response Body
 | --- | --- | --- | --- |
 | `400 Bad Request` | `COMMON_400_1` | 입력값이 올바르지 않습니다. | `messageType` 누락/유효하지 않은 값 (Bean Validation) |
 | `400 Bad Request` | `MESSENGER_400_5` | 메시지 내용은 비어 있을 수 없습니다. | `messageType=TEXT`인데 `content`가 비어있음 |
-| `400 Bad Request` | `MESSENGER_400_6` | 파일 URL은 비어 있을 수 없습니다. | `messageType=IMAGE/FILE`인데 `fileUrl`이 비어있음 |
+| `400 Bad Request` | `MESSENGER_400_6` | 첨부파일(fileId)이 지정되지 않았습니다. | `messageType=IMAGE/FILE`인데 `fileId`가 비어있음 |
 | `401 Unauthorized` | `COMMON_401_1` | 인증이 필요합니다. | 토큰 누락/만료 |
 | `403 Forbidden` | `MESSENGER_403_1` | 채팅방 참여자가 아닙니다. | 요청자가 해당 방 멤버가 아님 |
 | `404 Not Found` | `MESSENGER_404_1` | 채팅방을 찾을 수 없습니다. | `roomId`에 해당하는 방이 없음 |
@@ -308,7 +356,8 @@ Response Body
         "senderName": "이지훈",
         "messageType": "TEXT",
         "content": "안녕하세요",
-        "fileUrl": null,
+        "fileId": null,
+        "fileDownloadUrl": null,
         "fileName": null,
         "createdAt": "2026-08-06T09:00:00",
         "editedAt": null,
@@ -330,7 +379,7 @@ Response Body
 | `data.content[].id` | 메시지 ID입니다. |
 | `data.content[].senderId` / `senderName` | 발신자 정보입니다. |
 | `data.content[].messageType` | `TEXT`/`IMAGE`/`FILE`입니다. |
-| `data.content[].content` / `fileUrl` / `fileName` | 삭제된 메시지면 전부 `null`로 내려갑니다. |
+| `data.content[].content` / `fileId` / `fileDownloadUrl` / `fileName` | 삭제된 메시지면 전부 `null`로 내려갑니다. `fileDownloadUrl`은 1시간짜리 presigned URL이라 만료 후엔 `GET /api/files/{fileId}/download-url`로 재조회해야 합니다. |
 | `data.content[].createdAt` / `editedAt` / `deletedAt` | 생성/수정/삭제 시각입니다. |
 | `data.content[].deleted` | 삭제 여부입니다. |
 | `data.content[].unreadCount` | 해당 메시지를 아직 안 읽은 방 멤버 수입니다(카톡 스타일 숫자). |
@@ -559,6 +608,7 @@ Response Body
     "content": [
       {
         "id": 7,
+        "chatRoomId": 1,
         "assignerId": 2,
         "assignerName": "이지훈",
         "content": "과제 제출",
@@ -584,6 +634,7 @@ Response Body
 | name | 설명 |
 | --- | --- |
 | `data.content[].id` | 업무지시 카드 ID입니다. |
+| `data.content[].chatRoomId` | 카드가 속한 채팅방 ID입니다(이 API는 경로에 이미 `roomId`가 있어 항상 그 값과 같습니다. 13번 "내 업무지시 카드 목록조회"처럼 여러 방을 가로지르는 조회에서 방 구분용으로 쓰입니다). |
 | `data.content[].assignerId` / `assignerName` | 등록자 정보입니다. |
 | `data.content[].content` / `dueDate` | 업무지시 내용/마감일입니다. |
 | `data.content[].assignees[].userId` / `name` / `completedAt` | 담당자별 완료 시각입니다. 미완료면 `null`입니다. |
@@ -746,7 +797,97 @@ Request Parameter
 
 ---
 
-## 13. 실시간 이벤트 수신 (WebSocket)
+## 13. 내 업무지시 카드 목록조회
+
+`GET /api/messenger/task-cards`
+
+> 2026-08-17 추가: 9번(방별 업무지시 카드 목록조회)과 달리 `roomId` 없이, 요청자가 참여 중인 모든 채팅방을 가로질러 `role`에 따라 내가 전달한/받은 업무지시 카드를 모아 조회합니다. 프론트가 방마다 9번 API를 호출해 클라이언트에서 합치고 필터링하던 방식(N+1, 필터 누락 위험)을 대체합니다.
+
+# **[request]**
+
+Request Header
+
+| name | description |
+| --- | --- |
+| `Authorization` | `Bearer {AccessToken}` 형식의 사용자 인증 토큰입니다. |
+
+Request Query Parameter
+
+| name | type | required | description |
+| --- | --- | --- | --- |
+| `role` | `String` | `true` | `SENT`(내가 전달한 업무) 또는 `RECEIVED`(내가 받은 업무). |
+| `cursorCreatedAt` | `LocalDateTime` | `false` | 이전 페이지 마지막 카드의 등록 시각. `cursorCardId`와 함께 전달. |
+| `cursorCardId` | `Long` | `false` | 이전 페이지 마지막 카드 ID. `cursorCreatedAt`과 함께 전달. |
+| `size` | `Integer` | `false` | 페이지 크기(1~100, 기본값 20). |
+
+# **[response]**
+
+### 성공코드
+
+| HTTP 상태 | 설명 |
+| --- | --- |
+| `200 OK` | 목록 조회 성공 |
+
+Response Body
+```json
+{
+  "status": 200,
+  "code": "MESSENGER_200_5",
+  "message": "내 업무지시 카드 목록 조회에 성공했습니다.",
+  "data": {
+    "content": [
+      {
+        "id": 7,
+        "chatRoomId": 1,
+        "assignerId": 2,
+        "assignerName": "이지훈",
+        "content": "과제 제출",
+        "dueDate": "2026-08-10",
+        "assignees": [
+          { "userId": 3, "name": "박서연", "completedAt": null },
+          { "userId": 4, "name": "김도윤", "completedAt": "2026-08-06T09:30:00" }
+        ],
+        "completedCount": 1,
+        "assigneeCount": 2,
+        "fullyCompleted": false,
+        "createdAt": "2026-08-06T09:00:00"
+      }
+    ],
+    "hasNext": false,
+    "nextCursorCreatedAt": null,
+    "nextCursorCardId": null
+  }
+}
+```
+### Response Field
+
+| name | 설명 |
+| --- | --- |
+| `data.content[].id` | 업무지시 카드 ID입니다. |
+| `data.content[].chatRoomId` | 카드가 속한 채팅방 ID입니다. 여러 방을 가로지르는 조회라 프론트가 어느 방의 카드인지 구분(예: 클릭 시 해당 방으로 이동)하는 데 필요합니다. |
+| `data.content[].assignerId` / `assignerName` | 등록자 정보입니다. |
+| `data.content[].content` / `dueDate` | 업무지시 내용/마감일입니다. |
+| `data.content[].assignees[].userId` / `name` / `completedAt` | 담당자별 완료 시각입니다. 미완료면 `null`입니다. |
+| `data.content[].completedCount` / `assigneeCount` | 완료 인원 / 전체 담당자 수입니다. |
+| `data.content[].fullyCompleted` | 담당자 전원 완료 여부입니다. |
+| `data.content[].createdAt` | 카드 등록 시각입니다. |
+| `data.hasNext` | 다음 페이지 존재 여부입니다. |
+| `data.nextCursorCreatedAt` / `nextCursorCardId` | 다음 페이지 조회 시 넘길 cursor 값입니다. `hasNext=false`면 `null`입니다. |
+
+> 정렬: 등록 시각(`createdAt`) 내림차순(최신순, 동일 시각이면 ID 내림차순)입니다. 이 API는 특정 방 멤버 여부를 검증하지 않습니다(요청자 본인 기준으로만 필터링하므로 `roomId` 자체가 없음).
+
+### 실패 코드
+
+| HTTP 상태 | code | message | 설명 |
+| --- | --- | --- | --- |
+| `400 Bad Request` | `COMMON_400_1` | 입력값이 올바르지 않습니다. | `role` 누락/유효하지 않은 값(Bean Validation) |
+| `400 Bad Request` | `MESSENGER_400_17` | cursorCreatedAt과 cursorCardId는 함께 전달하거나 함께 생략해야 합니다. | 둘 중 하나만 전달됨 |
+| `400 Bad Request` | `MESSENGER_400_18` | 업무지시 카드 조회 size는 1 이상 100 이하여야 합니다. | `size`가 범위를 벗어남(주로 Bean Validation `COMMON_400_1`이 먼저 걸리며, 이 코드는 서비스 레이어 방어용) |
+| `401 Unauthorized` | `COMMON_401_1` | 인증이 필요합니다. | 토큰 누락/만료 |
+
+---
+
+## 14. 실시간 이벤트 수신 (WebSocket)
 
 REST와 달리 클라이언트가 요청을 보내는 게 아니라 서버가 이벤트를 밀어주는 방식입니다. 이벤트 8종이 destination 하나로 멀티플렉스되어 하위 페이지 1개로 관리합니다.
 
@@ -765,7 +906,7 @@ REST와 달리 클라이언트가 요청을 보내는 게 아니라 서버가 �
 | 채팅방 이벤트 구독 | `/topic/messenger/rooms/{roomId}` |
 
 > 이 경로 하나로 이벤트 8종류가 다 옵니다. 페이로드의 `eventType` 필드로 분기해서 처리해야 합니다.
-> `[publish]` 섹션 없음 — 메시지/업무지시 카드 관련 쓰기는 전부 REST API(1~12번)로 처리합니다. 소켓은 "받기 전용"이며, 발신자/행위자 본인도 자신이 보낸 이벤트를 그대로 수신합니다(echo 방식, 2026-08-06 optimistic UI 결정에 따라 프론트는 자기 자신 echo를 무시하고 REST 응답으로 먼저 반영).
+> `[publish]` 섹션 없음 — 메시지/업무지시 카드 관련 쓰기는 전부 REST API(1~13번)로 처리합니다. 소켓은 "받기 전용"이며, 발신자/행위자 본인도 자신이 보낸 이벤트를 그대로 수신합니다(echo 방식, 2026-08-06 optimistic UI 결정에 따라 프론트는 자기 자신 echo를 무시하고 REST 응답으로 먼저 반영).
 > 유저 단위 알림 채널(`/user/queue/...`)은 없습니다. 방을 구독 중일 때만 실시간 수신됩니다.
 
 ### [subscribe] 메시지 전송
@@ -781,7 +922,8 @@ REST와 달리 클라이언트가 요청을 보내는 게 아니라 서버가 �
   "senderUserId": 2,
   "messageType": "TEXT",
   "content": "안녕하세요",
-  "fileUrl": null,
+  "fileId": null,
+  "fileDownloadUrl": null,
   "fileName": null,
   "createdAt": "2026-08-06T09:00:00",
   "unreadCount": 1
@@ -901,4 +1043,4 @@ REST와 달리 클라이언트가 요청을 보내는 게 아니라 서버가 �
 
 ### 에러 수신
 
-별도 에러 채널 없음. 소켓으로 클라이언트가 요청을 보내는 동작이 없어서(모든 쓰기는 REST), 에러는 각 REST API 호출의 HTTP 응답으로만 옵니다 — 위 1~12번의 "실패 코드" 표를 참고하세요.
+별도 에러 채널 없음. 소켓으로 클라이언트가 요청을 보내는 동작이 없어서(모든 쓰기는 REST), 에러는 각 REST API 호출의 HTTP 응답으로만 옵니다 — 위 1~13번의 "실패 코드" 표를 참고하세요.

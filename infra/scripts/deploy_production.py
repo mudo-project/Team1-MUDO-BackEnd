@@ -347,8 +347,7 @@ def render_app_task(
         "GOOGLE_CLIENT_SECRET",
         "GOOGLE_REDIRECT_URI",
         "GOOGLE_OAUTH_FRONTEND_REDIRECT_URI",
-        "MAILGUN_SMTP_USERNAME",
-        "MAILGUN_SMTP_PASSWORD",
+        "MAILGUN_API_KEY",
         "MAIL_FROM",
         "MAILGUN_WEBHOOK_SIGNING_KEY",
         # 결재 첨부파일 AI 요약/구조화 추출(approval.GeminiSummarizerAdapter,
@@ -360,6 +359,10 @@ def render_app_task(
         "SOLAPI_API_KEY",
         "SOLAPI_API_SECRET",
         "SOLAPI_SENDER_NUMBER",
+        # Next 서버 기반 클라이언트 IP 검증(ClientIpResolver)이 요구하는 HMAC 공유 시크릿.
+        # application-prod.yaml에 기본값 없이 필수로 선언돼 있어, 없으면 앱 기동 자체가
+        # UnsatisfiedDependencyException으로 실패한다.
+        "CLIENT_IP_SIGNING_SECRET",
     )
     container["secrets"] = [
         {"name": name, "valueFrom": parameter_arn(region, account_id, code, name)}

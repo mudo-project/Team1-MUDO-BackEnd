@@ -20,6 +20,7 @@ import com.academy.mudogroupware.student.domain.model.Enrollment;
 import com.academy.mudogroupware.student.domain.model.EnrollmentStatus;
 import com.academy.mudogroupware.student.domain.model.Student;
 import com.academy.mudogroupware.student.domain.model.StudentGrade;
+import com.academy.mudogroupware.student.domain.model.StudentSortDirection;
 import com.academy.mudogroupware.student.domain.repository.EnrollmentRepository;
 import com.academy.mudogroupware.student.domain.repository.StudentRepository;
 
@@ -83,6 +84,21 @@ class StudentQueryServiceTest {
         assertThat(enrollmentRepository.findActiveByStudentIdCalls).isZero();
     }
 
+    @Test
+    void searchesStudentsByNameDescending() {
+        studentRepository.add(Student.restore(1L, "Anna", StudentGrade.HIGH_1, "School",
+                "010-0000-0001", "010-0000-0002", null, NOW, NOW));
+        studentRepository.add(Student.restore(2L, "Cindy", StudentGrade.HIGH_1, "School",
+                "010-0000-0003", "010-0000-0004", null, NOW, NOW));
+        studentRepository.add(Student.restore(3L, "Brian", StudentGrade.HIGH_1, "School",
+                "010-0000-0005", "010-0000-0006", null, NOW, NOW));
+
+        PageResult<StudentSummary> result = service.getStudents(null, 0, 20, StudentSortDirection.DESC);
+
+        assertThat(result.content()).extracting(StudentSummary::name)
+                .containsExactly("Cindy", "Brian", "Anna");
+    }
+
     private static final class FakeStudentRepository implements StudentRepository {
         private final List<Student> students = new ArrayList<>();
 
@@ -108,9 +124,16 @@ class StudentQueryServiceTest {
 
         @Override
         public PageResult<Student> findAll(String keyword, int page, int size) {
+            return findAll(keyword, page, size, StudentSortDirection.ASC);
+        }
+
+        @Override
+        public PageResult<Student> findAll(String keyword, int page, int size, StudentSortDirection direction) {
             List<Student> content = students.stream()
                     .filter(student -> keyword == null || keyword.isBlank() || student.getName().contains(keyword))
-                    .sorted((a, b) -> a.getName().compareTo(b.getName()))
+                    .sorted((a, b) -> direction.isDescending()
+                            ? b.getName().compareTo(a.getName())
+                            : a.getName().compareTo(b.getName()))
                     .skip((long) page * size)
                     .limit(size + 1L)
                     .toList();
@@ -122,6 +145,11 @@ class StudentQueryServiceTest {
         @Override
         public void markDeleted(Long id, LocalDateTime deletedAt) {
             students.removeIf(student -> student.getId().equals(id));
+        }
+
+        @Override
+        public long countAll() {
+            return students.size();
         }
     }
 

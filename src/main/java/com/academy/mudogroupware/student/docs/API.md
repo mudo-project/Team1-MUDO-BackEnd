@@ -40,13 +40,14 @@
 - 학생은 로그인 계정이 아니며 `users` 테이블에 생성하지 않는다.
 - `academyId`는 요청자의 인증 정보에서 가져온다.
 - 이름과 학년은 필수다.
+- `grade` 허용값: `ELEMENTARY_1`~`ELEMENTARY_6`, `MIDDLE_1`~`MIDDLE_3`, `HIGH_1`~`HIGH_3`, `RETAKE`, `N`
 - 전화번호, 학부모 전화번호, 학교, 특이사항은 선택 입력이다.
 
 ---
 
 ## 2. 학생 목록 조회
 
-`GET /api/students?keyword=&page=0&size=30`
+`GET /api/students?keyword=&page=0&size=30&sort=name&direction=asc`
 
 인증: 필요
 
@@ -57,6 +58,8 @@
 | `keyword` | 없음 | 선택 | 학생 이름 검색어 |
 | `page` | `0` | `0` 이상 | 0부터 시작하는 페이지 |
 | `size` | `30` | `1` 이상 `100` 이하 | 한 번에 조회할 학생 수 |
+| `sort` | `name` | `name`만 허용 | 정렬 기준입니다. 현재는 이름 정렬만 지원합니다. |
+| `direction` | `asc` | `asc` 또는 `desc` | 이름 정렬 방향입니다. `asc`는 오름차순, `desc`는 내림차순입니다. |
 
 #### Response - `200 OK`
 
@@ -88,6 +91,7 @@
 
 - 같은 학원 학생만 조회한다.
 - 기본 정렬은 이름 가나다순, 같은 이름이면 ID 오름차순이다.
+- 이름 내림차순 정렬은 `direction=desc`를 사용한다.
 - 전체 개수를 세지 않는 `Slice` 방식으로 응답한다.
 - `size` 상한은 100으로 제한한다.
 
