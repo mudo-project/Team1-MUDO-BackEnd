@@ -18,7 +18,7 @@ public record CreateTimetableSlotRequest(
         @Schema(description = "강의실 코드", example = "601") @NotBlank String classroomCode,
         @Schema(description = "시작 시각", example = "09:00") @NotNull LocalTime startTime,
         @Schema(description = "종료 시각", example = "11:00") @NotNull LocalTime endTime,
-        @Schema(description = "학년(초1~고3 중 하나)", example = "HIGH_3") @NotNull Grade grade,
+        @Schema(description = "학년(초1~고3 또는 공통 중 하나)", example = "HIGH_3") @NotNull Grade grade,
         @Schema(description = "강사명", example = "정T") String teacherName,
         @Schema(description = "과목", example = "미적분") String subjectName,
         @Schema(description = "색상(6자리 16진수, RRGGBB)", example = "FFCC00")
