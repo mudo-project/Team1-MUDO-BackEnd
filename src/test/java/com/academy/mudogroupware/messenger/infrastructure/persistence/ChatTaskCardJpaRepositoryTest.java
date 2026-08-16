@@ -9,6 +9,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 @DataJpaTest(properties = "spring.jpa.hibernate.ddl-auto=create-drop")
@@ -158,5 +159,45 @@ class ChatTaskCardJpaRepositoryTest {
 
         assertThat(chatTaskCardJpaRepository.findDeletedAtForUpdate(7L))
                 .isEqualTo(LocalDateTime.of(2026, 8, 6, 15, 0));
+    }
+
+    private void insertTaskCard(long cardId, long chatRoomId, long assignerUserId, LocalDateTime createdAt) {
+        jdbcTemplate.update("""
+                insert into chat_task_card (card_id, chat_room_id, assigner_user_id, content, due_date, created_at)
+                values (?, ?, ?, 'content', '2026-08-10', ?)
+                """, cardId, chatRoomId, assignerUserId, createdAt);
+    }
+
+    @Test
+    void findSentPageReturnsOnlyCardsAssignedByGivenUser() {
+        insertChatRoom(1L);
+        insertChatRoom(2L);
+        LocalDateTime createdAt = LocalDateTime.of(2026, 8, 17, 10, 0);
+        insertTaskCard(7L, 1L, 1L, createdAt);
+        insertAssignee(7L, 3L, null);
+        insertTaskCard(8L, 2L, 9L, createdAt.plusMinutes(1));
+        insertAssignee(8L, 3L, null);
+
+        List<ChatTaskCardEntity> result = chatTaskCardJpaRepository.findSentPage(1L, null, null,
+                PageRequest.of(0, 20));
+
+        assertThat(result).extracting(ChatTaskCardEntity::getId).containsExactly(7L);
+    }
+
+    @Test
+    void findReceivedPageReturnsCardsWhereUserIsAssigneeWithoutDuplicates() {
+        insertChatRoom(1L);
+        LocalDateTime createdAt = LocalDateTime.of(2026, 8, 17, 10, 0);
+        insertTaskCard(7L, 1L, 1L, createdAt);
+        insertAssignee(7L, 3L, null);
+        insertAssignee(7L, 4L, null);
+        insertTaskCard(8L, 1L, 1L, createdAt.plusMinutes(1));
+        insertAssignee(8L, 9L, null);
+
+        List<ChatTaskCardEntity> result = chatTaskCardJpaRepository.findReceivedPage(3L, null, null,
+                PageRequest.of(0, 20));
+
+        assertThat(result).extracting(ChatTaskCardEntity::getId).containsExactly(7L);
+        assertThat(result.get(0).getAssignees()).hasSize(2);
     }
 }

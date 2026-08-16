@@ -31,6 +31,34 @@ public interface ChatTaskCardJpaRepository extends JpaRepository<ChatTaskCardEnt
                                        @Param("cursorCardId") Long cursorCardId,
                                        Pageable pageable);
 
+    // 방을 가리지 않고 assignerUserId 기준으로 조회하는 것 외에는 findPage와 동일한 cursor 페이지네이션.
+    @EntityGraph(attributePaths = "assignees")
+    @Query("select c from ChatTaskCardEntity c where c.assignerUserId = :userId and c.deletedAt is null "
+            + "and (:cursorCreatedAt is null "
+            + "or c.createdAt < :cursorCreatedAt "
+            + "or (c.createdAt = :cursorCreatedAt and c.id < :cursorCardId)) "
+            + "order by c.createdAt desc, c.id desc")
+    List<ChatTaskCardEntity> findSentPage(@Param("userId") Long userId,
+                                          @Param("cursorCreatedAt") LocalDateTime cursorCreatedAt,
+                                          @Param("cursorCardId") Long cursorCardId,
+                                          Pageable pageable);
+
+    // 담당자 여부는 EXISTS 서브쿼리로 확인한다. assignees를 메인 쿼리에서 직접 join하면 @EntityGraph의
+    // fetch join과 겹쳐 카드 하나가 담당자 수만큼 중복 행으로 늘어나 size 기준 페이지 경계가 틀어질 수
+    // 있어서다. EXISTS는 메인 SELECT의 행 수에 영향을 주지 않는다.
+    @EntityGraph(attributePaths = "assignees")
+    @Query("select c from ChatTaskCardEntity c where c.deletedAt is null "
+            + "and exists (select 1 from ChatTaskCardEntity c2 join c2.assignees a2 "
+            + "where c2 = c and a2.userId = :userId) "
+            + "and (:cursorCreatedAt is null "
+            + "or c.createdAt < :cursorCreatedAt "
+            + "or (c.createdAt = :cursorCreatedAt and c.id < :cursorCardId)) "
+            + "order by c.createdAt desc, c.id desc")
+    List<ChatTaskCardEntity> findReceivedPage(@Param("userId") Long userId,
+                                              @Param("cursorCreatedAt") LocalDateTime cursorCreatedAt,
+                                              @Param("cursorCardId") Long cursorCardId,
+                                              Pageable pageable);
+
     // chat_task_card.deleted_at도 함께 확인해, 이 UPDATE 시점에 카드가 이미(동시에) 삭제됐다면
     // 완료 처리를 반영하지 않는다(반환값 0으로 호출측이 감지). 서브쿼리 형태라 H2(테스트)/MySQL(운영)
     // 양쪽에서 동일하게 동작한다(MySQL 전용 멀티테이블 UPDATE...JOIN 문법은 H2가 지원하지 않는다).

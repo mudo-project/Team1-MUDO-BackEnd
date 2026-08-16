@@ -1,6 +1,6 @@
 # 메신저(Messenger) API 명세서
 
-> REST 섹션(1~12)의 각 `## `이 Notion 하위 페이지 1개(엔드포인트 1개)에 대응합니다. WebSocket 섹션(13)은 이벤트 8종이 destination 하나로 멀티플렉스되어 하위 페이지 1개로 관리합니다.
+> REST 섹션(1~13)의 각 `## `이 Notion 하위 페이지 1개(엔드포인트 1개)에 대응합니다. WebSocket 섹션(14)은 이벤트 8종이 destination 하나로 멀티플렉스되어 하위 페이지 1개로 관리합니다.
 > 공통 성공 응답 포맷: `{ "status", "code", "message", "data" }` (`GlobalApiResponse`). `204 No Content`는 본문 없음.
 > 공통 실패 응답 포맷: `{ "timestamp", "status", "code", "message", "traceId", "details" }`
 > 모든 API는 `Authorization: Bearer {AccessToken}` 헤더가 필요합니다 (미인증 시 `401 COMMON_401_1`).
@@ -608,6 +608,7 @@ Response Body
     "content": [
       {
         "id": 7,
+        "chatRoomId": 1,
         "assignerId": 2,
         "assignerName": "이지훈",
         "content": "과제 제출",
@@ -633,6 +634,7 @@ Response Body
 | name | 설명 |
 | --- | --- |
 | `data.content[].id` | 업무지시 카드 ID입니다. |
+| `data.content[].chatRoomId` | 카드가 속한 채팅방 ID입니다(이 API는 경로에 이미 `roomId`가 있어 항상 그 값과 같습니다. 13번 "내 업무지시 카드 목록조회"처럼 여러 방을 가로지르는 조회에서 방 구분용으로 쓰입니다). |
 | `data.content[].assignerId` / `assignerName` | 등록자 정보입니다. |
 | `data.content[].content` / `dueDate` | 업무지시 내용/마감일입니다. |
 | `data.content[].assignees[].userId` / `name` / `completedAt` | 담당자별 완료 시각입니다. 미완료면 `null`입니다. |
@@ -795,7 +797,97 @@ Request Parameter
 
 ---
 
-## 13. 실시간 이벤트 수신 (WebSocket)
+## 13. 내 업무지시 카드 목록조회
+
+`GET /api/messenger/task-cards`
+
+> 2026-08-17 추가: 9번(방별 업무지시 카드 목록조회)과 달리 `roomId` 없이, 요청자가 참여 중인 모든 채팅방을 가로질러 `role`에 따라 내가 전달한/받은 업무지시 카드를 모아 조회합니다. 프론트가 방마다 9번 API를 호출해 클라이언트에서 합치고 필터링하던 방식(N+1, 필터 누락 위험)을 대체합니다.
+
+# **[request]**
+
+Request Header
+
+| name | description |
+| --- | --- |
+| `Authorization` | `Bearer {AccessToken}` 형식의 사용자 인증 토큰입니다. |
+
+Request Query Parameter
+
+| name | type | required | description |
+| --- | --- | --- | --- |
+| `role` | `String` | `true` | `SENT`(내가 전달한 업무) 또는 `RECEIVED`(내가 받은 업무). |
+| `cursorCreatedAt` | `LocalDateTime` | `false` | 이전 페이지 마지막 카드의 등록 시각. `cursorCardId`와 함께 전달. |
+| `cursorCardId` | `Long` | `false` | 이전 페이지 마지막 카드 ID. `cursorCreatedAt`과 함께 전달. |
+| `size` | `Integer` | `false` | 페이지 크기(1~100, 기본값 20). |
+
+# **[response]**
+
+### 성공코드
+
+| HTTP 상태 | 설명 |
+| --- | --- |
+| `200 OK` | 목록 조회 성공 |
+
+Response Body
+```json
+{
+  "status": 200,
+  "code": "MESSENGER_200_5",
+  "message": "내 업무지시 카드 목록 조회에 성공했습니다.",
+  "data": {
+    "content": [
+      {
+        "id": 7,
+        "chatRoomId": 1,
+        "assignerId": 2,
+        "assignerName": "이지훈",
+        "content": "과제 제출",
+        "dueDate": "2026-08-10",
+        "assignees": [
+          { "userId": 3, "name": "박서연", "completedAt": null },
+          { "userId": 4, "name": "김도윤", "completedAt": "2026-08-06T09:30:00" }
+        ],
+        "completedCount": 1,
+        "assigneeCount": 2,
+        "fullyCompleted": false,
+        "createdAt": "2026-08-06T09:00:00"
+      }
+    ],
+    "hasNext": false,
+    "nextCursorCreatedAt": null,
+    "nextCursorCardId": null
+  }
+}
+```
+### Response Field
+
+| name | 설명 |
+| --- | --- |
+| `data.content[].id` | 업무지시 카드 ID입니다. |
+| `data.content[].chatRoomId` | 카드가 속한 채팅방 ID입니다. 여러 방을 가로지르는 조회라 프론트가 어느 방의 카드인지 구분(예: 클릭 시 해당 방으로 이동)하는 데 필요합니다. |
+| `data.content[].assignerId` / `assignerName` | 등록자 정보입니다. |
+| `data.content[].content` / `dueDate` | 업무지시 내용/마감일입니다. |
+| `data.content[].assignees[].userId` / `name` / `completedAt` | 담당자별 완료 시각입니다. 미완료면 `null`입니다. |
+| `data.content[].completedCount` / `assigneeCount` | 완료 인원 / 전체 담당자 수입니다. |
+| `data.content[].fullyCompleted` | 담당자 전원 완료 여부입니다. |
+| `data.content[].createdAt` | 카드 등록 시각입니다. |
+| `data.hasNext` | 다음 페이지 존재 여부입니다. |
+| `data.nextCursorCreatedAt` / `nextCursorCardId` | 다음 페이지 조회 시 넘길 cursor 값입니다. `hasNext=false`면 `null`입니다. |
+
+> 정렬: 등록 시각(`createdAt`) 내림차순(최신순, 동일 시각이면 ID 내림차순)입니다. 이 API는 특정 방 멤버 여부를 검증하지 않습니다(요청자 본인 기준으로만 필터링하므로 `roomId` 자체가 없음).
+
+### 실패 코드
+
+| HTTP 상태 | code | message | 설명 |
+| --- | --- | --- | --- |
+| `400 Bad Request` | `COMMON_400_1` | 입력값이 올바르지 않습니다. | `role` 누락/유효하지 않은 값(Bean Validation) |
+| `400 Bad Request` | `MESSENGER_400_17` | cursorCreatedAt과 cursorCardId는 함께 전달하거나 함께 생략해야 합니다. | 둘 중 하나만 전달됨 |
+| `400 Bad Request` | `MESSENGER_400_18` | 업무지시 카드 조회 size는 1 이상 100 이하여야 합니다. | `size`가 범위를 벗어남(주로 Bean Validation `COMMON_400_1`이 먼저 걸리며, 이 코드는 서비스 레이어 방어용) |
+| `401 Unauthorized` | `COMMON_401_1` | 인증이 필요합니다. | 토큰 누락/만료 |
+
+---
+
+## 14. 실시간 이벤트 수신 (WebSocket)
 
 REST와 달리 클라이언트가 요청을 보내는 게 아니라 서버가 이벤트를 밀어주는 방식입니다. 이벤트 8종이 destination 하나로 멀티플렉스되어 하위 페이지 1개로 관리합니다.
 
@@ -814,7 +906,7 @@ REST와 달리 클라이언트가 요청을 보내는 게 아니라 서버가 �
 | 채팅방 이벤트 구독 | `/topic/messenger/rooms/{roomId}` |
 
 > 이 경로 하나로 이벤트 8종류가 다 옵니다. 페이로드의 `eventType` 필드로 분기해서 처리해야 합니다.
-> `[publish]` 섹션 없음 — 메시지/업무지시 카드 관련 쓰기는 전부 REST API(1~12번)로 처리합니다. 소켓은 "받기 전용"이며, 발신자/행위자 본인도 자신이 보낸 이벤트를 그대로 수신합니다(echo 방식, 2026-08-06 optimistic UI 결정에 따라 프론트는 자기 자신 echo를 무시하고 REST 응답으로 먼저 반영).
+> `[publish]` 섹션 없음 — 메시지/업무지시 카드 관련 쓰기는 전부 REST API(1~13번)로 처리합니다. 소켓은 "받기 전용"이며, 발신자/행위자 본인도 자신이 보낸 이벤트를 그대로 수신합니다(echo 방식, 2026-08-06 optimistic UI 결정에 따라 프론트는 자기 자신 echo를 무시하고 REST 응답으로 먼저 반영).
 > 유저 단위 알림 채널(`/user/queue/...`)은 없습니다. 방을 구독 중일 때만 실시간 수신됩니다.
 
 ### [subscribe] 메시지 전송
@@ -951,4 +1043,4 @@ REST와 달리 클라이언트가 요청을 보내는 게 아니라 서버가 �
 
 ### 에러 수신
 
-별도 에러 채널 없음. 소켓으로 클라이언트가 요청을 보내는 동작이 없어서(모든 쓰기는 REST), 에러는 각 REST API 호출의 HTTP 응답으로만 옵니다 — 위 1~12번의 "실패 코드" 표를 참고하세요.
+별도 에러 채널 없음. 소켓으로 클라이언트가 요청을 보내는 동작이 없어서(모든 쓰기는 REST), 에러는 각 REST API 호출의 HTTP 응답으로만 옵니다 — 위 1~13번의 "실패 코드" 표를 참고하세요.
