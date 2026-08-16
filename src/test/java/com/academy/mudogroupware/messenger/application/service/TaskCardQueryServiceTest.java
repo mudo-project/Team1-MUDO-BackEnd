@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import com.academy.mudogroupware.messenger.application.port.ChatMemberDirectoryPort;
 import com.academy.mudogroupware.messenger.application.port.ChatMemberInfo;
 import com.academy.mudogroupware.messenger.application.query.TaskCardPageView;
+import com.academy.mudogroupware.messenger.application.query.TaskCardRole;
 import com.academy.mudogroupware.messenger.domain.exception.MessengerException;
 import com.academy.mudogroupware.messenger.domain.model.ChatRoom;
 import com.academy.mudogroupware.messenger.domain.model.ChatRoomMember;
@@ -83,5 +84,55 @@ class TaskCardQueryServiceTest {
                 .isInstanceOf(MessengerException.class);
 
         verifyNoInteractions(chatTaskCardRepository, chatMemberDirectoryPort);
+    }
+
+    @Test
+    void rejectsOversizedPageSizeForMyTaskCardsBeforeQuerying() {
+        assertThatThrownBy(() -> service.getMyTaskCards(1L, TaskCardRole.SENT, null, null, 101))
+                .isInstanceOf(MessengerException.class);
+
+        verifyNoInteractions(chatRoomRepository, chatTaskCardRepository, chatMemberDirectoryPort);
+    }
+
+    @Test
+    void rejectsIncompleteCursorForMyTaskCardsBeforeQuerying() {
+        assertThatThrownBy(() -> service.getMyTaskCards(1L, TaskCardRole.SENT, LocalDateTime.now(), null, 20))
+                .isInstanceOf(MessengerException.class);
+
+        verifyNoInteractions(chatRoomRepository, chatTaskCardRepository, chatMemberDirectoryPort);
+    }
+
+    @Test
+    void getMyTaskCardsWithSentRoleQueriesFindSentPage() {
+        LocalDateTime createdAt = LocalDateTime.of(2026, 8, 17, 10, 0);
+        ChatTaskCard sentCard = ChatTaskCard.restore(30L, 1L, 1L, "sent", null,
+                List.of(ChatTaskAssignee.restore(2L, null)), createdAt, null);
+        when(chatTaskCardRepository.findSentPage(1L, null, null, 20)).thenReturn(List.of(sentCard));
+        when(chatMemberDirectoryPort.getMembers(List.of(1L, 2L))).thenReturn(
+                Map.of(1L, new ChatMemberInfo(1L, "assigner"), 2L, new ChatMemberInfo(2L, "assignee")));
+
+        TaskCardPageView view = service.getMyTaskCards(1L, TaskCardRole.SENT, null, null, 20);
+
+        assertThat(view.taskCards()).hasSize(1);
+        assertThat(view.taskCards().get(0).id()).isEqualTo(30L);
+        assertThat(view.taskCards().get(0).chatRoomId()).isEqualTo(1L);
+        assertThat(view.hasNext()).isFalse();
+        verifyNoInteractions(chatRoomRepository);
+    }
+
+    @Test
+    void getMyTaskCardsWithReceivedRoleQueriesFindReceivedPage() {
+        LocalDateTime createdAt = LocalDateTime.of(2026, 8, 17, 10, 0);
+        ChatTaskCard receivedCard = ChatTaskCard.restore(31L, 1L, 5L, "received", null,
+                List.of(ChatTaskAssignee.restore(2L, null)), createdAt, null);
+        when(chatTaskCardRepository.findReceivedPage(2L, null, null, 20)).thenReturn(List.of(receivedCard));
+        when(chatMemberDirectoryPort.getMembers(List.of(5L, 2L))).thenReturn(
+                Map.of(5L, new ChatMemberInfo(5L, "assigner"), 2L, new ChatMemberInfo(2L, "assignee")));
+
+        TaskCardPageView view = service.getMyTaskCards(2L, TaskCardRole.RECEIVED, null, null, 20);
+
+        assertThat(view.taskCards()).hasSize(1);
+        assertThat(view.taskCards().get(0).id()).isEqualTo(31L);
+        verifyNoInteractions(chatRoomRepository);
     }
 }
