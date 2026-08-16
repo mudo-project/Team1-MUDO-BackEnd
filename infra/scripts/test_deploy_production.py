@@ -7,6 +7,7 @@ from deploy_production import (
     render_app_task,
     render_migration_task,
     render_platform_tenant_registry,
+    render_public_tenant_directory,
     validate_manifests,
 )
 
@@ -127,6 +128,39 @@ class DeploymentManifestTest(unittest.TestCase):
             basic_container["memoryReservation"], premium_container["memoryReservation"]
         )
         self.assertEqual(basic_container["memory"], premium_container["memory"])
+
+    def test_renders_public_tenant_directory_from_api_host(self):
+        tenants, _ = self.enabled_configuration()
+        directory_json = render_public_tenant_directory(tenants)
+
+        self.assertIn('"code":"academy-a"', directory_json)
+        self.assertIn('"apiHost":"academy-a.ieum.store"', directory_json)
+        self.assertIn('"apiHost":"sidea-test.ieum.store"', directory_json)
+
+    def test_public_tenant_directory_injected_only_into_dashboard_host_task(self):
+        tenants, cells = self.enabled_configuration()
+        directory_json = render_public_tenant_directory(tenants)
+        task = render_app_task(
+            tenants[0],
+            self.profiles["shared-default"],
+            "123456789012",
+            "ap-northeast-2",
+            "registry/mudo:abc123",
+            "abc123",
+            render_platform_tenant_registry(tenants, cells),
+            directory_json,
+        )
+        environment = {item["name"]: item["value"] for item in task["containerDefinitions"][0]["environment"]}
+        self.assertIn('"code":"academy-a"', environment["PLATFORM_TENANT_DIRECTORY_JSON"])
+
+        tenants[0]["platform_dashboard_host"] = False
+        non_host_task = render_app_task(
+            tenants[0], self.profiles["shared-default"], "123456789012", "ap-northeast-2",
+            "registry/mudo:abc123", "abc123")
+        non_host_environment = {
+            item["name"]: item["value"] for item in non_host_task["containerDefinitions"][0]["environment"]
+        }
+        self.assertNotIn("PLATFORM_TENANT_DIRECTORY_JSON", non_host_environment)
 
     def test_migration_task_uses_separate_migrator_parameters(self):
         tenants, _ = self.enabled_configuration()

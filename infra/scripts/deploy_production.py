@@ -237,6 +237,16 @@ def render_platform_tenant_registry(
     return json.dumps(registry, separators=(",", ":"))
 
 
+def render_public_tenant_directory(tenants: list[dict[str, Any]]) -> str:
+    """Render the code→apiHost lookup consumed by the public /api/public/tenants API.
+
+    Frontend가 로그인 전에 이 값을 조회하므로, 운영 인프라 세부값(ECS/RDS 등)이 담긴
+    render_platform_tenant_registry와는 별도로 공개 가능한 최소 정보만 담는다.
+    """
+    directory = [{"code": tenant["code"], "apiHost": tenant["api_host"]} for tenant in tenants]
+    return json.dumps(directory, separators=(",", ":"))
+
+
 def render_app_task(
     tenant: dict[str, Any],
     profile: dict[str, Any],
@@ -245,6 +255,7 @@ def render_app_task(
     app_image: str,
     deployment_sha: str,
     platform_tenant_registry_json: str | None = None,
+    public_tenant_directory_json: str | None = None,
 ) -> dict[str, Any]:
     with (INFRA_ROOT / "ecs/app-task-definition.template.json").open(encoding="utf-8") as stream:
         task = json.load(stream)
@@ -319,6 +330,10 @@ def render_app_task(
                 "value": platform_tenant_registry_json,
             },
         ])
+    if public_tenant_directory_json is not None:
+        container["environment"].append(
+            {"name": "PLATFORM_TENANT_DIRECTORY_JSON", "value": public_tenant_directory_json},
+        )
 
     secret_names = (
         "DB_URL",
@@ -514,6 +529,7 @@ def deploy(
 ) -> None:
     aws = AwsDeployment(args.region)
     platform_tenant_registry_json = render_platform_tenant_registry(tenants, cells)
+    public_tenant_directory_json = render_public_tenant_directory(tenants)
     for tenant in tenants:
         code = tenant["code"]
         cell = cells[tenant["cell"]]
@@ -534,6 +550,7 @@ def deploy(
             args.app_image,
             args.deployment_sha,
             platform_tenant_registry_json if tenant.get("platform_dashboard_host") else None,
+            public_tenant_directory_json if tenant.get("platform_dashboard_host") else None,
         )
         new_task_arn = aws.register_task(app_task)
         try:

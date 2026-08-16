@@ -11,6 +11,8 @@ tenants:
     service: mudo-prod-svc-academy-a
     task_family: mudo-prod-tenant-academy-a
     health_url: https://academy-a.ieum.store/actuator/health
+    # 프론트가 학원 코드로부터 실제 백엔드 API 호스트를 조회하는 공개 API(/api/public/tenants)에 쓰인다.
+    api_host: academy-a.ieum.store
     s3_bucket: mudo-prod-staff-635249349258
     finance_s3_bucket: mudo-prod-finance-635249349258
   - code: academy-b
@@ -23,6 +25,7 @@ tenants:
     service: mudo-prod-svc-academy-b
     task_family: mudo-prod-tenant-academy-b
     health_url: https://academy-b.ieum.store/actuator/health
+    api_host: academy-b.ieum.store
     s3_bucket: mudo-prod-staff-635249349258
     finance_s3_bucket: mudo-prod-finance-635249349258
   - code: academy-d
@@ -35,6 +38,8 @@ tenants:
     service: mudo-prod-svc-academy-d
     task_family: mudo-prod-tenant-academy-d
     health_url: https://sidea-test.ieum.store/actuator/health
+    # 코드는 academy-d지만 2026-08-14 온보딩 시 실제 서브도메인은 sidea-test로 붙었다.
+    api_host: sidea-test.ieum.store
     s3_bucket: mudo-prod-staff-635249349258
     finance_s3_bucket: mudo-prod-finance-635249349258
   - code: academy-c
@@ -47,5 +52,6 @@ tenants:
     service: mudo-prod-svc-academy-c
     task_family: mudo-prod-tenant-academy-c
     health_url: https://academy-c.ieum.store/actuator/health
+    api_host: academy-c.ieum.store
     s3_bucket: mudo-prod-staff-635249349258
     finance_s3_bucket: mudo-prod-finance-635249349258
