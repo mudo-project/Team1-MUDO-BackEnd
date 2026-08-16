@@ -27,6 +27,7 @@ public class TeamAttendanceQueryAdapter implements TeamAttendanceQueryPort {
              AND ar.work_date = ?
             WHERE u.status = 'ACTIVE'
               AND u.id <> ?
+              AND NOT (u.account_type = 'ADMIN' AND u.admin_scope = 'PLATFORM')
             ORDER BY u.name ASC, u.id ASC
             """;
 

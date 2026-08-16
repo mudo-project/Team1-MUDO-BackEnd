@@ -13,7 +13,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.academy.mudogroupware.memo.application.query.MemoSortOrder;
 import com.academy.mudogroupware.memo.domain.model.Memo;
-import com.academy.mudogroupware.memo.domain.model.MemoColor;
 import com.academy.mudogroupware.memo.domain.repository.MemoRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -25,7 +24,7 @@ class MemoQueryServiceTest {
     @Test
     void getMemosUsesDescendingOrderForNewest() {
         MemoQueryService service = new MemoQueryService(memoRepository);
-        Memo memo = Memo.create(10L, "제목", "내용", MemoColor.MUSTARD, LocalDateTime.now());
+        Memo memo = Memo.create(10L, "제목", "내용", "D3A340", LocalDateTime.now());
         when(memoRepository.findAllByUserIdOrderByCreatedAtDescIdDesc(10L)).thenReturn(List.of(memo));
 
         List<Memo> result = service.getMemos(10L, MemoSortOrder.NEWEST);
@@ -36,7 +35,7 @@ class MemoQueryServiceTest {
     @Test
     void getMemosUsesAscendingOrderForOldest() {
         MemoQueryService service = new MemoQueryService(memoRepository);
-        Memo memo = Memo.create(10L, "제목", "내용", MemoColor.MUSTARD, LocalDateTime.now());
+        Memo memo = Memo.create(10L, "제목", "내용", "D3A340", LocalDateTime.now());
         when(memoRepository.findAllByUserIdOrderByCreatedAtAscIdAsc(10L)).thenReturn(List.of(memo));
 
         List<Memo> result = service.getMemos(10L, MemoSortOrder.OLDEST);

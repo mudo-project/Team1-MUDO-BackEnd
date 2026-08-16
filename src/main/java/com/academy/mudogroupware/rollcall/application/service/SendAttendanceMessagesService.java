@@ -186,8 +186,11 @@ public class SendAttendanceMessagesService implements SendAttendanceMessagesUseC
     private String renderMessage(String content, MessageSendCandidateView candidate, LocalDate date) {
         return content
                 .replace("{학생명}", valueOrBlank(candidate.studentName()))
+                .replace("{studentName}", valueOrBlank(candidate.studentName()))
                 .replace("{강의명}", valueOrBlank(candidate.lectureName()))
-                .replace("{날짜}", date != null ? date.toString() : "");
+                .replace("{lectureName}", valueOrBlank(candidate.lectureName()))
+                .replace("{날짜}", date != null ? date.toString() : "")
+                .replace("{date}", date != null ? date.toString() : "");
     }
 
     private String valueOrBlank(String value) {

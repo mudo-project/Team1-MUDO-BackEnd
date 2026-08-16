@@ -184,6 +184,32 @@ class SendAttendanceMessagesServiceTest {
     }
 
     @Test
+    void replacesEnglishTemplateVariablesBeforeSendingSms() {
+        MessageTemplate template = MessageTemplate.restore(
+                7L,
+                "absence notice",
+                AttendanceStatus.ABSENT,
+                "{studentName} missed {lectureName} on {date}.",
+                1L,
+                NOW,
+                NOW);
+        MessageSendCandidateView candidate = new MessageSendCandidateView(
+                10L, "Kim Minsoo", AttendanceStatus.ABSENT, "010-1111-1111", 7L, "absence notice", true,
+                "Math A");
+        when(getMessageSendCandidatesUseCase.getCandidates(LECTURE_ID, DATE))
+                .thenReturn(List.of(candidate));
+        when(messageTemplateRepository.findById(7L)).thenReturn(Optional.of(template));
+        when(smsSenderPort.send("010-1111-1111", "Kim Minsoo missed Math A on 2026-08-05."))
+                .thenReturn(SmsSendResult.succeeded());
+
+        List<MessageSendResultView> results = service.send(
+                new SendAttendanceMessagesCommand(LECTURE_ID, DATE, List.of(10L)));
+
+        assertThat(results.get(0).sent()).isTrue();
+        verify(smsSenderPort).send("010-1111-1111", "Kim Minsoo missed Math A on 2026-08-05.");
+    }
+
+    @Test
     void doesNotCallSmsPortForIneligibleStudent() {
         MessageSendCandidateView candidate = new MessageSendCandidateView(
                 10L, "이준호", AttendanceStatus.ABSENT, "010-1111-1111", null, null, false);

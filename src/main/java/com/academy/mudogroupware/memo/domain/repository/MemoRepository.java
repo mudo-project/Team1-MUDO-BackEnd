@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.Optional;
 
 import com.academy.mudogroupware.memo.domain.model.Memo;
-import com.academy.mudogroupware.memo.domain.model.MemoColor;
 
 public interface MemoRepository {
 
@@ -24,7 +23,7 @@ public interface MemoRepository {
     // 필드 단위 원자적 UPDATE. 메모 전체를 재저장하면 동시에 다른 필드를 변경한 요청을 덮어쓸 수 있어 대신 사용한다.
     void updateContent(Long id, String title, String content, LocalDateTime updatedAt);
 
-    void updateColor(Long id, MemoColor color, LocalDateTime updatedAt);
+    void updateColor(Long id, String color, LocalDateTime updatedAt);
 
     void updatePosition(Long id, int positionX, int positionY, int width, int height, LocalDateTime updatedAt);
 

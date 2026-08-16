@@ -12,7 +12,8 @@ public enum Grade {
     MIDDLE_3("중3"),
     HIGH_1("고1"),
     HIGH_2("고2"),
-    HIGH_3("고3");
+    HIGH_3("고3"),
+    COMMON("공통");
 
     private final String label;
 

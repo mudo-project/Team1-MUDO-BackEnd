@@ -24,6 +24,7 @@ import com.academy.mudogroupware.student.application.usecase.EndEnrollmentUseCas
 import com.academy.mudogroupware.student.application.usecase.EnrollStudentUseCase;
 import com.academy.mudogroupware.student.application.usecase.StudentQueryUseCase;
 import com.academy.mudogroupware.student.application.usecase.UpdateStudentUseCase;
+import com.academy.mudogroupware.student.domain.model.StudentSortDirection;
 import com.academy.mudogroupware.student.presentation.api.common.StudentResponseCode;
 import com.academy.mudogroupware.student.presentation.api.request.CreateStudentRequest;
 import com.academy.mudogroupware.student.presentation.api.request.EnrollStudentRequest;
@@ -40,6 +41,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Pattern;
 import lombok.RequiredArgsConstructor;
 
 @Tag(name = "학생", description = "학생 등록/목록/상세/수강 등록 API")
@@ -79,9 +81,11 @@ public class StudentController {
     public ResponseEntity<GlobalApiResponse<SliceResponse<StudentSummaryResponse>>> getStudents(
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") @Min(0) int page,
-            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
+            @RequestParam(defaultValue = "name") @Pattern(regexp = "name") String sort,
+            @RequestParam(defaultValue = "asc") @Pattern(regexp = "(?i)asc|desc") String direction) {
         SliceResponse<StudentSummaryResponse> response = SliceResponse.from(
-                studentQueryUseCase.getStudents(keyword, page, size),
+                studentQueryUseCase.getStudents(keyword, page, size, StudentSortDirection.from(direction)),
                 StudentSummaryResponse::from);
         return ResponseEntity.ok(GlobalApiResponse.ok(StudentResponseCode.STUDENT_LIST_RETRIEVED, response));
     }

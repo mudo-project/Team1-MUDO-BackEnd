@@ -288,6 +288,7 @@ Notion 원문: [오늘 팀 근태 현황 조회](https://app.notion.com/p/3b313f
 
 - 승인된 휴가 기간은 `LEAVE`로 표시하고 `leaveCount`에 포함합니다.
 - 직원 상태는 `PRESENT`, `ABSENT`, `OFF`, `LEAVE` 중 하나입니다.
+- 슈퍼 어드민(`accountType=ADMIN`, `adminScope=PLATFORM`)은 조회 대상에서 제외합니다.
 - 근무시간 정책이 없으면 `404 ATTENDANCE_404_1`입니다.
 
 ### 전 직원 주간 출결 현황 조회
@@ -348,6 +349,7 @@ Notion 원문: [전 직원 주간 출결 현황 조회](https://app.notion.com/p
 - 조회 주는 월요일부터 일요일까지입니다.
 - `attendedDays`에는 `NORMAL`, `LATE`만 포함합니다.
 - `roleName`은 사용자의 `role.name`이며 역할이 없으면 `null`입니다.
+- 슈퍼 어드민(`accountType=ADMIN`, `adminScope=PLATFORM`)은 조회 대상에서 제외합니다.
 - 유효하지 않은 조회 기간은 `400 ATTENDANCE_400_12`, 정책이 없으면 `404 ATTENDANCE_404_1`입니다.
 
 ### 특정 직원 주간 출결 상세 조회

@@ -5,7 +5,7 @@ tenants:
     # 플랫폼 대시보드 조회 권한과 전체 테넌트 레지스트리는 이 Task에만 주입한다.
     platform_dashboard_host: true
     # 결제 플랜은 유료 엔드포인트·쿼터 메타데이터이며 Task 자원을 선택하지 않는다.
-    billing_plan: basic
+    billing_plan: paid
     runtime_profile: shared-default
     cell: cell-1
     service: mudo-prod-svc-academy-a

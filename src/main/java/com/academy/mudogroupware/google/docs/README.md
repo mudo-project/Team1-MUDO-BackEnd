@@ -12,13 +12,14 @@
 ## 주요 데이터와 상태
 
 - `GoogleAccountConnection`: 테넌트 DB당 1건. 구글 이메일, 연결한 관리자, 부여받은 scope, 암호화된 리프레시 토큰, 연결 일시, 구글 토큰 응답의 `refresh_token_expires_in`이 실제로 반환된 경우에만 저장하는 리프레시 토큰 만료 시각, 마지막 확인 일시, 마지막 확인 실패 여부를 가진다. 연결 시점에 임의 만료일을 계산하지 않는다.
-- 상태(`GoogleConnectionStatus`)는 저장하지 않고 조회 시점에 계산한다: 행이 없으면 `NOT_CONNECTED`, 마지막 실제 토큰 확인이 실패했으면 `FAILED`, 구글이 반환한 실제 만료 시각이 지났으면 `EXPIRED`, 실제 만료 시각이 7일 이내면 `EXPIRING`, 그 외에는 `CONNECTED`다. 실제 만료 정보가 없으면 만료일을 추정하지 않고 `CONNECTED`로 표시한다.
+- 상태(`GoogleConnectionStatus`)는 저장하지 않고 조회 시점에 계산한다: 행이 없으면 `NOT_CONNECTED`, 마지막 실제 토큰 확인이 실패했으면 `FAILED`, 구글이 반환한 실제 만료 시각이 지났으면 `EXPIRED`, 실제 만료 시각이 3일 이내면 `EXPIRING`, 그 외에는 `CONNECTED`다. 실제 만료 정보가 없으면 만료일을 추정하지 않고 `CONNECTED`로 표시한다.
 - 리프레시 토큰은 평문으로 저장하지 않는다. `GoogleTokenCipher`(AES-GCM, 전용 시크릿 `GOOGLE_TOKEN_ENCRYPTION_KEY`)로 암호화해 저장하고, 조회 시 복호화한다. JWT 서명 키와 분리해, 하나가 노출돼도 다른 하나는 영향받지 않는다.
 
 ## 외부에 공개하는 Application API
 
 - `StartGoogleAccountConnectionUseCase`, `CompleteGoogleAccountConnectionUseCase`,
-  `GetGoogleAccountConnectionUseCase`, `CheckGoogleAccountConnectionUseCase`, `DisconnectGoogleAccountUseCase`,
+  `GetGoogleAccountConnectionUseCase`, `GetGoogleAccountConnectionStatusUseCase`,
+  `CheckGoogleAccountConnectionUseCase`, `DisconnectGoogleAccountUseCase`,
   `GetGoogleAccessTokenUseCase`.
 - `GetGoogleAccessTokenUseCase`는 API 엔드포인트로 노출되지 않는다 — 템플릿 기능처럼 Drive/Docs/Sheets를
   직접 호출해야 하는 다른 도메인이 자바 코드에서 직접 호출하는 용도다.
@@ -28,7 +29,7 @@
 
 - 외부 시스템: 구글 OAuth 2.0(`accounts.google.com`, `oauth2.googleapis.com`, `www.googleapis.com/oauth2/v3/userinfo`).
   `GoogleOAuthPort`(application) → `GoogleOAuthAdapter`(infrastructure)로 연결한다.
-- 다른 도메인 데이터를 조회하지 않는다.
+- users 도메인의 사용자 이름은 `GoogleConnectionUserDirectoryPort`를 통해서만 조회한다. Google은 users Entity·Repository를 직접 참조하지 않으며, 상태 요약 조회는 사용자 조회 없이 Google 연결 행만 사용한다.
 
 ## 필요한 환경 변수
 

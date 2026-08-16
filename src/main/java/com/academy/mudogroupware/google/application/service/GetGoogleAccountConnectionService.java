@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.academy.mudogroupware.google.application.query.GoogleAccountConnectionView;
+import com.academy.mudogroupware.google.application.port.GoogleConnectionUserDirectoryPort;
 import com.academy.mudogroupware.google.application.usecase.GetGoogleAccountConnectionUseCase;
 import com.academy.mudogroupware.google.domain.model.GoogleAccountConnection;
 import com.academy.mudogroupware.google.domain.repository.GoogleAccountConnectionRepository;
@@ -20,6 +21,7 @@ import lombok.RequiredArgsConstructor;
 public class GetGoogleAccountConnectionService implements GetGoogleAccountConnectionUseCase {
 
     private final GoogleAccountConnectionRepository googleAccountConnectionRepository;
+    private final GoogleConnectionUserDirectoryPort googleConnectionUserDirectoryPort;
     private final Clock clock;
 
     @Override
@@ -32,6 +34,9 @@ public class GetGoogleAccountConnectionService implements GetGoogleAccountConnec
         return new GoogleAccountConnectionView(
                 connection.getGoogleEmail(),
                 connection.getConnectedByUserId(),
+                googleConnectionUserDirectoryPort.findByUserId(connection.getConnectedByUserId())
+                        .map(user -> user.userName())
+                        .orElse(null),
                 connection.getScope(),
                 connection.getConnectedAt(),
                 connection.getRefreshTokenExpiresAt(),

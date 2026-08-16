@@ -13,7 +13,9 @@ import com.academy.mudogroupware.timetable.domain.repository.TimetableSetReposit
 import com.academy.mudogroupware.timetable.domain.repository.TimetableSlotRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -24,12 +26,17 @@ public class GetTimetableSlotsService implements GetTimetableSlotsUseCase {
 
     @Override
     public List<TimetableSlotView> getSlots(Long timetableSetId) {
+        log.info("event=timetable_slot_list_시작 timetableSetId={}", timetableSetId);
+
         timetableSetRepository.findById(timetableSetId)
                 .orElseThrow(TimetableSetNotFoundException::new);
 
-        return timetableSlotRepository.findAllByTimetableSetId(timetableSetId).stream()
+        List<TimetableSlotView> views = timetableSlotRepository.findAllByTimetableSetId(timetableSetId).stream()
                 .map(this::toView)
                 .toList();
+
+        log.info("event=timetable_slot_list_완료 timetableSetId={}, count={}", timetableSetId, views.size());
+        return views;
     }
 
     private TimetableSlotView toView(TimetableSlot slot) {

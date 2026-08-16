@@ -1,6 +1,7 @@
 package com.academy.mudogroupware.rollcall.infrastructure.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -9,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.academy.mudogroupware.global.infrastructure.config.TimeConfig;
@@ -68,6 +70,22 @@ class AttendanceMessageSendRecordRepositoryImplDataJpaTest {
                 .createOrGetExisting(1L, 10L, DATE, ATTENDANCE_STATUS);
         assertThat(reloaded.getStatus()).isEqualTo(AttendanceMessageSendStatus.INDETERMINATE);
         assertThat(reloaded.getFailureReason()).isEqualTo("타임아웃");
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void savePersistsTheUpdatedStatusWhenCalledOutsideCallerTransaction() {
+        AttendanceMessageSendRecord record = attendanceMessageSendRecordRepository
+                .createOrGetExisting(1L, 10L, DATE, ATTENDANCE_STATUS);
+
+        record.markResult(AttendanceMessageSendStatus.SENT, null, NOW);
+
+        assertThatCode(() -> attendanceMessageSendRecordRepository.save(record))
+                .doesNotThrowAnyException();
+
+        AttendanceMessageSendRecord reloaded = attendanceMessageSendRecordRepository
+                .createOrGetExisting(1L, 10L, DATE, ATTENDANCE_STATUS);
+        assertThat(reloaded.getStatus()).isEqualTo(AttendanceMessageSendStatus.SENT);
     }
 
     @Test

@@ -14,6 +14,8 @@ import com.academy.mudogroupware.approval.domain.exception.ApprovalException;
 class ApprovalDocumentTest {
 
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 4, 9, 0);
+    private static final String APPROVER_SELF_NOT_ALLOWED_CODE = "APPROVAL_400_6";
+    private static final String DUPLICATE_APPROVER_CODE = "APPROVAL_400_7";
 
     @Test
     void generalDocumentKeepsRetentionForThreeYears() {
@@ -59,6 +61,50 @@ class ApprovalDocumentTest {
 
         assertThat(document.findAttachmentByFileId(999L)).isEmpty();
     }
+    @Test
+    void createRejectsCreatorInApprovalLine() {
+        assertThatThrownBy(() -> ApprovalDocument.create(
+                1L, "Vacation", ApprovalContent.create(ApprovalContentType.TEXT, "content"),
+                7L, List.of(7L, 12L), List.of(), NOW))
+                .isInstanceOf(ApprovalException.class)
+                .extracting(e -> ((ApprovalException) e).getErrorCode().getCode())
+                .isEqualTo(APPROVER_SELF_NOT_ALLOWED_CODE);
+    }
+
+    @Test
+    void createRejectsDuplicateApprovalLine() {
+        assertThatThrownBy(() -> ApprovalDocument.create(
+                1L, "Vacation", ApprovalContent.create(ApprovalContentType.TEXT, "content"),
+                7L, List.of(12L, 12L), List.of(), NOW))
+                .isInstanceOf(ApprovalException.class)
+                .extracting(e -> ((ApprovalException) e).getErrorCode().getCode())
+                .isEqualTo(DUPLICATE_APPROVER_CODE);
+    }
+
+    @Test
+    void updateLinesRejectsCreatorInApprovalLine() {
+        ApprovalDocument document = ApprovalDocument.create(
+                1L, "Vacation", ApprovalContent.create(ApprovalContentType.TEXT, "content"),
+                7L, List.of(12L), List.of(), NOW);
+
+        assertThatThrownBy(() -> document.updateLines(List.of(7L, 13L)))
+                .isInstanceOf(ApprovalException.class)
+                .extracting(e -> ((ApprovalException) e).getErrorCode().getCode())
+                .isEqualTo(APPROVER_SELF_NOT_ALLOWED_CODE);
+    }
+
+    @Test
+    void updateLinesRejectsDuplicateApprovalLine() {
+        ApprovalDocument document = ApprovalDocument.create(
+                1L, "Vacation", ApprovalContent.create(ApprovalContentType.TEXT, "content"),
+                7L, List.of(12L), List.of(), NOW);
+
+        assertThatThrownBy(() -> document.updateLines(List.of(12L, 12L)))
+                .isInstanceOf(ApprovalException.class)
+                .extracting(e -> ((ApprovalException) e).getErrorCode().getCode())
+                .isEqualTo(DUPLICATE_APPROVER_CODE);
+    }
+
     @Test
     void cancelChangesStatusWhenNoApprovalLineWasDecided() {
         ApprovalDocument document = ApprovalDocument.create(

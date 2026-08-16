@@ -36,6 +36,7 @@ import com.academy.mudogroupware.google.application.usecase.CheckGoogleAccountCo
 import com.academy.mudogroupware.google.application.usecase.CompleteGoogleAccountConnectionUseCase;
 import com.academy.mudogroupware.google.application.usecase.DisconnectGoogleAccountUseCase;
 import com.academy.mudogroupware.google.application.usecase.GetGoogleAccountConnectionUseCase;
+import com.academy.mudogroupware.google.application.usecase.GetGoogleAccountConnectionStatusUseCase;
 import com.academy.mudogroupware.google.application.usecase.StartGoogleAccountConnectionUseCase;
 import com.academy.mudogroupware.google.domain.exception.GoogleAccountNotConnectedException;
 import com.academy.mudogroupware.google.domain.model.GoogleConnectionStatus;
@@ -53,6 +54,7 @@ class GoogleAccountConnectionControllerTest {
     @MockitoBean private StartGoogleAccountConnectionUseCase startGoogleAccountConnectionUseCase;
     @MockitoBean private CompleteGoogleAccountConnectionUseCase completeGoogleAccountConnectionUseCase;
     @MockitoBean private GetGoogleAccountConnectionUseCase getGoogleAccountConnectionUseCase;
+    @MockitoBean private GetGoogleAccountConnectionStatusUseCase getGoogleAccountConnectionStatusUseCase;
     @MockitoBean private CheckGoogleAccountConnectionUseCase checkGoogleAccountConnectionUseCase;
     @MockitoBean private DisconnectGoogleAccountUseCase disconnectGoogleAccountUseCase;
     @MockitoBean private JwtTokenProvider jwtTokenProvider;
@@ -194,21 +196,45 @@ class GoogleAccountConnectionControllerTest {
         mockMvc.perform(get("/api/google/connections").with(authentication(authenticatedUser("ACADEMY:OWNER"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("GOOGLE_200_2"))
-                .andExpect(jsonPath("$.data").doesNotExist());
+                .andExpect(jsonPath("$.data").value(org.hamcrest.Matchers.nullValue()));
     }
 
     @Test
     void getConnectionReturns200WithConnectionDataWhenConnected() throws Exception {
         LocalDateTime connectedAt = LocalDateTime.of(2026, 7, 1, 14, 22);
         GoogleAccountConnectionView view = new GoogleAccountConnectionView(
-                "academy@mudo.co.kr", 7L, "drive.file", connectedAt, null, connectedAt,
+                "academy@mudo.co.kr", 7L, "원장", "drive.file", connectedAt, null, connectedAt,
                 GoogleConnectionStatus.CONNECTED);
         when(getGoogleAccountConnectionUseCase.getConnection()).thenReturn(Optional.of(view));
 
         mockMvc.perform(get("/api/google/connections").with(authentication(authenticatedUser("ACADEMY:OWNER"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.googleEmail").value("academy@mudo.co.kr"))
+                .andExpect(jsonPath("$.data.connectedByUserName").value("원장"))
                 .andExpect(jsonPath("$.data.refreshTokenExpiresAt").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.data.status").value("CONNECTED"));
+    }
+
+    @Test
+    void getConnectionStatusReturnsNotConnectedWhenConnectionDoesNotExist() throws Exception {
+        when(getGoogleAccountConnectionStatusUseCase.getStatus())
+                .thenReturn(GoogleConnectionStatus.NOT_CONNECTED);
+
+        mockMvc.perform(get("/api/google/connections/status")
+                        .with(authentication(authenticatedUser("ACADEMY:OWNER"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("GOOGLE_200_3"))
+                .andExpect(jsonPath("$.data.status").value("NOT_CONNECTED"));
+    }
+
+    @Test
+    void getConnectionStatusReturnsDerivedConnectionStatus() throws Exception {
+        when(getGoogleAccountConnectionStatusUseCase.getStatus())
+                .thenReturn(GoogleConnectionStatus.CONNECTED);
+
+        mockMvc.perform(get("/api/google/connections/status")
+                        .with(authentication(authenticatedUser("ACADEMY:OWNER"))))
+                .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("CONNECTED"));
     }
 
