@@ -65,7 +65,7 @@ class DeploymentManifestTest(unittest.TestCase):
         self.assertEqual("academy-a", environment["TENANT_ID"])
         self.assertEqual("mudo-prod-staff-123456789012", environment["AWS_S3_STAFF_BUCKET_NAME"])
         self.assertEqual("mudo-prod-finance-123456789012", environment["AWS_S3_FINANCE_BUCKET_NAME"])
-        self.assertEqual("basic", environment["TENANT_PLAN"])
+        self.assertEqual("paid", environment["TENANT_PLAN"])
         self.assertEqual("true", environment["PLATFORM_DASHBOARD_ENABLED"])
         self.assertIn('"code":"academy-a"', environment["PLATFORM_DASHBOARD_TENANT_REGISTRY_JSON"])
         self.assertEqual("30", environment["SERVER_TOMCAT_THREADS_MAX"])
