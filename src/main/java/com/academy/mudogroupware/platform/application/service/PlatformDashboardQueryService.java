@@ -48,7 +48,7 @@ public class PlatformDashboardQueryService {
       DatabaseUsageMetricsPort databaseUsageMetricsPort,
       EcsHeadroomPort ecsHeadroomPort,
       ApiCallFrequencyPort apiCallFrequencyPort,
-      @Qualifier("applicationTaskExecutor") Executor executor) {
+      @Qualifier("platformDashboardExecutor") Executor executor) {
     this.tenantRegistry = tenantRegistry;
     this.operationalMetricsPort = operationalMetricsPort;
     this.memberCountMetricsPort = memberCountMetricsPort;

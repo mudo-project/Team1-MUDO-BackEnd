@@ -38,7 +38,7 @@ public class PrometheusOperationalMetricsAdapter implements OperationalMetricsPo
   private final RestClient restClient;
 
   public PrometheusOperationalMetricsAdapter(
-      PlatformDashboardProperties properties, @Qualifier("applicationTaskExecutor") Executor executor) {
+      PlatformDashboardProperties properties, @Qualifier("platformDashboardExecutor") Executor executor) {
     this.properties = properties;
     this.executor = executor;
     this.restClient = RestClient.builder().requestFactory(requestFactory(properties)).build();
