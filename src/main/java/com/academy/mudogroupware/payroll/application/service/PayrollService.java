@@ -120,8 +120,7 @@ public class PayrollService {
       throw new PayrollException(PayrollErrorCode.PAYROLL_REVISION_CONFLICT);
     }
     Payroll revision = payrollRepository.save(original.revision());
-    payrollRepository.replaceSnapshots(revision.getId(), snapshots(original));
-    return detail(revision, snapshots(revision));
+    return calculate(revision.getId(), revision.getVersion());
   }
 
   @Transactional(readOnly = true)
