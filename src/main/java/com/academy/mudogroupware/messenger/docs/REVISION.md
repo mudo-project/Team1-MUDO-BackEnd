@@ -1,5 +1,22 @@
 # Messenger Revision
 
+## 2026-08-17 · 내 업무지시 카드 목록조회(전달한/받은) API 추가
+
+### 배경
+
+메신저 화면의 "업무" 탭(받은업무/전달한업무)은 여러 채팅방에 흩어진 업무지시 카드를 한 화면에 모아 보여줘야 하는데, 기존 9번 API(`GET /rooms/{roomId}/task-cards`)는 방 하나만 조회하는 구조라 이 탭을 지원할 API가 없었다. 프론트는 방마다 9번 API를 호출해 클라이언트에서 합치고 `assignerUserId`/`assignees`로 필터링하는 방식으로 우회하고 있었는데, 방 개수만큼 API를 호출해야 하고(N+1) 필터링 로직이 빠지면 전달한/받은 구분 없이 전부 노출되는 문제가 있었다.
+
+### 변경 내용
+
+- `GET /api/messenger/task-cards?role=SENT|RECEIVED`를 신규 컨트롤러(`MessengerTaskCardController`, `/api/messenger/task-cards`)에 추가했다. 기존 `MessengerController`는 `@RequestMapping("/api/messenger/rooms")`로 고정돼 있어 방에 속하지 않는 이 조회를 넣을 수 없었다(users 도메인의 `AuthController`/`TokenController`처럼 한 도메인에 컨트롤러를 여러 개 두는 기존 패턴을 따랐다).
+- `TaskCardQueryUseCase`/`TaskCardQueryService`에 `getMyTaskCards(requesterId, role, cursorCreatedAt, cursorCardId, size)`를 추가했다. 기존 `getTaskCards`와 동일한 cursor/size 검증, `TaskCardPageView` 응답 구조를 재사용한다.
+- `ChatTaskCardRepository`에 `findSentPage`(assignerUserId 기준)/`findReceivedPage`(담당자 목록에 포함 여부 기준)를 추가했다. `findReceivedPage`는 담당자 필터를 EXISTS 서브쿼리로 확인해, `@EntityGraph`의 assignees fetch join과 별개 join이 겹쳐 카드가 담당자 수만큼 중복 행으로 늘어나는 것(페이지 경계가 틀어지는 문제)을 피했다.
+- `TaskCardResponse`(9번 API와 공용)에 `chatRoomId` 필드를 추가했다. 방을 가로지르는 조회라 프론트가 어느 방의 카드인지 구분해야 해서 필요했고, 기존 필드는 그대로 두고 추가만 한 거라 9번 API를 쓰는 기존 클라이언트에는 영향이 없다.
+- `MessengerResponseCode.MY_TASK_CARD_LIST_RETRIEVED`(`MESSENGER_200_5`) 추가.
+
+> 작성일: 2026-08-17
+> 상태: 백엔드 구현 완료, 테스트 통과(`TaskCardQueryServiceTest`, `ChatTaskCardJpaRepositoryTest`, `MessengerTaskCardControllerValidationTest`). API 명세서(`docs/api-specs/messenger_api_spec.md`) 13번으로 반영 완료. 프론트가 기존 N+1 방식에서 이 API로 전환하는 작업은 별도 진행.
+
 ## 2026-08-11 · 완료된 업무지시 카드 수정/삭제 제한
 
 ### 배경

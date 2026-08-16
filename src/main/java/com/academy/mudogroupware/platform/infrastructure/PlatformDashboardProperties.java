@@ -16,6 +16,8 @@ public class PlatformDashboardProperties {
 
   @NotBlank private String tenantRegistryJson = "[]";
 
+  @NotBlank private String tenantDirectoryJson = "[]";
+
   // HttpURLConnection 계열은 타임아웃 0을 "무한 대기"로 해석한다 — 0/음수를 막아
   // 설정 실수로 타임아웃이 조용히 사라지는 걸 방지한다.
   @Min(1) private int prometheusConnectTimeoutMs = 2000;

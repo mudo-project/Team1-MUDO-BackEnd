@@ -19,6 +19,15 @@ public interface ChatTaskCardRepository {
     // 타이브레이크)이며 삭제되지 않은 카드만 반환한다. size+1개를 가져와 hasNext 판단은 호출부에서 한다.
     List<ChatTaskCard> findPage(Long chatRoomId, LocalDateTime cursorCreatedAt, Long cursorCardId, int size);
 
+    // 방을 가리지 않고 assignerUserId가 나인 카드(내가 전달한 업무)를 findPage와 동일한 cursor
+    // 페이지네이션으로 조회한다.
+    List<ChatTaskCard> findSentPage(Long assignerUserId, LocalDateTime cursorCreatedAt, Long cursorCardId, int size);
+
+    // 방을 가리지 않고 담당자 목록에 내가 포함된 카드(내가 받은 업무)를 findPage와 동일한 cursor
+    // 페이지네이션으로 조회한다.
+    List<ChatTaskCard> findReceivedPage(Long assigneeUserId, LocalDateTime cursorCreatedAt, Long cursorCardId,
+                                        int size);
+
     // 담당자 완료 행만 원자적으로 갱신한다(카드 전체를 다시 저장하는 방식은 동시 완료 처리 시 유실 위험이 있어 대신 사용).
     // 카드가 삭제된 상태면 갱신하지 않는다(deleted_at is null 조건). 반환값이 false면 이미 완료된 상태였거나
     // 이 갱신 시점에 카드가 (동시에) 삭제됐다는 뜻이다 — 어느 쪽인지는 isDeleted()로 다시 확인해야 한다.

@@ -77,3 +77,4 @@ platform:
     enabled: ${PLATFORM_DASHBOARD_ENABLED:false}
     prometheus-url: ${PLATFORM_DASHBOARD_PROMETHEUS_URL:http://monitoring.mudo.internal:9090}
     tenant-registry-json: '${PLATFORM_DASHBOARD_TENANT_REGISTRY_JSON:[]}'
+    tenant-directory-json: '${PLATFORM_TENANT_DIRECTORY_JSON:[]}'

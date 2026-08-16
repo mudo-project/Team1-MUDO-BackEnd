@@ -4,11 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 @DataJpaTest(properties = "spring.jpa.hibernate.ddl-auto=create-drop")
@@ -158,5 +160,72 @@ class ChatTaskCardJpaRepositoryTest {
 
         assertThat(chatTaskCardJpaRepository.findDeletedAtForUpdate(7L))
                 .isEqualTo(LocalDateTime.of(2026, 8, 6, 15, 0));
+    }
+
+    private void insertTaskCard(long cardId, long chatRoomId, long assignerUserId, LocalDateTime createdAt) {
+        jdbcTemplate.update("""
+                insert into chat_task_card (card_id, chat_room_id, assigner_user_id, content, due_date, created_at)
+                values (?, ?, ?, 'content', '2026-08-10', ?)
+                """, cardId, chatRoomId, assignerUserId, createdAt);
+    }
+
+    @Test
+    void findSentPageReturnsOnlyCardsAssignedByGivenUser() {
+        insertChatRoom(1L);
+        insertChatRoom(2L);
+        LocalDateTime createdAt = LocalDateTime.of(2026, 8, 17, 10, 0);
+        insertTaskCard(7L, 1L, 1L, createdAt);
+        insertAssignee(7L, 3L, null);
+        insertTaskCard(8L, 2L, 9L, createdAt.plusMinutes(1));
+        insertAssignee(8L, 3L, null);
+
+        List<ChatTaskCardEntity> result = chatTaskCardJpaRepository.findSentPage(1L, null, null,
+                PageRequest.of(0, 20));
+
+        assertThat(result).extracting(ChatTaskCardEntity::getId).containsExactly(7L);
+    }
+
+    @Test
+    void findReceivedPageReturnsCardsWhereUserIsAssigneeWithoutDuplicates() {
+        insertChatRoom(1L);
+        LocalDateTime createdAt = LocalDateTime.of(2026, 8, 17, 10, 0);
+        insertTaskCard(7L, 1L, 1L, createdAt);
+        insertAssignee(7L, 3L, null);
+        insertAssignee(7L, 4L, null);
+        insertTaskCard(8L, 1L, 1L, createdAt.plusMinutes(1));
+        insertAssignee(8L, 9L, null);
+
+        List<ChatTaskCardEntity> result = chatTaskCardJpaRepository.findReceivedPage(3L, null, null,
+                PageRequest.of(0, 20));
+
+        assertThat(result).extracting(ChatTaskCardEntity::getId).containsExactly(7L);
+        assertThat(result.get(0).getAssignees()).hasSize(2);
+    }
+
+    @Test
+    void findSentPageKeepsIdDescTiebreakAcrossCursorPagesWithEqualCreatedAt() {
+        insertChatRoom(1L);
+        LocalDateTime tiedCreatedAt = LocalDateTime.of(2026, 8, 17, 10, 0);
+        insertTaskCard(10L, 1L, 1L, tiedCreatedAt);
+        insertAssignee(10L, 3L, null);
+        insertTaskCard(11L, 1L, 1L, tiedCreatedAt);
+        insertAssignee(11L, 3L, null);
+        insertTaskCard(9L, 1L, 1L, tiedCreatedAt.minusMinutes(1));
+        insertAssignee(9L, 3L, null);
+
+        List<Long> orderedIds = new ArrayList<>();
+        LocalDateTime cursorCreatedAt = null;
+        Long cursorCardId = null;
+        for (int i = 0; i < 3; i++) {
+            List<ChatTaskCardEntity> page = chatTaskCardJpaRepository.findSentPage(1L, cursorCreatedAt, cursorCardId,
+                    PageRequest.of(0, 1));
+            assertThat(page).hasSize(1);
+            ChatTaskCardEntity card = page.get(0);
+            orderedIds.add(card.getId());
+            cursorCreatedAt = card.getCreatedAt();
+            cursorCardId = card.getId();
+        }
+
+        assertThat(orderedIds).containsExactly(11L, 10L, 9L);
     }
 }
