@@ -1,11 +1,49 @@
 # 매출 리포트(revenuereport) 리비전 로그
 
 > 작성일: 2026-08-12
-> 상태: 🚧 Spring 쪽(집계·저장·조회·배치) 완료. mudo-ai-server 쪽(AI 서술 생성 엔드포인트) 완료. 리포트 생성 시 알림함 연동 완료.
+> 상태: 🚧 Spring 쪽(집계·저장·조회·배치) 완료. mudo-ai-server 쪽(AI 서술 생성 엔드포인트) 완료. 리포트 생성 시 알림함 연동 완료. 슈퍼어드민 수동 생성 API 완료.
 
 ## 🎯 변경 목적
 
 원장이 매달 학원의 매출/지출/순이익 현황을 AI가 서술한 리포트로 받아볼 수 있게 한다. 짐짝(Gym-Jjak)의 "트레이너 시장동향 리포트"(월간 배치로 AI가 생성, 인앱에서 조회) 구조를 참고했다.
+
+---
+
+## ✅ 2026-08-17 · 슈퍼어드민 수동 매출 리포트 생성 API
+
+### 배경
+
+배치(매달 1일 00:30)로만 리포트가 생성돼, 배치가 실패했거나 아직 한 번도 안 돈 상태(신규 배포 직후 등)에서는 수동으로 대응할 방법이 없었다. 발표/가이드 문서용 스크린샷 데이터가 당장 필요하기도 했다.
+
+### 확정된 정책
+
+- 기존 배치 전용 `GenerateRevenueReportUseCase`/`GenerateRevenueReportService`는 손대지 않았다. 신규 `ManualGenerateRevenueReportService`가 `revenueReportRepository.findByTargetMonth`로 존재 여부만 먼저 확인해서, 있으면 `RevenueReportAlreadyExistsException`(409)을 던지고 없으면 기존 `GenerateRevenueReportUseCase.generate()`에 그대로 위임한다 — 배치는 계속 조용히 스킵, 수동 API는 409로 명확히 알림.
+- `targetMonth`는 요청에서 명시적으로 받는다(배치처럼 항상 직전월 고정이 아님). 스케줄러 장애 대응뿐 아니라, 여러 달을 순차 생성해 전월 대비 비교치를 만들어내는 용도도 겸한다(`GenerateRevenueReportService.fetchPreviousSnapshot`이 직전월 리포트가 있어야 비교치를 채우므로).
+- 당월/미래월 검증 없음 — 슈퍼어드민 유연성 우선. 미완성 데이터로 리포트가 만들어질 수 있는 트레이드오프는 감수한다.
+- 이 도메인은 이미 완전 단일 테넌트(`academy_id` 없음, `academy` 테이블 자체가 없음)라, "여러 학원 중 하나를 선택"하는 개념이 API에 없다.
+- 성공 응답은 `204 No Content`(바디 없음)로 통일했다 — 이 코드베이스는 body 없는 성공 응답에 `GlobalApiResponse`를 쓰지 않고 `ResponseEntity.noContent().build()`만 반환하는 기존 관례(`UserController.changeUserStatus` 등)를 그대로 따른다. 생성된 내용 확인은 기존 상세조회 API로 분리했다.
+
+### 검토했다가 제외한 대안
+
+- 기존 리포트 강제 삭제 후 재생성(`force` 플래그) — 이번 스코프 밖(YAGNI). 필요해지면 별도 스펙으로.
+
+### 로컬 e2e 검증
+
+- 인증/인가: 미인증 401, `ACADEMY:OWNER`(비-슈퍼어드민) 403, `PLATFORM:SUPER_ADMIN` 통과 — 전부 실제 curl로 확인.
+- 입력 검증: `targetMonth="july"` → 400(`COMMON_400_1`) 실제 확인.
+- 로직 도달 확인: 실제로 기존 배치 로직(집계 → AI 호출)까지 정상 도달함을 확인. 로컬에 `mudo-ai-server`(FastAPI, 실제 Gemini 연동 완료된 별도 저장소)를 직접 띄우고 `REVENUE_REPORT_AI_BASE_URL=http://localhost:8000`으로 연결.
+- **AI 호출 자체는 이번 검증 시점에 Gemini 프리페이먼트 크레딧이 소진된 상태(`429 RESOURCE_EXHAUSTED`)라 실제 리포트 생성(204)까지는 로컬에서 끝내지 못했다.** 대신 그 상황에서 `502 REVENUE_REPORT_502_1`이 fallback 없이 정확히 전파되는 것까지 확인했다 — 이는 코드/설계가 의도대로 동작함을 보여주는 유효한 검증 결과다. 409(중복 생성)는 실제 리포트가 하나도 저장되지 못해 재현하지 못했고, 컨트롤러/서비스 단위 테스트로 검증을 대체했다.
+- 2026-06 → 2026-07 순차 생성으로 전월 대비 비교치를 실제로 확보하는 것(원래 목적)은 Gemini 크레딧 재충전 후 별도로 진행 필요.
+
+### 완료 기준
+
+- [x] `ManualGenerateRevenueReportUseCase`/`Service`(TDD)
+- [x] `RevenueReportAlreadyExistsException`(`409 REVENUE_REPORT_409_1`)
+- [x] `GenerateRevenueReportRequest` DTO(TDD)
+- [x] `RevenueReportController.generate()` 핸들러(`PLATFORM:SUPER_ADMIN`, TDD)
+- [x] 로컬 e2e: 인증/인가/입력검증/AI-실패-전파 확인
+- [ ] 로컬 e2e: 실제 리포트 생성 성공(204) + 전월 대비 비교치 확보 — Gemini 크레딧 문제로 보류
+- [x] 문서 갱신(API.md/README.md/CHANGELOG.md/REVISION.md)
 
 ---
 

@@ -10,6 +10,7 @@
 ## 공개 UseCase
 
 - `GenerateRevenueReportUseCase` — 월간 배치가 호출. 이미 해당 달 리포트가 있으면 스킵(멱등성).
+- `ManualGenerateRevenueReportUseCase` — `PLATFORM:SUPER_ADMIN`이 API로 임의의 월을 지정해 즉시 호출. 존재 여부를 먼저 확인해 있으면 예외(409)로 명확히 알리고, 없으면 `GenerateRevenueReportUseCase`에 그대로 위임(생성 로직 자체는 배치와 완전히 동일).
 - `ListRevenueReportsUseCase`
 - `GetRevenueReportUseCase` — 조회 시 읽음 처리 부수효과.
 - `CountUnreadRevenueReportsUseCase`
@@ -37,6 +38,7 @@
 - AI 호출(`REVENUE_REPORT_AI_BASE_URL` 등)은 `mudo-ai-server`가 별도로 구현해야 동작한다(Plan 2/2, 별도 저장소). 그 전까지 배치는 매번 `revenue_report_batch_실패` 로그를 남기고 조용히 실패한다(fallback 없음 — 서술형 리포트는 AI 없이는 대체 불가).
 - 이 도메인의 리포트는 `ACADEMY:OWNER` 합성 권한(새 권한 코드 아님, `accountType=ADMIN && adminScope=ACADEMY` 계정에 로그인 시 자동 부여)으로만 접근 가능하다.
 - 읽음 상태가 계정별이 아니라 리포트 레코드 자체에 있다 — `ACADEMY:OWNER` 계정이 여러 개면 한 명이 읽으면 다른 계정에서도 읽음으로 보인다(학원당 원장 계정 1개 전제로 단순화).
+- 수동 생성(`POST /api/revenue-reports/generate`)은 당월/미래월 검증을 의도적으로 하지 않는다 — `PLATFORM:SUPER_ADMIN`에게 유연성을 우선 부여했다. 이 도메인은 이미 완전 단일 테넌트(`academy_id` 없음)라 "여러 학원 중 하나를 선택"하는 개념 자체가 API에 없다.
 
 ## 문서
 

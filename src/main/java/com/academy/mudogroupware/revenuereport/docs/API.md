@@ -1,8 +1,8 @@
 # 📌 매출 리포트(revenuereport) API
 
-> 기준일: 2026-08-12
+> 기준일: 2026-08-17
 > 공통 응답 형식: `status`, `code`, `message`, `data`
-> 전체 엔드포인트 권한: `ACADEMY:OWNER`(합성 권한, `accountType=ADMIN && adminScope=ACADEMY` 계정에 로그인 시 자동 부여)
+> 조회 3종(`ACADEMY:OWNER`, 합성 권한 — `accountType=ADMIN && adminScope=ACADEMY` 계정에 로그인 시 자동 부여) + 수동 생성 1종(`PLATFORM:SUPER_ADMIN`)
 
 ## 1. 매출 리포트 목록 조회
 
@@ -100,6 +100,72 @@
   "data": {
     "unreadCount": 0
   }
+}
+```
+
+---
+
+## 4. 매출 리포트 수동 생성
+
+`POST /api/revenue-reports/generate`
+권한: `PLATFORM:SUPER_ADMIN`(위 3개 엔드포인트와 다른 권한 — 이 엔드포인트만 슈퍼어드민 전용)
+
+슈퍼어드민이 지정한 월의 매출 리포트를 즉시 생성한다. 매달 1일 자동 실행되는 배치가 실패했거나, 아직 리포트가 하나도 없을 때(신규 배포 직후 등) 수동으로 즉시 트리거하는 용도다. 내부적으로 배치와 동일한 생성 로직(집계 → 전월 스냅샷 재사용 → AI 서술 → 저장 → 원장 알림)을 그대로 재사용한다.
+
+### Request
+
+```json
+{
+  "targetMonth": "2026-07"
+}
+```
+
+`targetMonth`는 `yyyy-MM` 형식만 허용한다. 배치와 달리 항상 직전월로 고정되지 않고 임의의 월을 지정할 수 있다. **당월/미래월도 형식만 맞으면 검증 없이 생성된다** — 슈퍼어드민에게 유연성을 우선 부여한 의도적 설계로, 미완성 데이터로 리포트가 만들어질 수 있음에 유의해야 한다.
+
+### Response · `204 No Content`
+
+바디 없음. 생성된 내용은 기존 상세조회(`GET /api/revenue-reports/{reportId}`)로 확인한다.
+
+### 검증 및 정책
+
+- 잘못된 월 형식 → `400`. 로컬 e2e에서 실제 확인:
+
+```json
+{
+  "timestamp": "2026-08-17T04:56:21",
+  "status": 400,
+  "code": "COMMON_400_1",
+  "message": "입력값이 올바르지 않습니다.",
+  "traceId": "7337eb6b",
+  "details": { "errors": [{ "field": "targetMonth", "reason": "yyyy-MM 형식이어야 합니다" }] }
+}
+```
+
+- 미인증 호출 → `401`(권한 부족이 아니라 인증 자체가 없다는 뜻). 로컬 e2e에서 실제 확인:
+
+```json
+{
+  "timestamp": "2026-08-17T04:56:21",
+  "status": 401,
+  "code": "COMMON_401_1",
+  "message": "인증이 필요합니다.",
+  "traceId": null,
+  "details": {}
+}
+```
+
+- `PLATFORM:SUPER_ADMIN`이 아닌 계정(예: `ACADEMY:OWNER`) → `403`.
+- 이미 그 달 리포트가 존재 → `409 REVENUE_REPORT_409_1`(배치의 "조용히 스킵"과 다르게, 사람이 직접 호출하는 API라 명시적으로 알린다).
+- AI 서버 호출 자체가 실패 → `502 REVENUE_REPORT_502_1`(fallback 없음, 배치와 동일 정책). 로컬 e2e에서 실제 확인(mudo-ai-server는 정상 응답했으나 Gemini 쪽 크레딧 소진으로 502를 반환한 상황 — 요청/인증/로직은 정상, AI 단계에서만 실패):
+
+```json
+{
+  "timestamp": "2026-08-17T04:41:21",
+  "status": 502,
+  "code": "REVENUE_REPORT_502_1",
+  "message": "매출 리포트 AI 서버 호출에 실패했습니다.",
+  "traceId": "6f5f3380",
+  "details": {}
 }
 ```
 
