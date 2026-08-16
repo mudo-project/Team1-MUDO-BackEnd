@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
@@ -199,5 +200,32 @@ class ChatTaskCardJpaRepositoryTest {
 
         assertThat(result).extracting(ChatTaskCardEntity::getId).containsExactly(7L);
         assertThat(result.get(0).getAssignees()).hasSize(2);
+    }
+
+    @Test
+    void findSentPageKeepsIdDescTiebreakAcrossCursorPagesWithEqualCreatedAt() {
+        insertChatRoom(1L);
+        LocalDateTime tiedCreatedAt = LocalDateTime.of(2026, 8, 17, 10, 0);
+        insertTaskCard(10L, 1L, 1L, tiedCreatedAt);
+        insertAssignee(10L, 3L, null);
+        insertTaskCard(11L, 1L, 1L, tiedCreatedAt);
+        insertAssignee(11L, 3L, null);
+        insertTaskCard(9L, 1L, 1L, tiedCreatedAt.minusMinutes(1));
+        insertAssignee(9L, 3L, null);
+
+        List<Long> orderedIds = new ArrayList<>();
+        LocalDateTime cursorCreatedAt = null;
+        Long cursorCardId = null;
+        for (int i = 0; i < 3; i++) {
+            List<ChatTaskCardEntity> page = chatTaskCardJpaRepository.findSentPage(1L, cursorCreatedAt, cursorCardId,
+                    PageRequest.of(0, 1));
+            assertThat(page).hasSize(1);
+            ChatTaskCardEntity card = page.get(0);
+            orderedIds.add(card.getId());
+            cursorCreatedAt = card.getCreatedAt();
+            cursorCardId = card.getId();
+        }
+
+        assertThat(orderedIds).containsExactly(11L, 10L, 9L);
     }
 }

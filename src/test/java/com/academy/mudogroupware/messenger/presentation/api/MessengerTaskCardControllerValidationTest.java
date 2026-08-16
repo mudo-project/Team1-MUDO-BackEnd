@@ -31,6 +31,7 @@ class MessengerTaskCardControllerValidationTest {
                 validator.forExecutables().validateParameters(
                         controller, method, new Object[] {null, TaskCardRole.SENT, null, null, 101});
 
-        assertThat(violations).isNotEmpty();
+        assertThat(violations)
+                .anySatisfy(violation -> assertThat(violation.getInvalidValue()).isEqualTo(101));
     }
 }
