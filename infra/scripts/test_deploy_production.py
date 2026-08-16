@@ -129,6 +129,20 @@ class DeploymentManifestTest(unittest.TestCase):
         )
         self.assertEqual(basic_container["memory"], premium_container["memory"])
 
+    def test_validate_manifests_rejects_enabled_tenant_missing_api_host(self):
+        tenants, cells = self.enabled_configuration()
+        del tenants[0]["api_host"]
+
+        with self.assertRaises(DeploymentError):
+            validate_manifests(self.profiles, tenants, cells, deployment=False)
+
+    def test_validate_manifests_rejects_enabled_tenant_with_blank_api_host(self):
+        tenants, cells = self.enabled_configuration()
+        tenants[0]["api_host"] = "  "
+
+        with self.assertRaises(DeploymentError):
+            validate_manifests(self.profiles, tenants, cells, deployment=False)
+
     def test_renders_public_tenant_directory_from_api_host(self):
         tenants, _ = self.enabled_configuration()
         directory_json = render_public_tenant_directory(tenants)

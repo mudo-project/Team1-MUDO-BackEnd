@@ -5,6 +5,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.academy.mudogroupware.platform.application.service.TenantDirectoryQueryService;
+import com.academy.mudogroupware.platform.domain.exception.PlatformErrorCode;
+import com.academy.mudogroupware.platform.domain.exception.PlatformException;
 import com.academy.mudogroupware.platform.domain.model.TenantDirectoryEntry;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,5 +33,13 @@ class TenantDirectoryControllerPermissionIntegrationTest {
         .thenReturn(new TenantDirectoryEntry("academy-a", "academy-a.ieum.store"));
 
     mockMvc.perform(get("/api/public/tenants/academy-a")).andExpect(status().isOk());
+  }
+
+  @Test
+  void resolveReturns404WithoutAuthenticationWhenCodeUnknown() throws Exception {
+    when(queryService.resolve("academy-unknown"))
+        .thenThrow(new PlatformException(PlatformErrorCode.ACADEMY_NOT_FOUND));
+
+    mockMvc.perform(get("/api/public/tenants/academy-unknown")).andExpect(status().isNotFound());
   }
 }

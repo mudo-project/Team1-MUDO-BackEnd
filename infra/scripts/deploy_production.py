@@ -134,7 +134,7 @@ def validate_manifests(
             raise DeploymentError(f"{location}.cell이 cells.yml에 없습니다.")
         if not isinstance(tenant.get("enabled"), bool):
             raise DeploymentError(f"{location}.enabled는 true 또는 false여야 합니다.")
-        for field in ("service", "task_family", "health_url", "s3_bucket", "finance_s3_bucket"):
+        for field in ("service", "task_family", "health_url", "s3_bucket", "finance_s3_bucket", "api_host"):
             if not isinstance(tenant.get(field), str) or not tenant[field].strip():
                 raise DeploymentError(f"{location}.{field}가 필요합니다.")
         if tenant["enabled"]:
