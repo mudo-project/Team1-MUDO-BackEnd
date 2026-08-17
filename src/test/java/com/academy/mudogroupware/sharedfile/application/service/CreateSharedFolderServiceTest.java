@@ -45,7 +45,7 @@ class CreateSharedFolderServiceTest {
 
     @Test
     void throwsWhenNameIsBlank() {
-        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id", "academy@mudo.co.kr")));
 
         assertThatThrownBy(() -> service.create("parent-id", "  "))
                 .isInstanceOf(SharedFileInvalidNameException.class);
@@ -55,7 +55,7 @@ class CreateSharedFolderServiceTest {
 
     @Test
     void createsFolderUnderRootWhenParentIdIsOmitted() {
-        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id", "academy@mudo.co.kr")));
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
         when(drivePort.createFolder("access-token", "root-id", "새 폴더")).thenReturn(
                 new DriveItem("new-id", "새 폴더", "application/vnd.google-apps.folder",
@@ -77,7 +77,7 @@ class CreateSharedFolderServiceTest {
 
     @Test
     void throwsWhenParentIsOutsideRoot() {
-        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id", "academy@mudo.co.kr")));
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
         doThrow(new SharedFileOutOfRootException("outside-id"))
                 .when(rootGuard).requireDescendant("access-token", "root-id", "outside-id");
@@ -90,7 +90,7 @@ class CreateSharedFolderServiceTest {
 
     @Test
     void createsFolderUnderValidatedParent() {
-        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id", "academy@mudo.co.kr")));
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
         when(drivePort.createFolder("access-token", "parent-id", "새 폴더")).thenReturn(
                 new DriveItem("new-id", "새 폴더", "application/vnd.google-apps.folder",

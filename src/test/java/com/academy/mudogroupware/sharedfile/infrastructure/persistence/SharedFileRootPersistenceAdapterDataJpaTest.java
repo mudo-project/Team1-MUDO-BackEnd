@@ -29,25 +29,27 @@ class SharedFileRootPersistenceAdapterDataJpaTest {
 
     @Test
     void insertsNewRootWhenNoneExists() {
-        SharedFileRoot saved = adapter.save(SharedFileRoot.ready("drive-folder-1"));
+        SharedFileRoot saved = adapter.save(SharedFileRoot.ready("drive-folder-1", "academy@mudo.co.kr"));
         entityManager.flush();
 
         assertThat(saved.getGoogleRootFolderId()).isEqualTo("drive-folder-1");
+        assertThat(saved.getConnectedGoogleEmail()).isEqualTo("academy@mudo.co.kr");
         assertThat(saved.getVersion()).isNotNull();
 
         Optional<SharedFileRoot> found = adapter.find();
         assertThat(found).isPresent();
         assertThat(found.get().getGoogleRootFolderId()).isEqualTo("drive-folder-1");
+        assertThat(found.get().getConnectedGoogleEmail()).isEqualTo("academy@mudo.co.kr");
     }
 
     @Test
     void updatesExistingRootWhenVersionMatches() {
-        adapter.save(SharedFileRoot.ready("drive-folder-1"));
+        adapter.save(SharedFileRoot.ready("drive-folder-1", "old@mudo.co.kr"));
         entityManager.flush();
 
         SharedFileRoot loaded = adapter.find().orElseThrow();
         Long originalVersion = loaded.getVersion();
-        loaded.replaceWith("drive-folder-2");
+        loaded.replaceWith("drive-folder-2", "new@mudo.co.kr");
 
         adapter.save(loaded);
         entityManager.flush();
@@ -56,6 +58,7 @@ class SharedFileRootPersistenceAdapterDataJpaTest {
         // flush로 실제 UPDATE가 실행된 뒤 다시 조회해야 반영된 버전을 확인할 수 있다.
         SharedFileRoot reloaded = adapter.find().orElseThrow();
         assertThat(reloaded.getGoogleRootFolderId()).isEqualTo("drive-folder-2");
+        assertThat(reloaded.getConnectedGoogleEmail()).isEqualTo("new@mudo.co.kr");
         assertThat(reloaded.getVersion()).isGreaterThan(originalVersion);
     }
 
@@ -63,17 +66,17 @@ class SharedFileRootPersistenceAdapterDataJpaTest {
     // 시도할 때 낙관적 락 충돌로 실패해야 한다 — B의 결과를 조용히 덮어써서는 안 된다.
     @Test
     void throwsOptimisticLockExceptionWhenAnotherTransactionAlreadyUpdatedTheRow() {
-        adapter.save(SharedFileRoot.ready("drive-folder-1"));
+        adapter.save(SharedFileRoot.ready("drive-folder-1", "academy@mudo.co.kr"));
         entityManager.flush();
 
         SharedFileRoot staleRead = adapter.find().orElseThrow();
 
         SharedFileRoot concurrentRead = adapter.find().orElseThrow();
-        concurrentRead.replaceWith("drive-folder-2");
+        concurrentRead.replaceWith("drive-folder-2", "academy@mudo.co.kr");
         adapter.save(concurrentRead);
         entityManager.flush();
 
-        staleRead.replaceWith("drive-folder-3");
+        staleRead.replaceWith("drive-folder-3", "academy@mudo.co.kr");
 
         assertThatThrownBy(() -> {
             adapter.save(staleRead);
