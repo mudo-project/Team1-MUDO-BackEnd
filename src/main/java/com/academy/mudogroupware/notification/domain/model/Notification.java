@@ -11,11 +11,12 @@ public final class Notification {
     private final String type;
     private final Long targetId;
     private final String message;
+    private final String idempotencyKey;
     private LocalDateTime readAt;
     private final LocalDateTime createdAt;
 
     private Notification(Long id, Long recipientUserId, String type, Long targetId, String message,
-                          LocalDateTime readAt, LocalDateTime createdAt) {
+                          String idempotencyKey, LocalDateTime readAt, LocalDateTime createdAt) {
         if (recipientUserId == null) {
             throw new IllegalArgumentException("recipientUserId must not be null");
         }
@@ -31,22 +32,27 @@ public final class Notification {
         if (message.length() > MAX_MESSAGE_LENGTH) {
             throw new IllegalArgumentException("message must not exceed " + MAX_MESSAGE_LENGTH + " characters");
         }
+        if (idempotencyKey == null || idempotencyKey.isBlank()) {
+            throw new IllegalArgumentException("idempotencyKey must not be blank");
+        }
         this.id = id;
         this.recipientUserId = recipientUserId;
         this.type = type;
         this.targetId = targetId;
         this.message = message;
+        this.idempotencyKey = idempotencyKey;
         this.readAt = readAt;
         this.createdAt = createdAt;
     }
 
-    public static Notification create(Long recipientUserId, String type, Long targetId, String message) {
-        return new Notification(null, recipientUserId, type, targetId, message, null, null);
+    public static Notification create(Long recipientUserId, String type, Long targetId, String message,
+                                       String idempotencyKey) {
+        return new Notification(null, recipientUserId, type, targetId, message, idempotencyKey, null, null);
     }
 
     public static Notification restore(Long id, Long recipientUserId, String type, Long targetId, String message,
-                                        LocalDateTime readAt, LocalDateTime createdAt) {
-        return new Notification(id, recipientUserId, type, targetId, message, readAt, createdAt);
+                                        String idempotencyKey, LocalDateTime readAt, LocalDateTime createdAt) {
+        return new Notification(id, recipientUserId, type, targetId, message, idempotencyKey, readAt, createdAt);
     }
 
     // 이미 읽은 알림에 다시 호출해도 최초 읽은 시각을 유지한다(멱등).
@@ -82,6 +88,10 @@ public final class Notification {
 
     public String getMessage() {
         return message;
+    }
+
+    public String getIdempotencyKey() {
+        return idempotencyKey;
     }
 
     public LocalDateTime getReadAt() {
