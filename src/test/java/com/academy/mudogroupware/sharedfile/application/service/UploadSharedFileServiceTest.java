@@ -53,7 +53,7 @@ class UploadSharedFileServiceTest {
     @Test
     void allowsExactly100Mb() {
         byte[] exact = new byte[ONE_HUNDRED_MB];
-        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id", "academy@mudo.co.kr")));
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
         when(drivePort.upload("access-token", "root-id", "exact.zip", "application/zip", exact))
                 .thenReturn(driveItem("uploaded-id"));
@@ -71,7 +71,7 @@ class UploadSharedFileServiceTest {
 
     @Test
     void uploadsUnderRootWhenParentIdIsOmitted() {
-        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id", "academy@mudo.co.kr")));
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
         when(drivePort.upload("access-token", "root-id", "a.txt", "text/plain", CONTENT))
                 .thenReturn(driveItem("uploaded-id"));
@@ -100,7 +100,7 @@ class UploadSharedFileServiceTest {
 
     @Test
     void throwsWhenParentIsOutsideRoot() {
-        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id", "academy@mudo.co.kr")));
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
         doThrow(new SharedFileOutOfRootException("outside-id"))
                 .when(rootGuard).requireDescendant("access-token", "root-id", "outside-id");

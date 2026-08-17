@@ -29,7 +29,7 @@ class GetSharedFileRootServiceTest {
 
     @Test
     void returnsReadyWithRootIdWhenRootIsReady() {
-        when(repository.find()).thenReturn(Optional.of(SharedFileRoot.ready("folder-id")));
+        when(repository.find()).thenReturn(Optional.of(SharedFileRoot.ready("folder-id", "academy@mudo.co.kr")));
 
         SharedFileRootView view = service.getRoot();
 

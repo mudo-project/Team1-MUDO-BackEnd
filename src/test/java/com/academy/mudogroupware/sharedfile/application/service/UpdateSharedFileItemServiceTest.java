@@ -45,7 +45,7 @@ class UpdateSharedFileItemServiceTest {
 
     @Test
     void throwsWhenItemIsOutsideRoot() {
-        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id", "academy@mudo.co.kr")));
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
         doThrow(new SharedFileOutOfRootException("outside-id"))
                 .when(rootGuard).requireDescendant("access-token", "root-id", "outside-id");
@@ -60,7 +60,7 @@ class UpdateSharedFileItemServiceTest {
 
     @Test
     void throwsWhenRegularFileExtensionDiffers() {
-        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id", "academy@mudo.co.kr")));
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
         when(drivePort.getItem("access-token", "item-id")).thenReturn(Optional.of(
                 regularFile("item-id", "원본.pdf", "root-id")));
@@ -73,7 +73,7 @@ class UpdateSharedFileItemServiceTest {
 
     @Test
     void renamesRegularFileWhenExtensionMatches() {
-        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id", "academy@mudo.co.kr")));
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
         when(drivePort.getItem("access-token", "item-id")).thenReturn(Optional.of(
                 regularFile("item-id", "원본.pdf", "root-id")));
@@ -88,7 +88,7 @@ class UpdateSharedFileItemServiceTest {
 
     @Test
     void renamesFolderRegardlessOfExtensionLikeSuffix() {
-        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id", "academy@mudo.co.kr")));
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
         when(drivePort.getItem("access-token", "folder-id")).thenReturn(Optional.of(
                 folder("folder-id", "root-id")));
@@ -104,7 +104,7 @@ class UpdateSharedFileItemServiceTest {
 
     @Test
     void throwsWhenDestinationIsOutsideRoot() {
-        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id", "academy@mudo.co.kr")));
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
         doThrow(new SharedFileOutOfRootException("outside-parent-id"))
                 .when(rootGuard).requireDescendant("access-token", "root-id", "outside-parent-id");
@@ -117,7 +117,7 @@ class UpdateSharedFileItemServiceTest {
 
     @Test
     void throwsWhenNewParentIsTheItemItself() {
-        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id", "academy@mudo.co.kr")));
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
 
         assertThatThrownBy(() -> service.update("item-id", null, "item-id"))
@@ -129,7 +129,7 @@ class UpdateSharedFileItemServiceTest {
 
     @Test
     void throwsWhenDestinationIsARegularFileNotAFolder() {
-        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id", "academy@mudo.co.kr")));
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
         when(drivePort.getItem("access-token", "file-id")).thenReturn(Optional.of(
                 regularFile("file-id", "name", "root-id")));
@@ -142,7 +142,7 @@ class UpdateSharedFileItemServiceTest {
 
     @Test
     void throwsWhenDestinationIsADescendantOfTheItemBeingMoved() {
-        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id", "academy@mudo.co.kr")));
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
         // child-id의 부모가 곧 item-id다 — item-id를 그 자신의 하위(child-id)로 옮기면 순환이 생긴다.
         when(drivePort.getItem("access-token", "child-id")).thenReturn(Optional.of(
@@ -156,7 +156,7 @@ class UpdateSharedFileItemServiceTest {
 
     @Test
     void movesItemToDestinationFolderUnderRoot() {
-        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id", "academy@mudo.co.kr")));
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
         when(drivePort.getItem("access-token", "new-parent-id")).thenReturn(Optional.of(
                 folder("new-parent-id", "root-id")));
@@ -172,7 +172,7 @@ class UpdateSharedFileItemServiceTest {
 
     @Test
     void movesItemToRootItselfWithoutGuardingOrCheckingDestination() {
-        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id", "academy@mudo.co.kr")));
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
         when(drivePort.getItem("access-token", "item-id")).thenReturn(Optional.of(
                 regularFile("item-id", "name", "old-parent-id")));
@@ -191,7 +191,7 @@ class UpdateSharedFileItemServiceTest {
     // (예전처럼 rename() 호출 후 move() 호출을 별도로 하지 않는다 — 그 사이에 한쪽만 성공하는 부분 실패가 없다).
     @Test
     void updatesNameAndParentInASingleDrivePortCallWhenBothGiven() {
-        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id", "academy@mudo.co.kr")));
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
         when(drivePort.getItem("access-token", "new-parent-id")).thenReturn(Optional.of(
                 folder("new-parent-id", "root-id")));

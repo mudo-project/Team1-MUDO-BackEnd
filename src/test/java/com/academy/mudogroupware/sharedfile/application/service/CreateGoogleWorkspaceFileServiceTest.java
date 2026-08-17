@@ -46,7 +46,7 @@ class CreateGoogleWorkspaceFileServiceTest {
 
     @Test
     void throwsWhenNameIsBlank() {
-        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id", "academy@mudo.co.kr")));
 
         assertThatThrownBy(() -> service.create("parent-id", " ", GoogleWorkspaceFileType.DOCS))
                 .isInstanceOf(SharedFileInvalidNameException.class);
@@ -56,7 +56,7 @@ class CreateGoogleWorkspaceFileServiceTest {
 
     @Test
     void createsWorkspaceFileUnderRootWhenParentIdIsOmitted() {
-        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id", "academy@mudo.co.kr")));
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
         when(drivePort.createWorkspaceFile("access-token", "root-id", "새 문서", GoogleWorkspaceFileType.DOCS))
                 .thenReturn(new DriveItem("new-id", "새 문서", "application/vnd.google-apps.document",
@@ -78,7 +78,7 @@ class CreateGoogleWorkspaceFileServiceTest {
 
     @Test
     void throwsWhenTypeIsNull() {
-        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id", "academy@mudo.co.kr")));
 
         assertThatThrownBy(() -> service.create("parent-id", "새 문서", null))
                 .isInstanceOf(BadRequestException.class);
@@ -88,7 +88,7 @@ class CreateGoogleWorkspaceFileServiceTest {
 
     @Test
     void throwsWhenParentIsOutsideRoot() {
-        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id", "academy@mudo.co.kr")));
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
         doThrow(new SharedFileOutOfRootException("outside-id"))
                 .when(rootGuard).requireDescendant("access-token", "root-id", "outside-id");
@@ -99,7 +99,7 @@ class CreateGoogleWorkspaceFileServiceTest {
 
     @Test
     void createsWorkspaceFileOfRequestedType() {
-        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id", "academy@mudo.co.kr")));
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
         when(drivePort.createWorkspaceFile("access-token", "parent-id", "새 시트", GoogleWorkspaceFileType.SHEETS))
                 .thenReturn(new DriveItem("new-id", "새 시트", "application/vnd.google-apps.spreadsheet",

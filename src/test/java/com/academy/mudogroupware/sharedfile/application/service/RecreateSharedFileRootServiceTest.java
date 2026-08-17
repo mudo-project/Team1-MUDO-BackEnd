@@ -18,7 +18,9 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.dao.DataIntegrityViolationException;
 
+import com.academy.mudogroupware.google.application.query.GoogleAccountConnectionView;
 import com.academy.mudogroupware.google.application.usecase.GetGoogleAccessTokenUseCase;
+import com.academy.mudogroupware.google.application.usecase.GetGoogleAccountConnectionUseCase;
 import com.academy.mudogroupware.sharedfile.application.port.DriveItem;
 import com.academy.mudogroupware.sharedfile.application.port.SharedFileDrivePort;
 import com.academy.mudogroupware.sharedfile.application.query.SharedFileRootView;
@@ -31,12 +33,16 @@ class RecreateSharedFileRootServiceTest {
     private final SharedFileDrivePort sharedFileDrivePort = mock(SharedFileDrivePort.class);
     private final GetGoogleAccessTokenUseCase getGoogleAccessTokenUseCase =
             mock(GetGoogleAccessTokenUseCase.class);
+    private final GetGoogleAccountConnectionUseCase getGoogleAccountConnectionUseCase =
+            mock(GetGoogleAccountConnectionUseCase.class);
     private final RecreateSharedFileRootService service = new RecreateSharedFileRootService(
-            sharedFileRootRepository, sharedFileDrivePort, getGoogleAccessTokenUseCase);
+            sharedFileRootRepository, sharedFileDrivePort, getGoogleAccessTokenUseCase,
+            getGoogleAccountConnectionUseCase);
 
     @Test
     void rejectsRecreationWhenRootIsAlreadyReady() {
-        when(sharedFileRootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("existing-folder-id")));
+        when(sharedFileRootRepository.find())
+                .thenReturn(Optional.of(SharedFileRoot.ready("existing-folder-id", "academy@mudo.co.kr")));
 
         assertThatThrownBy(service::recreate).isInstanceOf(IllegalStateException.class);
 
@@ -48,6 +54,7 @@ class RecreateSharedFileRootServiceTest {
     void recreatesRootWhenNoRootRowExists() {
         when(sharedFileRootRepository.find()).thenReturn(Optional.empty());
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
+        stubConnectedEmail("academy@mudo.co.kr");
         when(sharedFileDrivePort.createRootFolder(anyString(), anyString()))
                 .thenReturn(newFolder("new-folder-id"));
 
@@ -59,12 +66,14 @@ class RecreateSharedFileRootServiceTest {
         verify(sharedFileRootRepository).save(captor.capture());
         assertThat(captor.getValue().isReady()).isTrue();
         assertThat(captor.getValue().getGoogleRootFolderId()).isEqualTo("new-folder-id");
+        assertThat(captor.getValue().getConnectedGoogleEmail()).isEqualTo("academy@mudo.co.kr");
     }
 
     @Test
     void recreatesRootWhenExistingRootIsFailed() {
         when(sharedFileRootRepository.find()).thenReturn(Optional.of(SharedFileRoot.failed()));
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
+        stubConnectedEmail("academy@mudo.co.kr");
         when(sharedFileDrivePort.createRootFolder(anyString(), anyString()))
                 .thenReturn(newFolder("recreated-folder-id"));
 
@@ -82,6 +91,7 @@ class RecreateSharedFileRootServiceTest {
     void propagatesDriveFailureWithoutSaving() {
         when(sharedFileRootRepository.find()).thenReturn(Optional.empty());
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
+        stubConnectedEmail("academy@mudo.co.kr");
         when(sharedFileDrivePort.createRootFolder(anyString(), anyString()))
                 .thenThrow(new RuntimeException("drive unavailable"));
 
@@ -94,6 +104,7 @@ class RecreateSharedFileRootServiceTest {
     void trashesNewlyCreatedFolderWhenSaveFails() {
         when(sharedFileRootRepository.find()).thenReturn(Optional.empty());
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
+        stubConnectedEmail("academy@mudo.co.kr");
         when(sharedFileDrivePort.createRootFolder(anyString(), anyString()))
                 .thenReturn(newFolder("orphaned-folder-id"));
         doThrow(new DataIntegrityViolationException("duplicate row"))
@@ -102,6 +113,11 @@ class RecreateSharedFileRootServiceTest {
         assertThatThrownBy(service::recreate).isInstanceOf(DataIntegrityViolationException.class);
 
         verify(sharedFileDrivePort).trash("access-token", "orphaned-folder-id");
+    }
+
+    private void stubConnectedEmail(String email) {
+        when(getGoogleAccountConnectionUseCase.getConnection()).thenReturn(Optional.of(
+                new GoogleAccountConnectionView(email, 1L, "관리자", "scope", null, null, null, null)));
     }
 
     private DriveItem newFolder(String id) {
