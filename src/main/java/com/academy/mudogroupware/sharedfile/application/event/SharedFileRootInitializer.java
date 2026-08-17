@@ -14,7 +14,7 @@ import com.academy.mudogroupware.google.application.usecase.GetGoogleAccessToken
 import com.academy.mudogroupware.sharedfile.application.port.DriveItem;
 import com.academy.mudogroupware.sharedfile.application.port.SharedFileDrivePort;
 import com.academy.mudogroupware.sharedfile.domain.model.SharedFileRoot;
-import com.academy.mudogroupware.sharedfile.domain.repository.SharedFileRootConnectionHistoryRepository;
+import com.academy.mudogroupware.sharedfile.domain.repository.SharedFileRootHistoryRepository;
 import com.academy.mudogroupware.sharedfile.domain.repository.SharedFileRootRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -29,7 +29,7 @@ public class SharedFileRootInitializer {
     private static final String ROOT_FOLDER_NAME = "이음 그룹웨어 - 공유파일";
 
     private final SharedFileRootRepository sharedFileRootRepository;
-    private final SharedFileRootConnectionHistoryRepository connectionHistoryRepository;
+    private final SharedFileRootHistoryRepository historyRepository;
     private final SharedFileDrivePort sharedFileDrivePort;
     private final GetGoogleAccessTokenUseCase getGoogleAccessTokenUseCase;
     private final Clock clock;
@@ -89,14 +89,14 @@ public class SharedFileRootInitializer {
     // 이 이메일이 예전에 쓰던 폴더가 이력에 있으면, 지금도 실제로 접근 가능한지(존재+휴지통 아님+폴더임)
     // Drive에 재확인한 뒤에만 재사용한다 — 이력에 있다고 무조건 믿지 않는다.
     private Optional<String> findReusableHistoricalFolder(String accessToken, String googleEmail) {
-        return connectionHistoryRepository.findGoogleRootFolderIdByEmail(googleEmail)
+        return historyRepository.findGoogleRootFolderIdByEmail(googleEmail)
                 .flatMap(folderId -> sharedFileDrivePort.getItem(accessToken, folderId))
                 .filter(item -> item.isFolder() && !item.trashed())
                 .map(DriveItem::id);
     }
 
     private void recordConnectionHistory(String googleEmail, String folderId) {
-        connectionHistoryRepository.upsert(googleEmail, folderId, LocalDateTime.now(clock));
+        historyRepository.upsert(googleEmail, folderId, LocalDateTime.now(clock));
     }
 
     private SharedFileRoot markReady(Optional<SharedFileRoot> existing, String googleRootFolderId,

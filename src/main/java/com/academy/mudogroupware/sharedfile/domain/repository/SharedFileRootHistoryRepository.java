@@ -6,7 +6,7 @@ import java.util.Optional;
 // 학원이 Google 계정을 여러 번 갈아탈 때(A -> B -> A), 계정(이메일)별로 마지막에 쓰던 루트 폴더 ID를
 // 기억해두는 이력 저장소. shared_file_root(현재 활성 상태 1건만 보관하는 싱글턴)와 달리 이 저장소는
 // 이메일마다 별도 행을 유지해서, 이미 지나간 계정의 폴더 정보도 잃지 않는다.
-public interface SharedFileRootConnectionHistoryRepository {
+public interface SharedFileRootHistoryRepository {
 
     Optional<String> findGoogleRootFolderIdByEmail(String googleEmail);
 

@@ -11,12 +11,14 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.context.annotation.Import;
 
+import com.academy.mudogroupware.global.infrastructure.config.TimeConfig;
+
 @DataJpaTest(properties = "spring.jpa.hibernate.ddl-auto=create-drop")
-@Import(SharedFileRootConnectionHistoryPersistenceAdapter.class)
-class SharedFileRootConnectionHistoryPersistenceAdapterDataJpaTest {
+@Import({SharedFileRootHistoryPersistenceAdapter.class, TimeConfig.class})
+class SharedFileRootHistoryPersistenceAdapterDataJpaTest {
 
     @Autowired
-    private SharedFileRootConnectionHistoryPersistenceAdapter adapter;
+    private SharedFileRootHistoryPersistenceAdapter adapter;
 
     @Autowired
     private TestEntityManager entityManager;
