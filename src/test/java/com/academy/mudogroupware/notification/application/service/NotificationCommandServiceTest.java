@@ -47,6 +47,7 @@ class NotificationCommandServiceTest {
         assertThat(id).isEqualTo(1L);
         assertThat(captor.getValue().getRecipientUserId()).isEqualTo(10L);
         assertThat(captor.getValue().getMessage()).isEqualTo("결재 차례가 되었습니다");
+        assertThat(captor.getValue().getIdempotencyKey()).isEqualTo("APPROVAL_LINE_ACTIVATED:100:10");
         verify(notificationRepository).save(captor.getValue());
     }
 

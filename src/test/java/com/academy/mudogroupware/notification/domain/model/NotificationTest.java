@@ -89,4 +89,23 @@ class NotificationTest {
                 10L, NotificationType.APPROVAL_LINE_ACTIVATED.name(), 100L, "결재 차례가 되었습니다", " "))
                 .isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    void createAcceptsIdempotencyKeyExactly255Characters() {
+        String exactly255 = "a".repeat(255);
+
+        Notification notification = Notification.create(
+                10L, NotificationType.APPROVAL_LINE_ACTIVATED.name(), 100L, "결재 차례가 되었습니다", exactly255);
+
+        assertThat(notification.getIdempotencyKey()).hasSize(255);
+    }
+
+    @Test
+    void createRejectsIdempotencyKeyLongerThan255Characters() {
+        String tooLong = "a".repeat(256);
+
+        assertThatThrownBy(() -> Notification.create(
+                10L, NotificationType.APPROVAL_LINE_ACTIVATED.name(), 100L, "결재 차례가 되었습니다", tooLong))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
 }

@@ -29,6 +29,8 @@ import lombok.extern.slf4j.Slf4j;
 public class NotificationCommandService implements CreateNotificationUseCase, MarkNotificationAsReadUseCase,
         DeleteNotificationUseCase, DeleteReadNotificationsUseCase {
 
+    private static final String IDEMPOTENCY_KEY_CONSTRAINT_MARKER = "idempotency_key";
+
     private final NotificationRepository notificationRepository;
     private final Clock clock;
 
@@ -51,11 +53,24 @@ public class NotificationCommandService implements CreateNotificationUseCase, Ma
         try {
             return notificationRepository.save(notification).getId();
         } catch (DataIntegrityViolationException exception) {
+            if (!isIdempotencyKeyViolation(exception)) {
+                // fk_notification_recipient 같은 다른 제약 위반은 "이미 저장됨"이 아니라 진짜 결함이다.
+                // 멱등키 위반이 아니면 삼키지 않고 그대로 다시 던진다.
+                throw exception;
+            }
             // 이미 저장된 알림과 멱등키가 같다 = 같은 알림이 재시도/재발행으로 다시 들어온 것.
             // 새로 저장할 필요가 없으므로 성공으로 간주하고 넘어간다.
             log.info("event=notification_create_멱등_무시 idempotencyKey={}", command.idempotencyKey());
             return null;
         }
+    }
+
+    // 위반된 제약 이름을 취득해서(가능하면) 확인하고, DB/드라이버에 따라 이름이 못 붙거나 다르게 나올 수 있어
+    // 예외 메시지에 "idempotency_key"가 들어있는지도 함께 확인한다.
+    private boolean isIdempotencyKeyViolation(DataIntegrityViolationException exception) {
+        Throwable mostSpecificCause = exception.getMostSpecificCause();
+        String message = mostSpecificCause.getMessage();
+        return message != null && message.toLowerCase().contains(IDEMPOTENCY_KEY_CONSTRAINT_MARKER);
     }
 
     @Override

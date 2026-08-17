@@ -1,6 +1,7 @@
 package com.academy.mudogroupware.notification.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -78,6 +79,23 @@ class NotificationCommandServiceRetryTest {
                 "APPROVAL_LINE_ACTIVATED:100:10"));
 
         assertThat(id).isNull();
+        verify(notificationRepository, times(1)).save(any());
+    }
+
+    @Test
+    void nonIdempotencyConstraintViolationIsNotSwallowed() {
+        // fk_notification_recipient 같은 다른 제약 위반은 "이미 저장된 알림"이 아니라 진짜 버그다.
+        // 조용히 무시하면 안 되고 그대로 다시 던져져야 한다.
+        when(notificationRepository.save(any()))
+                .thenThrow(new DataIntegrityViolationException(
+                        "Cannot add or update a child row: a foreign key constraint fails "
+                                + "(`fk_notification_recipient`)"));
+
+        assertThatThrownBy(() -> notificationCommandService.create(new CreateNotificationCommand(
+                10L, NotificationType.APPROVAL_LINE_ACTIVATED.name(), 100L, "결재 차례가 되었습니다",
+                "APPROVAL_LINE_ACTIVATED:100:10")))
+                .isInstanceOf(DataIntegrityViolationException.class);
+
         verify(notificationRepository, times(1)).save(any());
     }
 

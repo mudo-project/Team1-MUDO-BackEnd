@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 public final class Notification {
 
     public static final int MAX_MESSAGE_LENGTH = 250;
+    public static final int MAX_IDEMPOTENCY_KEY_LENGTH = 255;
 
     private final Long id;
     private final Long recipientUserId;
@@ -34,6 +35,10 @@ public final class Notification {
         }
         if (idempotencyKey == null || idempotencyKey.isBlank()) {
             throw new IllegalArgumentException("idempotencyKey must not be blank");
+        }
+        if (idempotencyKey.length() > MAX_IDEMPOTENCY_KEY_LENGTH) {
+            throw new IllegalArgumentException(
+                    "idempotencyKey must not exceed " + MAX_IDEMPOTENCY_KEY_LENGTH + " characters");
         }
         this.id = id;
         this.recipientUserId = recipientUserId;
