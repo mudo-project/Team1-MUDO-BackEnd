@@ -6,9 +6,12 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import com.academy.mudogroupware.rollcall.application.command.SendAttendanceMessagesCommand;
@@ -43,6 +46,8 @@ public class SendAttendanceMessagesService implements SendAttendanceMessagesUseC
     private final ResourceUsageRecorder resourceUsageRecorder;
     private final AttendanceMessageSendRecordRepository attendanceMessageSendRecordRepository;
     private final Clock clock;
+    @Qualifier("rollcallSmsExecutor")
+    private final Executor rollcallSmsExecutor;
 
     @Override
     public List<MessageSendResultView> send(SendAttendanceMessagesCommand command) {
@@ -66,10 +71,16 @@ public class SendAttendanceMessagesService implements SendAttendanceMessagesUseC
                 .collect(Collectors.toMap(MessageTemplate::getId, Function.identity()));
 
         Set<Long> requestedStudentIds = Set.copyOf(command.studentIds());
-        List<SendOutcome> outcomes = requestedStudentIds.stream()
-                .map(studentId -> sendToStudent(command.lectureId(), studentId, candidatesByStudentId.get(studentId),
-                        templatesById, command.date()))
+        // SOLAPI 호출을 순차로 하면 학생 수만큼 응답 시간이 누적된다 - 전용 실행기(rollcallSmsExecutor)로
+        // 동시에 던지고 모아서, 전체 소요 시간을 "가장 느린 1건" 수준으로 줄인다. 학생별 발송 기록은
+        // 이미 DB 조건부 UPDATE(claimForSending)로 동시성이 보장되므로 안전하다.
+        List<CompletableFuture<SendOutcome>> futures = requestedStudentIds.stream()
+                .map(studentId -> CompletableFuture.supplyAsync(
+                        () -> sendToStudent(command.lectureId(), studentId, candidatesByStudentId.get(studentId),
+                                templatesById, command.date()),
+                        rollcallSmsExecutor))
                 .toList();
+        List<SendOutcome> outcomes = futures.stream().map(CompletableFuture::join).toList();
         List<MessageSendResultView> results = outcomes.stream().map(SendOutcome::view).toList();
 
         long sentCount = outcomes.stream().filter(SendOutcome::newlySent).count();
