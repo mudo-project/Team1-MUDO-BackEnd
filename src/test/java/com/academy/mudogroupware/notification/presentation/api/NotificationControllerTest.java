@@ -69,7 +69,7 @@ class NotificationControllerTest {
     void getNotificationsReturnsPagedList() throws Exception {
         Notification notification = Notification.restore(1L, 10L,
                 NotificationType.APPROVAL_LINE_ACTIVATED.name(), 100L, "결재 차례가 되었습니다",
-                null, LocalDateTime.of(2026, 8, 13, 9, 0));
+                "APPROVAL_LINE_ACTIVATED:100:10", null, LocalDateTime.of(2026, 8, 13, 9, 0));
         when(listNotificationsUseCase.getNotifications(10L, 0, 20))
                 .thenReturn(PageResult.of(List.of(notification), 0, 20, false));
 

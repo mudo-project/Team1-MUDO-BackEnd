@@ -38,14 +38,16 @@ class NotificationCommandServiceTest {
         when(notificationRepository.save(captor.capture()))
                 .thenAnswer(invocation -> Notification.restore(1L, 10L,
                         NotificationType.APPROVAL_LINE_ACTIVATED.name(), 100L, "결재 차례가 되었습니다",
-                        null, LocalDateTime.now(FIXED_CLOCK)));
+                        "APPROVAL_LINE_ACTIVATED:100:10", null, LocalDateTime.now(FIXED_CLOCK)));
 
         Long id = service().create(new CreateNotificationCommand(
-                10L, NotificationType.APPROVAL_LINE_ACTIVATED.name(), 100L, "결재 차례가 되었습니다"));
+                10L, NotificationType.APPROVAL_LINE_ACTIVATED.name(), 100L, "결재 차례가 되었습니다",
+                "APPROVAL_LINE_ACTIVATED:100:10"));
 
         assertThat(id).isEqualTo(1L);
         assertThat(captor.getValue().getRecipientUserId()).isEqualTo(10L);
         assertThat(captor.getValue().getMessage()).isEqualTo("결재 차례가 되었습니다");
+        assertThat(captor.getValue().getIdempotencyKey()).isEqualTo("APPROVAL_LINE_ACTIVATED:100:10");
         verify(notificationRepository).save(captor.getValue());
     }
 
