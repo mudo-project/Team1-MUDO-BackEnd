@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.academy.mudogroupware.workspace.application.command.task.UpdateTaskCommand;
+import com.academy.mudogroupware.workspace.domain.event.TaskUpdatedEvent;
 import com.academy.mudogroupware.workspace.domain.exception.task.IllegalTaskDueAtException;
 import com.academy.mudogroupware.workspace.domain.exception.task.TaskDueAtRequiredException;
 import com.academy.mudogroupware.workspace.domain.exception.task.TaskNotFoundException;
@@ -34,6 +35,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 @ExtendWith(MockitoExtension.class)
 class UpdateTaskServiceTest {
@@ -51,13 +53,19 @@ class UpdateTaskServiceTest {
   @Mock private WorkspaceRepository workspaceRepository;
   @Mock private TaskRepository taskRepository;
   @Mock private TaskStatusHistoryRepository taskStatusHistoryRepository;
+  @Mock private ApplicationEventPublisher applicationEventPublisher;
 
   @Captor private ArgumentCaptor<Task> taskCaptor;
   @Captor private ArgumentCaptor<TaskStatusHistory> historyCaptor;
+  @Captor private ArgumentCaptor<TaskUpdatedEvent> taskUpdatedEventCaptor;
 
   private UpdateTaskService service() {
     return new UpdateTaskService(
-        workspaceRepository, taskRepository, taskStatusHistoryRepository, FIXED_CLOCK);
+        workspaceRepository,
+        taskRepository,
+        taskStatusHistoryRepository,
+        applicationEventPublisher,
+        FIXED_CLOCK);
   }
 
   @Test
@@ -79,6 +87,11 @@ class UpdateTaskServiceTest {
     assertThat(history.getPreviousStatus()).isEqualTo(TaskStatus.WAITING);
     assertThat(history.getCurrentStatus()).isEqualTo(TaskStatus.IN_PROGRESS);
     assertThat(history.getChangedBy()).isEqualTo(MEMBER_ID);
+
+    verify(applicationEventPublisher).publishEvent(taskUpdatedEventCaptor.capture());
+    TaskUpdatedEvent published = taskUpdatedEventCaptor.getValue();
+    assertThat(published.workspaceId()).isEqualTo(WORKSPACE_ID);
+    assertThat(published.taskId()).isEqualTo(TASK_ID);
   }
 
   @Test

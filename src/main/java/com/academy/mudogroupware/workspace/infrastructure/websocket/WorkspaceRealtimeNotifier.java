@@ -2,6 +2,7 @@ package com.academy.mudogroupware.workspace.infrastructure.websocket;
 
 import com.academy.mudogroupware.global.infrastructure.websocket.WebSocketEventPublisher;
 import com.academy.mudogroupware.workspace.domain.event.TaskCreatedEvent;
+import com.academy.mudogroupware.workspace.domain.event.TaskUpdatedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -27,6 +28,20 @@ public class WorkspaceRealtimeNotifier {
     } catch (RuntimeException exception) {
       log.error(
           "event=workspace_realtime_task_created_전송_실패 workspaceId={}, taskId={}",
+          event.workspaceId(),
+          event.taskId(),
+          exception);
+    }
+  }
+
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+  public void handle(TaskUpdatedEvent event) {
+    try {
+      eventPublisher.publish(
+          WORKSPACE_TOPIC_PREFIX + event.workspaceId(), TaskUpdatedSocketResponse.from(event));
+    } catch (RuntimeException exception) {
+      log.error(
+          "event=workspace_realtime_task_updated_전송_실패 workspaceId={}, taskId={}",
           event.workspaceId(),
           event.taskId(),
           exception);

@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 
 import com.academy.mudogroupware.global.infrastructure.websocket.WebSocketEventPublisher;
 import com.academy.mudogroupware.workspace.domain.event.TaskCreatedEvent;
+import com.academy.mudogroupware.workspace.domain.event.TaskUpdatedEvent;
 import com.academy.mudogroupware.workspace.domain.model.task.TaskStatus;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -47,5 +48,19 @@ class WorkspaceRealtimeNotifierTest {
     doThrow(new RuntimeException("boom")).when(eventPublisher).publish(eq("/topic/workspaces/2"), any());
 
     notifier.handle(event); // 예외가 여기서 전파되면 테스트 자체가 실패한다
+  }
+
+  @Test
+  void publishesTaskUpdatedEventToWorkspaceTopic() {
+    TaskUpdatedEvent event = new TaskUpdatedEvent(2L, 501L, TaskStatus.COMPLETED, null);
+    ArgumentCaptor<TaskUpdatedSocketResponse> payloadCaptor =
+        ArgumentCaptor.forClass(TaskUpdatedSocketResponse.class);
+
+    notifier.handle(event);
+
+    verify(eventPublisher).publish(eq("/topic/workspaces/2"), payloadCaptor.capture());
+    TaskUpdatedSocketResponse payload = payloadCaptor.getValue();
+    assertThat(payload.eventType()).isEqualTo("TASK_UPDATED");
+    assertThat(payload.status()).isEqualTo(TaskStatus.COMPLETED);
   }
 }
