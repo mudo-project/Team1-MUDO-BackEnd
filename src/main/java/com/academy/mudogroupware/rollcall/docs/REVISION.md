@@ -1,5 +1,33 @@
 # 출결 Revision
 
+## 2026-08-18 · 출결 SMS 발송 병렬 처리
+
+### 배경
+
+"SMS 발송이 느리다"는 신고를 조사한 결과, `RollcallController.sendMessages()`가 동기 컨트롤러고 `SendAttendanceMessagesService`가 요청받은 학생들을 `.stream().map()`으로 한 명씩 순차 처리하며 매번 SOLAPI 블로킹 HTTP 호출(connect 5s/read 10s 타임아웃)을 하고 있었다. 학생 수가 N이면 전체 응답 시간이 N번의 왕복시간만큼 누적되는 구조였다.
+
+같은 조사 과정에서 "템플릿을 바꾸면 SMS가 하루에 한 번만 나간다"는 별도 신고도 확인했는데, 이건 버그가 아니라 의도된 설계였다 — `sendToStudent()`가 쓰는 idempotency 키(강의+학생+출결날짜+출결상태)에 템플릿이 포함되지 않고, 애초에 `SendAttendanceMessagesCommand`에 템플릿 지정 파라미터 자체가 없다(내용은 항상 출결 상태로 자동 매칭). 재발송하려면 출결 상태 자체가 바뀌어야 한다. 이 부분은 코드 변경 없이 문서화만 남긴다.
+
+### 변경 내용
+
+- `RollcallSmsExecutorProperties`/`RollcallSmsExecutorConfig`(infrastructure/executor) 신규 추가 — 팀원(GANGHYEON02)의 `PlatformDashboardExecutorConfig` 패턴을 그대로 따라 전용 `ThreadPoolTaskExecutor`(`rollcallSmsExecutor`, `MdcTaskDecorator` 적용) + Micrometer 게이지(pool.size/active/queue.size/queue.capacity) + rejected 카운터로 구성했다.
+- 스레드풀 크기 근거: SOLAPI 발송 API 기본 한도는 5초당 100건(초당 20건, SOLAPI 개발자 문서 기준)이다. 응답 시간을 200~300ms로 가정하면 core 4 / max 6 정도가 이 한도 안에 안전하게 들어간다. 공용 실행기(`applicationTaskExecutor`, core 1/max 2)를 그대로 쓰면 대량 SMS 발송이 다른 비동기 작업을 밀어내므로 전용 실행기로 분리했다.
+- `SendAttendanceMessagesService.send()`의 순차 `stream().map()`을 학생별 `CompletableFuture.supplyAsync(..., rollcallSmsExecutor)`로 제출 후 `join()`으로 모으는 방식으로 변경. 학생별 발송 기록은 이미 `claimForSending` 조건부 UPDATE(2026-08-14 반영, 아래 절 참고)로 동시성이 보장되므로 병렬화해도 중복 발송 위험이 추가되지 않는다.
+- 구현 중 자체 발견·수정: `ThreadPoolTaskExecutor.initialize()`를 `@Bean` 메서드 안에서 직접 호출하면 Spring이 빈 생명주기에서 다시 한번 호출해 스레드풀이 이중 초기화되고 첫 풀이 닫히지 않은 채 새는 문제가 있어, 직접 호출을 제거했다(기존 `AsyncExecutionConfig`/`PlatformDashboardExecutorConfig`가 빈 메서드 안에서 `initialize()`를 안 부르던 이유이기도 하다).
+
+### 검증
+
+- 신규 테스트(`sendsMessagesConcurrentlyInsteadOfSequentially`)로 학생 6명·건당 200ms 지연을 시뮬레이션 — 순차 처리라면 1,200ms 이상 걸려야 하는데 실측 229ms로 병렬 처리를 확인했다.
+- `RollcallSmsExecutorConfigTest`로 풀 크기·거부 정책·게이지 등록을 검증. rollcall 전체 테스트 통과.
+
+### 남은 범위 밖 항목
+
+- `feature/rollcall-sms-send` 브랜치가 develop보다 오래돼서, 다른 브랜치에 이미 반영된 플랜별 SMS 월간 한도 체크 로직(`smsMonthlyLimit`, `PlanLimitExceededException`)이 이 변경엔 없다 — develop 병합 시 합쳐질 것을 염두에 둔다.
+- 발송 자체를 비동기 API(즉시 202 응답)로 바꾸는 것은 이번 범위가 아니다 — API 응답은 여전히 전체 발송 완료 후 한 번에 반환된다.
+
+> 작성일: 2026-08-18
+> 상태: 백엔드 구현 완료, 테스트 통과.
+
 ## 2026-08-14 · 출결 SMS 발송 재시도 중복 방지
 
 ### 배경
