@@ -10,6 +10,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -124,6 +125,17 @@ public class PayrollReferenceDataAdapter implements PayrollReferenceDataPort {
   }
 
   @Override public List<AllowanceData> saveAllowances(Long userId, List<AllowanceData> allowances) {
+    Set<Long> retainedIds = new HashSet<>();
+    for (AllowanceData allowance : allowances) {
+      if (allowance.id() != null) retainedIds.add(allowance.id());
+    }
+    if (retainedIds.isEmpty()) {
+      jdbc.update("delete from employee_fixed_allowance where employee_id=?", userId);
+    } else {
+      namedJdbc.update("delete from employee_fixed_allowance "
+          + "where employee_id=:employeeId and allowance_id not in (:retainedIds)",
+          new MapSqlParameterSource("employeeId", userId).addValue("retainedIds", retainedIds));
+    }
     for (AllowanceData allowance : allowances) {
       Integer overlaps = jdbc.queryForObject("select count(*) from employee_fixed_allowance "
           + "where employee_id=? and allowance_type=? and allowance_name=? "

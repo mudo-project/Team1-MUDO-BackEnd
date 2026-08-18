@@ -12,6 +12,9 @@ app:
   payroll:
     statement:
       local-storage-path: ${PAYROLL_LOCAL_STORAGE_PATH:build/local-payroll-statements}
+  revenue-report:
+    ai:
+      base-url: http://localhost:8000
 
 management:
   endpoints:

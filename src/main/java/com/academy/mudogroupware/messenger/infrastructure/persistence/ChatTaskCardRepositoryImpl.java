@@ -41,6 +41,26 @@ public class ChatTaskCardRepositoryImpl implements ChatTaskCardRepository {
     }
 
     @Override
+    public List<ChatTaskCard> findSentPage(Long assignerUserId, LocalDateTime cursorCreatedAt, Long cursorCardId,
+                                            int size) {
+        return chatTaskCardJpaRepository.findSentPage(assignerUserId, cursorCreatedAt, cursorCardId,
+                        PageRequest.of(0, size + 1))
+                .stream()
+                .map(this::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<ChatTaskCard> findReceivedPage(Long assigneeUserId, LocalDateTime cursorCreatedAt, Long cursorCardId,
+                                                int size) {
+        return chatTaskCardJpaRepository.findReceivedPage(assigneeUserId, cursorCreatedAt, cursorCardId,
+                        PageRequest.of(0, size + 1))
+                .stream()
+                .map(this::toDomain)
+                .toList();
+    }
+
+    @Override
     public boolean markAssigneeCompleted(Long cardId, Long userId, LocalDateTime completedAt) {
         return chatTaskCardJpaRepository.markCompleted(cardId, userId, completedAt) > 0;
     }

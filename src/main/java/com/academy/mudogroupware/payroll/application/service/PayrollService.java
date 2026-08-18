@@ -120,8 +120,7 @@ public class PayrollService {
       throw new PayrollException(PayrollErrorCode.PAYROLL_REVISION_CONFLICT);
     }
     Payroll revision = payrollRepository.save(original.revision());
-    payrollRepository.replaceSnapshots(revision.getId(), snapshots(original));
-    return detail(revision, snapshots(revision));
+    return calculate(revision.getId(), revision.getVersion());
   }
 
   @Transactional(readOnly = true)
@@ -183,6 +182,7 @@ public class PayrollService {
     int to = Math.min(from + size, filteredRows.size());
     List<PayrollListResult.Row> rows = filteredRows.subList(from, to);
     long notCreated = filteredRows.stream().filter(r -> r.payrollId() == null).count();
+    long draft = filteredRows.stream().filter(r -> "DRAFT".equals(r.preparationStatus())).count();
     long calculated = filteredRows.stream().filter(r -> "CALCULATED".equals(r.preparationStatus())).count();
     long confirmed = filteredRows.stream().filter(r -> "CONFIRMED".equals(r.preparationStatus())).count();
     BigDecimal earnings = sum(filteredRows, PayrollListResult.Row::totalEarnings);
@@ -192,7 +192,7 @@ public class PayrollService {
     return new PayrollListResult(result.content(), result.page(), result.size(),
         result.totalElements(), result.totalPages(), result.first(), result.last(),
         result.hasNext(), result.hasPrevious(),
-        new PayrollListResult.Summary(filteredRows.size(), notCreated, calculated, confirmed,
+        new PayrollListResult.Summary(filteredRows.size(), notCreated, draft, calculated, confirmed,
             earnings, deductions, net));
   }
 

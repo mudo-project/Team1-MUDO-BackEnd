@@ -1,5 +1,12 @@
 # Messenger Changelog
 
+## 2026-08-17 · 내 업무지시 카드 목록조회(전달한/받은) API 추가
+
+- `GET /api/messenger/task-cards?role=SENT|RECEIVED`를 추가했습니다. 기존 9번 API(`GET /rooms/{roomId}/task-cards`)는 방 하나만 조회하는데, 프론트가 방마다 이 API를 호출해 클라이언트에서 합치고 필터링하던 "업무" 탭(받은업무/전달한업무)을 위해 여러 방을 가로지르는 전용 조회를 추가했습니다.
+- 9번 API를 포함해 업무지시 카드 응답에 `chatRoomId` 필드가 추가됐습니다(기존 클라이언트에 영향 없는 추가 필드).
+
+자세한 내용은 [REVISION.md](REVISION.md)를 참고해주세요.
+
 ## 2026-08-12 · academyId 완전 제거
 
 - 참여자 정보(`ChatMemberInfo`)에서 소속 학원(academyId) 정보가 빠졌습니다 — 더 이상 학원 단위로 스코프하지 않습니다.

@@ -16,7 +16,7 @@ public record TimetableSlotResponse(
         @Schema(description = "강의실 코드") String classroomCode,
         @Schema(description = "시작 시각") LocalTime startTime,
         @Schema(description = "종료 시각") LocalTime endTime,
-        @Schema(description = "학년(초1~고3 중 하나)") Grade grade,
+        @Schema(description = "학년(초1~고3 또는 공통 중 하나)") Grade grade,
         @Schema(description = "강사명") String teacherName,
         @Schema(description = "과목") String subjectName,
         @Schema(description = "색상(6자리 16진수, RRGGBB)") String color

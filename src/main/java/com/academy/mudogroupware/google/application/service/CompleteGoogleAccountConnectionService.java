@@ -54,7 +54,6 @@ public class CompleteGoogleAccountConnectionService implements CompleteGoogleAcc
         }
 
         Optional<GoogleAccountConnection> existing = googleAccountConnectionRepository.find();
-        Optional<String> previousEmail = existing.map(GoogleAccountConnection::getGoogleEmail);
         Optional<String> previousRefreshToken = existing.map(GoogleAccountConnection::getRefreshToken);
         googleAccountConnectionRepository.deleteAll();
 
@@ -69,7 +68,6 @@ public class CompleteGoogleAccountConnectionService implements CompleteGoogleAcc
 
         previousRefreshToken.ifPresent(
                 token -> eventPublisher.publishEvent(new OldGoogleRefreshTokenRevocationRequestedEvent(token)));
-        boolean accountChanged = previousEmail.isPresent() && !previousEmail.get().equals(googleEmail);
-        eventPublisher.publishEvent(new GoogleAccountConnectedEvent(accountChanged));
+        eventPublisher.publishEvent(new GoogleAccountConnectedEvent(googleEmail));
     }
 }

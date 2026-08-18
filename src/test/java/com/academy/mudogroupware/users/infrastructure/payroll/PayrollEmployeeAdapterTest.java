@@ -7,6 +7,8 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.academy.mudogroupware.global.domain.auth.AccountType;
+import com.academy.mudogroupware.global.domain.auth.AdminScope;
+import com.academy.mudogroupware.payroll.application.port.out.PayrollEmployeePort;
 import com.academy.mudogroupware.users.domain.model.UserStatus;
 import com.academy.mudogroupware.users.infrastructure.persistence.UserEntity;
 import com.academy.mudogroupware.users.infrastructure.persistence.UserJpaRepository;
@@ -39,7 +41,29 @@ class PayrollEmployeeAdapterTest {
     verifyNoInteractions(repository);
   }
 
+  @Test
+  void 활성_직원_목록에서_플랫폼_슈퍼관리자만_제외한다() {
+    UserEntity member = employee(10L, "직원", "member@example.com", UserStatus.ACTIVE,
+        AccountType.MEMBER, null);
+    UserEntity academyAdmin = employee(11L, "원장", "owner@example.com", UserStatus.ACTIVE,
+        AccountType.ADMIN, AdminScope.ACADEMY);
+    UserEntity platformAdmin = employee(12L, "슈퍼관리자", "admin@example.com", UserStatus.ACTIVE,
+        AccountType.ADMIN, AdminScope.PLATFORM);
+    when(repository.findAllByStatus(UserStatus.ACTIVE))
+        .thenReturn(List.of(member, academyAdmin, platformAdmin));
+
+    var result = adapter.findAllActive(null);
+
+    assertThat(result).extracting(PayrollEmployeePort.EmployeeView::id)
+        .containsExactly(10L, 11L);
+  }
+
   private UserEntity employee(Long id, String name, String email, UserStatus status) {
+    return employee(id, name, email, status, AccountType.MEMBER, null);
+  }
+
+  private UserEntity employee(Long id, String name, String email, UserStatus status,
+      AccountType accountType, AdminScope adminScope) {
     LocalDateTime now = LocalDateTime.now();
     return UserEntity.builder()
         .id(id)
@@ -48,7 +72,8 @@ class PayrollEmployeeAdapterTest {
         .name(name)
         .email(email)
         .status(status)
-        .accountType(AccountType.MEMBER)
+        .accountType(accountType)
+        .adminScope(adminScope)
         .joinedAt(now)
         .createdAt(now)
         .updatedAt(now)

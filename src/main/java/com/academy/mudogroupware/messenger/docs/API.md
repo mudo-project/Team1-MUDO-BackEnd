@@ -72,3 +72,10 @@
 - Method: `PATCH`
 - Endpoint: `/api/messenger/rooms/{roomId}/task-cards/{cardId}/complete`
 - 규칙: 담당자 본인만 완료 처리할 수 있다. 이미 완료된 경우 완료 시각을 덮어쓰지 않는다.
+
+## 내 업무지시 카드 목록 조회 (2026-08-17 추가)
+
+- Method: `GET`
+- Endpoint: `/api/messenger/task-cards`
+- Query: `role`(`SENT`|`RECEIVED`, 필수), `cursorCreatedAt`, `cursorCardId`, `size`
+- 규칙: `roomId` 없이 요청자가 참여 중인 모든 방을 가로질러 조회한다. `role=SENT`는 내가 등록한 카드, `role=RECEIVED`는 내가 담당자인 카드. 응답에 `chatRoomId`가 포함되어 어느 방의 카드인지 구분할 수 있다.

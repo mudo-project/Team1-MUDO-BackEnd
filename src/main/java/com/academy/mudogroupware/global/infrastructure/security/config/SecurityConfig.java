@@ -55,6 +55,8 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/google/connections/callback")
                     .permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/public/tenants/**")
+                    .permitAll()
                     .anyRequest()
                     .authenticated())
         .addFilterBefore(jwt, UsernamePasswordAuthenticationFilter.class)

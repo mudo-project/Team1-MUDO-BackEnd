@@ -1,5 +1,7 @@
 package com.academy.mudogroupware.sharedfile.application.event;
 
+import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 import org.springframework.dao.DataAccessException;
@@ -12,6 +14,7 @@ import com.academy.mudogroupware.google.application.usecase.GetGoogleAccessToken
 import com.academy.mudogroupware.sharedfile.application.port.DriveItem;
 import com.academy.mudogroupware.sharedfile.application.port.SharedFileDrivePort;
 import com.academy.mudogroupware.sharedfile.domain.model.SharedFileRoot;
+import com.academy.mudogroupware.sharedfile.domain.repository.SharedFileRootHistoryRepository;
 import com.academy.mudogroupware.sharedfile.domain.repository.SharedFileRootRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -26,27 +29,51 @@ public class SharedFileRootInitializer {
     private static final String ROOT_FOLDER_NAME = "이음 그룹웨어 - 공유파일";
 
     private final SharedFileRootRepository sharedFileRootRepository;
+    private final SharedFileRootHistoryRepository historyRepository;
     private final SharedFileDrivePort sharedFileDrivePort;
     private final GetGoogleAccessTokenUseCase getGoogleAccessTokenUseCase;
+    private final Clock clock;
 
-    // 같은 계정으로 재연결했고 기존 루트가 READY면 그대로 두고, 그 외(최초 연결·계정 교체·FAILED 루트)는 재생성을 시도한다.
+    // 지금 연결된 이메일이 이 루트를 소유한 이메일과 같으면(즉 같은 계정으로 재연결했으면) 그대로 두고,
+    // 그 외(최초 연결·계정 교체·FAILED 루트)는 재생성을 시도한다. "계정이 바뀌었는지"를 event가 계산해서
+    // 넘겨준 값으로 판단하지 않고 이 도메인이 직접 비교하는 이유는 REVISION.md 참고 — 다른 도메인이
+    // 계산해준 값에 의존하면 그 도메인의 삭제 타이밍에 따라 판단이 오염될 수 있다.
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handle(GoogleAccountConnectedEvent event) {
         Optional<SharedFileRoot> existing = sharedFileRootRepository.find();
-        if (existing.isPresent() && existing.get().isReady() && !event.accountChanged()) {
+        boolean sameAccountAsCurrentRoot = existing.isPresent()
+                && event.googleEmail().equals(existing.get().getConnectedGoogleEmail());
+        if (existing.isPresent() && existing.get().isReady() && sameAccountAsCurrentRoot) {
             return;
         }
-        createOrRecreateRoot(existing);
+        createOrRecreateRoot(existing, event.googleEmail());
     }
 
     // 기존 행이 있으면 그 객체를 그대로 바꿔서(replaceWith/markFailed) version을 유지한 채 저장한다.
     // find()로 읽은 뒤 완전히 새 SharedFileRoot.ready()/failed()를 만들어 버리면 version이 사라져,
     // 이미 있는 행인데도 SharedFileRootPersistenceAdapter가 insert를 시도해 PK 충돌로 실패한다.
-    private void createOrRecreateRoot(Optional<SharedFileRoot> existing) {
+    private void createOrRecreateRoot(Optional<SharedFileRoot> existing, String googleEmail) {
         String accessToken;
-        DriveItem folder;
         try {
             accessToken = getGoogleAccessTokenUseCase.getAccessToken();
+        } catch (RuntimeException e) {
+            log.warn("event=shared_file_root_initialize_failed message={}", e.getMessage());
+            persist(markFailed(existing));
+            return;
+        }
+
+        Optional<String> reusableFolderId = findReusableHistoricalFolder(accessToken, googleEmail);
+        if (reusableFolderId.isPresent()) {
+            String folderId = reusableFolderId.get();
+            log.info("event=shared_file_root_revived_from_history connectedGoogleEmail={} folderId={}",
+                    googleEmail, folderId);
+            persist(markReady(existing, folderId, googleEmail));
+            recordConnectionHistory(googleEmail, folderId);
+            return;
+        }
+
+        DriveItem folder;
+        try {
             folder = sharedFileDrivePort.createRootFolder(accessToken, ROOT_FOLDER_NAME);
         } catch (RuntimeException e) {
             log.warn("event=shared_file_root_initialize_failed message={}", e.getMessage());
@@ -54,17 +81,32 @@ public class SharedFileRootInitializer {
             return;
         }
 
-        SharedFileRoot result = markReady(existing, folder.id());
+        SharedFileRoot result = markReady(existing, folder.id(), googleEmail);
         persist(result, accessToken, folder.id());
+        recordConnectionHistory(googleEmail, folder.id());
     }
 
-    private SharedFileRoot markReady(Optional<SharedFileRoot> existing, String googleRootFolderId) {
+    // 이 이메일이 예전에 쓰던 폴더가 이력에 있으면, 지금도 실제로 접근 가능한지(존재+휴지통 아님+폴더임)
+    // Drive에 재확인한 뒤에만 재사용한다 — 이력에 있다고 무조건 믿지 않는다.
+    private Optional<String> findReusableHistoricalFolder(String accessToken, String googleEmail) {
+        return historyRepository.findGoogleRootFolderIdByEmail(googleEmail)
+                .flatMap(folderId -> sharedFileDrivePort.getItem(accessToken, folderId))
+                .filter(item -> item.isFolder() && !item.trashed())
+                .map(DriveItem::id);
+    }
+
+    private void recordConnectionHistory(String googleEmail, String folderId) {
+        historyRepository.upsert(googleEmail, folderId, LocalDateTime.now(clock));
+    }
+
+    private SharedFileRoot markReady(Optional<SharedFileRoot> existing, String googleRootFolderId,
+            String connectedGoogleEmail) {
         return existing
                 .map(root -> {
-                    root.replaceWith(googleRootFolderId);
+                    root.replaceWith(googleRootFolderId, connectedGoogleEmail);
                     return root;
                 })
-                .orElseGet(() -> SharedFileRoot.ready(googleRootFolderId));
+                .orElseGet(() -> SharedFileRoot.ready(googleRootFolderId, connectedGoogleEmail));
     }
 
     private SharedFileRoot markFailed(Optional<SharedFileRoot> existing) {

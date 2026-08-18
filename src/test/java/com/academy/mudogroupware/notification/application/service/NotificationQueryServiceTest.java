@@ -31,7 +31,7 @@ class NotificationQueryServiceTest {
     void returnsNotificationsForRecipient() {
         Notification notification = Notification.restore(1L, RECIPIENT_ID,
                 NotificationType.APPROVAL_LINE_ACTIVATED.name(), 100L, "결재 차례가 되었습니다",
-                null, java.time.LocalDateTime.of(2026, 8, 13, 9, 0));
+                "APPROVAL_LINE_ACTIVATED:100:10", null, java.time.LocalDateTime.of(2026, 8, 13, 9, 0));
         when(notificationRepository.findAllByRecipientUserId(RECIPIENT_ID, 0, 20))
                 .thenReturn(PageResult.of(List.of(notification), 0, 20, false));
 

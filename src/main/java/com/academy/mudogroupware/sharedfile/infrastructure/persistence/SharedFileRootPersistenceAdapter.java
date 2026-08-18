@@ -23,8 +23,10 @@ public class SharedFileRootPersistenceAdapter implements SharedFileRootRepositor
     @Override
     public SharedFileRoot save(SharedFileRoot root) {
         SharedFileRootEntity entity = root.getVersion() == null
-                ? SharedFileRootEntity.create(root.getStatus(), root.getGoogleRootFolderId())
-                : SharedFileRootEntity.forUpdate(root.getVersion(), root.getStatus(), root.getGoogleRootFolderId());
+                ? SharedFileRootEntity.create(
+                        root.getStatus(), root.getGoogleRootFolderId(), root.getConnectedGoogleEmail())
+                : SharedFileRootEntity.forUpdate(root.getVersion(), root.getStatus(),
+                        root.getGoogleRootFolderId(), root.getConnectedGoogleEmail());
         SharedFileRootEntity saved = sharedFileRootJpaRepository.save(entity);
         return toDomain(saved);
     }
@@ -35,6 +37,7 @@ public class SharedFileRootPersistenceAdapter implements SharedFileRootRepositor
     }
 
     private SharedFileRoot toDomain(SharedFileRootEntity entity) {
-        return SharedFileRoot.restore(entity.getStatus(), entity.getGoogleRootFolderId(), entity.getVersion());
+        return SharedFileRoot.restore(entity.getStatus(), entity.getGoogleRootFolderId(),
+                entity.getConnectedGoogleEmail(), entity.getVersion());
     }
 }

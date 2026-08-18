@@ -15,7 +15,8 @@ public enum MessengerResponseCode implements ResponseCode {
     MESSAGE_SENT("MESSENGER_201_2", "메시지 전송에 성공했습니다."),
     MESSAGE_LIST_RETRIEVED("MESSENGER_200_3", "메시지 목록 조회에 성공했습니다."),
     TASK_CARD_CREATED("MESSENGER_201_3", "업무지시 카드 등록에 성공했습니다."),
-    TASK_CARD_LIST_RETRIEVED("MESSENGER_200_4", "업무지시 카드 목록 조회에 성공했습니다.");
+    TASK_CARD_LIST_RETRIEVED("MESSENGER_200_4", "업무지시 카드 목록 조회에 성공했습니다."),
+    MY_TASK_CARD_LIST_RETRIEVED("MESSENGER_200_5", "내 업무지시 카드 목록 조회에 성공했습니다.");
 
     private final String code;
     private final String message;
