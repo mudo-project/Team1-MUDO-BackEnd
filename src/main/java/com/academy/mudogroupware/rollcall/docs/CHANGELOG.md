@@ -1,5 +1,10 @@
 # 출결 Changelog
 
+## 2026-08-18 - 출결 SMS 발송 병렬 처리
+
+- 학생 수만큼 SOLAPI 호출이 순차로 누적돼 발송이 느리던 문제를, 전용 스레드풀(`rollcallSmsExecutor`, core 4/max 6)로 동시 처리하도록 변경했다. 학생별 발송 기록은 이미 `claimForSending` 조건부 UPDATE로 동시성이 보장돼 안전하다.
+- 스레드풀 크기는 SOLAPI 발송 API 기본 한도(5초당 100건)를 응답시간 200~300ms 가정으로 역산한 값이며, `rollcall.sms.executor.*` 프로퍼티로 조정 가능하다.
+
 ## 2026-08-14 - 출결 SMS 발송 재시도 중복 방지 (#354)
 
 **최종 정책**: 학생별 발송 시도를 `attendance_message_send_record`(유니크 키: 강의+학생+출결날짜+출결상태)에 저장한다. 상태는 `PENDING`/`SENDING`/`SENT`/`FAILED`/`INDETERMINATE` 다섯 가지다. 이미 `SENT`면 재요청이 와도 SOLAPI를 다시 호출하지 않는다. `INDETERMINATE`(SOLAPI 응답을 못 받아 결과를 모름)는 **자동 재시도를 차단**하고 관리자 확인이 필요하다 — 실제로는 이미 발송됐을 수 있어 다시 호출하면 중복 발송 위험이 있기 때문이다. 출결이 정정되면(결석→지각 등) 새 조합으로 취급해 재발송을 막지 않는다.
