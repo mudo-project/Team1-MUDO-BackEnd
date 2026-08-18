@@ -10,17 +10,24 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
 public class PayrollReferenceDataAdapter implements PayrollReferenceDataPort {
   private final JdbcTemplate jdbc;
+  private final NamedParameterJdbcTemplate namedJdbc;
 
   @Override public Optional<PayrollPolicyData> findPolicy() {
     return one("select * from payroll_policy order by payroll_policy_id desc limit 1",
@@ -44,6 +51,26 @@ public class PayrollReferenceDataAdapter implements PayrollReferenceDataPort {
     return jdbc.query("select * from employee_compensation where user_id=? "
         + "and effective_from <= ? and (effective_to is null or effective_to >= ?) order by effective_from",
         this::compensation, userId, month.atEndOfMonth(), month.atDay(1));
+  }
+
+  @Override
+  public Map<Long, List<CompensationData>> findCompensations(
+      Set<Long> userIds, YearMonth month) {
+    if (userIds.isEmpty()) return Map.of();
+    List<CompensationData> rows = namedJdbc.query("select * from employee_compensation "
+            + "where user_id in (:userIds) and effective_from <= :monthEnd "
+            + "and (effective_to is null or effective_to >= :monthStart) "
+            + "order by user_id, effective_from",
+        new MapSqlParameterSource()
+            .addValue("userIds", userIds)
+            .addValue("monthEnd", month.atEndOfMonth())
+            .addValue("monthStart", month.atDay(1)),
+        this::compensation);
+    Map<Long, List<CompensationData>> result = new LinkedHashMap<>();
+    for (CompensationData row : rows) {
+      result.computeIfAbsent(row.userId(), ignored -> new java.util.ArrayList<>()).add(row);
+    }
+    return result;
   }
 
   @Override public List<CompensationData> findAllCompensations(Long userId) {
@@ -98,6 +125,17 @@ public class PayrollReferenceDataAdapter implements PayrollReferenceDataPort {
   }
 
   @Override public List<AllowanceData> saveAllowances(Long userId, List<AllowanceData> allowances) {
+    Set<Long> retainedIds = new HashSet<>();
+    for (AllowanceData allowance : allowances) {
+      if (allowance.id() != null) retainedIds.add(allowance.id());
+    }
+    if (retainedIds.isEmpty()) {
+      jdbc.update("delete from employee_fixed_allowance where employee_id=?", userId);
+    } else {
+      namedJdbc.update("delete from employee_fixed_allowance "
+          + "where employee_id=:employeeId and allowance_id not in (:retainedIds)",
+          new MapSqlParameterSource("employeeId", userId).addValue("retainedIds", retainedIds));
+    }
     for (AllowanceData allowance : allowances) {
       Integer overlaps = jdbc.queryForObject("select count(*) from employee_fixed_allowance "
           + "where employee_id=? and allowance_type=? and allowance_name=? "

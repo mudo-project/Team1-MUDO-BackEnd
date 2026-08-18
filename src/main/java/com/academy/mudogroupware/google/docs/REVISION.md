@@ -1,5 +1,27 @@
 # 🔄 Google 연동 도메인 변경 이력
 
+## ✅ 2026-08-15 · 연동 만료 경고 기준 조정과 화면 조회 API 보강
+
+### 변경 목적
+
+Google이 반환한 리프레시 토큰 만료 시각이 연결 후 7일인 환경에서, 기존 7일 임박 경고 기준은 연결 직후부터 `EXPIRING`을 반환했다. 경고 기준을 실제 만료 3일 전으로 조정한다. 또한 상세 화면의 "연결한 관리자"가 사용자 ID만으로 표시되던 문제를 해결하고, 설정 요약 카드가 상세 정보를 해석하지 않고 연동 상태만 조회할 수 있도록 별도 API를 제공한다.
+
+### 구현 변경
+
+- `GoogleAccountConnection.deriveStatus()`의 `EXPIRING` 기준을 실제 리프레시 토큰 만료 7일 전에서 3일 전으로 변경했다. `FAILED`, `EXPIRED`, 만료 시각 미제공 시 `CONNECTED` 정책은 유지한다.
+- `GET /api/google/connections` 응답에 `connectedByUserName`을 추가했다. Google 도메인이 `GoogleConnectionUserDirectoryPort`를 정의하고, users 도메인의 `GoogleConnectionUserDirectoryAdapter`가 사용자 이름을 조회한다. Google은 users Entity·Repository를 직접 참조하지 않는다. 과거 연결 관리자가 더 이상 존재하지 않으면 이름은 `null`이다.
+- `GET /api/google/connections/status`를 추가했다. `NOT_CONNECTED` / `CONNECTED` / `EXPIRING` / `EXPIRED` / `FAILED` 중 하나를 `data.status`로 반환하며, Google API 호출·토큰 갱신·연결 관리자 사용자 조회 없이 Google 연결 행만으로 상태를 계산한다.
+- `GOOGLE_200_3`(`구글 연동 상태 요약 조회에 성공했습니다.`) 응답 코드를 추가하고, `README.md`·`GOOGLE_API.md`의 만료 경고 기준과 응답 계약을 함께 최신화했다.
+
+### 검증
+
+- `GoogleAccountConnectionTest`: 3일 경계 직전에는 `CONNECTED`, 경계부터는 `EXPIRING`인지 검증.
+- `GetGoogleAccountConnectionServiceTest`: `connectedByUserName` 조합과 과거 연결 관리자 부재 시 `null` 반환을 검증.
+- `GetGoogleAccountConnectionStatusServiceTest`(신규): 연결 행만으로 상태를 계산하고 미연결 시 `NOT_CONNECTED`를 반환하는지 검증.
+- `GoogleConnectionUserDirectoryAdapterTest`(신규): 사용자 이름 조회와 과거 사용자 부재 시 빈 결과를 검증.
+- `GoogleAccountConnectionControllerTest`: 상세 응답의 이름 필드와 상태 요약 API의 연결/미연결 응답을 검증.
+- 기능 단위 테스트를 통과했다. 전체 테스트와 추가 `@SpringBootTest` 실행은 CI 시간이 길어 요청에 따라 생략했다.
+
 ## ✅ 2026-08-11 · 리프레시 토큰 폐기 타이밍 개선과 콜백 실패 로깅
 
 ### 변경 목적

@@ -20,6 +20,7 @@
 - file: 첨부파일 다운로드 URL 발급은 file 모듈이 공개하는 `GetFileDownloadUrlUseCase`를 직접 주입해서 쓴다(`GetApprovalAttachmentDownloadUrlService`). approval이 신청자/결재선 참여자 검증과 fileId의 문서 소속 검증을 먼저 마친 뒤에만 호출한다 — file 모듈의 범용 다운로드 API는 인증만 되면 fileId를 아는 누구나 호출할 수 있으므로, 그대로 노출하면 결재선과 무관한 사람도 URL을 받을 수 있다.
 - attendance: 휴가 기간이 포함된 결재는 `LeaveRequestSubmittedEvent`와 `ApprovalDocumentDecidedEvent`로 휴가 상태를 전달한다.
 - corporatecard: `ExtractApprovalAttachmentFieldsUseCase`를 corporatecard가 직접 주입해서 쓴다. 결재 문서의 첫 번째 첨부파일에서 Gemini 구조화 출력으로 금액/일자/가맹점을 추출해준다(영수증-카드거래 대사 검증용). REST 엔드포인트는 없고 UseCase만 공개한다.
+- corporatecard: `CorporateCardApprovalSubmissionAdapter`가 상신, 상태, 기본 결재선과 함께 법인카드 상세에 필요한 실제 문서 결재자 ID와 순서를 제공한다.
 - global security: `AuthUser`로 인증 사용자 정보를 받는다.
 
 ## 권한 정책
@@ -30,6 +31,7 @@
 - 기본 결재 문서 상세조회는 신청자 또는 결재선 참여자만 가능하다.
 - `APPROVAL:READ_ALL` 권한자는 소속 학원의 전체 결재 목록과 상세를 조회할 수 있다.
 - 내 결재 이력 삭제는 개인 목록 숨김 처리이며, 문서 원본을 삭제하지 않는다.
+- 결재 문서의 최종 결재선에는 신청자 본인을 넣을 수 없고, 같은 결재자를 2번 이상 넣을 수 없다. 템플릿은 실제 기안자가 정해지기 전의 기본 결재선이므로 중복 결재자만 차단한다.
 
 ## 알림 정책
 
@@ -57,3 +59,15 @@
 - [API_FLOW.md](API_FLOW.md)
 - [REVISION.md](REVISION.md)
 - [CHANGELOG.md](CHANGELOG.md)
+
+## 2026-08-14 전자결재 보존 정책
+
+전자결재 문서는 삭제 중심이 아니라 증빙 보존 중심으로 관리한다. 이번 구현부터 `approval_document`에 `retention_policy`, `retention_until`, `legal_hold`, `archived_at` 컬럼을 두고 문서 생성 시 기본 보존 정책을 자동 기록한다.
+
+| 문서 유형 | 정책 | 보존기한 |
+| --- | --- | --- |
+| 일반 업무 결재, 휴가/근태 결재 | `GENERAL_BUSINESS` | 생성일로부터 3년 |
+| 법인카드/비용정산 결재 | `TAX_EVIDENCE` | 생성일로부터 5년 |
+| 계약/중요 지출/핵심 의사결정 | `IMPORTANT_BUSINESS` | 생성일로부터 10년. 현재 자동 분류 대상은 아니며 추후 문서 유형 확장 시 사용한다. |
+
+`legal_hold=true`인 문서는 보존기한이 지나도 자동 정리 대상에서 제외한다. `archived_at`은 추후 장기 보관 화면/배치에서 일반 조회와 분리할 때 사용한다. 첨부파일 AI 요약 결과는 결재 문서의 일부로 보고 원문 문서와 같은 보존 정책을 따른다.

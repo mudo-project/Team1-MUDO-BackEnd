@@ -4,7 +4,9 @@ import com.academy.mudogroupware.payroll.domain.model.Payroll;
 import com.academy.mudogroupware.payroll.domain.model.PayrollTypes.PayrollStatus;
 import java.time.YearMonth;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 public interface PayrollRepository {
   Payroll save(Payroll payroll);
@@ -15,6 +17,7 @@ public interface PayrollRepository {
   List<Payroll> findRevisions(Long userId, YearMonth yearMonth);
   void replaceSnapshots(Long payrollId, SnapshotBundle snapshots);
   SnapshotBundle findSnapshots(Long payrollId);
+  Map<Long, SnapshotBundle> findSnapshots(Set<Long> payrollIds);
 
   record AttendanceSnapshot(int workDays, java.math.BigDecimal workHours,
       java.math.BigDecimal overtimeHours, java.math.BigDecimal nightHours,

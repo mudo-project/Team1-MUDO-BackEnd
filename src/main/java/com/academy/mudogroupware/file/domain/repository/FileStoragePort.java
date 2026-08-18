@@ -8,4 +8,6 @@ public interface FileStoragePort {
   byte[] download(String objectKey);
 
   void delete(String objectKey);
+
+  long headObjectSize(String objectKey);
 }

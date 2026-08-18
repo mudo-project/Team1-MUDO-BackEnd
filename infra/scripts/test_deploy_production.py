@@ -7,6 +7,7 @@ from deploy_production import (
     render_app_task,
     render_migration_task,
     render_platform_tenant_registry,
+    render_public_tenant_directory,
     validate_manifests,
 )
 
@@ -27,16 +28,20 @@ class DeploymentManifestTest(unittest.TestCase):
         cells["cell-1"]["rds_max_connections"] = 100
         return tenants, cells
 
-    def test_repository_manifests_are_valid_with_academy_a_enabled(self):
+    def test_repository_manifests_are_valid_with_enabled_tenants(self):
         enabled = validate_manifests(
             self.profiles, self.tenants, self.cells, deployment=False
         )
-        self.assertEqual(["academy-a"], [tenant["code"] for tenant in enabled])
+        self.assertEqual(
+            ["academy-a", "academy-d"], [tenant["code"] for tenant in enabled]
+        )
 
     def test_capacity_includes_one_sequential_deployment_surge(self):
         tenants, cells = self.enabled_configuration()
         enabled = validate_manifests(self.profiles, tenants, cells, deployment=True)
-        self.assertEqual(["academy-a"], [tenant["code"] for tenant in enabled])
+        self.assertEqual(
+            ["academy-a", "academy-d"], [tenant["code"] for tenant in enabled]
+        )
 
         cells["cell-1"]["rds_max_connections"] = 10
         with self.assertRaises(DeploymentError):
@@ -61,7 +66,7 @@ class DeploymentManifestTest(unittest.TestCase):
         self.assertEqual("academy-a", environment["TENANT_ID"])
         self.assertEqual("mudo-prod-staff-123456789012", environment["AWS_S3_STAFF_BUCKET_NAME"])
         self.assertEqual("mudo-prod-finance-123456789012", environment["AWS_S3_FINANCE_BUCKET_NAME"])
-        self.assertEqual("basic", environment["TENANT_PLAN"])
+        self.assertEqual("paid", environment["TENANT_PLAN"])
         self.assertEqual("true", environment["PLATFORM_DASHBOARD_ENABLED"])
         self.assertIn('"code":"academy-a"', environment["PLATFORM_DASHBOARD_TENANT_REGISTRY_JSON"])
         self.assertEqual("30", environment["SERVER_TOMCAT_THREADS_MAX"])
@@ -75,11 +80,11 @@ class DeploymentManifestTest(unittest.TestCase):
         self.assertIn("GOOGLE_CLIENT_SECRET", secret_names)
         self.assertIn("GOOGLE_REDIRECT_URI", secret_names)
         self.assertIn("GOOGLE_OAUTH_FRONTEND_REDIRECT_URI", secret_names)
-        self.assertIn("MAILGUN_SMTP_USERNAME", secret_names)
-        self.assertIn("MAILGUN_SMTP_PASSWORD", secret_names)
+        self.assertIn("MAILGUN_API_KEY", secret_names)
         self.assertIn("MAIL_FROM", secret_names)
         self.assertIn("MAILGUN_WEBHOOK_SIGNING_KEY", secret_names)
         self.assertIn("GEMINI_API_KEY", secret_names)
+        self.assertIn("CLIENT_IP_SIGNING_SECRET", secret_names)
         self.assertEqual(
             "arn:aws:ssm:ap-northeast-2:123456789012:parameter/mudo/prod/shared/SENTRY_DSN",
             secrets["SENTRY_DSN"],
@@ -123,6 +128,53 @@ class DeploymentManifestTest(unittest.TestCase):
             basic_container["memoryReservation"], premium_container["memoryReservation"]
         )
         self.assertEqual(basic_container["memory"], premium_container["memory"])
+
+    def test_validate_manifests_rejects_enabled_tenant_missing_api_host(self):
+        tenants, cells = self.enabled_configuration()
+        del tenants[0]["api_host"]
+
+        with self.assertRaises(DeploymentError):
+            validate_manifests(self.profiles, tenants, cells, deployment=False)
+
+    def test_validate_manifests_rejects_enabled_tenant_with_blank_api_host(self):
+        tenants, cells = self.enabled_configuration()
+        tenants[0]["api_host"] = "  "
+
+        with self.assertRaises(DeploymentError):
+            validate_manifests(self.profiles, tenants, cells, deployment=False)
+
+    def test_renders_public_tenant_directory_from_api_host(self):
+        tenants, _ = self.enabled_configuration()
+        directory_json = render_public_tenant_directory(tenants)
+
+        self.assertIn('"code":"academy-a"', directory_json)
+        self.assertIn('"apiHost":"academy-a.ieum.store"', directory_json)
+        self.assertIn('"apiHost":"sidea-test.ieum.store"', directory_json)
+
+    def test_public_tenant_directory_injected_only_into_dashboard_host_task(self):
+        tenants, cells = self.enabled_configuration()
+        directory_json = render_public_tenant_directory(tenants)
+        task = render_app_task(
+            tenants[0],
+            self.profiles["shared-default"],
+            "123456789012",
+            "ap-northeast-2",
+            "registry/mudo:abc123",
+            "abc123",
+            render_platform_tenant_registry(tenants, cells),
+            directory_json,
+        )
+        environment = {item["name"]: item["value"] for item in task["containerDefinitions"][0]["environment"]}
+        self.assertIn('"code":"academy-a"', environment["PLATFORM_TENANT_DIRECTORY_JSON"])
+
+        tenants[0]["platform_dashboard_host"] = False
+        non_host_task = render_app_task(
+            tenants[0], self.profiles["shared-default"], "123456789012", "ap-northeast-2",
+            "registry/mudo:abc123", "abc123")
+        non_host_environment = {
+            item["name"]: item["value"] for item in non_host_task["containerDefinitions"][0]["environment"]
+        }
+        self.assertNotIn("PLATFORM_TENANT_DIRECTORY_JSON", non_host_environment)
 
     def test_migration_task_uses_separate_migrator_parameters(self):
         tenants, _ = self.enabled_configuration()

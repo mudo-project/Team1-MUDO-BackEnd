@@ -13,7 +13,9 @@ import com.academy.mudogroupware.timetable.domain.model.TimetableSet;
 import com.academy.mudogroupware.timetable.domain.repository.TimetableSetRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -24,13 +26,18 @@ public class GetTimetableSetService implements GetTimetableSetUseCase {
 
     @Override
     public TimetableSetDetailView getTimetableSet(Long timetableSetId) {
+        log.info("event=timetable_set_get_시작 timetableSetId={}", timetableSetId);
+
         TimetableSet set = timetableSetRepository.findById(timetableSetId)
                 .orElseThrow(TimetableSetNotFoundException::new);
 
         LocalDate today = LocalDate.now(clock);
-        return new TimetableSetDetailView(
+        TimetableSetDetailView view = new TimetableSetDetailView(
                 set.getId(), set.getName(), set.getStartDate(), set.getEndDate(),
                 set.getOperatingStartTime(), set.getOperatingEndTime(), set.getOperatingDays(),
                 set.getSlotUnitMinutes(), set.getClassrooms(), set.deriveStatus(today));
+
+        log.info("event=timetable_set_get_완료 timetableSetId={}", timetableSetId);
+        return view;
     }
 }

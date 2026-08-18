@@ -9,7 +9,7 @@ public interface LeaveGrantRepository {
 
     LeaveGrant save(LeaveGrant leaveGrant);
 
-    boolean existsByUserIdAndGrantDate(Long userId, LocalDate grantDate);
+    boolean saveIfAbsent(LeaveGrant leaveGrant);
 
     Optional<LeaveGrant> findActiveForUpdate(Long userId, LocalDate date);
 

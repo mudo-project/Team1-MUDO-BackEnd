@@ -8,6 +8,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 
 import com.academy.mudogroupware.global.infrastructure.persistence.SoftDeleteTimeEntity;
 
@@ -17,7 +18,12 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "notification")
+@Table(
+        name = "notification",
+        uniqueConstraints =
+                @UniqueConstraint(
+                        name = "uk_notification_idempotency_key",
+                        columnNames = {"idempotency_key"}))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class NotificationEntity extends SoftDeleteTimeEntity {
@@ -39,15 +45,20 @@ public class NotificationEntity extends SoftDeleteTimeEntity {
     @Column(nullable = false, length = 250)
     private String message;
 
+    @Column(name = "idempotency_key", nullable = false, length = 255)
+    private String idempotencyKey;
+
     @Column(name = "read_at")
     private LocalDateTime readAt;
 
     @Builder
-    private NotificationEntity(Long recipientUserId, String type, Long targetId, String message) {
+    private NotificationEntity(Long recipientUserId, String type, Long targetId, String message,
+                               String idempotencyKey) {
         this.recipientUserId = recipientUserId;
         this.type = type;
         this.targetId = targetId;
         this.message = message;
+        this.idempotencyKey = idempotencyKey;
     }
 
     // 이미 읽은 알림에 다시 호출해도 최초 읽은 시각을 유지한다(멱등).

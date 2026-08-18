@@ -45,7 +45,7 @@ class ListSharedFileItemsServiceTest {
 
     @Test
     void listsRootChildrenWhenParentIdIsAbsent() {
-        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id", "academy@mudo.co.kr")));
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
         when(drivePort.listChildren("access-token", "root-id", null, 20))
                 .thenReturn(new DrivePage(List.of(item("child-1")), "next-cursor"));
@@ -60,7 +60,7 @@ class ListSharedFileItemsServiceTest {
 
     @Test
     void listsGivenParentAfterValidatingItIsUnderRoot() {
-        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id", "academy@mudo.co.kr")));
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
         when(drivePort.listChildren("access-token", "child-folder-id", null, 20))
                 .thenReturn(new DrivePage(List.of(), null));
@@ -73,7 +73,7 @@ class ListSharedFileItemsServiceTest {
 
     @Test
     void propagatesGuardRejectionForOutOfRootParent() {
-        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id", "academy@mudo.co.kr")));
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
         org.mockito.Mockito.doThrow(new SharedFileOutOfRootException("outside-id"))
                 .when(rootGuard).requireDescendant("access-token", "root-id", "outside-id");

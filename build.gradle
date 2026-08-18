@@ -66,10 +66,9 @@ dependencies {
     // Prometheus 메트릭 수집이 필요할 때
     runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
     // 재시도 기능이 필요할 때
-//    implementation 'org.springframework.retry:spring-retry'
+    implementation 'org.springframework.retry:spring-retry'
     // PortOne 결제 연동이 필요할 때
 //    implementation 'io.portone:server-sdk:0.24.0'
-    implementation 'org.springframework.boot:spring-boot-starter-mail'
     // OAuth2 소셜 로그인 필요 시
 //    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
     // 캐시 필요 시

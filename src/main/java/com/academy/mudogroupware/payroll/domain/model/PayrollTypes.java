@@ -10,7 +10,9 @@ public final class PayrollTypes {
   public enum ItemCategory { EARNING, DEDUCTION }
   public enum SourceType { CONTRACT, ATTENDANCE, MOCK_INSURANCE, MOCK_TAX, MANUAL }
   public enum StatementStatus { PENDING, READY, FAILED }
-  public enum DeliveryStatus { PENDING, SENDING, SENT, DELIVERED, FAILED, SKIPPED }
+  public enum DeliveryStatus {
+    PENDING, SENDING, RETRY_WAIT, UNKNOWN, SENT, DELIVERED, FAILED, SKIPPED
+  }
   public enum DeliveryBatchStatus { PENDING, PROCESSING, AWAITING_DELIVERY, COMPLETED }
   public enum ItemType {
     BASE_SALARY,

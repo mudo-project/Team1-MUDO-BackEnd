@@ -16,12 +16,14 @@ import com.academy.mudogroupware.sharedfile.domain.model.SharedFileRoot;
 import com.academy.mudogroupware.sharedfile.domain.repository.SharedFileRootRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 // 이름 변경과 이동을 SharedFileDrivePort.updateItem() 호출 한 번으로 함께 반영한다. 예전에는
 // RenameSharedFileItemService/MoveSharedFileItemService가 각각 별도 Drive 요청을 보내서, 이름 변경이
 // 성공하고 이동이 실패하면 절반만 반영된 채로 남는 문제가 있었다(이슈 #406).
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UpdateSharedFileItemService implements UpdateSharedFileItemUseCase {
 
     private final SharedFileRootRepository sharedFileRootRepository;
@@ -33,6 +35,8 @@ public class UpdateSharedFileItemService implements UpdateSharedFileItemUseCase 
     public SharedFileItemView update(String itemId, String name, String newParentId) {
         boolean changingName = name != null && !name.isBlank();
         boolean changingParent = newParentId != null && !newParentId.isBlank();
+        log.info("event=shared_file_update_시작 itemId={} changingName={} changingParent={}",
+                itemId, changingName, changingParent);
 
         SharedFileRoot root = sharedFileRootRepository.find()
                 .filter(SharedFileRoot::isReady)
@@ -60,7 +64,10 @@ public class UpdateSharedFileItemService implements UpdateSharedFileItemUseCase 
 
         DriveItem updated = sharedFileDrivePort.updateItem(
                 accessToken, itemId, changingName ? name : null, fromParentId, toParentId);
-        return SharedFileItemViewMapper.toView(updated);
+        SharedFileItemView result = SharedFileItemViewMapper.toView(updated);
+        log.info("event=shared_file_update_완료 itemId={} changingName={} changingParent={}",
+                result.id(), changingName, changingParent);
+        return result;
     }
 
     // 목적지가 폴더인지, 이동 대상 자신을 목적지로 지정했는지, 이동 대상의 자손을 목적지로 지정해 순환이

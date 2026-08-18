@@ -44,7 +44,7 @@ class GetSharedFileItemServiceTest {
 
     @Test
     void returnsItemAfterValidatingItIsUnderRoot() {
-        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id", "academy@mudo.co.kr")));
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
         when(drivePort.getItem("access-token", "item-id")).thenReturn(Optional.of(
                 new DriveItem("item-id", "파일.pdf", "application/pdf", List.of("root-id"), "url", true, null, false)));
@@ -57,7 +57,7 @@ class GetSharedFileItemServiceTest {
 
     @Test
     void throwsWhenItemIsOutsideRoot() {
-        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id", "academy@mudo.co.kr")));
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
         doThrow(new SharedFileOutOfRootException("outside-id"))
                 .when(rootGuard).requireDescendant("access-token", "root-id", "outside-id");
@@ -70,7 +70,7 @@ class GetSharedFileItemServiceTest {
 
     @Test
     void throwsWhenItemDoesNotExist() {
-        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id", "academy@mudo.co.kr")));
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
         when(drivePort.getItem("access-token", "missing-id")).thenReturn(Optional.empty());
 

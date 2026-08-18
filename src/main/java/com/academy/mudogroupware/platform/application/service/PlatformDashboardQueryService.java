@@ -22,10 +22,12 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 @ConditionalOnProperty(prefix = "platform.dashboard", name = "enabled", havingValue = "true")
 public class PlatformDashboardQueryService {
@@ -46,7 +48,7 @@ public class PlatformDashboardQueryService {
       DatabaseUsageMetricsPort databaseUsageMetricsPort,
       EcsHeadroomPort ecsHeadroomPort,
       ApiCallFrequencyPort apiCallFrequencyPort,
-      @Qualifier("applicationTaskExecutor") Executor executor) {
+      @Qualifier("platformDashboardExecutor") Executor executor) {
     this.tenantRegistry = tenantRegistry;
     this.operationalMetricsPort = operationalMetricsPort;
     this.memberCountMetricsPort = memberCountMetricsPort;
@@ -58,18 +60,26 @@ public class PlatformDashboardQueryService {
   }
 
   public List<AcademyRuntime> academies() {
-    return tenantRegistry.findAll();
+    log.info("event=platform_academies_list_시작");
+    List<AcademyRuntime> academies = tenantRegistry.findAll();
+    log.info("event=platform_academies_list_완료 count={}", academies.size());
+    return academies;
   }
 
   public List<AcademyApiCallMetrics> apiCallFrequency(DashboardScope scope, String academyCode, DashboardPeriod period) {
+    log.info("event=platform_api_call_frequency_시작 scope={}, academyCode={}, period={}", scope, academyCode, period);
     List<AcademyRuntime> academies = select(scope, academyCode);
     Map<String, List<ApiCallMetric>> byAcademy = apiCallFrequencyPort.apiCallMetricsByAcademy(academies, period);
-    return academies.stream()
+    List<AcademyApiCallMetrics> result = academies.stream()
         .map(academy -> new AcademyApiCallMetrics(academy.code(), byAcademy.getOrDefault(academy.code(), List.of())))
         .toList();
+    log.info("event=platform_api_call_frequency_완료 scope={}, academyCode={}, period={}, academyCount={}",
+        scope, academyCode, period, result.size());
+    return result;
   }
 
   public OperationalMetrics operationalMetrics(DashboardScope scope, String academyCode, DashboardPeriod period) {
+    log.info("event=platform_operational_metrics_시작 scope={}, academyCode={}, period={}", scope, academyCode, period);
     List<AcademyRuntime> allAcademies = tenantRegistry.findAll();
     List<AcademyRuntime> academies = select(scope, academyCode);
 
@@ -95,7 +105,7 @@ public class PlatformDashboardQueryService {
             || headroom.academyCodes().contains(academyCode))
         .toList();
 
-    return new OperationalMetrics(
+    OperationalMetrics metrics = new OperationalMetrics(
         scope,
         scope == DashboardScope.ACADEMY ? academyCode : null,
         period,
@@ -105,17 +115,25 @@ public class PlatformDashboardQueryService {
         new OperationalMetrics.RdsConnectionBudget(activeConnections, safeBudget,
             safeBudget == 0 ? 0 : activeConnections * 100.0 / safeBudget),
         ecsHeadrooms);
+    log.info("event=platform_operational_metrics_완료 scope={}, academyCode={}, period={}", scope, academyCode, period);
+    return metrics;
   }
 
   public long activeMemberCount(String academyCode) {
+    log.info("event=platform_member_count_시작 academyCode={}", academyCode);
     tenantRegistry.get(academyCode);
-    return memberCountMetricsPort.activeMemberCount(List.of(academyCode));
+    long count = memberCountMetricsPort.activeMemberCount(List.of(academyCode));
+    log.info("event=platform_member_count_완료 academyCode={}, count={}", academyCode, count);
+    return count;
   }
 
   public StorageUsage storageUsage(String academyCode) {
+    log.info("event=platform_storage_usage_시작 academyCode={}", academyCode);
     AcademyRuntime academy = tenantRegistry.get(academyCode);
-    return new StorageUsage(academy.code(), databaseUsageMetricsPort.databaseBytes(List.of(academy.code())),
+    StorageUsage usage = new StorageUsage(academy.code(), databaseUsageMetricsPort.databaseBytes(List.of(academy.code())),
         storageUsagePort.s3Bytes(academy), Instant.now());
+    log.info("event=platform_storage_usage_완료 academyCode={}", academyCode);
+    return usage;
   }
 
   private List<AcademyRuntime> select(DashboardScope scope, String academyCode) {

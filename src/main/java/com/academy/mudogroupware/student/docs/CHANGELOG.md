@@ -1,5 +1,9 @@
 # 학생 관리 Changelog
 
+## 2026-08-15 - 학생 생성 시 플랜 한도 체크 추가
+
+- `StudentRepository`에 `countAll()`(소프트 삭제 제외 활성 학생 수) 메서드를 추가하고, `CreateStudentService`가 생성 직전에 플랜별 한도(무료 50명/유료 무제한)를 초과하면 429로 차단하도록 변경했다.
+
 ## 2026-08-10 - 소프트 삭제된 학생 자동 하드 삭제 배치 추가
 
 - `global`의 Global Retention Scheduler 보일러플레이트([global/docs/BOILER_PLATE.md](../../global/docs/BOILER_PLATE.md))를 처음으로 실제 구현했다. `RetentionJob`/`RetentionJobResult`/`GlobalRetentionScheduler`가 `global.scheduler`에 새로 생겼다.

@@ -45,7 +45,7 @@ class SearchSharedFileItemsServiceTest {
 
     @Test
     void excludesCandidatesOutsideRoot() {
-        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id", "academy@mudo.co.kr")));
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
         when(drivePort.searchByName("access-token", "keyword", null, 20)).thenReturn(new DrivePage(
                 List.of(file("inside-id"), file("outside-id")), null));
@@ -70,7 +70,7 @@ class SearchSharedFileItemsServiceTest {
 
     @Test
     void filtersOutNonFoldersWhenTypeIsFolder() {
-        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id", "academy@mudo.co.kr")));
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
         when(drivePort.searchByName("access-token", "keyword", null, 20)).thenReturn(new DrivePage(
                 List.of(folder("folder-id"), file("file-id")), null));
@@ -82,7 +82,7 @@ class SearchSharedFileItemsServiceTest {
 
     @Test
     void filtersOutFoldersWhenTypeIsFile() {
-        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id", "academy@mudo.co.kr")));
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
         when(drivePort.searchByName("access-token", "keyword", null, 20)).thenReturn(new DrivePage(
                 List.of(folder("folder-id"), file("file-id")), null));
@@ -94,7 +94,7 @@ class SearchSharedFileItemsServiceTest {
 
     @Test
     void continuesFetchingRawPagesUntilEnoughMatchesOrExhausted() {
-        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id", "academy@mudo.co.kr")));
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
         // 첫 페이지는 전부 루트 밖이라 필터링 후 0건이 되지만, hasNext가 있으니 다음 페이지를 더 가져와야 한다.
         when(drivePort.searchByName("access-token", "keyword", null, 2)).thenReturn(
@@ -114,7 +114,7 @@ class SearchSharedFileItemsServiceTest {
 
     @Test
     void reportsHasNextWhenRawPageHasMoreAfterReachingRequestedSize() {
-        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id", "academy@mudo.co.kr")));
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
         when(drivePort.searchByName("access-token", "keyword", null, 1)).thenReturn(
                 new DrivePage(List.of(file("inside-1")), "cursor-2"));

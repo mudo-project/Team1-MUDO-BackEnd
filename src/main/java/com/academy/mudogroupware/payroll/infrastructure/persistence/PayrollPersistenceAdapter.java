@@ -11,10 +11,16 @@ import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.YearMonth;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -24,6 +30,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 public class PayrollPersistenceAdapter implements PayrollRepository {
   private final PayrollJpaRepository repository;
   private final JdbcTemplate jdbc;
+  private final NamedParameterJdbcTemplate namedJdbc;
 
   @Override
   public Payroll save(Payroll payroll) {
@@ -109,6 +116,42 @@ public class PayrollPersistenceAdapter implements PayrollRepository {
     RuleSnapshot rule = jdbc.queryForObject(
         "select * from payroll_rule_snapshot where payroll_id = ?", this::rule, payrollId);
     return new SnapshotBundle(attendance, compensations, rule);
+  }
+
+  @Override
+  public Map<Long, SnapshotBundle> findSnapshots(Set<Long> payrollIds) {
+    if (payrollIds.isEmpty()) return Map.of();
+    var parameters = new MapSqlParameterSource("payrollIds", payrollIds);
+    Map<Long, AttendanceSnapshot> attendances = new LinkedHashMap<>();
+    var attendanceRows = namedJdbc.query("select * from payroll_attendance_snapshot "
+            + "where payroll_id in (:payrollIds)", parameters,
+        (rs, row) -> Map.entry(rs.getLong("payroll_id"), attendance(rs, row)));
+    for (var row : attendanceRows) attendances.put(row.getKey(), row.getValue());
+    Map<Long, List<CompensationSnapshot>> compensations = new LinkedHashMap<>();
+    var compensationRows = namedJdbc.query("select * from payroll_compensation_snapshot "
+            + "where payroll_id in (:payrollIds) order by payroll_id, applied_from", parameters,
+        (rs, row) -> Map.entry(rs.getLong("payroll_id"), compensation(rs, row)));
+    for (var row : compensationRows) {
+      compensations.computeIfAbsent(row.getKey(), ignored -> new ArrayList<>())
+          .add(row.getValue());
+    }
+    Map<Long, RuleSnapshot> rules = new LinkedHashMap<>();
+    var ruleRows = namedJdbc.query(
+        "select * from payroll_rule_snapshot where payroll_id in (:payrollIds)", parameters,
+        (rs, row) -> Map.entry(rs.getLong("payroll_id"), rule(rs, row)));
+    for (var row : ruleRows) rules.put(row.getKey(), row.getValue());
+    Map<Long, SnapshotBundle> result = new LinkedHashMap<>();
+    for (Long payrollId : payrollIds) {
+      AttendanceSnapshot attendance = attendances.get(payrollId);
+      RuleSnapshot rule = rules.get(payrollId);
+      if (attendance == null || rule == null) {
+        throw new PayrollException(PayrollErrorCode.PAYROLL_REFERENCE_DATA_MISSING,
+            "급여 Snapshot을 찾을 수 없습니다.");
+      }
+      result.put(payrollId, new SnapshotBundle(attendance,
+          compensations.getOrDefault(payrollId, List.of()), rule));
+    }
+    return result;
   }
 
   private Payroll toDomain(PayrollJpaEntity e) {

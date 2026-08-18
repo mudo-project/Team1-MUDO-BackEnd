@@ -27,6 +27,7 @@ public class WeeklyAttendanceQueryAdapter implements WeeklyAttendanceQueryPort {
              AND ar.work_date BETWEEN ? AND ?
             WHERE u.status = 'ACTIVE'
               AND u.id <> ?
+              AND NOT (u.account_type = 'ADMIN' AND u.admin_scope = 'PLATFORM')
             ORDER BY u.name ASC, u.id ASC, ar.work_date ASC
             """;
 

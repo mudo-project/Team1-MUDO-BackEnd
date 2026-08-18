@@ -59,13 +59,22 @@ public class NoticeEntity {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    @Setter
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
+    @Setter
+    @Column(name = "retention_until")
+    private LocalDateTime retentionUntil;
+
     @OneToMany(mappedBy = "notice", cascade = CascadeType.ALL, orphanRemoval = true)
     @BatchSize(size = 100)
     private List<NoticeAttachmentEntity> attachments = new ArrayList<>();
 
     @Builder
     private NoticeEntity(Long id, Long authorUserId, String title, String content, boolean pinned,
-                          long viewCount, LocalDateTime createdAt, LocalDateTime updatedAt) {
+                          long viewCount, LocalDateTime createdAt, LocalDateTime updatedAt,
+                          LocalDateTime deletedAt, LocalDateTime retentionUntil) {
         this.id = id;
         this.authorUserId = authorUserId;
         this.title = title;
@@ -74,6 +83,8 @@ public class NoticeEntity {
         this.viewCount = viewCount;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.deletedAt = deletedAt;
+        this.retentionUntil = retentionUntil;
     }
 
     public void addAttachment(NoticeAttachmentEntity attachment) {

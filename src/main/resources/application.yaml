@@ -6,21 +6,6 @@ spring:
     group:
       prod:
         - mailgun
-  mail:
-    host: smtp.mailgun.org
-    port: 587
-    username: ${MAILGUN_SMTP_USERNAME:}
-    password: ${MAILGUN_SMTP_PASSWORD:}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
-            required: true
-          connectiontimeout: ${MAIL_SMTP_CONNECTION_TIMEOUT_MS:5000}
-          timeout: ${MAIL_SMTP_READ_TIMEOUT_MS:10000}
-          writetimeout: ${MAIL_SMTP_WRITE_TIMEOUT_MS:10000}
   flyway:
     locations: classpath:db/migration
     baseline-on-migrate: true
@@ -38,6 +23,14 @@ spring:
       max-file-size: 100MB
       max-request-size: 100MB
 
+server:
+  tomcat:
+    mbeanregistry:
+      # Tomcat 스레드풀·글로벌 요청 처리량(바이트) 메트릭은 Tomcat의 JMX MBean에서 값을 읽어오는데,
+      # 기본값(false)이면 이 MBean 자체가 등록되지 않아 tomcat_threads_*, tomcat_global_* 메트릭이
+      # /actuator/prometheus에 아예 안 잡힌다. local/prod 둘 다 항상 켜져 있어야 해서 공통에 둔다.
+      enabled: true
+
 security:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:8080}
@@ -46,7 +39,18 @@ app:
   mail:
     from: ${MAIL_FROM:no-reply@mg.market-app.org}
     webhook-signing-key: ${MAILGUN_WEBHOOK_SIGNING_KEY:}
+    api-base-url: ${MAILGUN_API_BASE_URL:https://api.mailgun.net}
+    domain: ${MAILGUN_DOMAIN:mg.market-app.org}
+    api-key: ${MAILGUN_API_KEY:}
+    connect-timeout: ${MAILGUN_CONNECT_TIMEOUT:PT5S}
+    read-timeout: ${MAILGUN_READ_TIMEOUT:PT10S}
     sending-timeout: ${MAIL_SENDING_TIMEOUT:PT15M}
+    dispatch-batch-size: ${MAIL_DISPATCH_BATCH_SIZE:20}
+    max-attempts: ${MAIL_MAX_ATTEMPTS:3}
+    retry-base-delay: ${MAIL_RETRY_BASE_DELAY:PT1M}
+    retry-max-delay: ${MAIL_RETRY_MAX_DELAY:PT30M}
+    reconcile-after: ${MAIL_RECONCILE_AFTER:PT10M}
+    reconcile-cooldown: ${MAIL_RECONCILE_COOLDOWN:PT5M}
   instance:
     tenant-id: ${TENANT_ID:local}
     plan: ${TENANT_PLAN:local}
@@ -73,3 +77,4 @@ platform:
     enabled: ${PLATFORM_DASHBOARD_ENABLED:false}
     prometheus-url: ${PLATFORM_DASHBOARD_PROMETHEUS_URL:http://monitoring.mudo.internal:9090}
     tenant-registry-json: '${PLATFORM_DASHBOARD_TENANT_REGISTRY_JSON:[]}'
+    tenant-directory-json: '${PLATFORM_TENANT_DIRECTORY_JSON:[]}'

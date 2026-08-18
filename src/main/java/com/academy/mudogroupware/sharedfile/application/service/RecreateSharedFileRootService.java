@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.academy.mudogroupware.google.application.usecase.GetGoogleAccessTokenUseCase;
+import com.academy.mudogroupware.google.application.usecase.GetGoogleAccountConnectionUseCase;
 import com.academy.mudogroupware.sharedfile.application.port.DriveItem;
 import com.academy.mudogroupware.sharedfile.application.port.SharedFileDrivePort;
 import com.academy.mudogroupware.sharedfile.application.query.SharedFileRootView;
@@ -30,6 +31,7 @@ public class RecreateSharedFileRootService implements RecreateSharedFileRootUseC
     private final SharedFileRootRepository sharedFileRootRepository;
     private final SharedFileDrivePort sharedFileDrivePort;
     private final GetGoogleAccessTokenUseCase getGoogleAccessTokenUseCase;
+    private final GetGoogleAccountConnectionUseCase getGoogleAccountConnectionUseCase;
 
     @Override
     public SharedFileRootView recreate() {
@@ -39,10 +41,13 @@ public class RecreateSharedFileRootService implements RecreateSharedFileRootUseC
         }
 
         String accessToken = getGoogleAccessTokenUseCase.getAccessToken();
+        String connectedGoogleEmail = getGoogleAccountConnectionUseCase.getConnection()
+                .orElseThrow(() -> new IllegalStateException("Google 계정 연동 정보를 찾을 수 없습니다."))
+                .googleEmail();
         DriveItem folder = sharedFileDrivePort.createRootFolder(accessToken, ROOT_FOLDER_NAME);
 
-        SharedFileRoot root = existing.orElseGet(() -> SharedFileRoot.ready(folder.id()));
-        existing.ifPresent(r -> r.replaceWith(folder.id()));
+        SharedFileRoot root = existing.orElseGet(() -> SharedFileRoot.ready(folder.id(), connectedGoogleEmail));
+        existing.ifPresent(r -> r.replaceWith(folder.id(), connectedGoogleEmail));
         save(root, accessToken, folder);
 
         return new SharedFileRootView(true, folder.id());

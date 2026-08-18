@@ -5,11 +5,53 @@ tenants:
     # 플랫폼 대시보드 조회 권한과 전체 테넌트 레지스트리는 이 Task에만 주입한다.
     platform_dashboard_host: true
     # 결제 플랜은 유료 엔드포인트·쿼터 메타데이터이며 Task 자원을 선택하지 않는다.
-    billing_plan: basic
+    billing_plan: paid
     runtime_profile: shared-default
     cell: cell-1
     service: mudo-prod-svc-academy-a
     task_family: mudo-prod-tenant-academy-a
     health_url: https://academy-a.ieum.store/actuator/health
+    # 프론트가 학원 코드로부터 실제 백엔드 API 호스트를 조회하는 공개 API(/api/public/tenants)에 쓰인다.
+    api_host: academy-a.ieum.store
+    s3_bucket: mudo-prod-staff-635249349258
+    finance_s3_bucket: mudo-prod-finance-635249349258
+  - code: academy-b
+    # 온보딩 리허설 리소스는 보존하되 평상시에는 Task를 실행하지 않는다.
+    # 재활성화 시 enabled: true 전환과 ECS desired-count 1 적용을 함께 수행한다.
+    enabled: false
+    billing_plan: basic
+    runtime_profile: shared-default
+    cell: cell-1
+    service: mudo-prod-svc-academy-b
+    task_family: mudo-prod-tenant-academy-b
+    health_url: https://academy-b.ieum.store/actuator/health
+    api_host: academy-b.ieum.store
+    s3_bucket: mudo-prod-staff-635249349258
+    finance_s3_bucket: mudo-prod-finance-635249349258
+  - code: academy-d
+    # 2026-08-14 실운영 온보딩(사이드A). 표시명/서브도메인은 sidea-test.ieum.store.
+    # AWS DB·SSM·S3·Target Group·ECS Service 준비 완료. enabled: true.
+    enabled: true
+    billing_plan: basic
+    runtime_profile: shared-default
+    cell: cell-1
+    service: mudo-prod-svc-academy-d
+    task_family: mudo-prod-tenant-academy-d
+    health_url: https://sidea-test.ieum.store/actuator/health
+    # 코드는 academy-d지만 2026-08-14 온보딩 시 실제 서브도메인은 sidea-test로 붙었다.
+    api_host: sidea-test.ieum.store
+    s3_bucket: mudo-prod-staff-635249349258
+    finance_s3_bucket: mudo-prod-finance-635249349258
+  - code: academy-c
+    # 온보딩 리허설 리소스는 보존하되 평상시에는 Task를 실행하지 않는다.
+    # 재활성화 시 enabled: true 전환과 ECS desired-count 1 적용을 함께 수행한다.
+    enabled: false
+    billing_plan: basic
+    runtime_profile: shared-default
+    cell: cell-1
+    service: mudo-prod-svc-academy-c
+    task_family: mudo-prod-tenant-academy-c
+    health_url: https://academy-c.ieum.store/actuator/health
+    api_host: academy-c.ieum.store
     s3_bucket: mudo-prod-staff-635249349258
     finance_s3_bucket: mudo-prod-finance-635249349258

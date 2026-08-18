@@ -16,9 +16,11 @@ import com.academy.mudogroupware.sharedfile.domain.model.SharedFileRoot;
 import com.academy.mudogroupware.sharedfile.domain.repository.SharedFileRootRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UploadSharedFileService implements UploadSharedFileUseCase {
 
     private static final int MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
@@ -34,6 +36,8 @@ public class UploadSharedFileService implements UploadSharedFileUseCase {
     // 동일한 규칙이다.
     @Override
     public SharedFileItemView upload(String parentId, String filename, String contentType, byte[] content) {
+        log.info("event=shared_file_upload_시작 parentId={} filename={} contentType={} bytes={}",
+                parentId, filename, contentType, content.length);
         if (content.length > MAX_UPLOAD_BYTES) {
             throw new SharedFileUploadTooLargeException();
         }
@@ -55,6 +59,9 @@ public class UploadSharedFileService implements UploadSharedFileUseCase {
         }
 
         DriveItem uploaded = sharedFileDrivePort.upload(accessToken, targetParentId, filename, contentType, content);
-        return SharedFileItemViewMapper.toView(uploaded);
+        SharedFileItemView result = SharedFileItemViewMapper.toView(uploaded);
+        log.info("event=shared_file_upload_완료 itemId={} filename={} bytes={}",
+                result.id(), result.name(), content.length);
+        return result;
     }
 }

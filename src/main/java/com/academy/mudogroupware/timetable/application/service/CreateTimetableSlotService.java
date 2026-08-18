@@ -13,7 +13,9 @@ import com.academy.mudogroupware.timetable.domain.repository.TimetableSetReposit
 import com.academy.mudogroupware.timetable.domain.repository.TimetableSlotRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -24,7 +26,10 @@ public class CreateTimetableSlotService implements CreateTimetableSlotUseCase {
 
     @Override
     public Long createSlot(CreateTimetableSlotCommand command) {
-        TimetableSet set = timetableSetRepository.findById(command.timetableSetId())
+        log.info("event=timetable_slot_create_시작 timetableSetId={}, classroomCode={}",
+                command.timetableSetId(), command.classroomCode());
+
+        TimetableSet set = timetableSetRepository.findByIdForUpdate(command.timetableSetId())
                 .orElseThrow(TimetableSetNotFoundException::new);
 
         TimetableSlot candidate = TimetableSlot.create(
@@ -39,6 +44,8 @@ public class CreateTimetableSlotService implements CreateTimetableSlotUseCase {
             throw new ClassroomTimeConflictException();
         }
 
-        return timetableSlotRepository.save(candidate).getId();
+        Long slotId = timetableSlotRepository.save(candidate).getId();
+        log.info("event=timetable_slot_create_완료 timetableSetId={}, slotId={}", set.getId(), slotId);
+        return slotId;
     }
 }

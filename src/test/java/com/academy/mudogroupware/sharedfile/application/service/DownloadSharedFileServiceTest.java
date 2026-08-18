@@ -46,7 +46,7 @@ class DownloadSharedFileServiceTest {
 
     @Test
     void throwsWhenItemIsOutsideRoot() {
-        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id", "academy@mudo.co.kr")));
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
         doThrow(new SharedFileOutOfRootException("outside-id"))
                 .when(rootGuard).requireDescendant("access-token", "root-id", "outside-id");
@@ -60,7 +60,7 @@ class DownloadSharedFileServiceTest {
 
     @Test
     void downloadsOriginalWhenFormatIsAbsent() {
-        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id", "academy@mudo.co.kr")));
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
         when(drivePort.downloadOriginal("access-token", "item-id"))
                 .thenReturn(new DriveBinary("bytes".getBytes(), "원본.pdf", "application/pdf"));
@@ -73,7 +73,7 @@ class DownloadSharedFileServiceTest {
 
     @Test
     void throwsWhenFormatRequestedForRegularFile() {
-        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id", "academy@mudo.co.kr")));
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
         when(drivePort.getItem("access-token", "item-id")).thenReturn(Optional.of(
                 new DriveItem("item-id", "원본.pdf", "application/pdf", List.of("root-id"), null, true, null, false)));
@@ -84,7 +84,7 @@ class DownloadSharedFileServiceTest {
 
     @Test
     void throwsWhenFormatDoesNotMatchWorkspaceType() {
-        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id", "academy@mudo.co.kr")));
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
         when(drivePort.getItem("access-token", "docs-id")).thenReturn(Optional.of(
                 new DriveItem("docs-id", "문서", "application/vnd.google-apps.document",
@@ -96,7 +96,7 @@ class DownloadSharedFileServiceTest {
 
     @Test
     void exportsWorkspaceFileInRequestedFormat() {
-        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id")));
+        when(rootRepository.find()).thenReturn(Optional.of(SharedFileRoot.ready("root-id", "academy@mudo.co.kr")));
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
         when(drivePort.getItem("access-token", "sheet-id")).thenReturn(Optional.of(
                 new DriveItem("sheet-id", "시트", "application/vnd.google-apps.spreadsheet",

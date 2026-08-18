@@ -12,8 +12,12 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class PayrollServiceLogAspect {
 
-  @Around("execution(public * com.academy.mudogroupware.payroll.application.service..*(..))")
+  @Around(
+      "execution(public * com.academy.mudogroupware.payroll.application.service..*(..)) "
+          + "&& !within(com.academy.mudogroupware.payroll.application.service.PayrollStatementEmailPolicy)")
   public Object logServiceEvent(ProceedingJoinPoint joinPoint) throws Throwable {
+    if (isEmailDispatch(joinPoint)) return joinPoint.proceed();
+
     String action = snake(joinPoint.getSignature().getDeclaringType().getSimpleName()) + "_"
         + snake(joinPoint.getSignature().getName());
     Object key = firstSafeKey(joinPoint.getArgs());
@@ -27,6 +31,12 @@ public class PayrollServiceLogAspect {
           action, key, e.getClass().getSimpleName());
       throw e;
     }
+  }
+
+  private boolean isEmailDispatch(ProceedingJoinPoint joinPoint) {
+    return "PayrollStatementEmailDispatchService".equals(
+        joinPoint.getSignature().getDeclaringType().getSimpleName())
+        && "dispatch".equals(joinPoint.getSignature().getName());
   }
 
   private Object firstSafeKey(Object[] arguments) {

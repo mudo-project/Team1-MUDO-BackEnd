@@ -3,8 +3,10 @@ package com.academy.mudogroupware.approval.domain.model;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import com.academy.mudogroupware.approval.domain.exception.ApprovalErrorCode;
 import com.academy.mudogroupware.approval.domain.exception.ApprovalException;
@@ -22,11 +24,17 @@ public final class ApprovalDocument {
     private ApprovalStatus status;
     private final LocalDateTime createdAt;
     private LocalDateTime resubmittedAt;
+    private final ApprovalRetentionPolicy retentionPolicy;
+    private final LocalDateTime retentionUntil;
+    private final boolean legalHold;
+    private final LocalDateTime archivedAt;
 
     private ApprovalDocument(Long id, Long templateId, ApprovalDocumentSourceType sourceType,
                               String title, ApprovalContent content,
                               Long creatorId, List<ApprovalDocumentLine> lines, List<ApprovalAttachment> attachments,
-                              ApprovalStatus status, LocalDateTime createdAt, LocalDateTime resubmittedAt) {
+                              ApprovalStatus status, LocalDateTime createdAt, LocalDateTime resubmittedAt,
+                              ApprovalRetentionPolicy retentionPolicy, LocalDateTime retentionUntil,
+                              boolean legalHold, LocalDateTime archivedAt) {
         if (title == null || title.isBlank()) {
             throw new ApprovalException(ApprovalErrorCode.TITLE_REQUIRED);
         }
@@ -42,9 +50,15 @@ public final class ApprovalDocument {
         if (createdAt == null) {
             throw new IllegalArgumentException("createdAt must not be null");
         }
+        ApprovalDocumentSourceType resolvedSourceType = sourceType == null
+                ? ApprovalDocumentSourceType.GENERAL
+                : sourceType;
+        ApprovalRetentionPolicy resolvedRetentionPolicy = retentionPolicy == null
+                ? ApprovalRetentionPolicy.fromSourceType(resolvedSourceType)
+                : retentionPolicy;
         this.id = id;
         this.templateId = templateId;
-        this.sourceType = sourceType == null ? ApprovalDocumentSourceType.GENERAL : sourceType;
+        this.sourceType = resolvedSourceType;
         this.title = title;
         this.content = content;
         this.creatorId = creatorId;
@@ -53,6 +67,12 @@ public final class ApprovalDocument {
         this.status = status;
         this.createdAt = createdAt;
         this.resubmittedAt = resubmittedAt;
+        this.retentionPolicy = resolvedRetentionPolicy;
+        this.retentionUntil = retentionUntil == null
+                ? resolvedRetentionPolicy.calculateRetentionUntil(createdAt)
+                : retentionUntil;
+        this.legalHold = legalHold;
+        this.archivedAt = archivedAt;
     }
 
     public static ApprovalDocument create(Long templateId, String title, ApprovalContent content,
@@ -65,11 +85,12 @@ public final class ApprovalDocument {
     public static ApprovalDocument create(Long templateId, ApprovalDocumentSourceType sourceType,
                                            String title, ApprovalContent content, Long creatorId,
                                            List<Long> approverIds, List<Long> fileIds, LocalDateTime now) {
+        validateApprovalLineRules(creatorId, approverIds);
         List<ApprovalAttachment> attachments = fileIds != null
                 ? fileIds.stream().map(ApprovalAttachment::create).toList()
                 : List.of();
         return new ApprovalDocument(null, templateId, sourceType, title, content, creatorId, buildLines(approverIds),
-                attachments, ApprovalStatus.IN_PROGRESS, now, null);
+                attachments, ApprovalStatus.IN_PROGRESS, now, null, null, null, false, null);
     }
 
     public static ApprovalDocument restore(Long id, Long templateId, String title,
@@ -87,7 +108,19 @@ public final class ApprovalDocument {
                                             ApprovalStatus status, LocalDateTime createdAt,
                                             LocalDateTime resubmittedAt) {
         return new ApprovalDocument(id, templateId, sourceType, title, content, creatorId, lines, attachments,
-                status, createdAt, resubmittedAt);
+                status, createdAt, resubmittedAt, null, null, false, null);
+    }
+
+    public static ApprovalDocument restore(Long id, Long templateId,
+                                            ApprovalDocumentSourceType sourceType, String title,
+                                            ApprovalContent content, Long creatorId,
+                                            List<ApprovalDocumentLine> lines, List<ApprovalAttachment> attachments,
+                                            ApprovalStatus status, LocalDateTime createdAt,
+                                            LocalDateTime resubmittedAt, ApprovalRetentionPolicy retentionPolicy,
+                                            LocalDateTime retentionUntil, boolean legalHold,
+                                            LocalDateTime archivedAt) {
+        return new ApprovalDocument(id, templateId, sourceType, title, content, creatorId, lines, attachments,
+                status, createdAt, resubmittedAt, retentionPolicy, retentionUntil, legalHold, archivedAt);
     }
 
     public void markResubmitted(LocalDateTime now) {
@@ -136,6 +169,7 @@ public final class ApprovalDocument {
         if (anyDecided) {
             throw new ApprovalException(ApprovalErrorCode.LINES_ALREADY_IN_PROGRESS);
         }
+        validateApprovalLineRules(creatorId, approverIds);
         List<ApprovalDocumentLine> newLines = buildLines(approverIds);
         if (newLines.isEmpty()) {
             throw new ApprovalException(ApprovalErrorCode.LINES_REQUIRED);
@@ -171,6 +205,21 @@ public final class ApprovalDocument {
 
     public Optional<ApprovalAttachment> findAttachmentByFileId(Long fileId) {
         return attachments.stream().filter(attachment -> attachment.getFileId().equals(fileId)).findFirst();
+    }
+
+    private static void validateApprovalLineRules(Long creatorId, List<Long> approverIds) {
+        if (approverIds == null) {
+            return;
+        }
+        if (creatorId != null && approverIds.contains(creatorId)) {
+            throw new ApprovalException(ApprovalErrorCode.APPROVER_SELF_NOT_ALLOWED);
+        }
+        Set<Long> uniqueApproverIds = new HashSet<>();
+        for (Long approverId : approverIds) {
+            if (!uniqueApproverIds.add(approverId)) {
+                throw new ApprovalException(ApprovalErrorCode.DUPLICATE_APPROVER);
+            }
+        }
     }
 
     private static List<ApprovalDocumentLine> buildLines(List<Long> approverIds) {
@@ -249,5 +298,21 @@ public final class ApprovalDocument {
 
     public LocalDateTime getResubmittedAt() {
         return resubmittedAt;
+    }
+
+    public ApprovalRetentionPolicy getRetentionPolicy() {
+        return retentionPolicy;
+    }
+
+    public LocalDateTime getRetentionUntil() {
+        return retentionUntil;
+    }
+
+    public boolean isLegalHold() {
+        return legalHold;
+    }
+
+    public LocalDateTime getArchivedAt() {
+        return archivedAt;
     }
 }

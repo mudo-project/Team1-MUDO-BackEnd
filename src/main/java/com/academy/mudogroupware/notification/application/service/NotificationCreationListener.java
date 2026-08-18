@@ -48,13 +48,17 @@ public class NotificationCreationListener {
                 recipientUserId,
                 NotificationType.WORKSPACE_TASK_COMMENT_MENTION.name(),
                 event.taskId(),
-                actorName + "님이 댓글에서 회원님을 언급했습니다"));
+                actorName + "님이 댓글에서 회원님을 언급했습니다",
+                // target_id는 taskId라 같은 업무의 다른 댓글에서 또 멘션되면 겹칠 수 있어,
+                // 멱등키는 실제로 유일해야 하는 단위(commentId+recipientUserId)로 따로 계산한다.
+                "WORKSPACE_TASK_COMMENT_MENTION:" + event.commentId() + ":" + recipientUserId));
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handle(ApprovalLineActivatedEvent event) {
         create(event.approverId(), NotificationType.APPROVAL_LINE_ACTIVATED.name(), event.documentId(),
-                "결재 문서 [" + event.documentTitle() + "] 결재 차례가 되었습니다");
+                "결재 문서 [" + event.documentTitle() + "] 결재 차례가 되었습니다",
+                "APPROVAL_LINE_ACTIVATED:" + event.documentId() + ":" + event.approverId());
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -65,20 +69,23 @@ public class NotificationCreationListener {
             case CANCELLED -> "결재 문서가 취소되었습니다";
             case IN_PROGRESS -> throw new IllegalArgumentException("approval document is not decided");
         };
-        create(event.requesterId(), NotificationType.APPROVAL_DOCUMENT_DECIDED.name(), event.documentId(), message);
+        create(event.requesterId(), NotificationType.APPROVAL_DOCUMENT_DECIDED.name(), event.documentId(), message,
+                "APPROVAL_DOCUMENT_DECIDED:" + event.documentId() + ":" + event.requesterId());
     }
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void handle(RevenueReportGeneratedEvent event) {
         create(event.recipientUserId(), NotificationType.REVENUE_REPORT_GENERATED.name(), event.reportId(),
-                event.targetMonth().format(TARGET_MONTH_FORMATTER) + " 매출 리포트가 생성되었습니다");
+                event.targetMonth().format(TARGET_MONTH_FORMATTER) + " 매출 리포트가 생성되었습니다",
+                "REVENUE_REPORT_GENERATED:" + event.reportId() + ":" + event.recipientUserId());
     }
 
     // 실시간 전송(WorkspaceWebSocketNotifier/ApprovalWebSocketNotifier)에 영향을 주지 않도록
     // 저장 실패는 여기서 흡수하고 로그만 남긴다.
-    private void create(Long recipientUserId, String type, Long targetId, String message) {
+    private void create(Long recipientUserId, String type, Long targetId, String message, String idempotencyKey) {
         try {
-            createNotificationUseCase.create(new CreateNotificationCommand(recipientUserId, type, targetId, message));
+            createNotificationUseCase.create(
+                    new CreateNotificationCommand(recipientUserId, type, targetId, message, idempotencyKey));
         } catch (RuntimeException exception) {
             log.error("event=notification_persist_실패 recipientUserId={} type={} targetId={}",
                     recipientUserId, type, targetId, exception);

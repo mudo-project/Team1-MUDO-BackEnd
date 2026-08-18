@@ -134,7 +134,7 @@ def validate_manifests(
             raise DeploymentError(f"{location}.cell이 cells.yml에 없습니다.")
         if not isinstance(tenant.get("enabled"), bool):
             raise DeploymentError(f"{location}.enabled는 true 또는 false여야 합니다.")
-        for field in ("service", "task_family", "health_url", "s3_bucket", "finance_s3_bucket"):
+        for field in ("service", "task_family", "health_url", "s3_bucket", "finance_s3_bucket", "api_host"):
             if not isinstance(tenant.get(field), str) or not tenant[field].strip():
                 raise DeploymentError(f"{location}.{field}가 필요합니다.")
         if tenant["enabled"]:
@@ -237,6 +237,16 @@ def render_platform_tenant_registry(
     return json.dumps(registry, separators=(",", ":"))
 
 
+def render_public_tenant_directory(tenants: list[dict[str, Any]]) -> str:
+    """Render the code→apiHost lookup consumed by the public /api/public/tenants API.
+
+    Frontend가 로그인 전에 이 값을 조회하므로, 운영 인프라 세부값(ECS/RDS 등)이 담긴
+    render_platform_tenant_registry와는 별도로 공개 가능한 최소 정보만 담는다.
+    """
+    directory = [{"code": tenant["code"], "apiHost": tenant["api_host"]} for tenant in tenants]
+    return json.dumps(directory, separators=(",", ":"))
+
+
 def render_app_task(
     tenant: dict[str, Any],
     profile: dict[str, Any],
@@ -245,6 +255,7 @@ def render_app_task(
     app_image: str,
     deployment_sha: str,
     platform_tenant_registry_json: str | None = None,
+    public_tenant_directory_json: str | None = None,
 ) -> dict[str, Any]:
     with (INFRA_ROOT / "ecs/app-task-definition.template.json").open(encoding="utf-8") as stream:
         task = json.load(stream)
@@ -319,6 +330,10 @@ def render_app_task(
                 "value": platform_tenant_registry_json,
             },
         ])
+    if public_tenant_directory_json is not None:
+        container["environment"].append(
+            {"name": "PLATFORM_TENANT_DIRECTORY_JSON", "value": public_tenant_directory_json},
+        )
 
     secret_names = (
         "DB_URL",
@@ -332,8 +347,7 @@ def render_app_task(
         "GOOGLE_CLIENT_SECRET",
         "GOOGLE_REDIRECT_URI",
         "GOOGLE_OAUTH_FRONTEND_REDIRECT_URI",
-        "MAILGUN_SMTP_USERNAME",
-        "MAILGUN_SMTP_PASSWORD",
+        "MAILGUN_API_KEY",
         "MAIL_FROM",
         "MAILGUN_WEBHOOK_SIGNING_KEY",
         # 결재 첨부파일 AI 요약/구조화 추출(approval.GeminiSummarizerAdapter,
@@ -345,6 +359,10 @@ def render_app_task(
         "SOLAPI_API_KEY",
         "SOLAPI_API_SECRET",
         "SOLAPI_SENDER_NUMBER",
+        # Next 서버 기반 클라이언트 IP 검증(ClientIpResolver)이 요구하는 HMAC 공유 시크릿.
+        # application-prod.yaml에 기본값 없이 필수로 선언돼 있어, 없으면 앱 기동 자체가
+        # UnsatisfiedDependencyException으로 실패한다.
+        "CLIENT_IP_SIGNING_SECRET",
     )
     container["secrets"] = [
         {"name": name, "valueFrom": parameter_arn(region, account_id, code, name)}
@@ -514,6 +532,7 @@ def deploy(
 ) -> None:
     aws = AwsDeployment(args.region)
     platform_tenant_registry_json = render_platform_tenant_registry(tenants, cells)
+    public_tenant_directory_json = render_public_tenant_directory(tenants)
     for tenant in tenants:
         code = tenant["code"]
         cell = cells[tenant["cell"]]
@@ -534,6 +553,7 @@ def deploy(
             args.app_image,
             args.deployment_sha,
             platform_tenant_registry_json if tenant.get("platform_dashboard_host") else None,
+            public_tenant_directory_json if tenant.get("platform_dashboard_host") else None,
         )
         new_task_arn = aws.register_task(app_task)
         try:

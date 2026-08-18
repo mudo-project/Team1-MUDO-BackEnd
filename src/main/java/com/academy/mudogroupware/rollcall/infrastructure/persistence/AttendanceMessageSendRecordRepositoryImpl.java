@@ -8,6 +8,7 @@ import java.util.List;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.academy.mudogroupware.rollcall.domain.model.AttendanceMessageSendRecord;
 import com.academy.mudogroupware.rollcall.domain.model.AttendanceMessageSendStatus;
@@ -80,6 +81,7 @@ public class AttendanceMessageSendRecordRepositoryImpl implements AttendanceMess
     }
 
     @Override
+    @Transactional
     public AttendanceMessageSendRecord save(AttendanceMessageSendRecord record) {
         AttendanceMessageSendRecordEntity entity = attendanceMessageSendRecordJpaRepository
                 .getReferenceById(record.getId());

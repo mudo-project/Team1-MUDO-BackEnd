@@ -2,6 +2,7 @@ package com.academy.mudogroupware.memo.infrastructure.persistence;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -9,11 +10,11 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import com.academy.mudogroupware.memo.domain.model.MemoColor;
-
 import jakarta.persistence.LockModeType;
 
 public interface MemoJpaRepository extends JpaRepository<MemoEntity, Long> {
+
+    Optional<MemoEntity> findFirstByUserIdOrderByCreatedAtDescIdDesc(Long userId);
 
     List<MemoEntity> findAllByUserIdOrderByCreatedAtDescIdDesc(Long userId);
 
@@ -33,7 +34,7 @@ public interface MemoJpaRepository extends JpaRepository<MemoEntity, Long> {
 
     @Modifying
     @Query("UPDATE MemoEntity m SET m.color = :color, m.updatedAt = :updatedAt WHERE m.id = :id")
-    void updateColor(@Param("id") Long id, @Param("color") MemoColor color,
+    void updateColor(@Param("id") Long id, @Param("color") String color,
                       @Param("updatedAt") LocalDateTime updatedAt);
 
     @Modifying

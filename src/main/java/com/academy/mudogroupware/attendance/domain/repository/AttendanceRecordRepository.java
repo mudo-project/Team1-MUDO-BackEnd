@@ -22,6 +22,9 @@ public interface AttendanceRecordRepository {
     Optional<AttendanceRecord> findByUserIdAndWorkDate(
             Long userId, LocalDate workDate);
 
+    Optional<AttendanceRecord> findByUserIdAndWorkDateForUpdate(
+            Long userId, LocalDate workDate);
+
     List<AttendanceRecord> findByUserIdAndWorkDateBetween(
             Long userId, LocalDate startDate, LocalDate endDate);
 

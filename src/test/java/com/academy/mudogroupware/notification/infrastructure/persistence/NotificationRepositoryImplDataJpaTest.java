@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import com.academy.mudogroupware.global.domain.common.page.PageResult;
 import com.academy.mudogroupware.global.infrastructure.config.TimeConfig;
@@ -28,9 +29,9 @@ class NotificationRepositoryImplDataJpaTest {
     @Test
     void savesAndListsNewestFirst() {
         notificationRepository.save(Notification.create(
-                RECIPIENT_ID, NotificationType.APPROVAL_LINE_ACTIVATED.name(), 1L, "첫 번째"));
+                RECIPIENT_ID, NotificationType.APPROVAL_LINE_ACTIVATED.name(), 1L, "첫 번째", "KEY-1"));
         notificationRepository.save(Notification.create(
-                RECIPIENT_ID, NotificationType.APPROVAL_LINE_ACTIVATED.name(), 2L, "두 번째"));
+                RECIPIENT_ID, NotificationType.APPROVAL_LINE_ACTIVATED.name(), 2L, "두 번째", "KEY-2"));
 
         PageResult<Notification> result = notificationRepository.findAllByRecipientUserId(RECIPIENT_ID, 0, 20);
 
@@ -42,9 +43,9 @@ class NotificationRepositoryImplDataJpaTest {
     @Test
     void countsOnlyUnread() {
         Notification saved = notificationRepository.save(Notification.create(
-                RECIPIENT_ID, NotificationType.APPROVAL_LINE_ACTIVATED.name(), 1L, "안읽음"));
+                RECIPIENT_ID, NotificationType.APPROVAL_LINE_ACTIVATED.name(), 1L, "안읽음", "KEY-1"));
         notificationRepository.save(Notification.create(
-                RECIPIENT_ID, NotificationType.APPROVAL_LINE_ACTIVATED.name(), 2L, "읽음 처리될 것"));
+                RECIPIENT_ID, NotificationType.APPROVAL_LINE_ACTIVATED.name(), 2L, "읽음 처리될 것", "KEY-2"));
         notificationRepository.markAsRead(saved.getId(), RECIPIENT_ID, LocalDateTime.now());
         // save()가 반환한 두 번째 알림은 읽음 처리하지 않아 안읽음 1건만 남는다.
 
@@ -56,7 +57,7 @@ class NotificationRepositoryImplDataJpaTest {
     @Test
     void deleteOfOthersNotificationThrowsNotFound() {
         Notification saved = notificationRepository.save(Notification.create(
-                RECIPIENT_ID, NotificationType.APPROVAL_LINE_ACTIVATED.name(), 1L, "본인 알림"));
+                RECIPIENT_ID, NotificationType.APPROVAL_LINE_ACTIVATED.name(), 1L, "본인 알림", "KEY-1"));
 
         assertThatThrownBy(() -> notificationRepository.delete(saved.getId(), 999L, LocalDateTime.now()))
                 .isInstanceOf(NotificationException.class);
@@ -65,9 +66,9 @@ class NotificationRepositoryImplDataJpaTest {
     @Test
     void deleteAllReadRemovesOnlyReadOnes() {
         Notification unread = notificationRepository.save(Notification.create(
-                RECIPIENT_ID, NotificationType.APPROVAL_LINE_ACTIVATED.name(), 1L, "안읽음"));
+                RECIPIENT_ID, NotificationType.APPROVAL_LINE_ACTIVATED.name(), 1L, "안읽음", "KEY-1"));
         Notification read = notificationRepository.save(Notification.create(
-                RECIPIENT_ID, NotificationType.APPROVAL_LINE_ACTIVATED.name(), 2L, "읽음"));
+                RECIPIENT_ID, NotificationType.APPROVAL_LINE_ACTIVATED.name(), 2L, "읽음", "KEY-2"));
         notificationRepository.markAsRead(read.getId(), RECIPIENT_ID, LocalDateTime.now());
 
         int deletedCount = notificationRepository.deleteAllReadByRecipientUserId(RECIPIENT_ID, LocalDateTime.now());
@@ -76,5 +77,15 @@ class NotificationRepositoryImplDataJpaTest {
         assertThat(notificationRepository.findAllByRecipientUserId(RECIPIENT_ID, 0, 20).content())
                 .extracting(Notification::getId)
                 .containsExactly(unread.getId());
+    }
+
+    @Test
+    void savingDuplicateIdempotencyKeyThrowsDataIntegrityViolation() {
+        notificationRepository.save(Notification.create(
+                RECIPIENT_ID, NotificationType.APPROVAL_LINE_ACTIVATED.name(), 1L, "첫 저장", "DUP-KEY"));
+
+        assertThatThrownBy(() -> notificationRepository.save(Notification.create(
+                RECIPIENT_ID, NotificationType.APPROVAL_LINE_ACTIVATED.name(), 1L, "재시도로 다시 들어옴", "DUP-KEY")))
+                .isInstanceOf(DataIntegrityViolationException.class);
     }
 }

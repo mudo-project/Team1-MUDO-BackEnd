@@ -1,0 +1,36 @@
+# CI 배포 전용 런타임 이미지: deploy job의 "Build and test application" 스텝이 이미 만든
+# build/libs/*.jar를 그대로 복사만 한다. 컨테이너 안에서 Gradle을 다시 컴파일하지 않는다.
+# 로컬 개발용 멀티스테이지 Dockerfile은 그대로 유지하고, 운영 배포 워크플로만 이 파일을 사용한다.
+FROM eclipse-temurin:17-jre-jammy
+
+# curl은 컨테이너 헬스체크에 사용한다.
+# 애플리케이션은 root가 아닌 UID 10001 사용자로 실행한다.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --system --gid 10001 app \
+    && useradd --system --uid 10001 --gid app --home-dir /app app
+
+WORKDIR /app
+
+# Logback이 ./logs/mudo-groupware.log를 쓸 수 있도록 미리 만들어둔다.
+RUN mkdir -p /app/logs && chown app:app /app/logs
+
+# deploy job이 만든 JAR를 build-contexts(prebuilt-jar)로 전달받아 복사한다.
+# 소스와 빌드 도구는 이 이미지에 전혀 포함되지 않는다.
+COPY --from=prebuilt-jar --chown=app:app *.jar app.jar
+
+# 컨테이너 메모리의 최대 75%를 JVM 힙 등에 활용하고 문자 인코딩을 UTF-8로 고정한다.
+ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75.0 -Dfile.encoding=UTF-8 -Duser.timezone=UTC"
+
+USER app
+
+# EXPOSE는 문서 역할이며 실제 호스트 포트 연결은 Compose의 ports에서 정한다.
+EXPOSE 8080
+
+# Spring Boot가 완전히 기동돼 Actuator가 응답하는지를 Docker가 확인한다.
+HEALTHCHECK --interval=10s --timeout=5s --start-period=90s --retries=10 \
+    CMD curl --fail --silent http://localhost:8080/actuator/health || exit 1
+
+# 컨테이너가 시작될 때 Spring Boot JAR를 PID 1 프로세스로 실행한다.
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]

@@ -15,6 +15,6 @@ public class PayrollStatementEmailRecoveryService {
   @Transactional
   public int recover(Duration timeout) {
     LocalDateTime now = LocalDateTime.now();
-    return deliveries.failStaleSending(now.minus(timeout), now);
+    return deliveries.markStaleSendingUnknown(now.minus(timeout), now);
   }
 }
