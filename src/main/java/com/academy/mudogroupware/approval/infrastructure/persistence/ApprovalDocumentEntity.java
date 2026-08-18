@@ -23,6 +23,7 @@ import jakarta.persistence.Lob;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -82,6 +83,10 @@ public class ApprovalDocumentEntity {
     @Column(name = "archived_at")
     private LocalDateTime archivedAt;
 
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
     @OneToMany(mappedBy = "approvalDocument", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("stepOrder asc")
     @BatchSize(size = 100)
@@ -96,7 +101,7 @@ public class ApprovalDocumentEntity {
                                     ApprovalContentType contentType, String text, Long creatorId,
                                     ApprovalStatus status, LocalDateTime createdAt, LocalDateTime resubmittedAt,
                                     ApprovalRetentionPolicy retentionPolicy, LocalDateTime retentionUntil,
-                                    Boolean legalHold, LocalDateTime archivedAt) {
+                                    Boolean legalHold, LocalDateTime archivedAt, Long version) {
         ApprovalRetentionPolicy resolvedRetentionPolicy = retentionPolicy == null
                 ? ApprovalRetentionPolicy.fromSourceType(sourceType)
                 : retentionPolicy;
@@ -116,6 +121,7 @@ public class ApprovalDocumentEntity {
                 : retentionUntil;
         this.legalHold = Boolean.TRUE.equals(legalHold);
         this.archivedAt = archivedAt;
+        this.version = version;
     }
 
     public void addLine(ApprovalDocumentLineEntity line) {

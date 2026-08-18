@@ -3,11 +3,14 @@ package com.academy.mudogroupware.approval.infrastructure.persistence;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Repository;
 
+import com.academy.mudogroupware.approval.domain.exception.ApprovalErrorCode;
+import com.academy.mudogroupware.approval.domain.exception.ApprovalException;
 import com.academy.mudogroupware.approval.domain.model.ApprovalAttachment;
 import com.academy.mudogroupware.approval.domain.model.ApprovalContent;
 import com.academy.mudogroupware.approval.domain.model.ApprovalDocument;
@@ -30,7 +33,11 @@ public class ApprovalDocumentRepositoryImpl implements ApprovalDocumentRepositor
         ApprovalDocumentEntity entity = needsLineReplacement(approvalDocument)
                 ? updateExistingLines(approvalDocument)
                 : toEntity(approvalDocument);
-        return toDomain(approvalDocumentJpaRepository.save(entity));
+        try {
+            return toDomain(approvalDocumentJpaRepository.saveAndFlush(entity));
+        } catch (OptimisticLockingFailureException e) {
+            throw new ApprovalException(ApprovalErrorCode.DOCUMENT_VERSION_CONFLICT, e);
+        }
     }
 
     @Override
@@ -119,6 +126,7 @@ public class ApprovalDocumentRepositoryImpl implements ApprovalDocumentRepositor
                 .retentionUntil(domain.getRetentionUntil())
                 .legalHold(domain.isLegalHold())
                 .archivedAt(domain.getArchivedAt())
+                .version(domain.getVersion())
                 .build();
 
         domain.getLines().forEach(line -> entity.addLine(toLineEntity(line)));
@@ -160,7 +168,7 @@ public class ApprovalDocumentRepositoryImpl implements ApprovalDocumentRepositor
                 entity.getId(), entity.getTemplateId(), entity.getSourceType(), entity.getTitle(), content,
                 entity.getCreatorId(), lines, attachments, entity.getStatus(), entity.getCreatedAt(),
                 entity.getResubmittedAt(), entity.getRetentionPolicy(), entity.getRetentionUntil(),
-                entity.isLegalHold(), entity.getArchivedAt());
+                entity.isLegalHold(), entity.getArchivedAt(), entity.getVersion());
     }
 
     private ApprovalDocumentLine toLineDomain(ApprovalDocumentLineEntity entity) {

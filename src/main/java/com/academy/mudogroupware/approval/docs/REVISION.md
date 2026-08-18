@@ -1,5 +1,28 @@
 # approval Revision
 
+## 2026-08-18 · 결재 문서 낙관적 락(`@Version`) 도입
+
+### 배경
+
+`ApprovalDocument`에는 동시 수정을 막을 장치가 없었다. 같은 문서를 승인/반려/취소하는 요청이 거의 동시에 들어오면, 나중에 저장되는 쪽이 앞선 처리 결과를 조용히 덮어쓸 수 있었다(에러 없는 lost update). `users`(`V4.1.9`)와 `shared_file_root`에 이미 있던 `@Version` 패턴을 그대로 approval에 적용했다.
+
+### 변경
+
+- `ApprovalDocumentEntity`에 `@Version`(`version BIGINT NOT NULL DEFAULT 0`)을 추가했다(`V1.5.20`).
+- `ApprovalDocument` 도메인 모델이 `version`을 들고 다니도록 `restore()`에 파라미터를 추가했다(기존 축약 `restore()` 오버로드들은 `version = null`로 위임하므로 테스트 호출부는 변경할 필요가 없었다).
+- `ApprovalDocumentRepositoryImpl.save()`가 `saveAndFlush()` + `OptimisticLockingFailureException` 캐치로 바뀌었고, 충돌 시 `ApprovalException(DOCUMENT_VERSION_CONFLICT)`(`APPROVAL_409_10`, 409)로 변환한다.
+
+### 알려진 한계 (과장 금지)
+
+- Hibernate는 merge 시 실제로 UPDATE가 발생하는 엔티티에 한해 버전을 검사한다. `ApprovalDocumentEntity` 자신의 컬럼(`status` 등)이 바뀌지 않고 자식 `approval_step`의 필드만 바뀌는 저장(예: 3명 이상 결재선에서 중간 결재자가 아직 결재 중일 때 같은 라인을 두 번 처리)에서는 부모 버전이 증가하지 않아 충돌이 감지되지 않을 수 있다.
+- 실제로 확실히 방어되는 시나리오는 두 요청 중 하나 이상이 문서 상태(`status`)를 바꾸는 경우다. 즉 "승인/반려/취소로 문서 상태가 갈리는 동시 요청"은 안전하게 막히지만, "같은 결재선 하나를 동시에 두 번 승인" 같은 중간 단계 레이스는 이번 변경으로 완전히 커버되지 않는다.
+- 결재선 교체(`updateLines`, `getReferenceById` 경로)는 이번 변경의 영향을 받지 않는다. 별도 검토가 필요하다.
+
+### 검증
+
+- `ApprovalDocumentRepositoryImplDataJpaTest#savingStaleDocumentAfterConcurrentDecideThrowsVersionConflict`: 같은 결재선을 동시에 승인/반려하는 상황을 재현해, 나중 요청이 `APPROVAL_409_10`으로 막히고 먼저 커밋된 승인 결과가 그대로 유지되는지 확인했다.
+- `./gradlew test` 전체 통과.
+
 ## 2026-08-14 · 전자결재 문서 보존 정책
 
 ### 배경
