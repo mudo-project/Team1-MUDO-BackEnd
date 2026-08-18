@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 
 import com.academy.mudogroupware.global.infrastructure.websocket.WebSocketEventPublisher;
 import com.academy.mudogroupware.workspace.domain.event.CommentCreatedEvent;
+import com.academy.mudogroupware.workspace.domain.event.CommentDeletedEvent;
 import com.academy.mudogroupware.workspace.domain.event.CommentToggledEvent;
 import com.academy.mudogroupware.workspace.domain.event.CommentUpdatedEvent;
 import com.academy.mudogroupware.workspace.domain.event.TaskCreatedEvent;
@@ -121,5 +122,18 @@ class WorkspaceRealtimeNotifierTest {
     verify(eventPublisher).publish(eq("/topic/workspaces/2"), payloadCaptor.capture());
     assertThat(payloadCaptor.getValue().eventType()).isEqualTo("COMMENT_TOGGLED");
     assertThat(payloadCaptor.getValue().completed()).isTrue();
+  }
+
+  @Test
+  void publishesCommentDeletedEventToWorkspaceTopic() {
+    CommentDeletedEvent event = new CommentDeletedEvent(2L, 501L, 88L);
+    ArgumentCaptor<CommentDeletedSocketResponse> payloadCaptor =
+        ArgumentCaptor.forClass(CommentDeletedSocketResponse.class);
+
+    notifier.handle(event);
+
+    verify(eventPublisher).publish(eq("/topic/workspaces/2"), payloadCaptor.capture());
+    assertThat(payloadCaptor.getValue().eventType()).isEqualTo("COMMENT_DELETED");
+    assertThat(payloadCaptor.getValue().commentId()).isEqualTo(88L);
   }
 }
