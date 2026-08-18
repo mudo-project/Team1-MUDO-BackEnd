@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.academy.mudogroupware.workspace.application.command.comment.UpdateTaskCommentCommand;
+import com.academy.mudogroupware.workspace.domain.event.CommentUpdatedEvent;
 import com.academy.mudogroupware.workspace.domain.event.TaskCommentMentionedEvent;
 import com.academy.mudogroupware.workspace.domain.exception.comment.InvalidMentionedUserException;
 import com.academy.mudogroupware.workspace.domain.exception.comment.TaskCommentNotFoundException;
@@ -60,6 +61,7 @@ class UpdateTaskCommentServiceTest {
   @Mock private ApplicationEventPublisher applicationEventPublisher;
 
   @Captor private ArgumentCaptor<TaskCommentMentionedEvent> eventCaptor;
+  @Captor private ArgumentCaptor<CommentUpdatedEvent> commentUpdatedEventCaptor;
 
   private UpdateTaskCommentService service() {
     return new UpdateTaskCommentService(
@@ -84,6 +86,11 @@ class UpdateTaskCommentServiceTest {
                     WORKSPACE_ID, TASK_ID, COMMENT_ID, OTHER_MEMBER_ID, "수정된 내용", List.of(OTHER_MEMBER_ID)));
 
     assertThat(result.getContent()).isEqualTo("수정된 내용");
+
+    verify(applicationEventPublisher).publishEvent(commentUpdatedEventCaptor.capture());
+    CommentUpdatedEvent published = commentUpdatedEventCaptor.getValue();
+    assertThat(published.workspaceId()).isEqualTo(WORKSPACE_ID);
+    assertThat(published.commentId()).isEqualTo(COMMENT_ID);
   }
 
   @Test
@@ -148,7 +155,9 @@ class UpdateTaskCommentServiceTest {
                 "수정된 내용",
                 List.of(OTHER_MEMBER_ID, MEMBER_ID)));
 
-    verify(applicationEventPublisher, never()).publishEvent(any());
+    // CommentUpdatedEvent(실시간 브로드캐스트)는 항상 발행되지만, 신규 멘션 대상이 없어
+    // TaskCommentMentionedEvent(알림)는 발행되지 않아야 한다.
+    verify(applicationEventPublisher, never()).publishEvent(any(TaskCommentMentionedEvent.class));
   }
 
   @Test

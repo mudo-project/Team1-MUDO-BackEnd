@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.academy.mudogroupware.workspace.application.command.task.CreateTaskCommand;
+import com.academy.mudogroupware.workspace.domain.event.TaskCreatedEvent;
 import com.academy.mudogroupware.workspace.domain.exception.workspace.WorkspaceAccessDeniedException;
 import com.academy.mudogroupware.workspace.domain.exception.workspace.WorkspaceNotFoundException;
 import com.academy.mudogroupware.workspace.domain.model.task.Task;
@@ -29,6 +30,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 @ExtendWith(MockitoExtension.class)
 class CreateTaskServiceTest {
@@ -44,13 +46,19 @@ class CreateTaskServiceTest {
   @Mock private WorkspaceRepository workspaceRepository;
   @Mock private TaskRepository taskRepository;
   @Mock private TaskStatusHistoryRepository taskStatusHistoryRepository;
+  @Mock private ApplicationEventPublisher applicationEventPublisher;
 
   @Captor private ArgumentCaptor<Task> taskCaptor;
   @Captor private ArgumentCaptor<TaskStatusHistory> historyCaptor;
+  @Captor private ArgumentCaptor<TaskCreatedEvent> taskCreatedEventCaptor;
 
   private CreateTaskService service() {
     return new CreateTaskService(
-        workspaceRepository, taskRepository, taskStatusHistoryRepository, FIXED_CLOCK);
+        workspaceRepository,
+        taskRepository,
+        taskStatusHistoryRepository,
+        applicationEventPublisher,
+        FIXED_CLOCK);
   }
 
   @Test
@@ -71,6 +79,11 @@ class CreateTaskServiceTest {
     assertThat(history.getPreviousStatus()).isNull();
     assertThat(history.getCurrentStatus()).isEqualTo(TaskStatus.WAITING);
     assertThat(history.getChangedBy()).isEqualTo(MEMBER_ID);
+
+    verify(applicationEventPublisher).publishEvent(taskCreatedEventCaptor.capture());
+    TaskCreatedEvent published = taskCreatedEventCaptor.getValue();
+    assertThat(published.workspaceId()).isEqualTo(WORKSPACE_ID);
+    assertThat(published.taskId()).isEqualTo(101L);
   }
 
   @Test

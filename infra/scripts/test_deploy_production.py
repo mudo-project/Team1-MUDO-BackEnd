@@ -19,6 +19,8 @@ class DeploymentManifestTest(unittest.TestCase):
     def enabled_configuration(self):
         tenants = copy.deepcopy(self.tenants)
         cells = copy.deepcopy(self.cells)
+        for tenant in tenants:
+            tenant["platform_dashboard_host"] = False
         tenants[0]["enabled"] = True
         tenants[0]["platform_dashboard_host"] = True
         tenants[0]["s3_bucket"] = "mudo-prod-staff-123456789012"
@@ -69,7 +71,7 @@ class DeploymentManifestTest(unittest.TestCase):
         self.assertEqual("paid", environment["TENANT_PLAN"])
         self.assertEqual("true", environment["PLATFORM_DASHBOARD_ENABLED"])
         self.assertIn('"code":"academy-a"', environment["PLATFORM_DASHBOARD_TENANT_REGISTRY_JSON"])
-        self.assertEqual("30", environment["SERVER_TOMCAT_THREADS_MAX"])
+        self.assertEqual("35", environment["SERVER_TOMCAT_THREADS_MAX"])
         self.assertEqual(500, container["cpu"])
         self.assertEqual(768, container["memoryReservation"])
         self.assertEqual(1024, container["memory"])

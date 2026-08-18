@@ -1,5 +1,10 @@
 # approval Changelog
 
+## 2026-08-18
+
+- `ApprovalDocumentEntity`에 `@Version` 낙관적 락을 추가했다(`V1.5.20`, `approval_document.version BIGINT NOT NULL DEFAULT 0`).
+- 결재 문서 저장 중 다른 요청이 먼저 처리해 버전이 어긋나면 `409 APPROVAL_409_10`으로 실패한다. 문서 상태(`status`)가 바뀌는 승인/반려/취소 동시 요청은 안전하게 막히며, 문서 상태가 그대로인 중간 결재선 레이스는 이번 변경 범위 밖이다.
+
 ## 2026-08-16
 
 - 결재 문서 생성/결재선 수정 시 신청자 본인이 결재선에 포함되면 `APPROVAL_400_6`으로 차단한다.

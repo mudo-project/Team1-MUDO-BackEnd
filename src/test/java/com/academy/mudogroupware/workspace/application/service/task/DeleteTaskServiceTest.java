@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.workspace.application.service.task;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -9,6 +10,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.academy.mudogroupware.workspace.application.command.task.DeleteTaskCommand;
+import com.academy.mudogroupware.workspace.domain.event.TaskDeletedEvent;
 import com.academy.mudogroupware.workspace.domain.exception.task.TaskNotFoundException;
 import com.academy.mudogroupware.workspace.domain.exception.workspace.WorkspaceAccessDeniedException;
 import com.academy.mudogroupware.workspace.domain.exception.workspace.WorkspaceNotFoundException;
@@ -24,8 +26,11 @@ import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 @ExtendWith(MockitoExtension.class)
 class DeleteTaskServiceTest {
@@ -40,9 +45,13 @@ class DeleteTaskServiceTest {
   @Mock private WorkspaceRepository workspaceRepository;
   @Mock private TaskRepository taskRepository;
   @Mock private RecurringTaskSkipRepository recurringTaskSkipRepository;
+  @Mock private ApplicationEventPublisher applicationEventPublisher;
+
+  @Captor private ArgumentCaptor<TaskDeletedEvent> taskDeletedEventCaptor;
 
   private DeleteTaskService service() {
-    return new DeleteTaskService(workspaceRepository, taskRepository, recurringTaskSkipRepository);
+    return new DeleteTaskService(
+        workspaceRepository, taskRepository, recurringTaskSkipRepository, applicationEventPublisher);
   }
 
   @Test
@@ -54,6 +63,10 @@ class DeleteTaskServiceTest {
 
     verify(taskRepository).delete(TASK_ID);
     verifyNoInteractions(recurringTaskSkipRepository);
+
+    verify(applicationEventPublisher).publishEvent(taskDeletedEventCaptor.capture());
+    assertThat(taskDeletedEventCaptor.getValue().workspaceId()).isEqualTo(WORKSPACE_ID);
+    assertThat(taskDeletedEventCaptor.getValue().taskId()).isEqualTo(TASK_ID);
   }
 
   @Test

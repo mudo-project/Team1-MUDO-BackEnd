@@ -3,6 +3,7 @@ package com.academy.mudogroupware.workspace.application.service.comment;
 import com.academy.mudogroupware.global.infrastructure.logging.AfterCommitLogger;
 import com.academy.mudogroupware.workspace.application.command.comment.UpdateTaskCommentCommand;
 import com.academy.mudogroupware.workspace.application.usecase.comment.UpdateTaskCommentUseCase;
+import com.academy.mudogroupware.workspace.domain.event.CommentUpdatedEvent;
 import com.academy.mudogroupware.workspace.domain.event.TaskCommentMentionedEvent;
 import com.academy.mudogroupware.workspace.domain.exception.comment.InvalidMentionedUserException;
 import com.academy.mudogroupware.workspace.domain.exception.comment.TaskCommentNotFoundException;
@@ -83,6 +84,11 @@ public class UpdateTaskCommentService implements UpdateTaskCommentUseCase {
     TaskComment updated =
         comment.updateContent(command.content(), command.mentionedUserIds(), occurredAt);
     TaskComment saved = taskCommentRepository.save(updated);
+
+    applicationEventPublisher.publishEvent(
+        new CommentUpdatedEvent(
+            command.workspaceId(), command.taskId(), saved.getId(), saved.getContent(), saved.getUpdatedAt()));
+
     List<Long> recipientUserIds =
         command.mentionedUserIds().stream()
             .filter(userId -> !previousMentionedUserIds.contains(userId))

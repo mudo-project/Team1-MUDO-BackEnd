@@ -11,9 +11,9 @@ runtime_profiles:
     cpu: 500
     memory_reservation_mib: 768
     memory_limit_mib: 1024
-    tomcat_max_threads: 30
+    tomcat_max_threads: 35
     tomcat_queue_capacity: 50
-    hikari_max_pool_size: 6
+    hikari_max_pool_size: 10
     hikari_connection_timeout_ms: 3000
     async_core_pool_size: 1
     async_max_pool_size: 2
