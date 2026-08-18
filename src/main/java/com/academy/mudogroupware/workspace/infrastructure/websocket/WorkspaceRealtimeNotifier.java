@@ -1,6 +1,7 @@
 package com.academy.mudogroupware.workspace.infrastructure.websocket;
 
 import com.academy.mudogroupware.global.infrastructure.websocket.WebSocketEventPublisher;
+import com.academy.mudogroupware.workspace.domain.event.CommentCreatedEvent;
 import com.academy.mudogroupware.workspace.domain.event.TaskCreatedEvent;
 import com.academy.mudogroupware.workspace.domain.event.TaskDeletedEvent;
 import com.academy.mudogroupware.workspace.domain.event.TaskUpdatedEvent;
@@ -59,6 +60,20 @@ public class WorkspaceRealtimeNotifier {
           "event=workspace_realtime_task_deleted_전송_실패 workspaceId={}, taskId={}",
           event.workspaceId(),
           event.taskId(),
+          exception);
+    }
+  }
+
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+  public void handle(CommentCreatedEvent event) {
+    try {
+      eventPublisher.publish(
+          WORKSPACE_TOPIC_PREFIX + event.workspaceId(), CommentCreatedSocketResponse.from(event));
+    } catch (RuntimeException exception) {
+      log.error(
+          "event=workspace_realtime_comment_created_전송_실패 workspaceId={}, commentId={}",
+          event.workspaceId(),
+          event.commentId(),
           exception);
     }
   }

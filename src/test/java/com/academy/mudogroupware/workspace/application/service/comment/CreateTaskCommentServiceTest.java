@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.academy.mudogroupware.workspace.application.command.comment.CreateTaskCommentCommand;
+import com.academy.mudogroupware.workspace.domain.event.CommentCreatedEvent;
 import com.academy.mudogroupware.workspace.domain.event.TaskCommentMentionedEvent;
 import com.academy.mudogroupware.workspace.domain.exception.comment.InvalidMentionedUserException;
 import com.academy.mudogroupware.workspace.domain.exception.workspace.WorkspaceAccessDeniedException;
@@ -57,6 +58,7 @@ class CreateTaskCommentServiceTest {
 
   @Captor private ArgumentCaptor<TaskComment> commentCaptor;
   @Captor private ArgumentCaptor<TaskCommentMentionedEvent> eventCaptor;
+  @Captor private ArgumentCaptor<CommentCreatedEvent> commentCreatedEventCaptor;
 
   private CreateTaskCommentService service() {
     return new CreateTaskCommentService(
@@ -71,7 +73,8 @@ class CreateTaskCommentServiceTest {
   void createsCommentWithValidMentions() {
     givenWorkspaceWithMembers(MEMBER_ID, MENTIONED_MEMBER_ID);
     givenTask(WORKSPACE_ID);
-    when(taskCommentRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+    when(taskCommentRepository.save(any()))
+        .thenAnswer(invocation -> savedComment(invocation.getArgument(0)));
 
     TaskComment result =
         service()
@@ -83,6 +86,11 @@ class CreateTaskCommentServiceTest {
     verify(taskCommentRepository).save(commentCaptor.capture());
     assertThat(commentCaptor.getValue().getMentions()).extracting(m -> m.getMentionedUserId())
         .containsExactly(MENTIONED_MEMBER_ID);
+
+    verify(applicationEventPublisher).publishEvent(commentCreatedEventCaptor.capture());
+    CommentCreatedEvent published = commentCreatedEventCaptor.getValue();
+    assertThat(published.workspaceId()).isEqualTo(WORKSPACE_ID);
+    assertThat(published.commentId()).isEqualTo(COMMENT_ID);
   }
 
   @Test
@@ -123,7 +131,9 @@ class CreateTaskCommentServiceTest {
             new CreateTaskCommentCommand(
                 WORKSPACE_ID, TASK_ID, MEMBER_ID, "내용", List.of(MEMBER_ID)));
 
-    verify(applicationEventPublisher, never()).publishEvent(any());
+    // CommentCreatedEvent(실시간 브로드캐스트)는 항상 발행되지만, 멘션 대상이 요청자
+    // 본인뿐이라 TaskCommentMentionedEvent(알림)는 발행되지 않아야 한다.
+    verify(applicationEventPublisher, never()).publishEvent(any(TaskCommentMentionedEvent.class));
   }
 
   @Test
