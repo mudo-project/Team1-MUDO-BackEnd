@@ -3,6 +3,7 @@ package com.academy.mudogroupware.workspace.application.service.comment;
 import com.academy.mudogroupware.global.infrastructure.logging.AfterCommitLogger;
 import com.academy.mudogroupware.workspace.application.command.comment.ToggleTaskCommentCompleteCommand;
 import com.academy.mudogroupware.workspace.application.usecase.comment.ToggleTaskCommentCompleteUseCase;
+import com.academy.mudogroupware.workspace.domain.event.CommentToggledEvent;
 import com.academy.mudogroupware.workspace.domain.exception.comment.TaskCommentNotFoundException;
 import com.academy.mudogroupware.workspace.domain.exception.task.TaskNotFoundException;
 import com.academy.mudogroupware.workspace.domain.exception.workspace.WorkspaceAccessDeniedException;
@@ -17,6 +18,7 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +30,7 @@ public class ToggleTaskCommentCompleteService implements ToggleTaskCommentComple
   private final WorkspaceRepository workspaceRepository;
   private final TaskRepository taskRepository;
   private final TaskCommentRepository taskCommentRepository;
+  private final ApplicationEventPublisher applicationEventPublisher;
   private final Clock clock;
 
   @Override
@@ -65,6 +68,15 @@ public class ToggleTaskCommentCompleteService implements ToggleTaskCommentComple
     TaskComment toggled = comment.toggleComplete(command.requesterId(), LocalDateTime.now(clock));
 
     TaskComment saved = taskCommentRepository.updateCompletion(toggled);
+
+    applicationEventPublisher.publishEvent(
+        new CommentToggledEvent(
+            command.workspaceId(),
+            command.taskId(),
+            saved.getId(),
+            saved.isCompleted(),
+            saved.getCompletedBy(),
+            saved.getCompletedAt()));
 
     AfterCommitLogger.run(
         () ->

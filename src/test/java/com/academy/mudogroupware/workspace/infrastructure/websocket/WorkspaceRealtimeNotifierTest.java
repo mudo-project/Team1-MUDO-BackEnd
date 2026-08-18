@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 
 import com.academy.mudogroupware.global.infrastructure.websocket.WebSocketEventPublisher;
 import com.academy.mudogroupware.workspace.domain.event.CommentCreatedEvent;
+import com.academy.mudogroupware.workspace.domain.event.CommentToggledEvent;
 import com.academy.mudogroupware.workspace.domain.event.CommentUpdatedEvent;
 import com.academy.mudogroupware.workspace.domain.event.TaskCreatedEvent;
 import com.academy.mudogroupware.workspace.domain.event.TaskDeletedEvent;
@@ -106,5 +107,19 @@ class WorkspaceRealtimeNotifierTest {
     verify(eventPublisher).publish(eq("/topic/workspaces/2"), payloadCaptor.capture());
     assertThat(payloadCaptor.getValue().eventType()).isEqualTo("COMMENT_UPDATED");
     assertThat(payloadCaptor.getValue().content()).isEqualTo("수정된 내용");
+  }
+
+  @Test
+  void publishesCommentToggledEventToWorkspaceTopic() {
+    CommentToggledEvent event =
+        new CommentToggledEvent(2L, 501L, 88L, true, 10L, LocalDateTime.of(2026, 8, 18, 13, 0));
+    ArgumentCaptor<CommentToggledSocketResponse> payloadCaptor =
+        ArgumentCaptor.forClass(CommentToggledSocketResponse.class);
+
+    notifier.handle(event);
+
+    verify(eventPublisher).publish(eq("/topic/workspaces/2"), payloadCaptor.capture());
+    assertThat(payloadCaptor.getValue().eventType()).isEqualTo("COMMENT_TOGGLED");
+    assertThat(payloadCaptor.getValue().completed()).isTrue();
   }
 }

@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.academy.mudogroupware.workspace.application.command.comment.ToggleTaskCommentCompleteCommand;
+import com.academy.mudogroupware.workspace.domain.event.CommentToggledEvent;
 import com.academy.mudogroupware.workspace.domain.exception.comment.TaskCommentNotFoundException;
 import com.academy.mudogroupware.workspace.domain.exception.workspace.WorkspaceAccessDeniedException;
 import com.academy.mudogroupware.workspace.domain.model.task.Task;
@@ -28,8 +29,11 @@ import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 @ExtendWith(MockitoExtension.class)
 class ToggleTaskCommentCompleteServiceTest {
@@ -46,10 +50,13 @@ class ToggleTaskCommentCompleteServiceTest {
   @Mock private WorkspaceRepository workspaceRepository;
   @Mock private TaskRepository taskRepository;
   @Mock private TaskCommentRepository taskCommentRepository;
+  @Mock private ApplicationEventPublisher applicationEventPublisher;
+
+  @Captor private ArgumentCaptor<CommentToggledEvent> commentToggledEventCaptor;
 
   private ToggleTaskCommentCompleteService service() {
     return new ToggleTaskCommentCompleteService(
-        workspaceRepository, taskRepository, taskCommentRepository, FIXED_CLOCK);
+        workspaceRepository, taskRepository, taskCommentRepository, applicationEventPublisher, FIXED_CLOCK);
   }
 
   @Test
@@ -68,6 +75,11 @@ class ToggleTaskCommentCompleteServiceTest {
     assertThat(result.getCompletedBy()).isEqualTo(OTHER_MEMBER_ID);
     verify(taskCommentRepository).updateCompletion(any());
     verify(taskCommentRepository, never()).save(any());
+
+    verify(applicationEventPublisher).publishEvent(commentToggledEventCaptor.capture());
+    CommentToggledEvent published = commentToggledEventCaptor.getValue();
+    assertThat(published.workspaceId()).isEqualTo(WORKSPACE_ID);
+    assertThat(published.completed()).isTrue();
   }
 
   @Test

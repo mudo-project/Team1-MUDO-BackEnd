@@ -2,6 +2,7 @@ package com.academy.mudogroupware.workspace.infrastructure.websocket;
 
 import com.academy.mudogroupware.global.infrastructure.websocket.WebSocketEventPublisher;
 import com.academy.mudogroupware.workspace.domain.event.CommentCreatedEvent;
+import com.academy.mudogroupware.workspace.domain.event.CommentToggledEvent;
 import com.academy.mudogroupware.workspace.domain.event.CommentUpdatedEvent;
 import com.academy.mudogroupware.workspace.domain.event.TaskCreatedEvent;
 import com.academy.mudogroupware.workspace.domain.event.TaskDeletedEvent;
@@ -87,6 +88,20 @@ public class WorkspaceRealtimeNotifier {
     } catch (RuntimeException exception) {
       log.error(
           "event=workspace_realtime_comment_updated_전송_실패 workspaceId={}, commentId={}",
+          event.workspaceId(),
+          event.commentId(),
+          exception);
+    }
+  }
+
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+  public void handle(CommentToggledEvent event) {
+    try {
+      eventPublisher.publish(
+          WORKSPACE_TOPIC_PREFIX + event.workspaceId(), CommentToggledSocketResponse.from(event));
+    } catch (RuntimeException exception) {
+      log.error(
+          "event=workspace_realtime_comment_toggled_전송_실패 workspaceId={}, commentId={}",
           event.workspaceId(),
           event.commentId(),
           exception);
