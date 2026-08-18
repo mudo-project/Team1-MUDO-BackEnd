@@ -1,5 +1,35 @@
 # 🔄 워크스페이스 생성 이름 중복 정책 단순화
 
+## ✅ 2026-08-18 · 업무·댓글 실시간 브로드캐스트(WebSocket) 추가
+
+### 변경 목적
+
+워크스페이스는 댓글 멘션 알림(2026-08-12) 하나만 실시간으로 push되고, 업무 생성/상태변경/삭제·댓글 생성/수정/완료토글/삭제는 새로고침해야 반영됐다. 프론트가 폴링 방식을 검토했으나 상시 서버 부하 우려로 채택하지 못해 실시간 반영 자체가 안 되는 상태였다. 이벤트 기반 WebSocket 브로드캐스트로 폴링 없이(=상시 부하 증가 없이) 실시간성을 확보한다. 이슈 [#601](https://github.com/mudo-project/Team1-MUDO-BackEnd/issues/601), PR [#600](https://github.com/mudo-project/Team1-MUDO-BackEnd/pull/600). 설계는 [2026-08-18-workspace-realtime-broadcast-design.md](../../../../../../../../docs/superpowers/specs/2026-08-18-workspace-realtime-broadcast-design.md), 계획은 [2026-08-18-workspace-realtime-broadcast.md](../../../../../../../../docs/superpowers/plans/2026-08-18-workspace-realtime-broadcast.md) 참고.
+
+### 구현 변경
+
+- 업무 생성/상태·마감일변경/삭제, 댓글 생성/수정/완료토글/삭제 총 7개 액션을 도메인 이벤트(`workspace/domain/event/`) 7종으로 발행한다 — `TaskCreatedEvent`/`TaskUpdatedEvent`/`TaskDeletedEvent`, `CommentCreatedEvent`/`CommentUpdatedEvent`/`CommentToggledEvent`/`CommentDeletedEvent`.
+- 신규 `WorkspaceRealtimeNotifier`(`workspace/infrastructure/websocket/`)가 `@TransactionalEventListener(AFTER_COMMIT)`로 위 7개 이벤트를 받아 `/topic/workspaces/{workspaceId}` 단일 토픽으로 브로드캐스트한다. 액션별로 토픽을 나누지 않는다. 기존 멘션 전용 `WorkspaceWebSocketNotifier`는 완전히 무변경, 독립적으로 공존한다.
+- 페이로드는 변경된 리소스 전체 데이터를 포함한다(id만 보내고 프론트가 재조회하는 방식이 아님) — 프론트가 REST 응답과 동일한 필드로 React Query 캐시를 바로 갱신할 수 있게 하기 위함. 다만 `createdBy`/`authorId`/`completedBy`는 userId만 싣고 이름 등 부가정보는 담지 않는다(YAGNI — 프론트가 이미 가진 참여자 목록에서 매핑 가능).
+- 변경을 실행한 본인에게도 동일하게 브로드캐스트한다(제외 로직 없음) — REST 응답으로 이미 최신값을 받은 뒤 같은 값을 한 번 더 덮어쓸 뿐이라 무해하며, 세션 추적 로직이 필요 없어진다.
+- `JwtChannelInterceptor`(global)에 `/topic/workspaces/(\d+)$` 패턴 구독 인가를 추가했다 — 워크스페이스 참여자만 구독 가능하도록 `WorkspaceRepository.findById`로 확인한다. 이 인터셉터가 처음으로 순수 토큰 검증에서 DB 조회까지 책임이 넓어졌다(구독은 화면 진입당 1회뿐이라 성능 영향 없음). global 패키지 파일이라 워크스페이스 도메인 소유 범위 밖이지만, 이번 변경은 사용자와 명시적으로 합의된 예외다.
+- 이벤트 전송 실패는 전부 `try/catch(RuntimeException)`으로 감싸 로그만 남긴다(DB 트랜잭션에 영향 없음). 놓친 이벤트에 대한 재전송 큐는 만들지 않고, 프론트 재연결 시 전체 재조회로 동기화하는 것으로 대체한다(YAGNI).
+- `SimpleBroker`(인메모리)로 충분하다 — 학원별 EC2 인스턴스·DB 스키마가 물리적으로 분리된 구조라 인스턴스 간 pub/sub 동기화가 필요 없다.
+
+### 범위 밖
+
+- 워크스페이스 이름변경, 참여자 추가/제거, 반복 업무 템플릿 CRUD의 실시간화 — 빈도가 낮아 후속 라운드로 미룸.
+- 프론트엔드 연동(React Query `setQueryData`/`invalidateQueries`)과 실제 브라우저 E2E 확인 — 이 저장소는 백엔드 전용, 별도 진행.
+- 폴링 vs 이벤트 push 정량 비교 k6 테스트 — 별도 스파이크로 분리.
+- STOMP heartbeat 미설정(좀비 소켓/FD 누수 위험) — 이번 브레인스토밍 중 발견했으나 메신저·알림을 포함한 WS 인프라 전체(`WebSocketConfig`, global 소유)에 걸친 이슈라 이번 범위에서 제외, 별도 이슈로 분리.
+
+### 검증
+
+- `WorkspaceRealtimeNotifierTest`(신규) — 7개 이벤트 각각의 토픽·페이로드 발행, 전송 실패 시 예외 미전파를 검증.
+- `JwtChannelInterceptorTest` — 워크스페이스 토픽 참여자 허용/비참여자 거부/존재하지 않는 워크스페이스/숫자 오버플로/미인증 5케이스 추가(기존 7개 + 신규 5개).
+- 업무·댓글 Service 7개 테스트에 이벤트 발행 검증(`ArgumentCaptor`) 추가. CodeRabbit 리뷰로 완료토글의 완료해제(`completed=false`) 경로, 업무의 마감일단독변경 경로에도 이벤트 검증을 보강했다.
+- 전체 `./gradlew test` 통과(회귀 없음).
+
 ## ✅ 2026-08-12 · 업무 댓글 멘션 WebSocket 알림 연동
 
 - 댓글 생성 시 요청자를 제외한 멘션 사용자에게 알림 이벤트를 발행한다.

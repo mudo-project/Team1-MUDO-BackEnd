@@ -1,5 +1,6 @@
 package com.academy.mudogroupware.workspace.application.service.comment;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -7,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.academy.mudogroupware.workspace.application.command.comment.DeleteTaskCommentCommand;
+import com.academy.mudogroupware.workspace.domain.event.CommentDeletedEvent;
 import com.academy.mudogroupware.workspace.domain.exception.comment.TaskCommentNotFoundException;
 import com.academy.mudogroupware.workspace.domain.exception.task.TaskNotFoundException;
 import com.academy.mudogroupware.workspace.domain.exception.workspace.WorkspaceAccessDeniedException;
@@ -26,8 +28,11 @@ import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 @ExtendWith(MockitoExtension.class)
 class DeleteTaskCommentServiceTest {
@@ -43,9 +48,13 @@ class DeleteTaskCommentServiceTest {
   @Mock private WorkspaceRepository workspaceRepository;
   @Mock private TaskRepository taskRepository;
   @Mock private TaskCommentRepository taskCommentRepository;
+  @Mock private ApplicationEventPublisher applicationEventPublisher;
+
+  @Captor private ArgumentCaptor<CommentDeletedEvent> commentDeletedEventCaptor;
 
   private DeleteTaskCommentService service() {
-    return new DeleteTaskCommentService(workspaceRepository, taskRepository, taskCommentRepository);
+    return new DeleteTaskCommentService(
+        workspaceRepository, taskRepository, taskCommentRepository, applicationEventPublisher);
   }
 
   @Test
@@ -58,6 +67,11 @@ class DeleteTaskCommentServiceTest {
         .deleteComment(new DeleteTaskCommentCommand(WORKSPACE_ID, TASK_ID, COMMENT_ID, OTHER_MEMBER_ID));
 
     verify(taskCommentRepository).deleteById(COMMENT_ID);
+
+    verify(applicationEventPublisher).publishEvent(commentDeletedEventCaptor.capture());
+    CommentDeletedEvent published = commentDeletedEventCaptor.getValue();
+    assertThat(published.workspaceId()).isEqualTo(WORKSPACE_ID);
+    assertThat(published.commentId()).isEqualTo(COMMENT_ID);
   }
 
   @Test
