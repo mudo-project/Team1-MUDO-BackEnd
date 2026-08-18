@@ -26,3 +26,17 @@
 1. `MAILGUN_API_KEY`, 발송 도메인, 미국 리전 API 접근 상태를 확인한다.
 2. Mailgun API 응답 코드와 `errorType` 로그를 확인한다. API 키와 수신 이메일은 로그에 남기지 않는다.
 3. 장애 복구 후 다음 대사 주기에 `last_reconciled_at`이 갱신되는지 확인한다.
+
+## reconcile/recover 로그가 지연 없이 반복 출력
+
+1. `event=payroll_..._reconciliation_service_reconcile_시작/완료`,
+   `event=payroll_..._recovery_service_recover_시작/완료`가 0.xx초 간격으로 계속 찍히는지 확인한다.
+2. `payroll_statement_delivery`에서 실제 대사 대상(`SENT`/`UNKNOWN`, `last_reconciled_at` 만료분)이
+   있는지 조회한다. 대상이 0건인데도 로그가 계속 찍히면 실제 처리 지연이 아니라 워커의 시각 판단
+   오류다.
+3. 컨테이너의 JVM 기본 타임존을 확인한다(`docker exec <container> date`). `Asia/Seoul`이 아니면
+   `PayrollStatementEmailDeliveryWorker`(예약 시각 판단)와 `PayrollStatementEmailReconciliationService`/
+   `PayrollStatementEmailRecoveryService`(DB 시각 비교)가 서로 다른 기준으로 "지금"을 계산해 무한
+   재실행을 일으킬 수 있다(#593, PR #594에서 공용 `Clock` Bean 주입으로 수정).
+4. 애플리케이션은 수정됐으므로, 배포 버전이 해당 수정을 포함하는지 먼저 확인한다. 포함하는데도
+   재현되면 별도 원인이므로 에스컬레이션한다.
