@@ -14,6 +14,7 @@ import com.academy.mudogroupware.payroll.application.port.out.PayrollStatementDe
 import com.academy.mudogroupware.payroll.application.port.out.PayrollStatementDeliveryPort.DeliveryData;
 import com.academy.mudogroupware.payroll.application.port.out.PayrollStatementEmailStatusPort;
 import com.academy.mudogroupware.payroll.application.port.out.PayrollStatementEmailStatusPort.ProviderDeliveryStatus;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -33,7 +34,7 @@ class PayrollStatementEmailReconciliationServiceTest {
   void setUp() {
     service = new PayrollStatementEmailReconciliationService(deliveries, statuses,
         new PayrollStatementEmailPolicy(20, 3, Duration.ofMinutes(1), Duration.ofMinutes(30),
-            Duration.ofMinutes(10), Duration.ofMinutes(5)));
+            Duration.ofMinutes(10), Duration.ofMinutes(5)), Clock.systemDefaultZone());
   }
 
   @Test
