@@ -19,6 +19,8 @@ class DeploymentManifestTest(unittest.TestCase):
     def enabled_configuration(self):
         tenants = copy.deepcopy(self.tenants)
         cells = copy.deepcopy(self.cells)
+        for tenant in tenants:
+            tenant["platform_dashboard_host"] = False
         tenants[0]["enabled"] = True
         tenants[0]["platform_dashboard_host"] = True
         tenants[0]["s3_bucket"] = "mudo-prod-staff-123456789012"
