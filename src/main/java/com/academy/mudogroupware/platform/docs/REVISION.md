@@ -14,7 +14,13 @@
 
 - 처음에는 배포 스크립트가 `PLATFORM_DASHBOARD_TENANT_REGISTRY_JSON`(전체 학원의 RDS 식별자·최대 커넥션·ECS 클러스터/서비스명·S3 버킷명 포함)을 **모든 학원 Task**에 동일하게 주입했다. 학원마다 별도 EC2·DB를 쓰는 이 서비스의 테넌시 모델(ARCHITECTURE.md)에서, 한 학원의 Task가 다른 모든 학원의 인프라 식별자를 컨테이너 환경변수로 갖고 있는 건 격리 원칙과 어긋난다 — 그 Task 하나가 침해되면 전체 학원의 인프라 지도가 노출된다.
 - `infra/tenants.yml`에 `platform_dashboard_host: true` 필드를 추가해 정확히 한 학원만 "대시보드 호스트"로 지정하고, 배포 스크립트(`validate_capacity`)가 활성 테넌트 중 정확히 1개만 host인지 검증한다. 테넌트 레지스트리와 `platform.dashboard.enabled=true`는 그 host Task에만 주입된다.
-- 조회용 Bean(Controller, QueryService, Prometheus/ECS/S3 어댑터, TenantRegistry)은 `@ConditionalOnProperty(platform.dashboard.enabled=true)`로 host Task에서만 활성화된다. 단, 각 학원이 자기 지표를 Prometheus에 노출하는 **자가 보고 컴포넌트**(`ActiveMemberGauge`/`DatabaseStorageGauge`, 그리고 이를 구현하는 `PlatformActiveMemberCountAdapter`/`CurrentTenantDatabaseUsageAdapter`)는 이 조건과 무관하게 모든 Task에서 항상 켜져 있어야 한다 — host가 아니면 자기 지표를 아무도 안 보내서 대시보드에 빈 값만 나온다.
+- 관리자 대시보드 조회용 Bean(`PlatformDashboardController`, `PlatformDashboardQueryService`, Prometheus/ECS/S3 어댑터, `PlatformTenantRegistry`)은 `@ConditionalOnProperty(platform.dashboard.enabled=true)`로 host Task에서만 활성화된다. 단, 각 학원이 자기 지표를 Prometheus에 노출하는 **자가 보고 컴포넌트**(`ActiveMemberGauge`/`DatabaseStorageGauge`, 그리고 이를 구현하는 `PlatformActiveMemberCountAdapter`/`CurrentTenantDatabaseUsageAdapter`)는 이 조건과 무관하게 모든 Task에서 항상 켜져 있어야 한다 — host가 아니면 자기 지표를 아무도 안 보내서 대시보드에 빈 값만 나온다.
+
+## 왜 테넌트 라우팅 디렉터리(`/api/public/tenants/{code}`)는 dashboard host 조건에서 뺐나
+
+- 처음 구현할 때 `TenantDirectoryController`/`TenantDirectoryQueryService`/`PlatformTenantDirectory`(그리고 이 셋이 의존하는 `PlatformDashboardProperties` 빈을 등록하는 `PlatformDashboardConfiguration`)를 위 관리자 대시보드 Bean들과 같은 `@ConditionalOnProperty(platform.dashboard.enabled=true)`에 묶어버렸다. 이 API는 프론트가 로그인 전에 학원 코드→실제 API 호스트를 조회하는 **공개 라우팅 API**로, 관리자 대시보드 기능과는 목적이 다르다.
+- 2026-08-19에 `platform_dashboard_host`를 academy-a에서 academy-d로 옮기면서 이 결합이 실제 장애로 드러났다. 프론트의 `TENANT_ROUTING_ORIGIN`은 학원마다 바뀌는 값이 아니라 이 조회 API를 부르는 고정 진입점(academy-a)인데, dashboard host가 아닌 Task에서는 컨트롤러 자체가 사라지면서 academy-a가 이 API에 500을 반환했다. 그 결과 `app-<code>.ieum.store` 서브도메인을 쓰는 모든 학원의 로그인 라우팅이 함께 막혔다(root 도메인은 이 조회를 안 해서 무관).
+- 따라서 이 세 Bean(및 `PlatformDashboardConfiguration`)의 `@ConditionalOnProperty`를 제거해 **모든 활성 테넌트 Task에서 항상 등록**되도록 바꿨고, `infra/scripts/deploy_production.py`도 `PLATFORM_TENANT_DIRECTORY_JSON`을 dashboard host 여부와 무관하게 모든 활성 테넌트에 주입하도록 고쳤다. dashboard host 전용으로 남겨야 하는 관리자 레지스트리(`PLATFORM_DASHBOARD_TENANT_REGISTRY_JSON`, ECS/RDS 내부 식별자 포함)는 격리 원칙 그대로 유지했다 — 공개 라우팅 정보와 관리자 내부 정보는 민감도가 달라 같은 조건에 묶으면 안 된다.
 
 ## 왜 회원 수·데이터 보유량은 "학원별 단일 조회"만 지원하고 "전체 비교"는 없나
 
