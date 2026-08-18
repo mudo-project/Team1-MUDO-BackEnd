@@ -33,13 +33,13 @@ PDF, 이미지, OCR, 장기 파일 저장은 이번 범위에서 제외한다.
 
 ## 프론트 연동 샘플
 
-아래 CSV는 Swagger 또는 프론트 업로드 화면에서 그대로 사용할 수 있다.
+아래 CSV/xlsx는 Swagger 또는 프론트 업로드 화면에서 그대로 사용할 수 있다. 두 세트는 같은 학생 50명/강의 10개/수강 80건 데이터를 형식만 다르게 담고 있어 아무거나 골라 써도 된다.
 
 | 파일 | 업로드 Part |
 | --- | --- |
-| [students.csv](./samples/students.csv) | `studentFile` |
-| [lectures.csv](./samples/lectures.csv) | `lectureFile` |
-| [enrollments.csv](./samples/enrollments.csv) | `enrollmentFile` |
+| [students.csv](./samples/students.csv) / [students.xlsx](./samples/students.xlsx) | `studentFile` |
+| [lectures.csv](./samples/lectures.csv) / [lectures.xlsx](./samples/lectures.xlsx) | `lectureFile` |
+| [enrollments.csv](./samples/enrollments.csv) / [enrollments.xlsx](./samples/enrollments.xlsx) | `enrollmentFile` |
 
 샘플의 `teacherId`는 로컬 DB 상황에 맞게 초안 수정 화면에서 실제 담당자 ID로 바꿔서 확정하는 것을 권장한다. 현재 강의 생성 로직은 `teacherId` 존재 여부를 강제 검증하지 않지만, 실제 사용 화면에서 `teacherName`을 안정적으로 보여주려면 users에 존재하는 담당자 ID를 써야 한다.
 
