@@ -1,5 +1,36 @@
 # 🔄 워크스페이스 생성 이름 중복 정책 단순화
 
+## ✅ 2026-08-18 · WebSocket 토픽 구독 시 LazyInitializationException 수정
+
+### 변경 목적
+
+바로 아래 "업무·댓글 실시간 브로드캐스트(WebSocket) 추가" PR(#600) 머지 후 프론트 실연동 중, `/topic/workspaces/{workspaceId}` 토픽을 구독(SUBSCRIBE)하면 매번 STOMP `ERROR` 프레임(`Failed to send message to ExecutorSubscribableChannel[clientInboundChannel]`) + 연결종료가 재현됐다. 이슈 [#606](https://github.com/mudo-project/Team1-MUDO-BackEnd/issues/606), PR [#607](https://github.com/mudo-project/Team1-MUDO-BackEnd/pull/607).
+
+### 원인
+
+`WorkspacePersistenceAdapter.findById()`에 `@Transactional`이 없었다. 기존 호출자는 전부 `@Transactional` Service 안에서만 이 메서드를 불러서 문제가 안 드러났는데, `JwtChannelInterceptor.authorizeWorkspaceTopicSubscription()`(트랜잭션 없는 최초의 호출자)가 부르면서 노출됐다. `findById()`가 `workspace` 행을 조회하는 순간 트랜잭션이 끝나고, 그 다음 `.map(mapper::toDomain)`이 `WorkspaceJpaEntity.members`(lazy `@OneToMany`)를 읽으려다 세션이 이미 닫혀 `LazyInitializationException`(Spring이 `JpaSystemException`으로 감쌈)이 발생했다.
+
+로컬에서 Node.js `ws`로 실제 STOMP 클라이언트를 만들어 재현해 확보한 스택트레이스:
+```
+org.springframework.orm.jpa.JpaSystemException: failed to lazily initialize a collection of role:
+WorkspaceJpaEntity.members: could not initialize proxy - no Session
+	at ...WorkspacePersistenceAdapter$$SpringCGLIB$$0.findById(<generated>)
+	at ...JwtChannelInterceptor.authorizeWorkspaceTopicSubscription(...)
+```
+
+### 구현 변경
+
+- `WorkspacePersistenceAdapter.findById()`에 `@Transactional(readOnly = true)` 추가 — 이 메서드 자체가 트랜잭션 경계를 가지면 트랜잭션 있는/없는 호출자 모두 안전하게 `memberIds`까지 매핑된다.
+
+### 수용한 한계
+
+- `findByIdForUpdate()`도 동일 구조(트랜잭션 없이 lazy 컬렉션 매핑)라 잠재적으로 같은 위험이 있다. 다만 현재 모든 호출자가 `@Transactional` Service 안에서만 부르고 있어 이번 범위에서는 건드리지 않았다 — 트랜잭션 없는 새 호출자가 생기면 그때 같이 고칠 것.
+
+### 검증
+
+- 로컬에서 재현 스크립트로 수정 전(100% ERROR+연결종료)/후(정상 구독, `workspace_member` 조회 쿼리까지 실행) 비교 확인.
+- `JwtChannelInterceptorTest`(12개) 및 workspace 도메인 전체 테스트 통과, 회귀 없음.
+
 ## ✅ 2026-08-18 · 업무·댓글 실시간 브로드캐스트(WebSocket) 추가
 
 ### 변경 목적
