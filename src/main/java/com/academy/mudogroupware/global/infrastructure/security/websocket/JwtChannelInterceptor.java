@@ -73,7 +73,9 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
   }
 
   // 워크스페이스 토픽은 참여자만 구독 가능하다 — 참여자 확인을 위해 처음으로 DB 조회가
-  // 들어간다(구독은 화면 진입당 1회뿐이라 성능 영향 없음).
+  // 들어간다(구독은 화면 진입당 1회뿐이라 성능 영향 없음). WorkspaceRepository.findById()는
+  // @Transactional(readOnly = true)로 감싸져 있어, 이 인터셉터처럼 트랜잭션 없는 호출자가
+  // 불러도 lazy 컬렉션(memberIds) 매핑까지 안전하게 끝난다.
   private void authorizeWorkspaceTopicSubscription(
       Message<?> m, StompHeaderAccessor a, String rawWorkspaceId) {
     Long workspaceId;
