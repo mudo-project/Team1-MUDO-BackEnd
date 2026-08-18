@@ -24,7 +24,7 @@ import com.academy.mudogroupware.sharedfile.application.port.DriveItem;
 import com.academy.mudogroupware.sharedfile.application.port.SharedFileDrivePort;
 import com.academy.mudogroupware.sharedfile.domain.model.SharedFileRoot;
 import com.academy.mudogroupware.sharedfile.domain.model.SharedFileRootStatus;
-import com.academy.mudogroupware.sharedfile.domain.repository.SharedFileRootConnectionHistoryRepository;
+import com.academy.mudogroupware.sharedfile.domain.repository.SharedFileRootHistoryRepository;
 import com.academy.mudogroupware.sharedfile.domain.repository.SharedFileRootRepository;
 
 class SharedFileRootInitializerTest {
@@ -32,14 +32,14 @@ class SharedFileRootInitializerTest {
     private static final Instant NOW = Instant.parse("2026-08-17T00:00:00Z");
 
     private final SharedFileRootRepository repository = mock(SharedFileRootRepository.class);
-    private final SharedFileRootConnectionHistoryRepository connectionHistoryRepository =
-            mock(SharedFileRootConnectionHistoryRepository.class);
+    private final SharedFileRootHistoryRepository historyRepository =
+            mock(SharedFileRootHistoryRepository.class);
     private final SharedFileDrivePort drivePort = mock(SharedFileDrivePort.class);
     private final GetGoogleAccessTokenUseCase getGoogleAccessTokenUseCase = mock(GetGoogleAccessTokenUseCase.class);
     private final Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
 
     private final SharedFileRootInitializer initializer = new SharedFileRootInitializer(
-            repository, connectionHistoryRepository, drivePort, getGoogleAccessTokenUseCase, clock);
+            repository, historyRepository, drivePort, getGoogleAccessTokenUseCase, clock);
 
     @Test
     void createsReadyRootOnFirstConnection() {
@@ -56,7 +56,7 @@ class SharedFileRootInitializerTest {
         assertThat(captor.getValue().isReady()).isTrue();
         assertThat(captor.getValue().getGoogleRootFolderId()).isEqualTo("folder-id");
         assertThat(captor.getValue().getConnectedGoogleEmail()).isEqualTo("academy@mudo.co.kr");
-        verify(connectionHistoryRepository).upsert("academy@mudo.co.kr", "folder-id", NOW.atZone(ZoneOffset.UTC).toLocalDateTime());
+        verify(historyRepository).upsert("academy@mudo.co.kr", "folder-id", NOW.atZone(ZoneOffset.UTC).toLocalDateTime());
     }
 
     @Test
@@ -95,7 +95,7 @@ class SharedFileRootInitializerTest {
         when(repository.find())
                 .thenReturn(Optional.of(SharedFileRoot.ready("b-folder-id", "b@mudo.co.kr")));
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
-        when(connectionHistoryRepository.findGoogleRootFolderIdByEmail("a@mudo.co.kr"))
+        when(historyRepository.findGoogleRootFolderIdByEmail("a@mudo.co.kr"))
                 .thenReturn(Optional.of("a-folder-id"));
         when(drivePort.getItem("access-token", "a-folder-id"))
                 .thenReturn(Optional.of(driveItem("a-folder-id", false)));
@@ -108,7 +108,7 @@ class SharedFileRootInitializerTest {
         assertThat(captor.getValue().getGoogleRootFolderId()).isEqualTo("a-folder-id");
         assertThat(captor.getValue().getConnectedGoogleEmail()).isEqualTo("a@mudo.co.kr");
         verify(drivePort, never()).createRootFolder(any(), any());
-        verify(connectionHistoryRepository).upsert("a@mudo.co.kr", "a-folder-id", NOW.atZone(ZoneOffset.UTC).toLocalDateTime());
+        verify(historyRepository).upsert("a@mudo.co.kr", "a-folder-id", NOW.atZone(ZoneOffset.UTC).toLocalDateTime());
     }
 
     @Test
@@ -116,7 +116,7 @@ class SharedFileRootInitializerTest {
         when(repository.find())
                 .thenReturn(Optional.of(SharedFileRoot.ready("b-folder-id", "b@mudo.co.kr")));
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
-        when(connectionHistoryRepository.findGoogleRootFolderIdByEmail("a@mudo.co.kr"))
+        when(historyRepository.findGoogleRootFolderIdByEmail("a@mudo.co.kr"))
                 .thenReturn(Optional.of("deleted-folder-id"));
         when(drivePort.getItem("access-token", "deleted-folder-id")).thenReturn(Optional.empty());
         when(drivePort.createRootFolder("access-token", "이음 그룹웨어 - 공유파일"))
@@ -134,7 +134,7 @@ class SharedFileRootInitializerTest {
         when(repository.find())
                 .thenReturn(Optional.of(SharedFileRoot.ready("b-folder-id", "b@mudo.co.kr")));
         when(getGoogleAccessTokenUseCase.getAccessToken()).thenReturn("access-token");
-        when(connectionHistoryRepository.findGoogleRootFolderIdByEmail("a@mudo.co.kr"))
+        when(historyRepository.findGoogleRootFolderIdByEmail("a@mudo.co.kr"))
                 .thenReturn(Optional.of("trashed-folder-id"));
         when(drivePort.getItem("access-token", "trashed-folder-id"))
                 .thenReturn(Optional.of(driveItem("trashed-folder-id", true)));
@@ -232,7 +232,7 @@ class SharedFileRootInitializerTest {
     }
 
     private void noReusableHistoryFor(String googleEmail) {
-        when(connectionHistoryRepository.findGoogleRootFolderIdByEmail(googleEmail)).thenReturn(Optional.empty());
+        when(historyRepository.findGoogleRootFolderIdByEmail(googleEmail)).thenReturn(Optional.empty());
     }
 
     private DriveItem driveItem(String id, boolean trashed) {
