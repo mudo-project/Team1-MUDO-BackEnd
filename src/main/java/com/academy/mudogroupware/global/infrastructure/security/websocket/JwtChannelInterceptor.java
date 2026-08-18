@@ -73,9 +73,14 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
   }
 
   // 워크스페이스 토픽은 참여자만 구독 가능하다 — 참여자 확인을 위해 처음으로 DB 조회가
-  // 들어간다(구독은 화면 진입당 1회뿐이라 성능 영향 없음). WorkspaceRepository.findById()는
-  // @Transactional(readOnly = true)로 감싸져 있어, 이 인터셉터처럼 트랜잭션 없는 호출자가
-  // 불러도 lazy 컬렉션(memberIds) 매핑까지 안전하게 끝난다.
+  // 들어간다. 구독은 화면 진입당 1회뿐이라 정상적인 DB 응답 속도 하에서는 채널 처리 지연이
+  // 미미할 것으로 예상되나, DB가 느려지면 그만큼 clientInboundChannel 처리 스레드를 점유한다
+  // (쿼리 timeout·지연 metric은 이 프로젝트의 다른 락/조회 지점들과 마찬가지로 프로젝트 전체
+  // 정책 이슈로 별도 분리 예정 — 이 메서드만 예외적으로 timeout을 거는 건 비일관적이라 보류).
+  // WorkspaceRepository.findById()는 @Transactional(readOnly = true)로 감싸져 있어, 이
+  // 인터셉터처럼 트랜잭션 없는 호출자가 불러도 lazy 컬렉션(memberIds) 매핑까지 안전하게
+  // 끝난다. DB 조회 실패 시의 fallback은 별도 구현이 필요 없다 — 예외가 preSend() 밖으로
+  // 전파되면 Spring이 STOMP ERROR 프레임 + 연결종료로 처리해, 그 자체가 구독 거부다.
   private void authorizeWorkspaceTopicSubscription(
       Message<?> m, StompHeaderAccessor a, String rawWorkspaceId) {
     Long workspaceId;
