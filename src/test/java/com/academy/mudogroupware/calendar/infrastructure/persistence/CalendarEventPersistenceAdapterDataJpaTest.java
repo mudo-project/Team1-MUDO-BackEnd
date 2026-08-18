@@ -96,4 +96,27 @@ class CalendarEventPersistenceAdapterDataJpaTest {
 
         assertThat(events).extracting(CalendarEvent::getTitle).containsExactly("짧은 안내");
     }
+
+    @Test
+    void findAllByPeriodIncludesEventsTouchingPeriodBoundaries() {
+        CalendarEvent endsAtFrom = CalendarEvent.create(
+                "시작 경계 종료", null,
+                LocalDateTime.of(2026, 8, 1, 9, 0),
+                LocalDateTime.of(2026, 8, 2, 0, 0),
+                false, "blue", 1L);
+        CalendarEvent startsAtTo = CalendarEvent.create(
+                "종료 경계 시작", null,
+                LocalDateTime.of(2026, 8, 2, 23, 59, 59),
+                LocalDateTime.of(2026, 8, 3, 9, 0),
+                false, "red", 1L);
+        adapter.save(endsAtFrom);
+        adapter.save(startsAtTo);
+
+        List<CalendarEvent> events = adapter.findAllByPeriod(
+                LocalDateTime.of(2026, 8, 2, 0, 0),
+                LocalDateTime.of(2026, 8, 2, 23, 59, 59));
+
+        assertThat(events).extracting(CalendarEvent::getTitle)
+                .containsExactlyInAnyOrder("시작 경계 종료", "종료 경계 시작");
+    }
 }
