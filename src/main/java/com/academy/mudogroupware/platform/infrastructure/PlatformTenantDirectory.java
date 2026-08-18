@@ -7,11 +7,11 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
+// 프론트가 로그인 전 학원 코드→API 호스트를 조회하는 공개 라우팅 정보라 dashboard host
+// 여부와 무관하게 모든 활성 Task에서 항상 조회 가능해야 한다.
 @Component
-@ConditionalOnProperty(prefix = "platform.dashboard", name = "enabled", havingValue = "true")
 @RequiredArgsConstructor
 public class PlatformTenantDirectory {
   private final PlatformDashboardProperties properties;
