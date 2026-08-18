@@ -108,6 +108,13 @@ class UpdateTaskServiceTest {
     assertThat(result.getStatus()).isEqualTo(TaskStatus.DELAYED);
     assertThat(result.getDueAt()).isEqualTo(TODAY.plusDays(3));
     verify(taskStatusHistoryRepository, never()).append(any());
+
+    verify(applicationEventPublisher).publishEvent(taskUpdatedEventCaptor.capture());
+    TaskUpdatedEvent published = taskUpdatedEventCaptor.getValue();
+    assertThat(published.workspaceId()).isEqualTo(WORKSPACE_ID);
+    assertThat(published.taskId()).isEqualTo(TASK_ID);
+    assertThat(published.status()).isEqualTo(TaskStatus.DELAYED);
+    assertThat(published.dueAt()).isEqualTo(TODAY.plusDays(3));
   }
 
   @Test

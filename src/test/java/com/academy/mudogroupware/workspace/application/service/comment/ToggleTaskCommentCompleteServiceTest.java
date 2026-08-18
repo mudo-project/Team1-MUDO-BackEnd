@@ -97,6 +97,13 @@ class ToggleTaskCommentCompleteServiceTest {
     assertThat(result.getCompletedBy()).isNull();
     verify(taskCommentRepository).updateCompletion(any());
     verify(taskCommentRepository, never()).save(any());
+
+    verify(applicationEventPublisher).publishEvent(commentToggledEventCaptor.capture());
+    CommentToggledEvent published = commentToggledEventCaptor.getValue();
+    assertThat(published.workspaceId()).isEqualTo(WORKSPACE_ID);
+    assertThat(published.completed()).isFalse();
+    assertThat(published.completedBy()).isNull();
+    assertThat(published.completedAt()).isNull();
   }
 
   @Test
