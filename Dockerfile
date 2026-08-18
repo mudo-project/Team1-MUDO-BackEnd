@@ -34,7 +34,9 @@ RUN mkdir -p /app/logs && chown app:app /app/logs
 COPY --from=build --chown=app:app /workspace/build/libs/*.jar app.jar
 
 # 컨테이너 메모리의 최대 75%를 JVM 힙 등에 활용하고 문자 인코딩을 UTF-8로 고정한다.
-ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75.0 -Dfile.encoding=UTF-8 -Duser.timezone=UTC"
+# G1PeriodicGCInterval: 트래픽 급증으로 커밋된 힙을 G1이 유휴 시간에 다시 OS로 반환하게 한다.
+# 이 옵션 없이는 스파이크 이후에도 컨테이너 메모리 사용량이 높게 유지된다.
+ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75.0 -XX:G1PeriodicGCInterval=300000 -Dfile.encoding=UTF-8 -Duser.timezone=UTC"
 
 USER app
 
