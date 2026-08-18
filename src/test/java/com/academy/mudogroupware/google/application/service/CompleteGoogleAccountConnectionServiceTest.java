@@ -138,7 +138,7 @@ class CompleteGoogleAccountConnectionServiceTest {
     }
 
     @Test
-    void completePublishesUnchangedEventOnFirstConnection() {
+    void completePublishesConnectedEventWithGoogleEmailOnFirstConnection() {
         CompleteGoogleConnectionCommand command = new CompleteGoogleConnectionCommand("auth-code", "state");
         when(googleOAuthStatePort.verify("state")).thenReturn(new GoogleOAuthStateClaims(7L, false));
         when(googleOAuthPort.exchangeAuthorizationCode("auth-code"))
@@ -152,7 +152,7 @@ class CompleteGoogleAccountConnectionServiceTest {
         InOrder inOrder = Mockito.inOrder(googleAccountConnectionRepository, eventPublisher);
         inOrder.verify(googleAccountConnectionRepository).save(any(GoogleAccountConnection.class));
         inOrder.verify(eventPublisher).publishEvent(captor.capture());
-        assertThat(captor.getValue().accountChanged()).isFalse();
+        assertThat(captor.getValue().googleEmail()).isEqualTo("academy@mudo.co.kr");
     }
 
     @Test
@@ -172,28 +172,11 @@ class CompleteGoogleAccountConnectionServiceTest {
     }
 
     @Test
-    void completePublishesUnchangedEventOnSameAccountReconnection() {
-        CompleteGoogleConnectionCommand command = new CompleteGoogleConnectionCommand("auth-code", "state");
-        when(googleOAuthStatePort.verify("state")).thenReturn(new GoogleOAuthStateClaims(7L, false));
-        when(googleOAuthPort.exchangeAuthorizationCode("auth-code"))
-                .thenReturn(new GoogleTokenExchangeResult("access-token", "new-refresh-token", "scope"));
-        when(googleOAuthPort.fetchAccountEmail("access-token")).thenReturn("same@mudo.co.kr");
-        GoogleAccountConnection existing = GoogleAccountConnection.restore(
-                10L, "same@mudo.co.kr", 5L, "scope", "old-refresh-token",
-                NOW.atZone(ZoneOffset.UTC).toLocalDateTime().minusDays(30),
-                NOW.atZone(ZoneOffset.UTC).toLocalDateTime().plusDays(30),
-                NOW.atZone(ZoneOffset.UTC).toLocalDateTime().minusDays(30), false);
-        when(googleAccountConnectionRepository.find()).thenReturn(Optional.of(existing));
-
-        service.complete(command);
-
-        ArgumentCaptor<GoogleAccountConnectedEvent> captor = ArgumentCaptor.forClass(GoogleAccountConnectedEvent.class);
-        verify(eventPublisher).publishEvent(captor.capture());
-        assertThat(captor.getValue().accountChanged()).isFalse();
-    }
-
-    @Test
-    void completePublishesChangedEventOnAccountReplacement() {
+    void completePublishesConnectedEventWithNewlyConnectedEmailOnAccountReplacement() {
+        // 이 서비스는 더 이상 "계정이 바뀌었는지"를 스스로 계산하지 않는다(과거에 여기서 계산해서 넘긴
+        // boolean이 연동 해제 후 재연동 시 항상 false로 오판하는 버그의 원인이었다). 그 판단은 각
+        // 구독자(SharedFileRootInitializer)가 자기 상태와 이 이메일을 직접 비교해서 하므로, 여기서는
+        // 기존 연결 상태와 무관하게 "지금 연결된 이메일"이 그대로 이벤트에 실리는지만 확인한다.
         CompleteGoogleConnectionCommand command = new CompleteGoogleConnectionCommand("auth-code", "state");
         when(googleOAuthStatePort.verify("state")).thenReturn(new GoogleOAuthStateClaims(7L, true));
         when(googleOAuthPort.exchangeAuthorizationCode("auth-code"))
@@ -210,6 +193,6 @@ class CompleteGoogleAccountConnectionServiceTest {
 
         ArgumentCaptor<GoogleAccountConnectedEvent> captor = ArgumentCaptor.forClass(GoogleAccountConnectedEvent.class);
         verify(eventPublisher).publishEvent(captor.capture());
-        assertThat(captor.getValue().accountChanged()).isTrue();
+        assertThat(captor.getValue().googleEmail()).isEqualTo("new@mudo.co.kr");
     }
 }

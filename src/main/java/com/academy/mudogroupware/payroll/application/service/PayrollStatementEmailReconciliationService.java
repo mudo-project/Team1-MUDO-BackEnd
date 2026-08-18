@@ -2,6 +2,7 @@ package com.academy.mudogroupware.payroll.application.service;
 
 import com.academy.mudogroupware.payroll.application.port.out.PayrollStatementDeliveryPort;
 import com.academy.mudogroupware.payroll.application.port.out.PayrollStatementEmailStatusPort;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,9 +15,10 @@ public class PayrollStatementEmailReconciliationService {
   private final PayrollStatementDeliveryPort deliveries;
   private final PayrollStatementEmailStatusPort providerStatuses;
   private final PayrollStatementEmailPolicy policy;
+  private final Clock clock;
 
   public ReconciliationResult reconcile() {
-    LocalDateTime now = LocalDateTime.now();
+    LocalDateTime now = LocalDateTime.now(clock);
     var candidates = deliveries.findReconciliationCandidates(
         now.minus(policy.reconcileAfter()), now.minus(policy.reconcileCooldown()),
         policy.dispatchBatchSize());

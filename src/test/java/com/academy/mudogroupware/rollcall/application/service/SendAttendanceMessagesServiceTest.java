@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -17,11 +18,19 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
+import com.academy.mudogroupware.planquota.application.service.CurrentPlanProvider;
+import com.academy.mudogroupware.planquota.domain.exception.PlanLimitExceededException;
+import com.academy.mudogroupware.planquota.domain.model.Plan;
+import com.academy.mudogroupware.planquota.domain.model.PlanLimits;
 import com.academy.mudogroupware.rollcall.application.command.SendAttendanceMessagesCommand;
 import com.academy.mudogroupware.rollcall.application.port.SmsSendResult;
 import com.academy.mudogroupware.rollcall.application.port.SmsSenderPort;
@@ -35,10 +44,6 @@ import com.academy.mudogroupware.rollcall.domain.model.AttendanceStatus;
 import com.academy.mudogroupware.rollcall.domain.model.MessageTemplate;
 import com.academy.mudogroupware.rollcall.domain.repository.AttendanceMessageSendRecordRepository;
 import com.academy.mudogroupware.rollcall.domain.repository.MessageTemplateRepository;
-import com.academy.mudogroupware.planquota.application.service.CurrentPlanProvider;
-import com.academy.mudogroupware.planquota.domain.exception.PlanLimitExceededException;
-import com.academy.mudogroupware.planquota.domain.model.Plan;
-import com.academy.mudogroupware.planquota.domain.model.PlanLimits;
 import com.academy.mudogroupware.resourceusage.application.command.RecordSmsUsageCommand;
 import com.academy.mudogroupware.resourceusage.application.port.ResourceUsageQueryPort;
 import com.academy.mudogroupware.resourceusage.application.port.ResourceUsageRecorder;
@@ -67,7 +72,8 @@ class SendAttendanceMessagesServiceTest {
     void setUp() {
         service = new SendAttendanceMessagesService(
                 getMessageSendCandidatesUseCase, messageTemplateRepository, smsSenderPort, resourceUsageRecorder,
-                attendanceMessageSendRecordRepository, clock, resourceUsageQueryPort, currentPlanProvider);
+                attendanceMessageSendRecordRepository, clock, resourceUsageQueryPort, currentPlanProvider,
+                Runnable::run);
         when(attendanceMessageSendRecordRepository.createOrGetExisting(any(), any(), any(), any()))
                 .thenAnswer(invocation -> AttendanceMessageSendRecord.createPending(
                         invocation.getArgument(0), invocation.getArgument(1), invocation.getArgument(2),
@@ -122,7 +128,7 @@ class SendAttendanceMessagesServiceTest {
         assertThat(results).filteredOn(r -> !r.sent())
                 .hasSize(1)
                 .allSatisfy(r -> assertThat(r.failureReason()).contains("한도"));
-        verify(smsSenderPort, org.mockito.Mockito.times(2)).send(any(), any());
+        verify(smsSenderPort, times(2)).send(any(), any());
         verify(resourceUsageRecorder).recordSmsMessages(new RecordSmsUsageCommand("rollcall-attendance-sms", 2));
     }
 
@@ -508,5 +514,77 @@ class SendAttendanceMessagesServiceTest {
         ArgumentCaptor<AttendanceMessageSendRecord> captor = ArgumentCaptor.forClass(AttendanceMessageSendRecord.class);
         verify(attendanceMessageSendRecordRepository).save(captor.capture());
         assertThat(captor.getValue().getStatus()).isEqualTo(AttendanceMessageSendStatus.INDETERMINATE);
+    }
+
+    @Test
+    void sendsMessagesConcurrentlyInsteadOfSequentially() throws InterruptedException {
+        int studentCount = 6;
+        long perCallDelayMs = 200;
+        List<Long> studentIds = IntStream.rangeClosed(1, studentCount).mapToObj(i -> (long) i).toList();
+        MessageTemplate template = MessageTemplate.restore(
+                7L, "결석 안내", AttendanceStatus.ABSENT, "결석했습니다", 1L, NOW, NOW);
+        List<MessageSendCandidateView> candidates = studentIds.stream()
+                .map(id -> new MessageSendCandidateView(id, "학생" + id, AttendanceStatus.ABSENT,
+                        "010-0000-" + String.format("%04d", id), 7L, "결석 안내", true))
+                .toList();
+        when(getMessageSendCandidatesUseCase.getCandidates(LECTURE_ID, DATE)).thenReturn(candidates);
+        when(messageTemplateRepository.findById(7L)).thenReturn(Optional.of(template));
+        when(smsSenderPort.send(any(), any())).thenAnswer(invocation -> {
+            Thread.sleep(perCallDelayMs);
+            return SmsSendResult.succeeded();
+        });
+
+        ExecutorService realExecutor = Executors.newFixedThreadPool(6);
+        try {
+            SendAttendanceMessagesService parallelService = new SendAttendanceMessagesService(
+                    getMessageSendCandidatesUseCase, messageTemplateRepository, smsSenderPort, resourceUsageRecorder,
+                    attendanceMessageSendRecordRepository, clock, resourceUsageQueryPort, currentPlanProvider,
+                    realExecutor);
+
+            long startNanos = System.nanoTime();
+            List<MessageSendResultView> results = parallelService.send(
+                    new SendAttendanceMessagesCommand(LECTURE_ID, DATE, studentIds));
+            long elapsedMs = (System.nanoTime() - startNanos) / 1_000_000;
+
+            assertThat(results).hasSize(studentCount);
+            assertThat(results).allSatisfy(result -> assertThat(result.sent()).isTrue());
+            // 순차 처리라면 6 * 200ms = 1200ms 이상 걸린다. 전용 스레드풀로 동시에 처리하면 가장 느린
+            // 1건 수준(200ms)에 가까워야 한다 - 스케줄링 여유를 감안해 절반(600ms) 미만이면 병렬 처리로 본다.
+            assertThat(elapsedMs).isLessThan(studentCount * perCallDelayMs / 2);
+        } finally {
+            realExecutor.shutdownNow();
+        }
+    }
+
+    @Test
+    void returnsFailedOutcomeForEveryStudentWhenExecutorRejectsSubmission() {
+        int studentCount = 5;
+        List<Long> studentIds = IntStream.rangeClosed(1, studentCount).mapToObj(i -> (long) i).toList();
+        MessageTemplate template = MessageTemplate.restore(
+                7L, "결석 안내", AttendanceStatus.ABSENT, "결석했습니다", 1L, NOW, NOW);
+        List<MessageSendCandidateView> candidates = studentIds.stream()
+                .map(id -> new MessageSendCandidateView(id, "학생" + id, AttendanceStatus.ABSENT,
+                        "010-0000-" + String.format("%04d", id), 7L, "결석 안내", true))
+                .toList();
+        when(getMessageSendCandidatesUseCase.getCandidates(LECTURE_ID, DATE)).thenReturn(candidates);
+        when(messageTemplateRepository.findById(7L)).thenReturn(Optional.of(template));
+        // 풀/큐가 가득 찬 상황을 흉내내기 위해, 제출 즉시 항상 거부하는 executor를 사용한다.
+        java.util.concurrent.Executor alwaysRejectingExecutor = task -> {
+            throw new RejectedExecutionException("simulated saturated executor");
+        };
+        SendAttendanceMessagesService saturatedService = new SendAttendanceMessagesService(
+                getMessageSendCandidatesUseCase, messageTemplateRepository, smsSenderPort, resourceUsageRecorder,
+                attendanceMessageSendRecordRepository, clock, resourceUsageQueryPort, currentPlanProvider,
+                alwaysRejectingExecutor);
+
+        List<MessageSendResultView> results = saturatedService.send(
+                new SendAttendanceMessagesCommand(LECTURE_ID, DATE, studentIds));
+
+        assertThat(results).hasSize(studentCount);
+        assertThat(results).allSatisfy(result -> {
+            assertThat(result.sent()).isFalse();
+            assertThat(result.failureReason()).contains("대기열이 가득 차");
+        });
+        verify(smsSenderPort, never()).send(any(), any());
     }
 }

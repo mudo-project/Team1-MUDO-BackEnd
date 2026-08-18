@@ -8,17 +8,18 @@ import org.junit.jupiter.api.Test;
 class SharedFileRootTest {
 
     @Test
-    void readyBuildsRootWithGoogleFolderId() {
-        SharedFileRoot root = SharedFileRoot.ready("drive-folder-1");
+    void readyBuildsRootWithGoogleFolderIdAndConnectedEmail() {
+        SharedFileRoot root = SharedFileRoot.ready("drive-folder-1", "academy@mudo.co.kr");
 
         assertThat(root.isReady()).isTrue();
         assertThat(root.getStatus()).isEqualTo(SharedFileRootStatus.READY);
         assertThat(root.getGoogleRootFolderId()).isEqualTo("drive-folder-1");
+        assertThat(root.getConnectedGoogleEmail()).isEqualTo("academy@mudo.co.kr");
     }
 
     @Test
     void readyThrowsWhenGoogleFolderIdIsBlank() {
-        assertThatThrownBy(() -> SharedFileRoot.ready(" "))
+        assertThatThrownBy(() -> SharedFileRoot.ready(" ", "academy@mudo.co.kr"))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -32,38 +33,40 @@ class SharedFileRootTest {
     }
 
     @Test
-    void markFailedClearsThePreviousGoogleFolderId() {
-        SharedFileRoot root = SharedFileRoot.ready("drive-folder-1");
+    void markFailedClearsThePreviousGoogleFolderIdAndConnectedEmail() {
+        SharedFileRoot root = SharedFileRoot.ready("drive-folder-1", "academy@mudo.co.kr");
 
         root.markFailed();
 
         assertThat(root.isReady()).isFalse();
         assertThat(root.getStatus()).isEqualTo(SharedFileRootStatus.FAILED);
         assertThat(root.getGoogleRootFolderId()).isNull();
+        assertThat(root.getConnectedGoogleEmail()).isNull();
     }
 
     @Test
-    void replaceWithMakesTheRootReadyWithTheSuppliedId() {
+    void replaceWithMakesTheRootReadyWithTheSuppliedIdAndEmail() {
         SharedFileRoot root = SharedFileRoot.failed();
 
-        root.replaceWith("drive-folder-2");
+        root.replaceWith("drive-folder-2", "new@mudo.co.kr");
 
         assertThat(root.isReady()).isTrue();
         assertThat(root.getStatus()).isEqualTo(SharedFileRootStatus.READY);
         assertThat(root.getGoogleRootFolderId()).isEqualTo("drive-folder-2");
+        assertThat(root.getConnectedGoogleEmail()).isEqualTo("new@mudo.co.kr");
     }
 
     @Test
     void replaceWithThrowsWhenGoogleFolderIdIsBlank() {
         SharedFileRoot root = SharedFileRoot.failed();
 
-        assertThatThrownBy(() -> root.replaceWith(""))
+        assertThatThrownBy(() -> root.replaceWith("", "new@mudo.co.kr"))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void readyBuildsRootWithNullVersionBecauseItIsNotYetPersisted() {
-        SharedFileRoot root = SharedFileRoot.ready("drive-folder-1");
+        SharedFileRoot root = SharedFileRoot.ready("drive-folder-1", "academy@mudo.co.kr");
 
         assertThat(root.getVersion()).isNull();
     }
@@ -76,11 +79,13 @@ class SharedFileRootTest {
     }
 
     @Test
-    void restorePreservesTheVersionReadFromPersistence() {
-        SharedFileRoot root = SharedFileRoot.restore(SharedFileRootStatus.READY, "drive-folder-1", 3L);
+    void restorePreservesTheVersionAndConnectedEmailReadFromPersistence() {
+        SharedFileRoot root =
+                SharedFileRoot.restore(SharedFileRootStatus.READY, "drive-folder-1", "academy@mudo.co.kr", 3L);
 
         assertThat(root.isReady()).isTrue();
         assertThat(root.getGoogleRootFolderId()).isEqualTo("drive-folder-1");
+        assertThat(root.getConnectedGoogleEmail()).isEqualTo("academy@mudo.co.kr");
         assertThat(root.getVersion()).isEqualTo(3L);
     }
 }

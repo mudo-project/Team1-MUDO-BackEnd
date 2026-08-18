@@ -94,7 +94,7 @@ GET /api/calendars?date= 또는 ?yearMonth=
 
 ### 3. 조회 및 변환
 
-`CalendarEventPersistenceAdapter`가 `CalendarEventJpaRepository.findAllByEventStartAtBetween(...)`을 호출해 `event_start_at`이 구간에 포함되는 일정만 가져오고, 각 Entity를 Domain Model로 변환한다.
+`CalendarEventPersistenceAdapter`가 `CalendarEventJpaRepository.findAllOverlappingPeriod(...)`을 호출해 일정을 가져오고, 각 Entity를 Domain Model로 변환한다. `event_start_at`만으로 거르면 조회 구간 이전에 시작해 계속 진행 중인 일정이 누락되므로, `event_start_at <= to AND COALESCE(event_end_at, event_start_at) >= from` 조건으로 구간과 겹치는 일정을 찾는다(`event_end_at`이 없는 순간 일정은 `event_start_at`을 종료 시각으로 취급).
 
 ### 4. 응답
 

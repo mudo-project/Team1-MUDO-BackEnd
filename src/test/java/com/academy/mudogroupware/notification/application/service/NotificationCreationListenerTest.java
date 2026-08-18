@@ -60,6 +60,12 @@ class NotificationCreationListenerTest {
             assertThat(command.targetId()).isEqualTo(101L);
             assertThat(command.message()).isEqualTo("윤예진님이 댓글에서 회원님을 언급했습니다");
         });
+        // 멱등키는 target_id(taskId)가 아니라 commentId+recipientUserId 기준이라, 같은 업무의
+        // 다른 댓글에서 같은 사람이 또 멘션돼도 서로 다른 키가 나와야 한다.
+        assertThat(captor.getAllValues()).extracting(CreateNotificationCommand::idempotencyKey)
+                .containsExactly(
+                        "WORKSPACE_TASK_COMMENT_MENTION:501:11",
+                        "WORKSPACE_TASK_COMMENT_MENTION:501:12");
     }
 
     @Test
@@ -75,6 +81,7 @@ class NotificationCreationListenerTest {
         assertThat(captor.getValue().type()).isEqualTo(NotificationType.APPROVAL_LINE_ACTIVATED.name());
         assertThat(captor.getValue().targetId()).isEqualTo(200L);
         assertThat(captor.getValue().message()).isEqualTo("결재 문서 [휴가 신청서] 결재 차례가 되었습니다");
+        assertThat(captor.getValue().idempotencyKey()).isEqualTo("APPROVAL_LINE_ACTIVATED:200:20");
     }
 
     @Test
@@ -89,6 +96,7 @@ class NotificationCreationListenerTest {
         assertThat(captor.getValue().recipientUserId()).isEqualTo(30L);
         assertThat(captor.getValue().type()).isEqualTo(NotificationType.APPROVAL_DOCUMENT_DECIDED.name());
         assertThat(captor.getValue().message()).isEqualTo("결재 문서가 승인되었습니다");
+        assertThat(captor.getValue().idempotencyKey()).isEqualTo("APPROVAL_DOCUMENT_DECIDED:300:30");
     }
 
     @Test
@@ -127,6 +135,7 @@ class NotificationCreationListenerTest {
         assertThat(captor.getValue().type()).isEqualTo(NotificationType.REVENUE_REPORT_GENERATED.name());
         assertThat(captor.getValue().targetId()).isEqualTo(99L);
         assertThat(captor.getValue().message()).isEqualTo("2026년 8월 매출 리포트가 생성되었습니다");
+        assertThat(captor.getValue().idempotencyKey()).isEqualTo("REVENUE_REPORT_GENERATED:99:7");
     }
 
     @Test

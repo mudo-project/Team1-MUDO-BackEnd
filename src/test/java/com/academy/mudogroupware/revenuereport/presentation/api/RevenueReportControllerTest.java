@@ -1,10 +1,12 @@
 package com.academy.mudogroupware.revenuereport.presentation.api;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -15,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -28,6 +31,8 @@ import com.academy.mudogroupware.global.presentation.security.handler.CustomAuth
 import com.academy.mudogroupware.revenuereport.application.usecase.CountUnreadRevenueReportsUseCase;
 import com.academy.mudogroupware.revenuereport.application.usecase.GetRevenueReportUseCase;
 import com.academy.mudogroupware.revenuereport.application.usecase.ListRevenueReportsUseCase;
+import com.academy.mudogroupware.revenuereport.application.usecase.ManualGenerateRevenueReportUseCase;
+import com.academy.mudogroupware.revenuereport.domain.exception.RevenueReportAlreadyExistsException;
 import com.academy.mudogroupware.revenuereport.domain.model.RevenueReport;
 
 @WebMvcTest(RevenueReportController.class)
@@ -52,6 +57,8 @@ class RevenueReportControllerTest {
     private GetRevenueReportUseCase getRevenueReportUseCase;
     @MockitoBean
     private CountUnreadRevenueReportsUseCase countUnreadRevenueReportsUseCase;
+    @MockitoBean
+    private ManualGenerateRevenueReportUseCase manualGenerateRevenueReportUseCase;
 
     @Test
     void listIsForbiddenWithoutAcademyOwnerAuthority() throws Exception {
@@ -102,5 +109,53 @@ class RevenueReportControllerTest {
         mockMvc.perform(get("/api/revenue-reports/unread-count").with(authentication(token)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.unreadCount").value(2));
+    }
+
+    @Test
+    void generateIsForbiddenWithoutSuperAdminAuthority() throws Exception {
+        TestingAuthenticationToken token = new TestingAuthenticationToken("owner", null, "ACADEMY:OWNER");
+
+        mockMvc.perform(post("/api/revenue-reports/generate")
+                        .with(authentication(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"targetMonth\":\"2026-07\"}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void generateReturnsBadRequestForInvalidMonthFormat() throws Exception {
+        TestingAuthenticationToken token = new TestingAuthenticationToken("admin", null, "PLATFORM:SUPER_ADMIN");
+
+        mockMvc.perform(post("/api/revenue-reports/generate")
+                        .with(authentication(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"targetMonth\":\"july\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void generateReturnsConflictWhenReportAlreadyExists() throws Exception {
+        TestingAuthenticationToken token = new TestingAuthenticationToken("admin", null, "PLATFORM:SUPER_ADMIN");
+        doThrow(new RevenueReportAlreadyExistsException())
+                .when(manualGenerateRevenueReportUseCase).generateManually(LocalDate.of(2026, 7, 1));
+
+        mockMvc.perform(post("/api/revenue-reports/generate")
+                        .with(authentication(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"targetMonth\":\"2026-07\"}"))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void generateReturnsNoContentOnSuccess() throws Exception {
+        TestingAuthenticationToken token = new TestingAuthenticationToken("admin", null, "PLATFORM:SUPER_ADMIN");
+
+        mockMvc.perform(post("/api/revenue-reports/generate")
+                        .with(authentication(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"targetMonth\":\"2026-07\"}"))
+                .andExpect(status().isNoContent());
+
+        verify(manualGenerateRevenueReportUseCase).generateManually(LocalDate.of(2026, 7, 1));
     }
 }

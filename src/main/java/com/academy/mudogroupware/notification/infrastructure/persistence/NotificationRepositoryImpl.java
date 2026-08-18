@@ -28,6 +28,7 @@ public class NotificationRepositoryImpl implements NotificationRepository {
                 .type(notification.getType())
                 .targetId(notification.getTargetId())
                 .message(notification.getMessage())
+                .idempotencyKey(notification.getIdempotencyKey())
                 .build();
         return toDomain(notificationJpaRepository.save(entity));
     }
@@ -69,6 +70,7 @@ public class NotificationRepositoryImpl implements NotificationRepository {
 
     private Notification toDomain(NotificationEntity entity) {
         return Notification.restore(entity.getId(), entity.getRecipientUserId(), entity.getType(),
-                entity.getTargetId(), entity.getMessage(), entity.getReadAt(), entity.getCreatedAt());
+                entity.getTargetId(), entity.getMessage(), entity.getIdempotencyKey(),
+                entity.getReadAt(), entity.getCreatedAt());
     }
 }

@@ -33,6 +33,11 @@ public class SharedFileRootEntity extends BaseTimeEntity {
     @Column(name = "google_root_folder_id")
     private String googleRootFolderId;
 
+    // 이 루트 폴더가 지금 어느 Google 계정 소유인지. 연동 해제→재연동 시 계정이 실제로 바뀌었는지를
+    // (다른 도메인이 계산해준 값이 아니라) 이 테이블 스스로 판단하기 위한 값이다.
+    @Column(name = "connected_google_email")
+    private String connectedGoogleEmail;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     private SharedFileRootStatus status;
@@ -41,15 +46,18 @@ public class SharedFileRootEntity extends BaseTimeEntity {
     @Column(name = "version", nullable = false)
     private Long version;
 
-    private SharedFileRootEntity(SharedFileRootStatus status, String googleRootFolderId) {
+    private SharedFileRootEntity(SharedFileRootStatus status, String googleRootFolderId,
+            String connectedGoogleEmail) {
         this.id = SINGLETON_ID;
         this.status = status;
         this.googleRootFolderId = googleRootFolderId;
+        this.connectedGoogleEmail = connectedGoogleEmail;
     }
 
     // 행이 아직 없을 때(최초 연결) 새로 만든다.
-    public static SharedFileRootEntity create(SharedFileRootStatus status, String googleRootFolderId) {
-        return new SharedFileRootEntity(status, googleRootFolderId);
+    public static SharedFileRootEntity create(SharedFileRootStatus status, String googleRootFolderId,
+            String connectedGoogleEmail) {
+        return new SharedFileRootEntity(status, googleRootFolderId, connectedGoogleEmail);
     }
 
     // 이미 있는 행을 갱신할 때 쓴다. 호출자가 조회 시점에 들고 있던 version을 그대로 실어 detached
@@ -57,8 +65,8 @@ public class SharedFileRootEntity extends BaseTimeEntity {
     // 낙관적 락 충돌(OptimisticLockException)을 던진다. save() 안에서 다시 조회해 그 자리에서
     // 수정하면(예전 방식) 비교 대상이 항상 최신 버전이 되어 버려 충돌 감지가 무력화되므로 이 방식을 쓴다.
     public static SharedFileRootEntity forUpdate(Long version, SharedFileRootStatus status,
-            String googleRootFolderId) {
-        SharedFileRootEntity entity = new SharedFileRootEntity(status, googleRootFolderId);
+            String googleRootFolderId, String connectedGoogleEmail) {
+        SharedFileRootEntity entity = new SharedFileRootEntity(status, googleRootFolderId, connectedGoogleEmail);
         entity.version = version;
         return entity;
     }

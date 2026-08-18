@@ -44,19 +44,6 @@ public class PayrollStatementEmailDeliveryWorker {
   private boolean rerunRequested;
 
   @Autowired
-  public PayrollStatementEmailDeliveryWorker(
-      PayrollStatementEmailDispatchService dispatchService,
-      PayrollStatementEmailRecoveryService recoveryService,
-      PayrollStatementEmailReconciliationService reconciliationService,
-      PayrollStatementDeliveryPort deliveries,
-      PayrollEmailProperties properties,
-      PayrollStatementEmailPolicy policy,
-      PayrollStatementEmailOperationalMetrics metrics,
-      PayrollEmailTaskScheduler scheduler) {
-    this(dispatchService, recoveryService, reconciliationService, deliveries, properties, policy,
-        metrics, scheduler, Clock.system(SEOUL));
-  }
-
   PayrollStatementEmailDeliveryWorker(
       PayrollStatementEmailDispatchService dispatchService,
       PayrollStatementEmailRecoveryService recoveryService,
