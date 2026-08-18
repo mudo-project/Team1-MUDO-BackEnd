@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 @RequiredArgsConstructor
@@ -45,7 +46,13 @@ public class WorkspacePersistenceAdapter implements WorkspaceRepository {
     return workspaceJpaRepository.existsByNameAndDeletedAtIsNull(name);
   }
 
+  // 트랜잭션 없는 호출자(예: JwtChannelInterceptor의 워크스페이스 토픽 구독 인가)가 불러도
+  // memberIds(lazy 컬렉션) 매핑까지 같은 세션에서 끝나도록 이 메서드 자체가 트랜잭션 경계를
+  // 갖는다. 이게 없으면 findActiveById()의 조회 트랜잭션이 메서드 리턴과 함께 끝나버려서,
+  // 그 다음 줄의 .map(toDomain)이 세션 밖에서 lazy 컬렉션을 읽다 LazyInitializationException을
+  // 던진다(트랜잭션이 있는 Service 안에서 호출할 땐 그 트랜잭션에 편승해서 우연히 안 터졌음).
   @Override
+  @Transactional(readOnly = true)
   public Optional<Workspace> findById(Long workspaceId) {
     return workspaceJpaRepository.findActiveById(workspaceId)
         .map(workspacePersistenceMapper::toDomain);

@@ -553,7 +553,7 @@ def deploy(
             args.app_image,
             args.deployment_sha,
             platform_tenant_registry_json if tenant.get("platform_dashboard_host") else None,
-            public_tenant_directory_json if tenant.get("platform_dashboard_host") else None,
+            public_tenant_directory_json,
         )
         new_task_arn = aws.register_task(app_task)
         try:
