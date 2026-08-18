@@ -69,7 +69,7 @@ class DeploymentManifestTest(unittest.TestCase):
         self.assertEqual("paid", environment["TENANT_PLAN"])
         self.assertEqual("true", environment["PLATFORM_DASHBOARD_ENABLED"])
         self.assertIn('"code":"academy-a"', environment["PLATFORM_DASHBOARD_TENANT_REGISTRY_JSON"])
-        self.assertEqual("30", environment["SERVER_TOMCAT_THREADS_MAX"])
+        self.assertEqual("35", environment["SERVER_TOMCAT_THREADS_MAX"])
         self.assertEqual(500, container["cpu"])
         self.assertEqual(768, container["memoryReservation"])
         self.assertEqual(1024, container["memory"])
