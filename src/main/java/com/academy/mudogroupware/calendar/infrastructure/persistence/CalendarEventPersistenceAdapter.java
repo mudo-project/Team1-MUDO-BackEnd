@@ -44,7 +44,7 @@ public class CalendarEventPersistenceAdapter implements CalendarEventRepository 
 
     @Override
     public List<CalendarEvent> findAllByPeriod(LocalDateTime from, LocalDateTime to) {
-        return calendarEventJpaRepository.findAllByEventStartAtBetween(from, to).stream()
+        return calendarEventJpaRepository.findAllOverlappingPeriod(from, to).stream()
                 .map(this::toDomain)
                 .toList();
     }
