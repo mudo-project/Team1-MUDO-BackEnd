@@ -66,6 +66,15 @@ UPDATE로 `SENDING` 상태를 선점한다.
 - 범용 Outbox가 아니므로 다른 도메인의 이벤트 전달에는 그대로 재사용하기 어렵다.
 - 현재 구조는 높은 처리량보다 급여명세서 중복 방지와 복구 가능성을 우선한다.
 
+**구현 시 유의사항: Clock 일관성**
+
+Delivery Worker는 다음 예약 시각을 결정할 때(`Clock`)와, `PayrollStatementEmailReconciliationService`/
+`PayrollStatementEmailRecoveryService`가 실제로 DB 시각과 비교할 때(`LocalDateTime.now()`)가 서로 다른
+타임존 기준을 쓰면 두 판단이 어긋난다. JVM 기본 타임존이 서버 로케일(UTC 등)과 다를 경우, Worker는
+"이미 지난 작업"으로 오판해 처리할 것이 없어도 지연 없이 재실행을 반복할 수 있다(#593). 이후 세
+클래스 모두 `TimeConfig`의 `Asia/Seoul` 기준 공용 `Clock` Bean을 주입받도록 통일했다(PR #594). 이
+영역에 새 시각 비교 로직을 추가할 때도 반드시 동일한 `Clock`을 주입받아 사용한다.
+
 ### 3.2 보수적인 재시도 정책과 `UNKNOWN`
 
 **개선 전 한계**
