@@ -2,6 +2,7 @@ package com.academy.mudogroupware.workspace.application.service.task;
 
 import com.academy.mudogroupware.workspace.application.command.task.DeleteTaskCommand;
 import com.academy.mudogroupware.workspace.application.usecase.task.DeleteTaskUseCase;
+import com.academy.mudogroupware.workspace.domain.event.TaskDeletedEvent;
 import com.academy.mudogroupware.workspace.domain.exception.task.TaskNotFoundException;
 import com.academy.mudogroupware.workspace.domain.exception.workspace.WorkspaceAccessDeniedException;
 import com.academy.mudogroupware.workspace.domain.exception.workspace.WorkspaceNotFoundException;
@@ -12,6 +13,7 @@ import com.academy.mudogroupware.workspace.domain.repository.task.TaskRepository
 import com.academy.mudogroupware.workspace.domain.repository.workspace.WorkspaceRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +25,7 @@ public class DeleteTaskService implements DeleteTaskUseCase {
   private final WorkspaceRepository workspaceRepository;
   private final TaskRepository taskRepository;
   private final RecurringTaskSkipRepository recurringTaskSkipRepository;
+  private final ApplicationEventPublisher applicationEventPublisher;
 
   @Override
   @Transactional
@@ -55,5 +58,8 @@ public class DeleteTaskService implements DeleteTaskUseCase {
     }
 
     taskRepository.delete(command.taskId());
+
+    applicationEventPublisher.publishEvent(
+        new TaskDeletedEvent(command.workspaceId(), command.taskId()));
   }
 }

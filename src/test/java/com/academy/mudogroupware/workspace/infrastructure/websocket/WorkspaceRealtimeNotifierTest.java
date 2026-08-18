@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 
 import com.academy.mudogroupware.global.infrastructure.websocket.WebSocketEventPublisher;
 import com.academy.mudogroupware.workspace.domain.event.TaskCreatedEvent;
+import com.academy.mudogroupware.workspace.domain.event.TaskDeletedEvent;
 import com.academy.mudogroupware.workspace.domain.event.TaskUpdatedEvent;
 import com.academy.mudogroupware.workspace.domain.model.task.TaskStatus;
 import java.time.LocalDate;
@@ -62,5 +63,18 @@ class WorkspaceRealtimeNotifierTest {
     TaskUpdatedSocketResponse payload = payloadCaptor.getValue();
     assertThat(payload.eventType()).isEqualTo("TASK_UPDATED");
     assertThat(payload.status()).isEqualTo(TaskStatus.COMPLETED);
+  }
+
+  @Test
+  void publishesTaskDeletedEventToWorkspaceTopic() {
+    TaskDeletedEvent event = new TaskDeletedEvent(2L, 501L);
+    ArgumentCaptor<TaskDeletedSocketResponse> payloadCaptor =
+        ArgumentCaptor.forClass(TaskDeletedSocketResponse.class);
+
+    notifier.handle(event);
+
+    verify(eventPublisher).publish(eq("/topic/workspaces/2"), payloadCaptor.capture());
+    assertThat(payloadCaptor.getValue().eventType()).isEqualTo("TASK_DELETED");
+    assertThat(payloadCaptor.getValue().taskId()).isEqualTo(501L);
   }
 }
