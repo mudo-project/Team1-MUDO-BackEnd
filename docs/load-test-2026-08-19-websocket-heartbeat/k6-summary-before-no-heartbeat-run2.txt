@@ -27,7 +27,8 @@
     ws_connecting..................: avg=56ms     min=4.73ms  med=8.54ms   max=285.05ms p(90)=220.93ms p(95)=257.56ms
     ws_msgs_received...............: 200    3.027096/s
     ws_msgs_sent...................: 200    3.027096/s
-    ws_session_duration............: avg=1m0s     min=1m0s    med=1m0s     max=1m0s     p(90)=1m0s     p(95)=1m0s    
+    ws_session_duration............: avg=1m0s     min=1m0s    med=1m0s
+                                     max=1m0s     p(90)=1m0s     p(95)=1m0s
     ws_sessions....................: 200    3.027096/s
 
 hold_open_connections ✓ [ 100% ] 200 VUs  1m06.1s/1m30s  200/200 iters, 1 per VU
