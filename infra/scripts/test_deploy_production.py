@@ -19,6 +19,8 @@ class DeploymentManifestTest(unittest.TestCase):
     def enabled_configuration(self):
         tenants = copy.deepcopy(self.tenants)
         cells = copy.deepcopy(self.cells)
+        for tenant in tenants:
+            tenant["platform_dashboard_host"] = False
         tenants[0]["enabled"] = True
         tenants[0]["platform_dashboard_host"] = True
         tenants[0]["s3_bucket"] = "mudo-prod-staff-123456789012"
@@ -69,7 +71,7 @@ class DeploymentManifestTest(unittest.TestCase):
         self.assertEqual("paid", environment["TENANT_PLAN"])
         self.assertEqual("true", environment["PLATFORM_DASHBOARD_ENABLED"])
         self.assertIn('"code":"academy-a"', environment["PLATFORM_DASHBOARD_TENANT_REGISTRY_JSON"])
-        self.assertEqual("30", environment["SERVER_TOMCAT_THREADS_MAX"])
+        self.assertEqual("35", environment["SERVER_TOMCAT_THREADS_MAX"])
         self.assertEqual(500, container["cpu"])
         self.assertEqual(768, container["memoryReservation"])
         self.assertEqual(1024, container["memory"])
@@ -151,7 +153,9 @@ class DeploymentManifestTest(unittest.TestCase):
         self.assertIn('"apiHost":"academy-a.ieum.store"', directory_json)
         self.assertIn('"apiHost":"sidea-test.ieum.store"', directory_json)
 
-    def test_public_tenant_directory_injected_only_into_dashboard_host_task(self):
+    def test_public_tenant_directory_injected_regardless_of_dashboard_host(self):
+        # 프론트가 로그인 전에 조회하는 공개 라우팅 정보라, dashboard host가 아닌 학원
+        # Task에도 항상 주입돼야 한다(관리자 전용 레지스트리와는 분리된 값).
         tenants, cells = self.enabled_configuration()
         directory_json = render_public_tenant_directory(tenants)
         task = render_app_task(
@@ -169,12 +173,20 @@ class DeploymentManifestTest(unittest.TestCase):
 
         tenants[0]["platform_dashboard_host"] = False
         non_host_task = render_app_task(
-            tenants[0], self.profiles["shared-default"], "123456789012", "ap-northeast-2",
-            "registry/mudo:abc123", "abc123")
+            tenants[0],
+            self.profiles["shared-default"],
+            "123456789012",
+            "ap-northeast-2",
+            "registry/mudo:abc123",
+            "abc123",
+            None,
+            directory_json,
+        )
         non_host_environment = {
             item["name"]: item["value"] for item in non_host_task["containerDefinitions"][0]["environment"]
         }
-        self.assertNotIn("PLATFORM_TENANT_DIRECTORY_JSON", non_host_environment)
+        self.assertIn('"code":"academy-a"', non_host_environment["PLATFORM_TENANT_DIRECTORY_JSON"])
+        self.assertNotIn("PLATFORM_DASHBOARD_ENABLED", non_host_environment)
 
     def test_migration_task_uses_separate_migrator_parameters(self):
         tenants, _ = self.enabled_configuration()

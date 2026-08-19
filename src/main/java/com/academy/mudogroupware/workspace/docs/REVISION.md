@@ -1,5 +1,66 @@
 # 🔄 워크스페이스 생성 이름 중복 정책 단순화
 
+## ✅ 2026-08-18 · WebSocket 토픽 구독 시 LazyInitializationException 수정
+
+### 변경 목적
+
+바로 아래 "업무·댓글 실시간 브로드캐스트(WebSocket) 추가" PR(#600) 머지 후 프론트 실연동 중, `/topic/workspaces/{workspaceId}` 토픽을 구독(SUBSCRIBE)하면 매번 STOMP `ERROR` 프레임(`Failed to send message to ExecutorSubscribableChannel[clientInboundChannel]`) + 연결종료가 재현됐다. 이슈 [#606](https://github.com/mudo-project/Team1-MUDO-BackEnd/issues/606), PR [#607](https://github.com/mudo-project/Team1-MUDO-BackEnd/pull/607).
+
+### 원인
+
+`WorkspacePersistenceAdapter.findById()`에 `@Transactional`이 없었다. 기존 호출자는 전부 `@Transactional` Service 안에서만 이 메서드를 불러서 문제가 안 드러났는데, `JwtChannelInterceptor.authorizeWorkspaceTopicSubscription()`(트랜잭션 없는 최초의 호출자)가 부르면서 노출됐다. `findById()`가 `workspace` 행을 조회하는 순간 트랜잭션이 끝나고, 그 다음 `.map(mapper::toDomain)`이 `WorkspaceJpaEntity.members`(lazy `@OneToMany`)를 읽으려다 세션이 이미 닫혀 `LazyInitializationException`(Spring이 `JpaSystemException`으로 감쌈)이 발생했다.
+
+로컬에서 Node.js `ws`로 실제 STOMP 클라이언트를 만들어 재현해 확보한 스택트레이스:
+```
+org.springframework.orm.jpa.JpaSystemException: failed to lazily initialize a collection of role:
+WorkspaceJpaEntity.members: could not initialize proxy - no Session
+	at ...WorkspacePersistenceAdapter$$SpringCGLIB$$0.findById(<generated>)
+	at ...JwtChannelInterceptor.authorizeWorkspaceTopicSubscription(...)
+```
+
+### 구현 변경
+
+- `WorkspacePersistenceAdapter.findById()`에 `@Transactional(readOnly = true)` 추가 — 이 메서드 자체가 트랜잭션 경계를 가지면 트랜잭션 있는/없는 호출자 모두 안전하게 `memberIds`까지 매핑된다.
+
+### 수용한 한계
+
+- `findByIdForUpdate()`도 동일 구조(트랜잭션 없이 lazy 컬렉션 매핑)라 잠재적으로 같은 위험이 있다. 다만 현재 모든 호출자가 `@Transactional` Service 안에서만 부르고 있어 이번 범위에서는 건드리지 않았다 — 트랜잭션 없는 새 호출자가 생기면 그때 같이 고칠 것.
+
+### 검증
+
+- 로컬에서 재현 스크립트로 수정 전(100% ERROR+연결종료)/후(정상 구독, `workspace_member` 조회 쿼리까지 실행) 비교 확인.
+- `JwtChannelInterceptorTest`(12개) 및 workspace 도메인 전체 테스트 통과, 회귀 없음.
+
+## ✅ 2026-08-18 · 업무·댓글 실시간 브로드캐스트(WebSocket) 추가
+
+### 변경 목적
+
+워크스페이스는 댓글 멘션 알림(2026-08-12) 하나만 실시간으로 push되고, 업무 생성/상태변경/삭제·댓글 생성/수정/완료토글/삭제는 새로고침해야 반영됐다. 프론트가 폴링 방식을 검토했으나 상시 서버 부하 우려로 채택하지 못해 실시간 반영 자체가 안 되는 상태였다. 이벤트 기반 WebSocket 브로드캐스트로 폴링 없이(=상시 부하 증가 없이) 실시간성을 확보한다. 이슈 [#601](https://github.com/mudo-project/Team1-MUDO-BackEnd/issues/601), PR [#600](https://github.com/mudo-project/Team1-MUDO-BackEnd/pull/600). 설계는 [2026-08-18-workspace-realtime-broadcast-design.md](../../../../../../../../docs/superpowers/specs/2026-08-18-workspace-realtime-broadcast-design.md), 계획은 [2026-08-18-workspace-realtime-broadcast.md](../../../../../../../../docs/superpowers/plans/2026-08-18-workspace-realtime-broadcast.md) 참고.
+
+### 구현 변경
+
+- 업무 생성/상태·마감일변경/삭제, 댓글 생성/수정/완료토글/삭제 총 7개 액션을 도메인 이벤트(`workspace/domain/event/`) 7종으로 발행한다 — `TaskCreatedEvent`/`TaskUpdatedEvent`/`TaskDeletedEvent`, `CommentCreatedEvent`/`CommentUpdatedEvent`/`CommentToggledEvent`/`CommentDeletedEvent`.
+- 신규 `WorkspaceRealtimeNotifier`(`workspace/infrastructure/websocket/`)가 `@TransactionalEventListener(AFTER_COMMIT)`로 위 7개 이벤트를 받아 `/topic/workspaces/{workspaceId}` 단일 토픽으로 브로드캐스트한다. 액션별로 토픽을 나누지 않는다. 기존 멘션 전용 `WorkspaceWebSocketNotifier`는 완전히 무변경, 독립적으로 공존한다.
+- 페이로드는 변경된 리소스 전체 데이터를 포함한다(id만 보내고 프론트가 재조회하는 방식이 아님) — 프론트가 REST 응답과 동일한 필드로 React Query 캐시를 바로 갱신할 수 있게 하기 위함. 다만 `createdBy`/`authorId`/`completedBy`는 userId만 싣고 이름 등 부가정보는 담지 않는다(YAGNI — 프론트가 이미 가진 참여자 목록에서 매핑 가능).
+- 변경을 실행한 본인에게도 동일하게 브로드캐스트한다(제외 로직 없음) — REST 응답으로 이미 최신값을 받은 뒤 같은 값을 한 번 더 덮어쓸 뿐이라 무해하며, 세션 추적 로직이 필요 없어진다.
+- `JwtChannelInterceptor`(global)에 `/topic/workspaces/(\d+)$` 패턴 구독 인가를 추가했다 — 워크스페이스 참여자만 구독 가능하도록 `WorkspaceRepository.findById`로 확인한다. 이 인터셉터가 처음으로 순수 토큰 검증에서 DB 조회까지 책임이 넓어졌다(구독은 화면 진입당 1회뿐이라 성능 영향 없음). global 패키지 파일이라 워크스페이스 도메인 소유 범위 밖이지만, 이번 변경은 사용자와 명시적으로 합의된 예외다.
+- 이벤트 전송 실패는 전부 `try/catch(RuntimeException)`으로 감싸 로그만 남긴다(DB 트랜잭션에 영향 없음). 놓친 이벤트에 대한 재전송 큐는 만들지 않고, 프론트 재연결 시 전체 재조회로 동기화하는 것으로 대체한다(YAGNI).
+- `SimpleBroker`(인메모리)로 충분하다 — 학원별 EC2 인스턴스·DB 스키마가 물리적으로 분리된 구조라 인스턴스 간 pub/sub 동기화가 필요 없다.
+
+### 범위 밖
+
+- 워크스페이스 이름변경, 참여자 추가/제거, 반복 업무 템플릿 CRUD의 실시간화 — 빈도가 낮아 후속 라운드로 미룸.
+- 프론트엔드 연동(React Query `setQueryData`/`invalidateQueries`)과 실제 브라우저 E2E 확인 — 이 저장소는 백엔드 전용, 별도 진행.
+- 폴링 vs 이벤트 push 정량 비교 k6 테스트 — 별도 스파이크로 분리.
+- STOMP heartbeat 미설정(좀비 소켓/FD 누수 위험) — 이번 브레인스토밍 중 발견했으나 메신저·알림을 포함한 WS 인프라 전체(`WebSocketConfig`, global 소유)에 걸친 이슈라 이번 범위에서 제외, 별도 이슈로 분리.
+
+### 검증
+
+- `WorkspaceRealtimeNotifierTest`(신규) — 7개 이벤트 각각의 토픽·페이로드 발행, 전송 실패 시 예외 미전파를 검증.
+- `JwtChannelInterceptorTest` — 워크스페이스 토픽 참여자 허용/비참여자 거부/존재하지 않는 워크스페이스/숫자 오버플로/미인증 5케이스 추가(기존 7개 + 신규 5개).
+- 업무·댓글 Service 7개 테스트에 이벤트 발행 검증(`ArgumentCaptor`) 추가. CodeRabbit 리뷰로 완료토글의 완료해제(`completed=false`) 경로, 업무의 마감일단독변경 경로에도 이벤트 검증을 보강했다.
+- 전체 `./gradlew test` 통과(회귀 없음).
+
 ## ✅ 2026-08-12 · 업무 댓글 멘션 WebSocket 알림 연동
 
 - 댓글 생성 시 요청자를 제외한 멘션 사용자에게 알림 이벤트를 발행한다.

@@ -3,6 +3,7 @@ package com.academy.mudogroupware.workspace.application.service.comment;
 import com.academy.mudogroupware.global.infrastructure.logging.AfterCommitLogger;
 import com.academy.mudogroupware.workspace.application.command.comment.CreateTaskCommentCommand;
 import com.academy.mudogroupware.workspace.application.usecase.comment.CreateTaskCommentUseCase;
+import com.academy.mudogroupware.workspace.domain.event.CommentCreatedEvent;
 import com.academy.mudogroupware.workspace.domain.event.TaskCommentMentionedEvent;
 import com.academy.mudogroupware.workspace.domain.exception.comment.InvalidMentionedUserException;
 import com.academy.mudogroupware.workspace.domain.exception.task.TaskNotFoundException;
@@ -76,6 +77,15 @@ public class CreateTaskCommentService implements CreateTaskCommentUseCase {
 
     // 댓글 저장
     TaskComment saved = taskCommentRepository.save(comment);
+
+    applicationEventPublisher.publishEvent(
+        new CommentCreatedEvent(
+            command.workspaceId(),
+            command.taskId(),
+            saved.getId(),
+            saved.getAuthorId(),
+            saved.getContent(),
+            saved.getCreatedAt()));
 
     // 멘션 대상 중 요청자 자신을 제외하고 중복 제거해 알림 수신자 목록 계산
     List<Long> recipientUserIds =

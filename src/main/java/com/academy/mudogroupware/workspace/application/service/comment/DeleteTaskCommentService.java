@@ -2,6 +2,7 @@ package com.academy.mudogroupware.workspace.application.service.comment;
 
 import com.academy.mudogroupware.workspace.application.command.comment.DeleteTaskCommentCommand;
 import com.academy.mudogroupware.workspace.application.usecase.comment.DeleteTaskCommentUseCase;
+import com.academy.mudogroupware.workspace.domain.event.CommentDeletedEvent;
 import com.academy.mudogroupware.workspace.domain.exception.comment.TaskCommentNotFoundException;
 import com.academy.mudogroupware.workspace.domain.exception.task.TaskNotFoundException;
 import com.academy.mudogroupware.workspace.domain.exception.workspace.WorkspaceAccessDeniedException;
@@ -14,6 +15,7 @@ import com.academy.mudogroupware.workspace.domain.repository.task.TaskRepository
 import com.academy.mudogroupware.workspace.domain.repository.workspace.WorkspaceRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +27,7 @@ public class DeleteTaskCommentService implements DeleteTaskCommentUseCase {
   private final WorkspaceRepository workspaceRepository;
   private final TaskRepository taskRepository;
   private final TaskCommentRepository taskCommentRepository;
+  private final ApplicationEventPublisher applicationEventPublisher;
 
   @Override
   @Transactional
@@ -59,5 +62,8 @@ public class DeleteTaskCommentService implements DeleteTaskCommentUseCase {
     }
 
     taskCommentRepository.deleteById(command.commentId());
+
+    applicationEventPublisher.publishEvent(
+        new CommentDeletedEvent(command.workspaceId(), command.taskId(), command.commentId()));
   }
 }

@@ -3,6 +3,7 @@ package com.academy.mudogroupware.workspace.application.service.task;
 import com.academy.mudogroupware.global.infrastructure.logging.AfterCommitLogger;
 import com.academy.mudogroupware.workspace.application.command.task.UpdateTaskCommand;
 import com.academy.mudogroupware.workspace.application.usecase.task.UpdateTaskUseCase;
+import com.academy.mudogroupware.workspace.domain.event.TaskUpdatedEvent;
 import com.academy.mudogroupware.workspace.domain.exception.task.TaskNotFoundException;
 import com.academy.mudogroupware.workspace.domain.exception.workspace.WorkspaceAccessDeniedException;
 import com.academy.mudogroupware.workspace.domain.exception.workspace.WorkspaceNotFoundException;
@@ -17,6 +18,7 @@ import java.time.Clock;
 import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +30,7 @@ public class UpdateTaskService implements UpdateTaskUseCase {
   private final WorkspaceRepository workspaceRepository;
   private final TaskRepository taskRepository;
   private final TaskStatusHistoryRepository taskStatusHistoryRepository;
+  private final ApplicationEventPublisher applicationEventPublisher;
   private final Clock clock;
 
   @Override
@@ -70,6 +73,10 @@ public class UpdateTaskService implements UpdateTaskUseCase {
           TaskStatusHistory.userChanged(
               saved.getId(), previousStatus, saved.getStatus(), command.requesterId()));
     }
+
+    applicationEventPublisher.publishEvent(
+        new TaskUpdatedEvent(
+            saved.getWorkspaceId(), saved.getId(), saved.getStatus(), saved.getDueAt()));
 
     AfterCommitLogger.run(
         () ->
