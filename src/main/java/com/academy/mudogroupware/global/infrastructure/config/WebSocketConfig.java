@@ -43,9 +43,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
   }
 
   public void configureMessageBroker(MessageBrokerRegistry r) {
-    // 서버가 10초마다 ping을 보내고, 클라이언트로부터 10초 안에 응답이 없으면 죽은 연결로
-    // 판단해 소켓을 닫는다. 프론트 STOMP 클라이언트도 heartbeat를 0이 아닌 값으로 선언해야
-    // 협상이 성립한다(양쪽 다 설정 필요) — 프론트 저장소는 이 변경 범위 밖.
     r.enableSimpleBroker("/topic", "/queue")
         .setHeartbeatValue(new long[] {10000, 10000})
         .setTaskScheduler(heartbeatScheduler);

@@ -56,6 +56,40 @@ class NoticeTest {
     }
 
     @Test
+    void threeArgUpdateLeavesAttachmentsUntouchedAndMarksNotReplaced() {
+        NoticeAttachment original = NoticeAttachment.create(1L, "원본.pdf");
+        Notice notice = Notice.create(7L, "제목", "내용", false, List.of(original), NOW);
+
+        notice.update("새 제목", "새 내용", NOW.plusHours(1));
+
+        assertThat(notice.getAttachments()).containsExactly(original);
+        assertThat(notice.isAttachmentsReplaced()).isFalse();
+    }
+
+    @Test
+    void fourArgUpdateWithAttachmentsReplacesThemAndMarksReplaced() {
+        Notice notice = Notice.create(7L, "제목", "내용", false,
+                List.of(NoticeAttachment.create(1L, "원본.pdf")), NOW);
+
+        NoticeAttachment replacement = NoticeAttachment.create(2L, "교체.pdf");
+        notice.update("새 제목", "새 내용", List.of(replacement), NOW.plusHours(1));
+
+        assertThat(notice.getAttachments()).containsExactly(replacement);
+        assertThat(notice.isAttachmentsReplaced()).isTrue();
+    }
+
+    @Test
+    void fourArgUpdateWithEmptyListClearsAttachments() {
+        Notice notice = Notice.create(7L, "제목", "내용", false,
+                List.of(NoticeAttachment.create(1L, "원본.pdf")), NOW);
+
+        notice.update("제목", "내용", List.of(), NOW.plusHours(1));
+
+        assertThat(notice.getAttachments()).isEmpty();
+        assertThat(notice.isAttachmentsReplaced()).isTrue();
+    }
+
+    @Test
     void isAuthorMatchesOnlyAuthorUserId() {
         Notice notice = Notice.create(7L, "제목", "내용", false, List.of(), NOW);
 

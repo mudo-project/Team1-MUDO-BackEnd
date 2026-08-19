@@ -1,0 +1,33 @@
+    checks_total.......: 800     12.107566/s
+    checks_succeeded...: 100.00% 800 out of 800
+    checks_failed......: 0.00%   0 out of 800
+
+    ✓ login: status is 200
+    ✓ login: accessToken exists
+    ✓ ws upgrade status is 101
+    ✓ stomp CONNECTED received
+
+    HTTP
+    http_req_duration..............: avg=96.86ms min=69.91ms med=83.8ms max=461.63ms p(90)=106.12ms p(95)=129.07ms
+      { expected_response:true }...: avg=96.86ms min=69.91ms med=83.8ms max=461.63ms p(90)=106.12ms p(95)=129.07ms
+    http_req_failed................: 0.00%  0 out of 200
+    http_reqs......................: 200    3.026891/s
+
+    EXECUTION
+    iteration_duration.............: avg=1m3s    min=1m1s    med=1m3s   max=1m6s     p(90)=1m5s     p(95)=1m5s    
+    iterations.....................: 200    3.026891/s
+    vus............................: 2      min=2        max=200
+    vus_max........................: 200    min=200      max=200
+
+    NETWORK
+    data_received..................: 420 kB 6.4 kB/s
+    data_sent......................: 141 kB 2.1 kB/s
+
+    WEBSOCKET
+    ws_connecting..................: avg=19.68ms min=3.04ms  med=6.47ms max=140.67ms p(90)=69.79ms  p(95)=139.63ms
+    ws_msgs_received...............: 200    3.026891/s
+    ws_msgs_sent...................: 200    3.026891/s
+    ws_session_duration............: avg=1m0s    min=1m0s    med=1m0s   max=1m0s     p(90)=1m0s     p(95)=1m0s    
+    ws_sessions....................: 200    3.026891/s
+
+hold_open_connections ✓ [ 100% ] 200 VUs  1m06.1s/1m30s  200/200 iters, 1 per VU
