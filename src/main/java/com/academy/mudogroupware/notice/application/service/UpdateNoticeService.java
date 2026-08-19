@@ -2,15 +2,18 @@ package com.academy.mudogroupware.notice.application.service;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.academy.mudogroupware.notice.application.command.NoticeAttachmentInput;
 import com.academy.mudogroupware.notice.application.command.UpdateNoticeCommand;
 import com.academy.mudogroupware.notice.application.usecase.UpdateNoticeUseCase;
 import com.academy.mudogroupware.notice.domain.exception.NoticeErrorCode;
 import com.academy.mudogroupware.notice.domain.exception.NoticeException;
 import com.academy.mudogroupware.notice.domain.model.Notice;
+import com.academy.mudogroupware.notice.domain.model.NoticeAttachment;
 import com.academy.mudogroupware.notice.domain.repository.NoticeRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -35,9 +38,16 @@ public class UpdateNoticeService implements UpdateNoticeUseCase {
             throw new NoticeException(NoticeErrorCode.NOT_AUTHOR_UPDATE);
         }
 
-        notice.update(command.title(), command.content(), LocalDateTime.now(clock));
+        List<NoticeAttachment> attachments = command.attachments() == null
+                ? null
+                : command.attachments().stream().map(this::toAttachment).toList();
+        notice.update(command.title(), command.content(), attachments, LocalDateTime.now(clock));
         noticeRepository.save(notice);
         log.info("event=notice_update_완료 noticeId={}, requesterId={}", command.noticeId(),
                 command.requesterId());
+    }
+
+    private NoticeAttachment toAttachment(NoticeAttachmentInput input) {
+        return NoticeAttachment.create(input.fileId(), input.fileName());
     }
 }
