@@ -34,7 +34,7 @@ tenants:
     # 2026-08-19: academy-a는 부하테스트 대상으로 계속 쓰기 때문에, 대시보드 조회 부하를
     # 분리하려고 academy-a에서 이쪽으로 옮겼다.
     platform_dashboard_host: true
-    billing_plan: basic
+    billing_plan: paid
     runtime_profile: shared-default
     cell: cell-1
     service: mudo-prod-svc-academy-d
