@@ -1,5 +1,12 @@
 # 📚 Notice Changelog
 
+## 2026-08-19 · 공지사항 수정 API가 첨부파일도 함께 반영하도록 수정
+
+- `PATCH /api/notices/{noticeId}` 수정 API가 지금까지는 `title`/`content`만 받고 저장했다. 프론트가 수정 화면에서 첨부파일을 바꿔도 에러 없이 조용히 무시되던 문제를 발견해서 고쳤다.
+- Request Body에 선택 필드 `attachments`를 추가했다. 필드를 안 보내면 기존 첨부파일을 그대로 두고, 빈 배열을 보내면 전부 지우고, 값을 보내면 그 목록으로 전체 교체한다.
+- `Notice.update()`가 4개 인자(title, content, attachments, now) 오버로드를 추가로 갖는다. 기존 3개 인자 오버로드는 그대로 남아 있고 `attachments=null`로 위임하므로 기존 호출부는 변경할 필요가 없었다.
+- 제목/내용만 수정하는 흔한 케이스에서 첨부파일 row가 불필요하게 지워졌다 다시 생기지 않도록, "이번 호출에서 첨부파일을 실제로 교체하라고 했는가"를 나타내는 신호를 도메인에 추가했다.
+
 ## 2026-08-09 · 첨부파일 참조 방식을 fileUrl → fileId로 통일
 
 - `notice_attachment`의 `file_url`/`file_type` 컬럼을 제거하고 `file_id`(공유 `file_metadata` 참조, FK)를 추가했다(`V1.5.5`).

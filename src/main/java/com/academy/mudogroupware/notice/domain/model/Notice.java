@@ -21,6 +21,11 @@ public final class Notice {
     private LocalDateTime updatedAt;
     private LocalDateTime deletedAt;
     private LocalDateTime retentionUntil;
+    // 영속 컬럼이 아니라 "이번 update() 호출에서 첨부파일 목록을 실제로 교체하라는 요청이 있었는가"만
+    // 나타내는 호출-단위 신호다. Repository가 이 값으로 첨부파일 clear+재삽입 여부를 결정한다 —
+    // attachments를 그대로 두는 흔한 케이스(제목/내용만 수정)에서 매번 불필요하게 첨부파일 row를
+    // 지웠다 다시 만드는 걸 막기 위함이다.
+    private boolean attachmentsReplaced;
 
     private Notice(Long id, Long authorUserId, String title, String content, boolean pinned,
                     long viewCount, List<NoticeAttachment> attachments, LocalDateTime createdAt,
@@ -79,6 +84,13 @@ public final class Notice {
     }
 
     public void update(String title, String content, LocalDateTime now) {
+        update(title, content, null, now);
+    }
+
+    // attachments를 null로 넘기면 첨부파일은 건드리지 않고 유지한다(제목/내용만 바꾸는 기존 호출부 호환).
+    // 빈 리스트를 넘기면 첨부파일 전체를 비운다. 그 외에는 넘어온 목록으로 통째로 교체한다 — 부분
+    // 추가/삭제가 아니라 "지금 있어야 할 첨부파일 전체 목록"을 매번 새로 받는 계약이다.
+    public void update(String title, String content, List<NoticeAttachment> attachments, LocalDateTime now) {
         if (now == null) {
             throw new IllegalArgumentException("now must not be null");
         }
@@ -90,7 +102,16 @@ public final class Notice {
         }
         this.title = title;
         this.content = content;
+        this.attachmentsReplaced = attachments != null;
+        if (attachmentsReplaced) {
+            this.attachments.clear();
+            this.attachments.addAll(attachments);
+        }
         this.updatedAt = now;
+    }
+
+    public boolean isAttachmentsReplaced() {
+        return attachmentsReplaced;
     }
 
     public void pin() {

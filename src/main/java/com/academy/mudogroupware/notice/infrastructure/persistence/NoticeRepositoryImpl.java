@@ -72,7 +72,26 @@ public class NoticeRepositoryImpl implements NoticeRepository {
         entity.setUpdatedAt(domain.getUpdatedAt());
         entity.setDeletedAt(domain.getDeletedAt());
         entity.setRetentionUntil(domain.getRetentionUntil());
+        // isAttachmentsReplaced()가 false면(제목/내용만 수정) 첨부파일은 그대로 둔다. domain의
+        // attachments는 로드된 기존 항목(id 보유)을 그대로 들고 있는데, 이걸 clear 후 id만 재사용해
+        // 새로 만들면 이미 삭제 처리된 행 id를 신규 insert에 다시 쓰게 돼 위험하다 — 그래서 아예
+        // 손대지 않는 쪽을 택했다.
+        if (domain.isAttachmentsReplaced()) {
+            replaceAttachments(entity, domain.getAttachments());
+        }
         return entity;
+    }
+
+    // 도메인의 attachments를 "지금 있어야 할 전체 목록"으로 보고 통째로 교체한다. 여기서 만드는
+    // NoticeAttachmentEntity는 항상 새 행(id 없음)이다 — notice_attachment에는 approval_step 같은
+    // 유니크 제약이 없어서(FK 인덱스만 있음) clear 직후 별도 flush를 강제할 필요는 없다.
+    private void replaceAttachments(NoticeEntity entity, List<NoticeAttachment> attachments) {
+        entity.getAttachments().clear();
+        attachments.forEach(attachment -> entity.addAttachment(
+                NoticeAttachmentEntity.builder()
+                        .fileId(attachment.getFileId())
+                        .fileName(attachment.getFileName())
+                        .build()));
     }
 
     private NoticeAttachmentEntity toAttachmentEntity(NoticeAttachment attachment) {
