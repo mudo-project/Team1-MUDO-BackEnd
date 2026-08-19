@@ -3,12 +3,12 @@
 - **대상 이슈**: [#609](https://github.com/mudo-project/Team1-MUDO-BackEnd/issues/609) — WebSocket STOMP heartbeat 설정 추가 (좀비 소켓 FD 누수 방지)
 - **대상 PR**: [#610](https://github.com/mudo-project/Team1-MUDO-BackEnd/pull/610) (develop 병합 완료, 커밋 `a264010c`)
 - **테스트 스크립트**: `k6/scripts/99-heartbeat-repro-baseline.js` *(`.gitignore`가 `*.js`를 전역 제외하므로 전문을 [부록 A](#부록-a-테스트-스크립트-전문)에 함께 보관한다)*
-- **실행 일시**: 2026-08-19 05:34 ~ 05:39 KST
+- **실행 일시**: 1차 2026-08-19 05:34~05:39 KST / 2차 2026-08-19 11:33~11:35 KST (2회 재현)
 - **환경**: 로컬 (Spring Boot `bootRun` 2개 동시 기동 + MySQL 8.4, 시드 `k6/seed/001` 적용)
 
 ## 결론 요약
 
-heartbeat 미적용 서버는 **응답 없는 연결 200개를 60초 내내 단 하나도 회수하지 못했고**, heartbeat 적용 서버는 **동일 조건에서 34~40초 안에 200개 전부를 자동 회수**했다. Toxiproxy 같은 별도 장애 주입 도구 없이 k6만으로 결함과 수정 효과가 명확히 갈렸다.
+heartbeat 미적용 서버는 **응답 없는 연결 200개를 60초 내내 단 하나도 회수하지 못했고**, heartbeat 적용 서버는 **동일 조건에서 200개 전부를 자동 회수**했다(회차별 20~40초, 2회 재현 모두 60초 이내). Toxiproxy 같은 별도 장애 주입 도구 없이 k6만으로 결함과 수정 효과가 명확히 갈렸다.
 
 > **주의**: 이 테스트는 "무응답 클라이언트를 서버가 감지·정리하는가"를 검증한 것이지, 운영 환경에서 실제 FD 누수가 진행 중임을 확인한 것은 아니다. 사전 조사 시점의 운영 서버(academy-a) 실측에서는 `CLOSE_WAIT` 소켓이 0건이었다 (아래 5장 참고).
 
@@ -103,7 +103,7 @@ while true; do echo "established=$(netstat -ano | grep ':8081' | grep -c ESTABLI
 
 ## 4. 결과
 
-### 4-1. 핵심 비교
+### 4-1. 핵심 비교 (1차 실행)
 
 | 지표 | **BEFORE** (heartbeat 미적용, :8081) | **AFTER** (heartbeat 적용, :8080) |
 | --- | --- | --- |
@@ -116,7 +116,7 @@ while true; do echo "established=$(netstat -ano | grep ':8081' | grep -c ESTABLI
 | 테스트 중 서버 측 ESTABLISHED | 800 유지 (변화 없음) | — |
 | 테스트 종료 후 ESTABLISHED | 0 (k6의 정상 종료로 회수됨) | 0 (heartbeat로 이미 회수됨) |
 
-### 4-2. 해석
+### 4-2. 해석 (1차 실행)
 
 **BEFORE — `ws_session_duration`이 정확히 60.0초로 고정된 것이 핵심 증거다.** min/max/평균이 전부 `1m0s`라는 것은, 200개 세션 전부가 서버 개입 없이 **k6가 설정한 시간을 꽉 채우고 클라이언트 쪽에서 종료**했다는 뜻이다. 서버는 60초 동안 무응답 연결을 단 하나도 감지하지 못했다. 이번 테스트에서는 k6가 종료 시 정상적으로 close 프레임을 보내줘서 결국 정리됐지만, 실제 절전모드처럼 close 프레임 자체가 오지 않는 상황이라면 **이 200개 연결은 무기한 남는다.**
 
@@ -124,7 +124,7 @@ while true; do echo "established=$(netstat -ano | grep ':8081' | grep -c ESTABLI
 
 **AFTER — `ws_session_duration`이 설정값 60초보다 짧은 평균 34.22초로 내려갔고, 200개 전부에 close code `1002`(protocol error)가 기록됐다.** 서버가 heartbeat 무응답을 감지해 능동적으로 연결을 끊은 것이다. 최대값도 40.03초로, 설정한 60초에 도달한 세션이 하나도 없다.
 
-### 4-3. 원시 로그 발췌
+### 4-3. 원시 로그 발췌 (1차 실행)
 
 ```text
 # BEFORE (:8081)
@@ -144,6 +144,40 @@ repro_socket_error : 200건 (전부 code 1002)
 
 - [`k6-summary-before-no-heartbeat.txt`](./k6-summary-before-no-heartbeat.txt)
 - [`k6-summary-after-heartbeat.txt`](./k6-summary-after-heartbeat.txt)
+
+### 4-4. 2차 재현 (2026-08-19 11:33 KST)
+
+동일 조건으로 한 번 더 실행해 재현성을 확인했다. **결론은 동일하되 감지 시점은 회차마다 달라진다.**
+
+| 지표 | BEFORE 1차 | BEFORE 2차 | AFTER 1차 | AFTER 2차 |
+| --- | --- | --- | --- | --- |
+| checks 성공률 | 100% | 100% | 100% | 100% |
+| **서버 주도 종료** | **0건** | **0건** | **200건** | **200건** |
+| `ws_session_duration` avg | 1m0s | 1m0s | 34.22s | **22.77s** |
+| `ws_session_duration` min ~ max | 1m0s ~ 1m0s | 1m0s ~ 1m0s | 30.03s ~ 40.03s | **20.37s ~ 24.61s** |
+| 전체 실행 시간 | 1m06.1s | 1m06.1s | 44.7s | **26.5s** |
+
+2차 실행에서는 서버 측 ESTABLISHED 연결 수를 10초 간격으로 직접 관측했다.
+
+| 경과 | BEFORE (:8081) | AFTER (:8080) |
+| ---: | ---: | ---: |
+| 8~9초 | 800 | 800 |
+| 18~19초 | 800 | 800 |
+| 26.5초 | — | **0** (전량 회수, 테스트 종료) |
+| 29초 | 800 | — |
+| 39초 | 800 | — |
+| 50초 | 800 | — |
+| 60초 | 800 | — |
+| 66초 | 0 (k6 정상 종료) | — |
+
+**BEFORE는 60초 정각까지 800이 단 한 번도 변하지 않았다.** 감소는 오직 k6가 스스로 종료한 66초 시점에만 발생했다. 반면 **AFTER는 26.5초에 이미 0**이며, 200개 전부 서버가 먼저 소켓을 닫아 k6 쪽에 write 실패(`wsasend`)가 기록됐다.
+
+> **감지 시점이 1차 34~40초 → 2차 20~24초로 당겨진 이유**: STOMP heartbeat는 CONNECT 시점의 협상 결과와 서버 부하 상태에 따라 실제 타임아웃 판정 시점이 달라진다. 두 회차 모두 **60초 안에 전량 회수**된다는 결론은 동일하므로, 대외 설명 시에는 특정 초를 단정하지 말고 **"30초 내외"** 또는 **"1분 안에 자동 회수"**로 표현하는 편이 안전하다.
+
+2차 실행의 k6 요약 원문:
+
+- [`k6-summary-before-no-heartbeat-run2.txt`](./k6-summary-before-no-heartbeat-run2.txt)
+- [`k6-summary-after-heartbeat-run2.txt`](./k6-summary-after-heartbeat-run2.txt)
 
 ---
 
